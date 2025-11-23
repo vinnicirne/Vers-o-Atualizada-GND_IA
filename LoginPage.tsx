@@ -184,54 +184,95 @@ const LoginPage: React.FC = () => {
 
   const modalRoot = document.getElementById('modal-root');
 
+  const features = [
+    { icon: 'fa-clock', title: 'Notícias em Tempo Real', description: 'Cobertura de eventos das últimas 48 horas com fontes da web.' },
+    { icon: 'fa-wand-magic-sparkles', title: 'Análises Preditivas', description: 'Explore tendências e cenários futuros com análises baseadas em dados.' },
+    { icon: 'fa-feather-alt', title: 'Conteúdo Otimizado', description: 'Artigos imparciais e bem estruturados, prontos para publicação.' },
+  ];
+
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-black font-mono">
-      <div className={`w-full max-w-sm bg-black/80 backdrop-blur-md border ${theme.borderColor} rounded-lg ${theme.shadow} overflow-hidden animate-fade-in-scale`}>
-        <div className={`p-6 border-b ${theme.borderColor} text-center bg-black/20`}>
-          <i className={`fas ${isSignUp ? 'fa-user-plus' : theme.icon} text-4xl ${theme.textColor} mb-3 opacity-80 transition-all duration-300`}></i>
-          <h1 className="text-xl font-bold tracking-widest text-gray-200 uppercase">{currentTitle}</h1>
-          <p className={`text-xs ${theme.textColor}/80`}>{isSignUp ? 'Junte-se à plataforma de IA' : theme.subtitle}</p>
+    <div className="min-h-screen w-full bg-black font-mono text-gray-300">
+      <div className="grid lg:grid-cols-2 min-h-screen">
+         {/* Coluna Esquerda/Topo: Landing Info */}
+         <div className="flex flex-col justify-center p-8 md:p-12 lg:p-16 lg:border-r lg:border-green-900/30">
+          <div className="max-w-md mx-auto lg:mx-0 animate-fade-in-up">
+            <div className="text-4xl font-bold tracking-widest mb-6 text-center lg:text-left">
+              <span className="text-gray-200">GDN</span>
+              <span className="text-green-400">_IA</span>
+            </div>
+            <div className="hidden lg:block">
+              <h1 className="text-3xl lg:text-4xl font-bold tracking-tighter mb-4 text-gray-100">
+                O Futuro das Notícias,
+                <span className="text-green-400"> Hoje.</span>
+              </h1>
+              <p className="text-lg text-gray-400 mb-8">
+                Gere artigos sobre eventos recentes ou explore cenários futuros com nossa inteligência artificial avançada.
+              </p>
+              <div className="space-y-6">
+                {features.map((feature, index) => (
+                  <div key={index} className="flex items-start space-x-4">
+                    <div className="mt-1"><i className={`fas ${feature.icon} text-xl text-green-400`}></i></div>
+                    <div>
+                      <h3 className="font-bold text-gray-200">{feature.title}</h3>
+                      <p className="text-sm text-gray-500">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="p-8">
-          <form onSubmit={handleAuth} className="space-y-6">
-            <div>
-              <label className={`block text-xs uppercase font-bold mb-2 tracking-wider ${theme.textColor}`}>Email de Acesso</label>
-              <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                className={`w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md ${theme.focusBorderColor} focus:outline-none focus:ring-0 transition duration-300`}
-              />
+
+        {/* Coluna Direita/Baixo: Formulário de Login */}
+        <div className="flex items-center justify-center p-4">
+          <div className={`w-full max-w-sm bg-black/80 backdrop-blur-md border ${theme.borderColor} rounded-lg ${theme.shadow} overflow-hidden animate-fade-in-scale`}>
+            <div className={`p-6 border-b ${theme.borderColor} text-center bg-black/20`}>
+              <i className={`fas ${isSignUp ? 'fa-user-plus' : theme.icon} text-4xl ${theme.textColor} mb-3 opacity-80 transition-all duration-300`}></i>
+              <h1 className="text-xl font-bold tracking-widest text-gray-200 uppercase">{currentTitle}</h1>
+              <p className={`text-xs ${theme.textColor}/80`}>{isSignUp ? 'Junte-se à plataforma de IA' : theme.subtitle}</p>
             </div>
-            <div>
-              <label className={`block text-xs uppercase font-bold mb-2 tracking-wider ${theme.textColor}`}>Senha</label>
-              <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
-                className={`w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md ${theme.focusBorderColor} focus:outline-none focus:ring-0 transition duration-300`}
-              />
-            </div>
-            <button type="submit" disabled={isLoading}
-              className={`w-full font-bold py-3 text-sm uppercase tracking-widest rounded-md transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-wait ${theme.buttonBg}`}
-            >
-              {buttonText}
-            </button>
-          </form>
-          <div className="mt-6 text-center text-xs">
-            {isSignUp ? (
-                <p className="text-gray-500">
-                  Já tem uma conta?{' '}
-                  <button onClick={() => setIsSignUp(false)} className={`font-bold ${theme.textColor} hover:underline`}>Fazer Login</button>
-                </p>
-            ) : (
-              <>
-                <div className="flex justify-center items-center my-4">
-                  <button onClick={() => setIsAdminMode(false)} className={`px-4 py-1 rounded-l-md text-xs font-bold transition ${!isAdminMode ? theme.toggleActive : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600'}`}>Usuário</button>
-                  <button onClick={() => setIsAdminMode(true)} className={`px-4 py-1 rounded-r-md text-xs font-bold transition ${isAdminMode ? theme.toggleActive : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600'}`}>Admin</button>
+            <div className="p-8">
+              <form onSubmit={handleAuth} className="space-y-6">
+                <div>
+                  <label className={`block text-xs uppercase font-bold mb-2 tracking-wider ${theme.textColor}`}>Email de Acesso</label>
+                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
+                    className={`w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md ${theme.focusBorderColor} focus:outline-none focus:ring-0 transition duration-300`}
+                  />
                 </div>
-                {!isAdminMode && (
+                <div>
+                  <label className={`block text-xs uppercase font-bold mb-2 tracking-wider ${theme.textColor}`}>Senha</label>
+                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)}
+                    className={`w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md ${theme.focusBorderColor} focus:outline-none focus:ring-0 transition duration-300`}
+                  />
+                </div>
+                <button type="submit" disabled={isLoading}
+                  className={`w-full font-bold py-3 text-sm uppercase tracking-widest rounded-md transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-wait ${theme.buttonBg}`}
+                >
+                  {buttonText}
+                </button>
+              </form>
+              <div className="mt-6 text-center text-xs">
+                {isSignUp ? (
                     <p className="text-gray-500">
-                      Não tem uma conta?{' '}
-                      <button onClick={() => setIsSignUp(true)} className={`font-bold ${theme.textColor} hover:underline`}>Crie uma conta</button>
+                      Já tem uma conta?{' '}
+                      <button onClick={() => setIsSignUp(false)} className={`font-bold ${theme.textColor} hover:underline`}>Fazer Login</button>
                     </p>
+                ) : (
+                  <>
+                    <div className="flex justify-center items-center my-4">
+                      <button onClick={() => setIsAdminMode(false)} className={`px-4 py-1 rounded-l-md text-xs font-bold transition ${!isAdminMode ? theme.toggleActive : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600'}`}>Usuário</button>
+                      <button onClick={() => setIsAdminMode(true)} className={`px-4 py-1 rounded-r-md text-xs font-bold transition ${isAdminMode ? theme.toggleActive : 'bg-gray-700/50 text-gray-400 hover:bg-gray-600'}`}>Admin</button>
+                    </div>
+                    {!isAdminMode && (
+                        <p className="text-gray-500">
+                          Não tem uma conta?{' '}
+                          <button onClick={() => setIsSignUp(true)} className={`font-bold ${theme.textColor} hover:underline`}>Crie uma conta</button>
+                        </p>
+                    )}
+                  </>
                 )}
-              </>
-            )}
+              </div>
+            </div>
           </div>
         </div>
       </div>
