@@ -24,18 +24,8 @@
   -- Habilita Row Level Security (RLS) para a nova tabela
   ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
   
-  -- Políticas de Acesso para 'user_credits':
-  -- Permite que usuários leiam seus próprios créditos
-  CREATE POLICY "Allow individual user read access to their own credits"
-  ON public.user_credits FOR SELECT
-  USING (auth.uid() = user_id);
-  
-  -- Permite que administradores gerenciem todos os créditos
-  CREATE POLICY "Allow admin full access to all credits"
-  ON public.user_credits FOR ALL
-  USING (
-    (SELECT "role" FROM public.app_users WHERE id = auth.uid()) IN ('admin'::text, 'super_admin'::text)
-  );
+  -- NOTA: As políticas de segurança (RLS) para esta tabela são configuradas no SCRIPT 3.
+  -- Execute o SCRIPT 3 após este para aplicar as permissões corretas.
 
   -- Migra os dados de créditos da tabela antiga para a nova
   INSERT INTO public.user_credits (user_id, credits)
@@ -96,9 +86,55 @@
   -- Garante que a função ainda pode ser executada por usuários autenticados (admins)
   grant execute on function public.create_new_user(text, text, text, text, integer, text) to authenticated;
 
+
+  --- SCRIPT 3: HABILITE E CONFIGURE CORRETAMENTE O RLS PARA TODAS AS TABELAS ---
+  -- ESTA ETAPA É CRUCIAL E CORRIGE ERROS DE PERMISSÃO E RECURSÃO.
+  -- Execute este script completo para garantir que as permissões funcionem.
+
+  -- 1. Cria uma função segura para obter a role de um usuário.
+  --    SECURITY DEFINER permite que a função ignore RLS, evitando a recursão.
+  CREATE OR REPLACE FUNCTION get_user_role(user_id uuid)
+  RETURNS text
+  LANGUAGE plpgsql
+  SECURITY DEFINER
+  SET search_path = public
+  AS $$
+  BEGIN
+    RETURN (SELECT role FROM public.app_users WHERE id = user_id);
+  END;
+  $$;
+
+  -- 2. Habilita Row Level Security (RLS) para as tabelas.
+  --    Pode ser executado com segurança mesmo se já estiver ativo.
+  ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
+  ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
+
+  -- 3. Remove políticas antigas ou incorretas para garantir uma reconfiguração limpa.
+  DROP POLICY IF EXISTS "Allow individual user read access to their own profile" ON public.app_users;
+  DROP POLICY IF EXISTS "Allow admin read access to all user profiles" ON public.app_users;
+  DROP POLICY IF EXISTS "Allow admin update access to all user profiles" ON public.app_users;
+  DROP POLICY IF EXISTS "Allow individual user read access to their own credits" ON public.user_credits;
+  DROP POLICY IF EXISTS "Allow admin full access to all credits" ON public.user_credits;
+
+  -- 4. Recria as políticas para 'app_users' usando a função segura.
+  CREATE POLICY "Allow individual user read access to their own profile"
+  ON public.app_users FOR SELECT USING (auth.uid() = id);
+
+  CREATE POLICY "Allow admin read access to all user profiles"
+  ON public.app_users FOR SELECT USING (get_user_role(auth.uid()) IN ('admin', 'super_admin'));
+
+  CREATE POLICY "Allow admin update access to all user profiles"
+  ON public.app_users FOR UPDATE USING (get_user_role(auth.uid()) IN ('admin', 'super_admin'));
+
+  -- 5. Recria as políticas para 'user_credits' usando a função segura.
+  CREATE POLICY "Allow individual user read access to their own credits"
+  ON public.user_credits FOR SELECT USING (auth.uid() = user_id);
+
+  CREATE POLICY "Allow admin full access to all credits"
+  ON public.user_credits FOR ALL USING (get_user_role(auth.uid()) IN ('admin', 'super_admin'));
+
 */
 import { supabase } from './supabaseClient';
-// FIX: Added AIPlatformSettings to the import list to resolve a type error.
 import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, TransactionStatus, PaymentMethod, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, AIPlatformSettings } from '../types';
 
 // --- NEW USER MANAGEMENT FUNCTIONS ---
@@ -125,10 +161,6 @@ export const createUser = async (
   let newUser: User;
   const methodUsed = 'rpc';
 
-  // A única maneira segura e confiável de criar um usuário a partir de um painel de administração sem
-  // afetar a sessão do administrador é por meio de uma função do lado do servidor (RPC).
-  // O fallback anterior para `supabase.auth.signUp` foi removido porque ele sequestra
-  // a sessão do administrador, fazendo com que as operações subsequentes do banco de dados falhem devido ao RLS.
   const { data: rpcProfile, error: rpcError } = await supabase.rpc('create_new_user', {
     email: payload.email,
     password: payload.password,
@@ -143,7 +175,6 @@ export const createUser = async (
     if (rpcError.message.includes('duplicate key') || rpcError.message.includes('already exists')) {
       throw new Error('Um usuário com este email já existe.');
     }
-    // Fornece um erro mais útil para os desenvolvedores.
     if (rpcError.message.includes('function public.create_new_user does not exist')) {
         throw new Error("Falha ao criar usuário: A função 'create_new_user' não foi encontrada no seu banco de dados Supabase. Por favor, execute o script SQL fornecido nos comentários de services/adminService.ts para criá-la.");
     }
@@ -154,10 +185,8 @@ export const createUser = async (
       throw new Error("A criação do usuário via RPC não retornou um perfil, mas não gerou erro. Verifique os logs da função no Supabase.");
   }
   
-  // A RPC retorna o perfil de app_users; adicionamos os créditos do payload.
   newUser = { ...rpcProfile, credits: payload.credits };
 
-  // Cria um log de auditoria para a operação bem-sucedida
   const { error: logError } = await supabase.from('logs').insert({
     usuario_id: adminUserId,
     acao: 'create_user',
@@ -178,7 +207,6 @@ export const createUser = async (
   return newUser;
 };
 
-
 interface GetUsersParams {
   role?: UserRole | 'all';
   status?: UserStatus | 'all';
@@ -193,7 +221,6 @@ interface GetUsersResult {
 
 /**
  * Fetches users with filtering and pagination, joining credit data.
- * Returns a list of users and the total count for pagination.
  */
 export const getUsers = async ({
   role = 'all',
@@ -201,38 +228,53 @@ export const getUsers = async ({
   page = 1,
   limit = 10,
 }: GetUsersParams): Promise<GetUsersResult> => {
-  let query = supabase
-    .from('app_users')
-    .select('id, email, full_name, role, status, user_credits(credits)', { count: 'exact' });
-
-  if (role !== 'all') {
-    query = query.eq('role', role);
-  }
-  if (status !== 'all') {
-    query = query.eq('status', status);
-  }
-
-  const offset = (page - 1) * limit;
-  query = query.range(offset, offset + limit - 1).order('created_at', { ascending: false });
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    console.error('Error fetching users:', error.message);
-    throw error;
-  }
-
-  // Flatten the nested credit data
-  const flattenedUsers = data?.map((user: any) => ({
-      id: user.id,
-      email: user.email,
-      full_name: user.full_name,
-      role: user.role,
-      status: user.status,
-      credits: user.user_credits?.[0]?.credits ?? 0,
-  })) || [];
-
-  return { users: flattenedUsers, count: count ?? 0 };
+    // 1. Fetch paginated users from app_users
+    let usersQuery = supabase
+      .from('app_users')
+      .select('id, email, full_name, role, status', { count: 'exact' });
+  
+    if (role !== 'all') {
+      usersQuery = usersQuery.eq('role', role);
+    }
+    if (status !== 'all') {
+      usersQuery = usersQuery.eq('status', status);
+    }
+  
+    const offset = (page - 1) * limit;
+    usersQuery = usersQuery.range(offset, offset + limit - 1).order('created_at', { ascending: false });
+  
+    const { data: usersData, error: usersError, count } = await usersQuery;
+  
+    if (usersError) {
+      console.error('Error fetching users:', usersError.message);
+      throw usersError;
+    }
+    
+    if (!usersData || usersData.length === 0) {
+        return { users: [], count: count ?? 0 };
+    }
+  
+    // 2. Fetch credits for the fetched users
+    const userIds = usersData.map(u => u.id);
+    const { data: creditsData, error: creditsError } = await supabase
+      .from('user_credits')
+      .select('user_id, credits')
+      .in('user_id', userIds);
+  
+    if (creditsError) {
+        console.error('Error fetching credits for users:', creditsError.message);
+        // Proceeding with 0 credits for users with fetch errors
+    }
+  
+    // 3. Map credits to users
+    const creditsMap = new Map(creditsData?.map(c => [c.user_id, c.credits]));
+    
+    const combinedUsers = usersData.map(user => ({
+        ...user,
+        credits: creditsMap.get(user.id) ?? 0,
+    }));
+  
+    return { users: combinedUsers, count: count ?? 0 };
 };
 
 interface UpdateUserPayload {
@@ -243,9 +285,6 @@ interface UpdateUserPayload {
 
 /**
  * Updates a user's data across 'app_users' and 'user_credits' and creates an audit log.
- * @param targetUserId ID of the user to be modified.
- * @param updates Object with the fields to be updated.
- * @param adminUserId ID of the admin performing the action.
  */
 export const updateUser = async (
   targetUserId: string,
@@ -254,20 +293,25 @@ export const updateUser = async (
 ): Promise<User> => {
   const { credits, ...profileUpdates } = updates;
 
-  // 1. Fetch current full user state for logging
-  const { data: currentUserData, error: fetchError } = await supabase
+  // 1. Fetch current user data in two steps to get a 'before' snapshot for logging
+  const { data: currentProfile, error: fetchError } = await supabase
     .from('app_users')
-    .select('*, user_credits(credits)')
+    .select('*')
     .eq('id', targetUserId)
-    .maybeSingle(); // FIX: Use maybeSingle for robustness.
+    .maybeSingle();
 
-  if (fetchError || !currentUserData) {
+  if (fetchError || !currentProfile) {
     throw new Error('Usuário a ser atualizado não encontrado.');
   }
-  const currentUser: User = { ...currentUserData, credits: currentUserData.user_credits?.[0]?.credits ?? 0, user_credits: undefined };
+  const { data: currentCreditsData } = await supabase
+    .from('user_credits')
+    .select('credits')
+    .eq('user_id', targetUserId)
+    .maybeSingle();
 
+  const currentUser: User = { ...currentProfile, credits: currentCreditsData?.credits ?? 0 };
 
-  // 2. Perform updates
+  // 2. Apply updates
   if (Object.keys(profileUpdates).length > 0) {
     const { error: profileError } = await supabase
       .from('app_users')
@@ -283,18 +327,24 @@ export const updateUser = async (
     if (creditsError) throw creditsError;
   }
   
-  // 3. Fetch the final updated user to return
-  const { data: updatedUserData, error: refetchError } = await supabase
+  // 3. Refetch updated data in two steps to return the 'after' state
+  const { data: updatedProfile, error: refetchError } = await supabase
     .from('app_users')
-    .select('*, user_credits(credits)')
+    .select('*')
     .eq('id', targetUserId)
-    .maybeSingle(); // FIX: Use maybeSingle for robustness.
+    .maybeSingle();
     
-  if (refetchError || !updatedUserData) throw new Error('Falha ao recarregar usuário após atualização.');
+  if (refetchError || !updatedProfile) throw new Error('Falha ao recarregar usuário após atualização.');
   
-  const updatedUser: User = { ...updatedUserData, credits: updatedUserData.user_credits?.[0]?.credits ?? 0, user_credits: undefined };
+  const { data: updatedCreditsData } = await supabase
+    .from('user_credits')
+    .select('credits')
+    .eq('user_id', targetUserId)
+    .maybeSingle();
+  
+  const updatedUser: User = { ...updatedProfile, credits: updatedCreditsData?.credits ?? 0 };
 
-  // 4. Create audit log
+  // 4. Log changes
   const changes: Record<string, { from: any; to: any }> = {};
   if (updates.role && updates.role !== currentUser.role) {
     changes.role = { from: currentUser.role, to: updates.role };
@@ -319,7 +369,6 @@ export const updateUser = async (
   return updatedUser;
 };
 
-
 // --- NEWS & LOGS FUNCTIONS ---
 
 interface GetNewsParams {
@@ -333,9 +382,6 @@ interface GetNewsResult {
   count: number;
 }
 
-/**
- * Busca notícias com informações do autor, com suporte a filtros e paginação.
- */
 export const getNewsWithAuthors = async ({
   status = 'all',
   page = 1,
@@ -397,7 +443,7 @@ export const updateNewsArticle = async (newsId: number, titulo: string, conteudo
         .from('news')
         .select('titulo, conteudo')
         .eq('id', newsId)
-        .maybeSingle(); // FIX: Use maybeSingle for robustness.
+        .maybeSingle();
     
     if (fetchError || !currentNews) {
         throw new Error("Could not find news article to update.");
@@ -567,13 +613,11 @@ export const getApprovedRevenueInRange = async (startDate?: string, endDate?: st
 const SETTINGS_TABLE = 'settings';
 
 export const getPaymentSettings = async (): Promise<PaymentSettings> => {
-    // Fetch gateway settings (new format)
     const { data: gatewaySettings, error: gatewaysError } = await supabase
         .from(SETTINGS_TABLE)
         .select('chave, valor')
         .eq('categoria', 'gateway');
 
-    // Fetch credit packages (unchanged)
     const { data: packagesData, error: packagesError } = await supabase
         .from('pacotes_credito')
         .select('*')
@@ -588,7 +632,6 @@ export const getPaymentSettings = async (): Promise<PaymentSettings> => {
         throw new Error('Falha ao carregar os pacotes de crédito.');
     }
 
-    // Reconstruct the gateways object from individual rows
     const gateways: PaymentSettings['gateways'] = {
         stripe: { enabled: false, publicKey: '', secretKey: '' },
         mercadoPago: { enabled: false, publicKey: '', secretKey: '' },
@@ -662,24 +705,21 @@ export const saveCreditPackages = async (packages: CreditPackage[], adminUserId:
     }
 };
 
-
 // --- MULTI-AI SETTINGS FUNCTIONS ---
 
 const MULTI_AI_PLATFORMS_KEY = 'multi_ai_platforms';
 
 export const getMultiAISettings = async (): Promise<MultiAISettings> => {
-    // FIX: Changed column name from 'key' to 'chave' to match the database schema.
     const { data: platformsData, error: platformsError } = await supabase
         .from(SETTINGS_TABLE)
         .select('valor')
         .eq('chave', MULTI_AI_PLATFORMS_KEY)
-        .maybeSingle(); // FIX: Use maybeSingle to avoid errors on missing settings row.
+        .maybeSingle();
 
     const { data: modelsData, error: modelsError } = await supabase
         .from('modelos_ia')
         .select('*');
 
-    // FIX: Simplified error check since maybeSingle() won't throw a "0 rows" error.
     if (platformsError) {
         console.error('Error fetching multi-AI platforms:', platformsError.message);
         throw new Error('Falha ao carregar as configurações de plataformas de IA.');
@@ -689,7 +729,6 @@ export const getMultiAISettings = async (): Promise<MultiAISettings> => {
         throw new Error('Falha ao carregar os modelos de IA.');
     }
     
-    // FIX: Changed property access from .value to .valor.
     const platforms: AIPlatformSettings = platformsData?.valor ?? {
         gemini: { enabled: true, apiKey: '', costPerMillionTokens: 0.50, maxTokens: 8192 },
         openai: { enabled: false, apiKey: '', costPerMillionTokens: 1.00, maxTokens: 4096 },
@@ -698,16 +737,13 @@ export const getMultiAISettings = async (): Promise<MultiAISettings> => {
 
     const models: AIModel[] = (modelsData ?? []).map(m => ({
         ...m,
-        ativo: m.status === 'active' // Convert string status to boolean
+        ativo: m.status === 'active'
     }));
 
     return { platforms, models };
 };
 
-
 export const updateMultiAISettings = async (settings: MultiAISettings, adminUserId: string): Promise<MultiAISettings> => {
-    // 1. Update Platforms in settings table
-    // FIX: Changed column name from 'key' to 'chave' in the upsert payload.
     const { error: platformsError } = await supabase
         .from(SETTINGS_TABLE)
         .upsert({ chave: MULTI_AI_PLATFORMS_KEY, valor: settings.platforms });
@@ -717,10 +753,9 @@ export const updateMultiAISettings = async (settings: MultiAISettings, adminUser
         throw new Error('Falha ao salvar as configurações de plataformas de IA.');
     }
 
-    // 2. Update AI Models in modelos_ia table
     const modelsToUpsert = settings.models.map(m => ({
         ...m,
-        status: m.ativo ? 'active' : 'inactive' // Convert boolean back to string status
+        status: m.ativo ? 'active' : 'inactive'
     }));
     const { error: modelsError } = await supabase
         .from('modelos_ia')
@@ -731,7 +766,6 @@ export const updateMultiAISettings = async (settings: MultiAISettings, adminUser
         throw new Error('Falha ao salvar os modelos de IA.');
     }
     
-    // 3. Log the update
     const { error: logError } = await supabase.from('logs').insert({
         usuario_id: adminUserId,
         acao: 'update_multi_ai_settings',
@@ -761,15 +795,10 @@ export interface GetAILogsResult {
   count: number;
 }
 
-/**
- * Fetches AI usage logs with pagination, joining user data directly in the query.
- */
 export const getAILogs = async ({
   page = 1,
   limit = 15,
 }: GetAILogsParams): Promise<GetAILogsResult> => {
-  // REFACTOR: Changed from a manual two-step fetch to a direct join with Supabase
-  // for better performance and code consistency with other services.
   let query = supabase
     .from('consumo_ia')
     .select('*, user:app_users(email)', { count: 'exact' });
@@ -784,8 +813,6 @@ export const getAILogs = async ({
     throw new Error('Falha ao buscar logs de uso da IA. Verifique se a tabela "consumo_ia" e a relação com "app_users" existem.');
   }
 
-  // Supabase join already structures the data; we just ensure it fits our type by
-  // flattening the nested user object.
   const enrichedLogs = data?.map((log: any) => ({
     ...log,
     user: {

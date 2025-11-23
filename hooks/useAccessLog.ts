@@ -1,5 +1,3 @@
-
-
 import { supabase } from '../services/supabaseClient';
 import { useCallback } from 'react';
 
@@ -14,10 +12,11 @@ export const useAccessLog = () => {
         return;
       }
 
-      const { error } = await supabase.from('logs').insert({
-        user_id: userId,
-        action: reason,
-      });
+      const { error } = await supabase.from('logs').insert([{
+        usuario_id: userId,
+        acao: reason,
+        modulo: 'Sistema',
+      }]);
 
       if (error) {
         console.error('Error logging access attempt:', error.message);

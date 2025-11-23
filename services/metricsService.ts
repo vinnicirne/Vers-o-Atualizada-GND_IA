@@ -32,10 +32,10 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
         return data?.reduce((sum, transaction) => sum + transaction.valor, 0) || 0;
     };
       
-    // Função para buscar créditos em circulação diretamente da nova tabela
+    // Função para buscar créditos em circulação da tabela 'user_credits'
     const fetchCirculatingCredits = async () => {
         const { data, error } = await supabase
-            .from('user_credits')
+            .from('user_credits') 
             .select('credits')
             .neq('credits', -1); // Admins/créditos ilimitados são -1, não os contamos
         if (error) throw new Error(`Créditos em Circulação: ${error.message}`);
@@ -48,11 +48,11 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
       creditsInCirculation,
       totalRevenue,
     ] = await Promise.all([
-      // 1. Total de usuários
-      supabase.from('app_users').select('id', { count: 'exact', head: true }),
+      // 1. Total de usuários (lendo da view 'users' que reflete auth.users)
+      supabase.from('users').select('id', { count: 'exact', head: true }),
       // 2. Usuários ativos (via RPC seguro)
       supabase.rpc('get_active_users_7d'),
-      // 3. Créditos em circulação (via query direta)
+      // 3. Créditos em circulação (via query direta na tabela 'user_credits')
       fetchCirculatingCredits(),
       // 4. Faturamento total (via query direta)
       fetchTotalRevenue(),

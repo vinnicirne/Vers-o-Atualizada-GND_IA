@@ -131,7 +131,8 @@ export const MultiIASystem: React.FC = () => {
     }
     // Simple Validation
     for (const [key, platform] of Object.entries(settings.platforms)) {
-        if(platform.enabled && !platform.apiKey) {
+        const platformConfig = platform as AIPlatform;
+        if(platformConfig.enabled && !platformConfig.apiKey) {
             setToast({ message: `A plataforma ${key} está ativa mas não possui uma Chave de API.`, type: 'error' });
             return;
         }

@@ -1,6 +1,7 @@
 
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase } from './services/supabaseClient';
 import type { User } from './types';
 
@@ -12,45 +13,93 @@ const performLogin = async (email: string, password: string): Promise<User> => {
         if (authError.message.includes('Invalid login credentials')) {
             throw new Error('Credenciais inválidas. Verifique seu email e senha.');
         }
+        // FIX: Tornar a verificação de "Failed to fetch" robusta (case-insensitive) e melhorar a mensagem de erro.
+        if (authError.message.toLowerCase().includes('failed to fetch')) {
+            console.error(
+                "*********************************************************************************\n" +
+                "** ERRO DE REDE: 'Failed to fetch' **\n" +
+                "*********************************************************************************\n" +
+                "A aplicação não conseguiu se comunicar com o servidor Supabase.\n" +
+                "Causas comuns:\n" +
+                "1. Sem conexão com a internet.\n" +
+                "2. O serviço do Supabase (backend) pode estar pausado ou offline.\n" +
+                "3. Um bloqueador de anúncios (AdBlock) ou extensão de navegador está bloqueando a requisição.\n" +
+                "4. A URL do Supabase em 'services/supabaseClient.ts' está incorreta.\n" +
+                "*********************************************************************************"
+            );
+            throw new Error(
+                'Falha de comunicação com o servidor.\n\n' +
+                'Por favor, verifique sua conexão com a internet e se o serviço de backend está online. Se o problema persistir, verifique se algum bloqueador de anúncios está interferindo.'
+            );
+        }
         throw new Error('Falha na autenticação: ' + authError.message);
     }
 
     if (!authData.user) throw new Error('Usuário não encontrado após a autenticação.');
 
-    // O nome do usuário não é estritamente necessário para a verificação de login.
-    // O perfil completo do usuário será carregado pelo UserContext após o login ser bem-sucedido.
-    const { data: userProfile, error: profileError } = await supabase
+    // 1. Carrega o perfil do usuário da tabela 'app_users'
+    const { data: profile, error: profileError } = await supabase
         .from('app_users')
-        .select('id, email, role, status')
+        .select('id, full_name, role, status')
         .eq('id', authData.user.id)
-        .maybeSingle(); // FIX: Changed to maybeSingle() to prevent error on missing profile.
+        .single();
     
-    // Handle potential DB errors first
     if (profileError) {
         await supabase.auth.signOut();
+        if (profileError.message.includes("Could not find the table") || profileError.message.includes("relation \"public.app_users\" does not exist")) {
+            throw new Error("Erro de configuração: A tabela 'app_users' não foi encontrada. Execute o script SQL em 'services/adminService.ts' para configurar o banco de dados.");
+        }
+        if (profileError.message.includes('permission denied for table app_users')) {
+            console.error(
+                "*********************************************************************************\n" +
+                "** ERRO DE CONFIGURAÇÃO DO SUPABASE (RLS) DETECTADO NA PÁGINA DE LOGIN **\n" +
+                "*********************************************************************************\n" +
+                "A requisição para `supabase.from('app_users').select(...)` falhou.\n" +
+                "Isso significa que a Row Level Security (RLS) está ativa, mas não há uma 'Policy' que permita ao usuário recém-autenticado ler seus próprios dados na tabela 'app_users'.\n\n" +
+                "==> SOLUÇÃO: Execute o SCRIPT 3 do arquivo 'services/adminService.ts' no seu Editor SQL do Supabase para criar as políticas de segurança necessárias.\n" +
+                "*********************************************************************************"
+            );
+            const rlsErrorMessage = `SQL_CONFIG_ERROR:
+O acesso à tabela de usuários foi negado. Isso ocorre porque a "Row Level Security" (RLS) do Supabase está ativa, mas as permissões (Policies) necessárias não foram configuradas.
+
+Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminService.ts' no seu painel Supabase. Ele contém as políticas de segurança mais recentes que evitam erros comuns.
+`;
+            throw new Error(rlsErrorMessage);
+        }
+        // FIX: Tornar a verificação de "Failed to fetch" robusta (case-insensitive)
+        if (profileError.message.toLowerCase().includes('failed to fetch')) {
+            throw new Error(
+                'Falha de comunicação ao buscar seu perfil.\n\n' +
+                'A autenticação inicial funcionou, mas não foi possível carregar seus dados. Verifique sua conexão com a internet.'
+            );
+        }
         throw new Error('Falha ao consultar o perfil do usuário: ' + profileError.message);
     }
     
-    // Handle case where user exists in auth but not in our profiles table
-    if (!userProfile) {
+    if (!profile) {
         await supabase.auth.signOut();
-        throw new Error('Não foi possível carregar o perfil do usuário. Contate o suporte.');
+        throw new Error('Perfil de usuário não encontrado.');
     }
-    
-     const { data: creditData, error: creditError } = await supabase
-      .from('user_credits')
-      .select('credits')
-      .eq('user_id', authData.user.id)
-      .maybeSingle(); // FIX: Changed to maybeSingle() to handle users without a credit entry.
 
-    if (creditError) {
-        console.warn(`Could not fetch credits for user ${authData.user.id}, defaulting to 0.`, creditError);
-    }
+    // 2. Carrega os créditos da tabela 'user_credits'
+    const { data: creditsData, error: creditsError } = await supabase
+        .from('user_credits')
+        .select('credits')
+        .eq('user_id', authData.user.id)
+        .single();
     
-    return {
-      ...userProfile,
-      credits: creditData?.credits ?? 0,
+    if (creditsError) {
+        console.error('Falha ao consultar os créditos do usuário, definindo como 0:', creditsError.message);
+    }
+
+    // 3. Combina os dados para criar o objeto User completo
+    const fullUser: User = {
+        ...profile,
+        email: authData.user.email!,
+        credits: creditsData?.credits ?? 0,
     };
+    
+    return fullUser;
 };
 
 
@@ -133,6 +182,8 @@ const LoginPage: React.FC = () => {
   const currentTitle = isSignUp ? 'Criar Nova Conta' : theme.title;
   const buttonText = isLoading ? 'Processando...' : (isSignUp ? 'Registrar' : 'Autenticar');
 
+  const modalRoot = document.getElementById('modal-root');
+
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 bg-black font-mono">
       <div className={`w-full max-w-sm bg-black/80 backdrop-blur-md border ${theme.borderColor} rounded-lg ${theme.shadow} overflow-hidden animate-fade-in-scale`}>
@@ -143,11 +194,6 @@ const LoginPage: React.FC = () => {
         </div>
         <div className="p-8">
           <form onSubmit={handleAuth} className="space-y-6">
-            {message && (
-              <div className={`p-3 text-xs rounded-md border ${message.type === 'error' ? 'bg-red-900/20 border-red-500/30 text-red-400' : 'bg-green-900/20 border-green-500/30 text-green-400'}`}>
-                {message.text}
-              </div>
-            )}
             <div>
               <label className={`block text-xs uppercase font-bold mb-2 tracking-wider ${theme.textColor}`}>Email de Acesso</label>
               <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
@@ -189,6 +235,30 @@ const LoginPage: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Modal para exibir mensagens de erro ou sucesso, renderizado em um portal */}
+      {message && modalRoot && createPortal(
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+          <div className={`w-full max-w-md bg-black rounded-lg shadow-xl border ${message.type === 'error' ? 'border-red-500/50' : 'border-green-500/50'}`}>
+            <div className={`p-6 border-b ${message.type === 'error' ? 'border-red-900/50' : 'border-green-900/50'} text-center`}>
+              <i className={`fas ${message.type === 'error' ? 'fa-exclamation-triangle text-red-400' : 'fa-check-circle text-green-400'}`}></i>
+              <h1 className="text-xl font-bold text-gray-200 mt-3">{message.type === 'error' ? 'Erro' : 'Sucesso'}</h1>
+            </div>
+            <div className="p-6">
+                <p className={`text-center whitespace-pre-wrap ${message.type === 'error' ? 'text-red-400' : 'text-green-400'}`}>{message.text}</p>
+            </div>
+            <div className={`p-4 bg-black/50 flex justify-center rounded-b-lg border-t ${message.type === 'error' ? 'border-red-900/50' : 'border-green-900/50'}`}>
+                <button 
+                    onClick={() => setMessage(null)}
+                    className={`px-6 py-2 font-bold rounded-lg transition text-white ${message.type === 'error' ? 'bg-red-600 hover:bg-red-500 focus:ring-red-500' : 'bg-green-600 hover:bg-green-500 focus:ring-green-500'} focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black`}
+                >
+                    Fechar
+                </button>
+            </div>
+          </div>
+        </div>,
+        modalRoot
+      )}
     </div>
   );
 };

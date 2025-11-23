@@ -79,7 +79,7 @@ export const NewsApprovalTable: React.FC<NewsApprovalTableProps> = ({ onEdit, da
                 <tr key={article.id} className="bg-gray-950/50 border-b border-green-900/20 hover:bg-green-900/10 transition-colors">
                   <td className="px-6 py-4 font-medium whitespace-nowrap max-w-xs truncate" title={article.titulo}>{article.titulo}</td>
                   <td className="px-6 py-4">{article.tipo}</td>
-                   <td className="px-6 py-4">{new Date(article.criado_em || '').toLocaleDateString()}</td>
+                   <td className="px-6 py-4">{new Date(article.criado_em || '').toLocaleString('pt-BR', { dateStyle: 'short' })}</td>
                   <td className="px-6 py-4 text-center space-x-2">
                     <button onClick={() => onEdit(article)} className="font-medium text-yellow-400 hover:underline">Editar</button>
                     <button onClick={() => article.id && handleStatusChange(article.id, 'approved')} className="font-medium text-green-400 hover:underline">Aprovar</button>

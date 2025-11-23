@@ -80,14 +80,14 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
         }
         
         // Salvar notícia com status 'pendente'
-        const { error: newsError } = await supabase.from('news').insert({
+        const { error: newsError } = await supabase.from('news').insert([{
           autor_id: user.id,
           titulo: result.titulo,
           conteudo: result.conteudo,
           sources: result.sources || null,
           tipo: newsType,
           status: 'pending', // Adicionar status para aprovação do admin
-        });
+        }]);
 
         if (newsError) {
             console.error('Erro do Supabase ao salvar notícia:', newsError);
@@ -95,11 +95,11 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
         }
         
         // Salvar log
-        const { error: logError } = await supabase.from('logs').insert({
+        const { error: logError } = await supabase.from('logs').insert([{
            usuario_id: user.id,
            acao: `generated_${newsType}_news`,
            modulo: 'Notícias',
-        });
+        }]);
 
         if (logError) {
             console.error('Erro do Supabase ao salvar log:', logError);

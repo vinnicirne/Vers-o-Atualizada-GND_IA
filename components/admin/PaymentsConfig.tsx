@@ -98,7 +98,8 @@ export const PaymentsConfig: React.FC = () => {
 
         // Validation
         for (const gw of Object.values(settings.gateways)) {
-            if (gw.enabled && (!gw.publicKey || !gw.secretKey)) {
+            const gatewayConfig = gw as GatewayConfig;
+            if (gatewayConfig.enabled && (!gatewayConfig.publicKey || !gatewayConfig.secretKey)) {
                 setToast({ message: 'Gateways ativos devem ter as chaves Public e Secret preenchidas.', type: 'error' });
                 return;
             }
