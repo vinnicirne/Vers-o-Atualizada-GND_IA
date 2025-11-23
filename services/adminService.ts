@@ -113,9 +113,8 @@ export interface CreateUserPayload {
 
 /**
  * Creates a new user in authentication and across 'app_users' and 'user_credits' tables.
- * It first tries a secure RPC function (`create_new_user`) that doesn't send a confirmation email.
- * If the RPC fails, it falls back to a client-side method (`supabase.auth.signUp`) which
- * creates the user but sends a confirmation email.
+ * It uses a secure RPC function (`create_new_user`) that doesn't send a confirmation email or affect the admin's session.
+ * The fallback to client-side `signUp` has been removed as it's insecure and causes data inconsistency.
  * @param payload New user data.
  * @param adminUserId ID of the admin performing the action.
  */
@@ -124,9 +123,12 @@ export const createUser = async (
   adminUserId: string
 ): Promise<User> => {
   let newUser: User;
-  let methodUsed = 'rpc';
+  const methodUsed = 'rpc';
 
-  // 1. Attempt the preferred RPC method (no confirmation email)
+  // A única maneira segura e confiável de criar um usuário a partir de um painel de administração sem
+  // afetar a sessão do administrador é por meio de uma função do lado do servidor (RPC).
+  // O fallback anterior para `supabase.auth.signUp` foi removido porque ele sequestra
+  // a sessão do administrador, fazendo com que as operações subsequentes do banco de dados falhem devido ao RLS.
   const { data: rpcProfile, error: rpcError } = await supabase.rpc('create_new_user', {
     email: payload.email,
     password: payload.password,
@@ -136,71 +138,26 @@ export const createUser = async (
     status: 'active'
   });
 
-  if (!rpcError && rpcProfile) {
-    // The RPC returns the app_users profile; we add the credits from the payload.
-    newUser = { ...rpcProfile, credits: payload.credits };
-  } else {
-    if (rpcError && (rpcError.message.includes('duplicate key') || rpcError.message.includes('already exists'))) {
+  if (rpcError) {
+    console.error(`RPC call to 'create_new_user' failed:`, rpcError.message || rpcError);
+    if (rpcError.message.includes('duplicate key') || rpcError.message.includes('already exists')) {
       throw new Error('Um usuário com este email já existe.');
     }
-
-    // 2. If RPC fails for other reasons (e.g., function not found), try fallback.
-    console.warn(`RPC call to 'create_new_user' failed. Attempting client-side fallback. Error: ${rpcError?.message}`);
-    methodUsed = 'fallback (signUp)';
-
-    if (!payload.password) {
-      throw new Error('A senha é necessária para o método de criação de fallback.');
+    // Fornece um erro mais útil para os desenvolvedores.
+    if (rpcError.message.includes('function public.create_new_user does not exist')) {
+        throw new Error("Falha ao criar usuário: A função 'create_new_user' não foi encontrada no seu banco de dados Supabase. Por favor, execute o script SQL fornecido nos comentários de services/adminService.ts para criá-la.");
     }
-
-    // Fallback Step A: Create auth user via signUp
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: payload.email,
-      password: payload.password,
-    });
-
-    if (signUpError) {
-      if (signUpError.message.includes('User already registered')) {
-          throw new Error('Um usuário com este email já existe.');
-      }
-      throw new Error(`Falha na criação da autenticação (fallback): ${signUpError.message}`);
-    }
-    if (!authData.user) {
-      throw new Error('Usuário de autenticação criado, mas o objeto do usuário não foi retornado.');
-    }
-    
-    // Fallback Step B: Upsert user profile in 'app_users'
-    const { data: profileData, error: profileError } = await supabase
-      .from('app_users')
-      .upsert({
-        id: authData.user.id,
-        email: payload.email,
-        full_name: payload.full_name,
-        role: payload.role,
-        status: 'active',
-      })
-      .select()
-      .single();
-
-    if (profileError) {
-      console.error('CRITICAL: Auth user created, but profile upsert failed:', profileError);
-      throw new Error(`Falha ao criar o perfil do usuário (fallback): ${profileError.message}`);
-    }
-
-    // Fallback Step C: Upsert user credits in 'user_credits'
-    const { error: creditError } = await supabase
-      .from('user_credits')
-      .upsert({ user_id: authData.user.id, credits: payload.credits });
-    
-    if (creditError) {
-        // This is a critical state. A full solution would involve deleting the auth user, which requires admin privileges.
-        console.error('CRITICAL: Auth user and profile created, but credit upsert failed:', creditError);
-        throw new Error(`Falha ao atribuir créditos ao usuário (fallback): ${creditError.message}`);
-    }
-
-    newUser = { ...profileData, credits: payload.credits };
+    throw new Error(`Falha ao criar usuário via RPC: ${rpcError.message}. Verifique a configuração da função no Supabase.`);
   }
 
-  // Create audit log for the successful operation
+  if (!rpcProfile) {
+      throw new Error("A criação do usuário via RPC não retornou um perfil, mas não gerou erro. Verifique os logs da função no Supabase.");
+  }
+  
+  // A RPC retorna o perfil de app_users; adicionamos os créditos do payload.
+  newUser = { ...rpcProfile, credits: payload.credits };
+
+  // Cria um log de auditoria para a operação bem-sucedida
   const { error: logError } = await supabase.from('logs').insert({
     usuario_id: adminUserId,
     acao: 'create_user',
