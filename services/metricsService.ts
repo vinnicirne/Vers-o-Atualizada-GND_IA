@@ -42,16 +42,40 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
         return data?.reduce((sum, user) => sum + user.credits, 0) || 0;
     };
 
+    // FIX: Replaced failing `get_active_users_7d` RPC. It now calculates active users
+    // by counting distinct users from the 'logs' table in the last 7 days. This avoids
+    // the "permission denied for table users" error.
+    const fetchActiveUsers = async () => {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+        const { data, error } = await supabase
+            .from('logs')
+            .select('usuario_id')
+            .gte('data', sevenDaysAgo.toISOString());
+
+        if (error) {
+            console.error("Could not determine active users from logs:", error.message);
+            // Return 0 so the rest of the dashboard can still render.
+            return 0;
+        }
+        
+        if (!data) return 0;
+        
+        const uniqueUserIds = new Set(data.map(log => log.usuario_id).filter(Boolean));
+        return uniqueUserIds.size;
+    };
+
     const [
       totalUsersRes,
-      activeUsersRes,
+      activeUsers,
       creditsInCirculation,
       totalRevenue,
     ] = await Promise.all([
-      // 1. Total de usuários (lendo da view 'users' que reflete auth.users)
-      supabase.from('users').select('id', { count: 'exact', head: true }),
-      // 2. Usuários ativos (via RPC seguro)
-      supabase.rpc('get_active_users_7d'),
+      // 1. Total de usuários (lendo da tabela de perfis da aplicação)
+      supabase.from('app_users').select('id', { count: 'exact', head: true }),
+      // 2. Usuários ativos (calculado a partir dos logs)
+      fetchActiveUsers(),
       // 3. Créditos em circulação (via query direta na tabela 'user_credits')
       fetchCirculatingCredits(),
       // 4. Faturamento total (via query direta)
@@ -60,11 +84,10 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
 
     // Verificação de erros para cada promessa
     if (totalUsersRes.error) throw new Error(`Total de Usuários: ${totalUsersRes.error.message}`);
-    if (activeUsersRes.error) throw new Error(`Usuários Ativos: ${activeUsersRes.error.message}`);
     
     return {
       totalUsers: totalUsersRes.count ?? 0,
-      activeUsers: activeUsersRes.data ?? 0,
+      activeUsers: activeUsers ?? 0,
       creditsInCirculation: creditsInCirculation ?? 0,
       totalRevenue: totalRevenue ?? 0,
     };

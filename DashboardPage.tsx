@@ -158,7 +158,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
         </div>
       </main>
       <footer className="text-center p-4 text-gray-500 text-sm">
-        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.2'}</p>
+        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.3'}</p>
       </footer>
     </div>
   );

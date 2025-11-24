@@ -31,7 +31,7 @@ export const Header: React.FC<HeaderProps> = ({ userEmail, onLogout, isAdmin, on
             {/* Status Badges */}
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Versão do Sistema">
               <i className="fas fa-code-branch"></i>
-              <span className="font-semibold text-gray-400">v1.0.2</span>
+              <span className="font-semibold text-gray-400">v1.0.3</span>
             </div>
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Ambiente">
               <i className="fas fa-server text-blue-400"></i>

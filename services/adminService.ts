@@ -55,10 +55,11 @@
     new_profile public.app_users;
   begin
     -- 1. Cria o usuário na tabela 'auth.users' usando a função de administrador.
+    -- A sobrecarga com 3 argumentos (incluindo user_metadata) pode não existir
+    -- em todas as instâncias do Supabase, então usamos a de 2 argumentos para maior compatibilidade.
     new_auth_user := auth.admin_create_user(
       email,
-      password,
-      '{}'::jsonb
+      password
     );
   
     -- 2. Insere o perfil correspondente na sua tabela 'public.app_users'.
@@ -507,9 +508,14 @@ export const getLogs = async ({
   module,
   searchText,
 }: GetLogsParams): Promise<GetLogsResult> => {
+  // FIX: The implicit join `user_email:app_users(email)` was failing because the
+  // foreign key relationship between 'logs' and 'app_users' is likely missing in the DB schema.
+  // The query is changed to a two-step process: fetch logs, then fetch corresponding users.
+  
+  // 1. Fetch logs without the join
   let query = supabase
     .from('logs')
-    .select('*, user_email:app_users(email)', { count: 'exact' });
+    .select('*', { count: 'exact' });
 
   if (action && action !== 'all') {
     query = query.eq('acao', action);
@@ -526,18 +532,43 @@ export const getLogs = async ({
   const offset = (page - 1) * limit;
   query = query.range(offset, offset + limit - 1).order('data', { ascending: false });
 
-  const { data, error, count } = await query;
+  const { data: logsData, error, count } = await query;
 
   if (error) {
     console.error('Error fetching logs:', error.message);
     throw error;
   }
   
+  if (!logsData || logsData.length === 0) {
+    return { logs: [], count: count ?? 0 };
+  }
+
+  // 2. Fetch user emails for the logs retrieved
+  const userIds = [...new Set(logsData.map(log => log.usuario_id).filter(Boolean))];
+  
+  let userMap = new Map<string, string>();
+  if (userIds.length > 0) {
+      const { data: usersData, error: usersError } = await supabase
+          .from('app_users')
+          .select('id, email')
+          .in('id', userIds);
+      
+      if (usersError) {
+          console.error('Error fetching users for logs:', usersError.message);
+          // Proceed without emails if this fails
+      } else if (usersData) {
+          userMap = new Map(usersData.map(u => [u.id, u.email]));
+      }
+  }
+  
+  // 3. Combine the data
+  const enrichedLogs = logsData.map(log => ({
+    ...log,
+    user_email: userMap.get(log.usuario_id) || 'N/A',
+  }));
+
   return {
-    logs: data?.map((log: any) => ({
-      ...log,
-      user_email: log.user_email?.email || 'N/A',
-    })) || [],
+    logs: enrichedLogs,
     count: count ?? 0,
   };
 };

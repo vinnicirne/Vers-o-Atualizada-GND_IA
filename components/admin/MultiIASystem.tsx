@@ -94,7 +94,7 @@ export const MultiIASystem: React.FC = () => {
         const newModels = [...prev.models];
         let finalValue = value;
         if (field === 'contexto_maximo') finalValue = parseInt(value, 10) || 0;
-        if (field === 'capacidades') finalValue = { ...newModels[index].capacidades, ...value };
+        if (field === 'capacidades') finalValue = { ...(newModels[index].capacidades || {}), ...value };
         
         (newModels[index] as any)[field] = finalValue;
         return { ...prev, models: newModels };
@@ -237,8 +237,8 @@ export const MultiIASystem: React.FC = () => {
                                 </td>
                                 <td className="px-4 py-2"><input type="number" value={model.contexto_maximo} onChange={e => handleModelChange(index, 'contexto_maximo', e.target.value)} className="w-full bg-gray-800 border border-gray-600 rounded p-1 text-sm"/></td>
                                 <td className="px-4 py-2 space-x-4">
-                                    <label className="inline-flex items-center text-xs"><input type="checkbox" checked={model.capacidades.vision} onChange={e => handleModelChange(index, 'capacidades', { vision: e.target.checked })} className="form-checkbox bg-gray-800 border-gray-600 rounded text-green-500" /> Visão</label>
-                                    <label className="inline-flex items-center text-xs"><input type="checkbox" checked={model.capacidades.audio} onChange={e => handleModelChange(index, 'capacidades', { audio: e.target.checked })} className="form-checkbox bg-gray-800 border-gray-600 rounded text-green-500" /> Áudio</label>
+                                    <label className="inline-flex items-center text-xs"><input type="checkbox" checked={model.capacidades?.vision ?? false} onChange={e => handleModelChange(index, 'capacidades', { vision: e.target.checked })} className="form-checkbox bg-gray-800 border-gray-600 rounded text-green-500" /> Visão</label>
+                                    <label className="inline-flex items-center text-xs"><input type="checkbox" checked={model.capacidades?.audio ?? false} onChange={e => handleModelChange(index, 'capacidades', { audio: e.target.checked })} className="form-checkbox bg-gray-800 border-gray-600 rounded text-green-500" /> Áudio</label>
                                 </td>
                                 <td className="px-4 py-2 text-center"><ToggleSwitch enabled={model.ativo} onChange={e => handleModelChange(index, 'ativo', e)} /></td>
                                 <td className="px-4 py-2 text-right"><button onClick={() => removeModel(index)} className="text-red-500 hover:text-red-400"><i className="fas fa-trash"></i></button></td>
