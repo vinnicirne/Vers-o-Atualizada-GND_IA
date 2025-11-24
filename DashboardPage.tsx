@@ -1,8 +1,10 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { NewsGenerator } from './components/NewsGenerator';
 import { NewsCard } from './components/NewsCard';
 import { Loader } from './components/Loader';
+import { FeedbackWidget } from './components/FeedbackWidget';
 import { generateNews } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 import { NewsArticle, NewsType } from './types';
@@ -18,6 +20,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<{ version: string } | null>(null);
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     fetch('./metadata.json')
@@ -51,9 +54,12 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
     setIsLoading(true);
     setError(null);
     setNews(null);
+    setShowFeedback(false); // Esconde feedback anterior
 
     try {
-      const result = await generateNews(topic, newsType);
+      // Passa o ID do usuário para ativar a Memória e o Kit Autoridade
+      const result = await generateNews(topic, newsType, user.id);
+      
       const newsArticle: NewsArticle = {
         ...result,
         tipo: newsType
@@ -104,6 +110,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
         if (logError) {
             console.error('Erro do Supabase ao salvar log:', logError);
         }
+
+        // Mostra o widget de feedback após sucesso
+        setShowFeedback(true);
       }
 
     } catch (err) {
@@ -149,10 +158,18 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
             </div>
           )}
 
-          <div className="mt-8">
+          <div className="mt-8 space-y-8">
             {isLoading && <Loader />}
             {news && !isLoading && (
-              <NewsCard article={news} />
+              <>
+                <NewsCard article={news} />
+                {showFeedback && (
+                  <FeedbackWidget 
+                    userId={user.id} 
+                    onClose={() => setShowFeedback(false)} 
+                  />
+                )}
+              </>
             )}
           </div>
         </div>

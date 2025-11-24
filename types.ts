@@ -1,3 +1,4 @@
+
 export enum NewsType {
   CURRENT = 'current',
   PREDICTIVE = 'predictive',
@@ -129,4 +130,10 @@ export interface AILog {
   user?: { // For joining with user table
     email: string;
   };
+}
+
+// --- FEEDBACK TYPES ---
+export interface FeedbackData {
+  rating: number;
+  comment: string;
 }
