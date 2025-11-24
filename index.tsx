@@ -6,6 +6,10 @@ import App from './App';
  * Error Handler Global para "Tela Preta"
  * Captura erros críticos que impedem a renderização do React.
  * Exibe uma mensagem de erro formatada diretamente no DOM.
+ * 
+ * ATUALIZAÇÃO: A lógica foi aprimorada para lidar com qualquer tipo de 'error'
+ * que possa ser lançado, não apenas instâncias de 'Error'. Isso garante que
+ * a mensagem de erro seja sempre exibida, evitando uma tela preta vazia.
  */
 const handleFatalError = (error: any) => {
   console.error("ERRO GLOBAL CAPTURADO:", error);
@@ -21,8 +25,26 @@ const handleFatalError = (error: any) => {
   document.body.style.fontFamily = 'monospace';
   document.body.style.padding = '2rem';
   
-  const errorMessage = error.message || 'Erro desconhecido. Verifique o console.';
-  const errorStack = error.stack || 'Stack trace não disponível.';
+  let errorMessage = 'Erro desconhecido.';
+  let errorStack = 'Stack trace não disponível.';
+
+  if (error instanceof Error) {
+    errorMessage = error.message;
+    errorStack = error.stack || error.toString();
+  } else if (typeof error === 'string' && error.trim() !== '') {
+    errorMessage = error;
+  } else if (error) {
+    try {
+      // Tenta formatar o objeto de erro, caso não seja um tipo padrão.
+      const serializedError = JSON.stringify(error, null, 2);
+      errorMessage = serializedError === '{}' ? 'Objeto de erro não-padrão recebido. Verifique o log do console.' : serializedError;
+    } catch (e) {
+      errorMessage = 'Não foi possível serializar o objeto de erro. Verifique o log do console para detalhes.';
+    }
+  } else {
+     errorMessage = 'Ocorreu um erro, mas o objeto de erro estava vazio (null ou undefined).';
+  }
+
 
   const errorContainer = document.createElement('div');
   errorContainer.innerHTML = `
