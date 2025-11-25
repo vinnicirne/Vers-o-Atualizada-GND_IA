@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabaseClient';
@@ -26,7 +27,10 @@ const performLogin = async (email: string, password: string): Promise<User> => {
             );
             throw new Error(
                 'Falha de comunicação com o servidor.\n\n' +
-                'Por favor, verifique sua conexão com a internet e se o serviço de backend está online. Se o problema persistir, verifique se algum bloqueador de anúncios está interferindo.'
+                'Possíveis causas:\n' +
+                '1. Verifique sua conexão com a internet.\n' +
+                '2. Confirme se seu projeto Supabase está ativo (não pausado).\n' +
+                '3. Desative temporariamente bloqueadores de anúncios (AdBlockers).'
             );
         }
         throw new Error('Falha na autenticação: ' + authError.message);

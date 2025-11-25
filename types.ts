@@ -1,9 +1,4 @@
 
-export enum NewsType {
-  CURRENT = 'current',
-  PREDICTIVE = 'predictive',
-}
-
 export type NewsStatus = 'pending' | 'approved' | 'rejected';
 
 export interface Source {
@@ -17,7 +12,8 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: NewsType;
+  // O tipo de notícia agora é gerenciado pelo modo mais genérico
+  tipo?: string; 
   criado_em?: string;
   author?: {
     email: string;
@@ -137,3 +133,6 @@ export interface FeedbackData {
   rating: number;
   comment: string;
 }
+
+// --- CREATOR SUITE ---
+export type CreatorSuiteMode = 'news' | 'prompts' | 'landing_page' | 'copy' | 'art_structure';

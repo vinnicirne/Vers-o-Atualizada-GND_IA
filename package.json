@@ -14,7 +14,10 @@
     "react": "^18.3.0",
     "@supabase/supabase-js": "2",
     "recharts": "2",
-    "uuid": "latest"
+    "uuid": "latest",
+    "react-simple-code-editor": "latest",
+    "prismjs": "latest",
+    "react-resizable-panels": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

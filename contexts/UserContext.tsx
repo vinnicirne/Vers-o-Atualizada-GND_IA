@@ -53,8 +53,14 @@ O acesso à tabela de usuários foi negado. Isso ocorre porque a "Row Level Secu
 Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminService.ts' no seu painel Supabase. Ele contém as políticas de segurança mais recentes que evitam erros comuns.
 `;
              setError(rlsErrorMessage);
-        } else if (profileError.message.includes('Failed to fetch')) {
-            setError('Falha de comunicação com o servidor. Verifique sua conexão com a internet e se o endereço do serviço (URL) está correto.');
+        } else if (profileError.message.toLowerCase().includes('failed to fetch')) {
+            setError(
+                'Falha de comunicação com o servidor.\n\n' +
+                'Possíveis causas:\n' +
+                '1. Verifique sua conexão com a internet.\n' +
+                '2. Confirme se seu projeto Supabase está ativo (não pausado).\n' +
+                '3. Desative temporariamente bloqueadores de anúncios (AdBlockers).'
+            );
         } else {
             setError(`Não foi possível carregar o perfil do usuário: ${profileError.message}`);
         }
@@ -94,8 +100,12 @@ Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminSer
     } catch (e: any) {
       console.error("Ocorreu um erro crítico em fetchUserProfile:", e.message);
       let errorMessage = 'Ocorreu um erro inesperado ao carregar seus dados.';
-       if (e instanceof TypeError && e.message.includes('Failed to fetch')) {
-           errorMessage = 'Falha de comunicação com o servidor. Verifique sua conexão com a internet e se o endereço do serviço (URL) está correto.';
+       if (e instanceof TypeError && e.message.toLowerCase().includes('failed to fetch')) {
+           errorMessage = 'Falha de comunicação com o servidor.\n\n' +
+                'Possíveis causas:\n' +
+                '1. Verifique sua conexão com a internet.\n' +
+                '2. Confirme se seu projeto Supabase está ativo (não pausado).\n' +
+                '3. Desative temporariamente bloqueadores de anúncios (AdBlockers).';
       }
       setError(errorMessage);
       setUser(null);

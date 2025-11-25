@@ -1,13 +1,14 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
-import { NewsGenerator } from './components/NewsGenerator';
-import { NewsCard } from './components/NewsCard';
+import { ContentGenerator } from './components/ContentGenerator';
+import { ResultDisplay } from './components/ResultDisplay';
 import { Loader } from './components/Loader';
 import { FeedbackWidget } from './components/FeedbackWidget';
-import { generateNews } from './services/geminiService';
+import { AudioPlayer } from './components/AudioPlayer';
+import { generateCreativeContent } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
-import { NewsArticle, NewsType } from './types';
+import { CreatorSuiteMode } from './types';
 import { useUser } from './contexts/UserContext';
 
 interface DashboardPageProps {
@@ -16,11 +17,13 @@ interface DashboardPageProps {
 
 const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
   const { user, signOut, refresh } = useUser();
-  const [news, setNews] = useState<NewsArticle | null>(null);
+  const [resultText, setResultText] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<{ version: string } | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [currentMode, setCurrentMode] = useState<CreatorSuiteMode>('news'); // Track the last used mode
 
   useEffect(() => {
     fetch('./metadata.json')
@@ -34,9 +37,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
       .catch(err => console.error("Failed to load metadata:", err));
   }, []);
 
-  const handleGenerateNews = useCallback(async (topic: string, newsType: NewsType) => {
-    if (!topic.trim()) {
-      setError('Por favor, insira um tópico para a notícia.');
+  const handleGenerateContent = useCallback(async (prompt: string, mode: CreatorSuiteMode, generateAudio: boolean) => {
+    if (!prompt.trim()) {
+      setError('Por favor, insira uma descrição para o conteúdo a ser gerado.');
       return;
     }
 
@@ -45,30 +48,25 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
       return;
     }
     
-    // Verificação de Crédito
     if (user.credits !== -1 && user.credits < 1) {
-        setError('Créditos insuficientes para gerar notícia. Contate um administrador.');
+        setError('Créditos insuficientes. Contate um administrador.');
         return;
     }
 
     setIsLoading(true);
     setError(null);
-    setNews(null);
-    setShowFeedback(false); // Esconde feedback anterior
+    setResultText(null);
+    setShowFeedback(false);
+    setAudioBase64(null);
+    setCurrentMode(mode); // Set the current mode
 
     try {
-      // Passa o ID do usuário para ativar a Memória e o Kit Autoridade
-      const result = await generateNews(topic, newsType, user.id);
+      const { text, audioBase64: audioResult } = await generateCreativeContent(prompt, mode, user.id, generateAudio);
       
-      const newsArticle: NewsArticle = {
-        ...result,
-        tipo: newsType
-      };
-      setNews(newsArticle);
+      setResultText(text);
+      setAudioBase64(audioResult);
       
-      // Salvar resultados no Supabase e deduzir créditos
       if (user) {
-        // Deduzir crédito se o usuário não for admin
         if (user.credits !== -1) {
             const newCredits = user.credits - 1;
             const { error: creditError } = await supabase
@@ -78,46 +76,28 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
             
             if (creditError) {
                 console.error('Erro do Supabase ao atualizar créditos:', creditError);
-                // Não-crítico, mas podemos informar o usuário se necessário
             } else {
-                // Atualizar o contexto do usuário para refletir os novos créditos
                 await refresh();
             }
         }
         
-        // Salvar notícia com status 'pendente'
-        const { error: newsError } = await supabase.from('news').insert([{
-          autor_id: user.id,
-          titulo: result.titulo,
-          conteudo: result.conteudo,
-          sources: result.sources || null,
-          tipo: newsType,
-          status: 'pending', // Adicionar status para aprovação do admin
-        }]);
-
-        if (newsError) {
-            console.error('Erro do Supabase ao salvar notícia:', newsError);
-            // Erro não-crítico, então não o mostramos ao usuário
-        }
-        
-        // Salvar log
+        // Salva log de qualquer geração
         const { error: logError } = await supabase.from('logs').insert([{
            usuario_id: user.id,
-           acao: `generated_${newsType}_news`,
-           modulo: 'Notícias',
+           acao: `generated_content_${mode}`,
+           modulo: 'CreatorSuite',
         }]);
 
         if (logError) {
             console.error('Erro do Supabase ao salvar log:', logError);
         }
 
-        // Mostra o widget de feedback após sucesso
         setShowFeedback(true);
       }
 
     } catch (err) {
       if (err instanceof Error) {
-        setError(`Falha ao gerar notícia: ${err.message}`);
+        setError(`Falha ao gerar conteúdo: ${err.message}`);
       } else {
         setError('Ocorreu um erro desconhecido.');
       }
@@ -131,7 +111,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
   };
 
   if (!user) {
-    return null; // Ou um loader, mas o App.tsx deve prevenir este estado
+    return null; 
   }
 
   return (
@@ -147,9 +127,9 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-3xl mx-auto">
           <p className="text-center text-lg text-gray-400 mb-8">
-            Gere notícias sobre eventos das últimas 48 horas ou crie artigos preditivos sobre acontecimentos futuros. Insira um tópico e deixe a IA fazer o resto.
+            Selecione um modo, descreva o que você precisa e deixe a IA fazer o resto.
           </p>
-          <NewsGenerator onGenerate={handleGenerateNews} isLoading={isLoading} />
+          <ContentGenerator onGenerate={handleGenerateContent} isLoading={isLoading} />
           
           {error && (
             <div className="mt-8 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-center" role="alert">
@@ -160,9 +140,10 @@ const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigateToAdmin }) => {
 
           <div className="mt-8 space-y-8">
             {isLoading && <Loader />}
-            {news && !isLoading && (
+            {resultText && !isLoading && (
               <>
-                <NewsCard article={news} />
+                <ResultDisplay text={resultText} mode={currentMode} />
+                {audioBase64 && <AudioPlayer audioBase64={audioBase64} />}
                 {showFeedback && (
                   <FeedbackWidget 
                     userId={user.id} 
