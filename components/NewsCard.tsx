@@ -3,7 +3,7 @@
 // Its content has been removed to prevent accidental usage.
 import React from 'react';
 
-const ObsoleteNewsCard: React.FC = () => {
+function ObsoleteNewsCard() {
   return null;
 };
 

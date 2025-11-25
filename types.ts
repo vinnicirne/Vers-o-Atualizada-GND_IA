@@ -1,3 +1,4 @@
+import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
 export type NewsStatus = 'pending' | 'approved' | 'rejected';
 
@@ -12,7 +13,6 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  // O tipo de notícia agora é gerenciado pelo modo mais genérico
   tipo?: string; 
   criado_em?: string;
   author?: {
@@ -30,6 +30,7 @@ export interface User {
   role: UserRole;
   credits: number;
   status: UserStatus;
+  plan: UserPlan; // Usar UserPlan do types/plan.types.ts
 }
 
 export interface Log {
@@ -38,11 +39,11 @@ export interface Log {
   acao: string;
   modulo: string;
   data: string;
-  user_email?: string; // Optional: for display purposes
-  detalhes?: Record<string, any>; // For audit trail
+  user_email?: string;
+  detalhes?: Record<string, any>;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans';
 
 export type TransactionStatus = 'pending' | 'approved' | 'failed';
 export type PaymentMethod = 'pix' | 'card';
@@ -54,17 +55,22 @@ export interface Transaction {
   metodo: PaymentMethod;
   status: TransactionStatus;
   data: string;
+  external_id?: string; // Mercado Pago ID
+  metadata?: any; // Dados extras (plano comprado, qtd creditos, etc)
   user?: {
     email: string;
   };
 }
+
+// --- CONFIGURAÇÃO DE PLANOS ---
+// O PlanConfig antigo foi substituído pela interface Plan de types/plan.types.ts
 
 // --- NEW PAYMENT SETTINGS TYPES ---
 
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string;
-  secretKey: string; // Generic name for Access Token or Secret Key
+  secretKey: string;
 }
 
 export interface CreditPackage {
@@ -123,7 +129,7 @@ export interface AILog {
   tokens: number;
   custo: number;
   data: string;
-  user?: { // For joining with user table
+  user?: { 
     email: string;
   };
 }
@@ -133,6 +139,3 @@ export interface FeedbackData {
   rating: number;
   comment: string;
 }
-
-// --- CREATOR SUITE ---
-export type CreatorSuiteMode = 'news' | 'prompts' | 'landing_page' | 'copy' | 'art_structure';

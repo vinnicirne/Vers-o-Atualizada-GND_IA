@@ -1,10 +1,8 @@
 
-
-
 import React from 'react';
 import { LoginForm } from './components/auth/LoginForm'; // Import the new form component
 
-const LoginPage: React.FC = () => {
+function LoginPage() {
   const features = [
     { icon: 'fa-clock', title: 'Notícias em Tempo Real', description: 'Cobertura de eventos das últimas 48 horas com fontes da web.' },
     { icon: 'fa-wand-magic-sparkles', title: 'Análises Preditivas', description: 'Explore tendências e cenários futuros com análises baseadas em dados.' },

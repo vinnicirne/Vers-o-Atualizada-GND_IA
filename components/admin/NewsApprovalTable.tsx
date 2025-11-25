@@ -9,7 +9,7 @@ interface NewsApprovalTableProps {
     dataVersion: number;
 }
 
-export const NewsApprovalTable: React.FC<NewsApprovalTableProps> = ({ onEdit, dataVersion }) => {
+export function NewsApprovalTable({ onEdit, dataVersion }: NewsApprovalTableProps) {
   const { user: adminUser } = useUser();
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState<boolean>(true);

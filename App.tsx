@@ -7,7 +7,7 @@ import AdminPage from './pages/admin';
 import { AdminGate } from './components/admin/AdminGate';
 
 // Este componente consome o contexto e lida com a lógica principal do aplicativo.
-const AppContent: React.FC = () => {
+function AppContent() {
   const { user, loading, error } = useUser();
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'admin'>('dashboard');
 
@@ -24,8 +24,9 @@ const AppContent: React.FC = () => {
   };
 
   if (error) {
-    const isSqlConfigError = error.startsWith('SQL_CONFIG_ERROR:');
-    const instructions = isSqlConfigError ? error.replace('SQL_CONFIG_ERROR:', '').trim() : '';
+    const errorString = typeof error === 'string' ? error : JSON.stringify(error, null, 2);
+    const isSqlConfigError = errorString.startsWith('SQL_CONFIG_ERROR:');
+    const instructions = isSqlConfigError ? errorString.replace('SQL_CONFIG_ERROR:', '').trim() : '';
     
     const modalRoot = document.getElementById('modal-root');
     if (!modalRoot) return null;
@@ -59,7 +60,7 @@ const AppContent: React.FC = () => {
                 </div>
             ) : (
                 <>
-                    <p className="text-red-400 text-center text-base leading-relaxed">{error}</p>
+                    <p className="text-red-400 text-center text-base leading-relaxed whitespace-pre-wrap">{errorString}</p>
                     <p className="text-xs text-gray-400 text-center mt-4">
                         Isso pode ser um problema temporário. Por favor, tente recarregar a página. Se o problema persistir, contate o suporte.
                     </p>
@@ -111,16 +112,13 @@ const AppContent: React.FC = () => {
       )}
     </>
   );
-};
-
+}
 
 // O componente principal do App agora é apenas o wrapper do Provider.
-const App: React.FC = () => {
+export default function App() {
   return (
     <UserProvider>
       <AppContent />
     </UserProvider>
   );
-};
-
-export default App;
+}

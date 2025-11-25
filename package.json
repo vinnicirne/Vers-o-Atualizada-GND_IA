@@ -17,7 +17,9 @@
     "uuid": "latest",
     "react-simple-code-editor": "latest",
     "prismjs": "latest",
-    "react-resizable-panels": "latest"
+    "react-resizable-panels": "latest",
+    "grapesjs": "latest",
+    "grapesjs-preset-webpage": "latest"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

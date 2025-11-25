@@ -6,7 +6,7 @@ interface NewsViewModalProps {
   onClose: () => void;
 }
 
-export const NewsViewModal: React.FC<NewsViewModalProps> = ({ article, onClose }) => {
+export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
   useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();

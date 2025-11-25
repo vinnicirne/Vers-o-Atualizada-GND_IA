@@ -3,7 +3,7 @@ import { MetricCard } from './MetricCard';
 import { useMetrics } from '../../hooks/useMetrics';
 import { MetricCardSkeleton } from './MetricCardSkeleton';
 
-export const MetricsCards: React.FC = () => {
+export function MetricsCards() {
   const { metrics, loading, error } = useMetrics();
 
   if (loading) {

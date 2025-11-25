@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { UserRole } from '../types';
 
@@ -7,13 +8,14 @@ interface HeaderProps {
   isAdmin?: boolean;
   onNavigateToAdmin?: () => void;
   onNavigateToDashboard?: () => void;
-  onNewUserClick?: () => void; // Added to trigger the create user modal
+  onNewUserClick?: () => void;
+  onOpenPlans?: () => void; // New Prop
   pageTitle?: string;
   userCredits?: number;
   userRole?: UserRole;
 }
 
-export const Header: React.FC<HeaderProps> = ({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavigateToDashboard, onNewUserClick, pageTitle, userCredits, userRole }) => {
+export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavigateToDashboard, onNewUserClick, onOpenPlans, pageTitle, userCredits, userRole }: HeaderProps) {
   const isAdminView = !!onNavigateToDashboard;
 
   if (isAdminView) {
@@ -106,14 +108,29 @@ export const Header: React.FC<HeaderProps> = ({ userEmail, onLogout, isAdmin, on
         </div>
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-4">
           {userCredits !== undefined && (
-             <div className="hidden md:flex items-center space-x-2 border border-green-700/30 bg-black/30 px-3 py-1 rounded-full text-sm">
+             <div 
+                onClick={onOpenPlans} 
+                className="cursor-pointer hidden md:flex items-center space-x-2 border border-green-700/30 bg-black/30 px-3 py-1 rounded-full text-sm hover:bg-green-900/20 transition"
+                title="Gerenciar Plano e Créditos"
+             >
               <i className="fas fa-coins text-yellow-400"></i>
               <span className="font-bold text-white">
                 {userCredits === -1 ? '∞' : userCredits}
               </span>
-              <span className="text-gray-400 text-xs">Créditos</span>
+              <span className="text-gray-400 text-xs hover:text-white">+</span>
             </div>
           )}
+          
+          {onOpenPlans && (
+            <button
+                onClick={onOpenPlans}
+                className="hidden lg:inline bg-purple-600/80 text-white px-3 py-2 rounded-lg hover:bg-purple-500 transition-colors duration-200 text-sm font-semibold border border-purple-500/50 shadow-lg shadow-purple-500/10"
+            >
+                <i className="fas fa-crown mr-2 text-yellow-300"></i>
+                Planos
+            </button>
+          )}
+
           {isAdmin && onNavigateToAdmin && (
              <button
               onClick={onNavigateToAdmin}
@@ -142,7 +159,6 @@ export const Header: React.FC<HeaderProps> = ({ userEmail, onLogout, isAdmin, on
                 title="Sair"
               >
                 <i className="fas fa-sign-out-alt"></i>
-                <span className="hidden md:inline ml-2">Sair</span>
               </button>
             </>
           )}
@@ -150,4 +166,4 @@ export const Header: React.FC<HeaderProps> = ({ userEmail, onLogout, isAdmin, on
       </div>
     </header>
   );
-};
+}

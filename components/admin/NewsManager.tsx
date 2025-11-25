@@ -10,7 +10,7 @@ interface NewsManagerProps {
 
 type ActiveTab = 'pending' | 'history';
 
-export const NewsManager: React.FC<NewsManagerProps> = ({ onEdit, dataVersion }) => {
+export function NewsManager({ onEdit, dataVersion }: NewsManagerProps) {
     const [activeTab, setActiveTab] = useState<ActiveTab>('pending');
 
     const tabClasses = (tabName: ActiveTab) =>
@@ -43,4 +43,4 @@ export const NewsManager: React.FC<NewsManagerProps> = ({ onEdit, dataVersion })
             </div>
         </div>
     );
-};
+}

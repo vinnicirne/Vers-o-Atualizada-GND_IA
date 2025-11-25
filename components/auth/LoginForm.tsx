@@ -99,7 +99,7 @@ Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminSer
     return fullUser;
 };
 
-export const LoginForm: React.FC = () => {
+export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [email, setEmail] = useState('');

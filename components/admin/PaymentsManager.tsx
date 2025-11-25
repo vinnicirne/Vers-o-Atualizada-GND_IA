@@ -4,7 +4,7 @@ import { PaymentsConfig } from './PaymentsConfig';
 
 type ActiveTab = 'billing' | 'config';
 
-export const PaymentsManager: React.FC = () => {
+export function PaymentsManager() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('billing');
 
   const tabClasses = (tabName: ActiveTab) =>
@@ -37,4 +37,4 @@ export const PaymentsManager: React.FC = () => {
       </div>
     </div>
   );
-};
+}

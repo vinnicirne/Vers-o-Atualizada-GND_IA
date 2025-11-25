@@ -5,7 +5,12 @@ import { PaymentSettings, CreditPackage, GatewayConfig } from '../../types';
 import { Toast } from './Toast';
 import { v4 as uuidv4 } from 'uuid';
 
-const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void }> = ({ enabled, onChange }) => {
+interface ToggleSwitchProps {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}
+
+function ToggleSwitch({ enabled, onChange }: ToggleSwitchProps) {
     return (
         <button
             type="button"
@@ -17,7 +22,7 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
     );
 };
 
-export const PaymentsConfig: React.FC = () => {
+export function PaymentsConfig() {
     const { user: adminUser } = useUser();
     const [settings, setSettings] = useState<PaymentSettings | null>(null);
     const [loading, setLoading] = useState(true);

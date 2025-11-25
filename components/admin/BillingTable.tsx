@@ -6,7 +6,7 @@ import { Toast } from './Toast';
 
 const TRANSACTIONS_PER_PAGE = 15;
 
-export const BillingTable: React.FC = () => {
+export function BillingTable() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [totalTransactions, setTotalTransactions] = useState(0);
     const [approvedTotal, setApprovedTotal] = useState(0);

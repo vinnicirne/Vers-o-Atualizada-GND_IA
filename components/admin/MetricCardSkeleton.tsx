@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const MetricCardSkeleton: React.FC = () => {
+export function MetricCardSkeleton() {
   return (
     <div className="bg-black/50 border border-green-900/40 rounded-lg p-6 flex items-center space-x-4 shadow-lg">
       <div className="bg-gray-800 p-4 rounded-full animate-pulse">
@@ -12,4 +12,4 @@ export const MetricCardSkeleton: React.FC = () => {
       </div>
     </div>
   );
-};
+}

@@ -8,7 +8,7 @@ interface PaginationProps {
   onPageChange: (page: number) => void;
 }
 
-export const Pagination: React.FC<PaginationProps> = ({ currentPage, totalPages, onPageChange }) => {
+export function Pagination({ currentPage, totalPages, onPageChange }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const handlePrev = () => {

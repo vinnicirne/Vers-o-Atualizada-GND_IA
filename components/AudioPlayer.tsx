@@ -32,7 +32,7 @@ interface AudioPlayerProps {
   audioBase64: string;
 }
 
-export const AudioPlayer: React.FC<AudioPlayerProps> = ({ audioBase64 }) => {
+export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

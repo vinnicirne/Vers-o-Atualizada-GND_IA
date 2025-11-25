@@ -1,30 +1,28 @@
-
 import React from 'react';
-import { CreatorSuiteMode } from '../types';
-import { LiveHTMLEditor } from './LiveHTMLEditor';
+import { ServiceKey } from '../types/plan.types'; // Usar ServiceKey
 
 interface ResultDisplayProps {
   text: string;
-  mode: CreatorSuiteMode;
+  mode: ServiceKey; // Usar ServiceKey
 }
 
-export const ResultDisplay: React.FC<ResultDisplayProps> = ({ text, mode }) => {
-  // If the mode is landing_page, render the interactive HTML editor
-  if (mode === 'landing_page') {
-    return <LiveHTMLEditor initialHtml={text} />;
-  }
-
-  // For all other modes, render the pre-formatted text
+export function ResultDisplay({ text, mode }: ResultDisplayProps) {
   return (
     <div className="bg-black/30 border border-green-900/40 rounded-xl shadow-lg shadow-black/30 overflow-hidden animate-fade-in-up">
       <div className="p-6">
+        {mode === 'landingpage_generator' && ( // Usar ServiceKey
+            <div className="mb-4 flex items-center justify-between border-b border-green-900/30 pb-2">
+                <span className="text-xs text-green-400 font-bold uppercase tracking-wider">Código HTML Gerado</span>
+                <span className="text-xs text-gray-500">Copie o código abaixo e salve como .html</span>
+            </div>
+        )}
         {/* Usamos 'whitespace-pre-wrap' para preservar quebras de linha e espaços, 
             e para quebrar linhas longas que de outra forma transbordariam. 
             'font-mono' é ótimo para exibir código ou texto pré-formatado. */}
-        <pre className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap font-mono text-sm leading-relaxed">
+        <pre className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap font-mono text-sm leading-relaxed overflow-x-auto">
           {text}
         </pre>
       </div>
     </div>
   );
-};
+}

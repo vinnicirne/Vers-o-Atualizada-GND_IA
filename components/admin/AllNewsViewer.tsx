@@ -7,7 +7,7 @@ import { Pagination } from './Pagination';
 
 type StatusFilter = NewsStatus | 'all';
 
-export const AllNewsViewer: React.FC<{ dataVersion: number }> = ({ dataVersion }) => {
+export function AllNewsViewer({ dataVersion }: { dataVersion: number }) {
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [totalNews, setTotalNews] = useState(0);
   const [loading, setLoading] = useState<boolean>(true);

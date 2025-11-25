@@ -12,7 +12,7 @@ interface NewsTableProps {
     dataVersion: number;
 }
 
-export const NewsTable: React.FC<NewsTableProps> = ({ onEdit, dataVersion }) => {
+export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
   const { user: adminUser } = useUser();
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [totalNews, setTotalNews] = useState(0);

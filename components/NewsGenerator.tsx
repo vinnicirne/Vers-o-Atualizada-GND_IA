@@ -3,7 +3,7 @@
 // Its content has been removed to prevent accidental usage.
 import React from 'react';
 
-const ObsoleteNewsGenerator: React.FC = () => {
+function ObsoleteNewsGenerator() {
   return null;
 };
 

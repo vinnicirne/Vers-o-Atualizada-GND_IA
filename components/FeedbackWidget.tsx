@@ -7,7 +7,7 @@ interface FeedbackWidgetProps {
   onClose: () => void;
 }
 
-export const FeedbackWidget: React.FC<FeedbackWidgetProps> = ({ userId, onClose }) => {
+export function FeedbackWidget({ userId, onClose }: FeedbackWidgetProps) {
   const [rating, setRating] = useState<number | null>(null);
   const [comment, setComment] = useState('');
   const [sent, setSent] = useState(false);

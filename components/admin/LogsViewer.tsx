@@ -14,7 +14,7 @@ const ACTION_OPTIONS = [
 
 const MODULE_OPTIONS = ['Usuários', 'Notícias', 'Pagamentos', 'Sistema Multi-IA', 'Sistema'];
 
-export const LogsViewer: React.FC = () => {
+export function LogsViewer() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
   const [loading, setLoading] = useState<boolean>(true);

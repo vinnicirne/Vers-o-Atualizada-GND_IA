@@ -4,10 +4,10 @@ import { useAccessLog } from '../../hooks/useAccessLog';
 
 interface AdminGateProps {
   onAccessDenied: () => void;
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-export const AdminGate: React.FC<AdminGateProps> = ({ onAccessDenied, children }) => {
+export function AdminGate({ onAccessDenied, children }: AdminGateProps) {
   const { user, loading } = useUser();
   const { logAccessAttempt } = useAccessLog();
   const isAuthorized = user?.role === 'admin' || user?.role === 'super_admin';
@@ -46,4 +46,4 @@ export const AdminGate: React.FC<AdminGateProps> = ({ onAccessDenied, children }
       <p className="text-red-400">Acesso negado. Redirecionando para o dashboard...</p>
     </div>
   );
-};
+}

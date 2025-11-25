@@ -8,7 +8,7 @@ interface UserEditModalProps {
   isSaving: boolean;
 }
 
-export const UserEditModal: React.FC<UserEditModalProps> = ({ user, onSave, onClose, isSaving }) => {
+export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModalProps) {
   const [role, setRole] = useState<UserRole>(user.role);
   const [credits, setCredits] = useState<string>(String(user.credits === -1 ? 0 : user.credits));
 

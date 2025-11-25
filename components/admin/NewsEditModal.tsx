@@ -9,7 +9,7 @@ interface NewsEditModalProps {
   onClose: () => void;
 }
 
-export const NewsEditModal: React.FC<NewsEditModalProps> = ({ article, onSave, onClose }) => {
+export function NewsEditModal({ article, onSave, onClose }: NewsEditModalProps) {
   const [titulo, setTitulo] = useState(article.titulo);
   const [conteudo, setConteudo] = useState(article.conteudo);
 

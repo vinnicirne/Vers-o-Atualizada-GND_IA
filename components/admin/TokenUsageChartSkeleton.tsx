@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const TokenUsageChartSkeleton: React.FC = () => {
+export function TokenUsageChartSkeleton() {
   return (
     <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
       <div className="h-8 bg-gray-700 rounded w-3/5 mb-4 animate-pulse"></div>

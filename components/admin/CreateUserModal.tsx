@@ -7,7 +7,7 @@ interface CreateUserModalProps {
   onClose: () => void;
 }
 
-export const CreateUserModal: React.FC<CreateUserModalProps> = ({ onSave, onClose }) => {
+export function CreateUserModal({ onSave, onClose }: CreateUserModalProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');

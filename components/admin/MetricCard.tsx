@@ -4,9 +4,10 @@ interface MetricCardProps {
   title: string;
   value: string;
   icon: string;
+  key?: React.Key;
 }
 
-export const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon }) => {
+export function MetricCard({ title, value, icon }: MetricCardProps) {
   return (
     <div className="bg-black/50 border border-green-900/40 rounded-lg p-6 flex items-center space-x-4 shadow-lg shadow-black/30 transform hover:-translate-y-1 transition-transform duration-300">
       <div className="bg-green-900/20 p-4 rounded-full">
@@ -18,4 +19,4 @@ export const MetricCard: React.FC<MetricCardProps> = ({ title, value, icon }) =>
       </div>
     </div>
   );
-};
+}

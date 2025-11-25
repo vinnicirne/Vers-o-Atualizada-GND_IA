@@ -8,7 +8,12 @@ import { Pagination } from './Pagination';
 type ActiveTab = 'platforms' | 'models' | 'usage';
 
 // Helper component
-const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) => void }> = ({ enabled, onChange }) => (
+interface ToggleSwitchProps {
+  enabled: boolean;
+  onChange: (enabled: boolean) => void;
+}
+function ToggleSwitch({ enabled, onChange }: ToggleSwitchProps) {
+    return (
     <button
         type="button"
         className={`${enabled ? 'bg-green-600' : 'bg-gray-600'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-green-500`}
@@ -17,8 +22,9 @@ const ToggleSwitch: React.FC<{ enabled: boolean; onChange: (enabled: boolean) =>
         <span className={`${enabled ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform`} />
     </button>
 );
+}
 
-export const MultiIASystem: React.FC = () => {
+export function MultiIASystem() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('platforms');
   const { user: adminUser } = useUser();
   

@@ -11,7 +11,7 @@ interface UserTableProps {
   dataVersion: number;
 }
 
-export const UserTable: React.FC<UserTableProps> = ({ dataVersion }) => {
+export function UserTable({ dataVersion }: UserTableProps) {
   const { user: adminUser } = useUser(); // The logged-in admin
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);

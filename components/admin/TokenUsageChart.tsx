@@ -3,7 +3,7 @@ import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Le
 import { useTokenUsage } from '../../hooks/useTokenUsage';
 import { TokenUsageChartSkeleton } from './TokenUsageChartSkeleton';
 
-export const TokenUsageChart: React.FC = () => {
+export function TokenUsageChart() {
   const { data, loading, error } = useTokenUsage();
 
   if (loading) {

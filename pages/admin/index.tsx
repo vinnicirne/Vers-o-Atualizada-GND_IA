@@ -10,6 +10,7 @@ import { NewsManager } from '../../components/admin/NewsManager';
 import { PaymentsManager } from '../../components/admin/PaymentsManager';
 import { MultiIASystem } from '../../components/admin/MultiIASystem';
 import { CreateUserModal } from '../../components/admin/CreateUserModal';
+import { PlansManager } from '../../components/admin/PlansManager'; // Importar o PlansManager
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -19,7 +20,7 @@ interface AdminPageProps {
   onNavigateToDashboard: () => void;
 }
 
-const AdminPage: React.FC<AdminPageProps> = ({ onNavigateToDashboard }) => {
+function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const { user, signOut } = useUser();
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   
@@ -92,6 +93,8 @@ const AdminPage: React.FC<AdminPageProps> = ({ onNavigateToDashboard }) => {
         return <NewsManager onEdit={handleOpenEditModal} dataVersion={dataVersion} />;
       case 'payments':
         return <PaymentsManager />;
+      case 'plans': // NOVO CASE
+        return <PlansManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
       case 'logs':
