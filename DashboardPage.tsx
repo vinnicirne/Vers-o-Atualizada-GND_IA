@@ -9,7 +9,7 @@ import { LandingPageBuilder } from './components/LandingPageBuilder';
 import { PlansModal } from './components/PlansModal';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
-import { getMercadoPagoCheckoutData, processMercadoPagoPayment } from './services/paymentService';
+import { getMercadoPagoCheckoutData, processMercadoPagoPayment, handlePlanSubscription } from './services/paymentService'; // Import handlePlanSubscription
 import { supabase } from './services/supabaseClient';
 // Correctly import UserPlan from plan.types.ts
 import { ServiceKey, UserPlan } from './types/plan.types';
@@ -18,6 +18,7 @@ import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan'; // Importar o novo hook
 import { TransparentPaymentFormData } from './types';
 import { getPaymentSettings } from './services/adminService';
+import { TransparentCheckoutModal } from './components/TransparentCheckoutModal';
 
 
 interface DashboardPageProps {
@@ -38,7 +39,6 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   
   // UI States for Plans and Payments
   const [showPlansModal, setShowPlansModal] = useState(false);
-  // FIX: Added 'info' to the Toast type to match the Toast component's props.
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false); // New state for payment processing
   const [mercadoPagoCheckoutData, setMercadoPagoCheckoutData] = useState<any>(null);
@@ -176,23 +176,36 @@ Você pode:
     await signOut();
   };
 
+  // Handles plan subscription via Mercado Pago redirect flow
   const handlePlanSelection = async (planId: UserPlan) => {
-    if(!user) return;
-    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
+    if (!user) {
+        setToast({ message: "Sessão inválida. Por favor, faça login novamente.", type: 'error' });
+        return;
+    }
+    setToast({ message: "Iniciando processo de assinatura com Mercado Pago...", type: 'info' });
+    setIsProcessingPayment(true);
+
     try {
-        // This still uses the redirect flow for plan subscriptions (for simplicity)
-        // A real implementation would involve a more complex subscription flow with webhooks
-        // const link = await handlePlanSubscription(planId, user);
-        // window.open(link, '_blank');
-        setToast({ message: "Simulação: Assinatura de plano via redirecionamento.", type: 'info' });
+        const redirectUrl = await handlePlanSubscription(planId, user);
+        // Em um app real, o usuário seria redirecionado para o Mercado Pago.
+        // window.location.href = redirectUrl;
+
+        console.log("Simulação de redirecionamento para:", redirectUrl);
+        // Para fins de demonstração frontend-only, simulamos o sucesso após um pequeno delay.
+        // Em um app real, a atualização do plano seria feita via webhook do Mercado Pago.
+        await new Promise(resolve => setTimeout(resolve, 3000)); 
+        setToast({ message: `Assinatura do plano ${planId.toUpperCase()} concluída com sucesso!`, type: 'success' });
         setShowPlansModal(false);
+        await refresh(); // Atualiza dados do usuário para refletir o novo plano/créditos
     } catch (e: any) {
         setToast({ message: e.message, type: 'error' });
+    } finally {
+        setIsProcessingPayment(false);
     }
   };
 
   // This function prepares the data and opens the transparent checkout modal
-  const handleBuyCredits = async (checkoutData: any) => {
+  const handleBuyCredits = async (checkoutDataFromModal: any) => {
     if (!user) return;
     setIsProcessingPayment(true);
     setToast(null); // Clear previous toasts
@@ -204,9 +217,10 @@ Você pode:
         }
         
         // Merge the actual public key from settings
-        const finalCheckoutData = { ...checkoutData, publicKey: mpConfig.publicKey };
+        const finalCheckoutData = { ...checkoutDataFromModal, publicKey: mpConfig.publicKey };
         setMercadoPagoCheckoutData(finalCheckoutData);
-        // The PlansModal will then open the TransparentCheckoutModal with this data
+        setShowPlansModal(false); // Close plans modal before showing checkout modal
+        // The TransparentCheckoutModal is then opened via the conditional rendering based on mercadoPagoCheckoutData
     } catch (e: any) {
         setToast({ message: e.message, type: 'error' });
     } finally {
@@ -223,17 +237,12 @@ Você pode:
     setIsProcessingPayment(true);
     setToast(null); // Clear previous toasts
     try {
-        const settings = await getPaymentSettings();
-        const mpConfig = settings.gateways.mercadoPago;
-        if (!mpConfig.enabled || !mpConfig.publicKey) {
-            throw new Error("Mercado Pago não está configurado. Por favor, contate o suporte.");
-        }
-
-        const result = await processMercadoPagoPayment(paymentData, user, mpConfig.publicKey);
+        // No need to fetch settings here again, processMercadoPagoPayment will do it
+        const result = await processMercadoPagoPayment(paymentData, user);
 
         if (result.success) {
             setToast({ message: result.message, type: 'success' });
-            setShowPlansModal(false); // Close the PlansModal (which contains the checkout)
+            setMercadoPagoCheckoutData(null); // Close the TransparentCheckoutModal
             await refresh(); // Refresh user data to show updated credits
         } else {
             setToast({ message: result.message, type: 'error' });
@@ -328,7 +337,25 @@ Você pode:
             onBuyCredits={handleBuyCredits} // This now prepares and opens the MP modal
             user={user}
             isProcessingPayment={isProcessingPayment}
-            onPaymentSubmit={handleMercadoPagoPaymentSubmit}
+            // onPaymentSubmit is no longer directly passed to PlansModal for transparent checkout
+            // It's handled by TransparentCheckoutModal when it's rendered.
+        />
+      )}
+
+      {mercadoPagoCheckoutData && ( // Render TransparentCheckoutModal if data is available
+        <TransparentCheckoutModal
+          isOpen={true} // Always open if data is set
+          onClose={() => {
+            setMercadoPagoCheckoutData(null); // Close by clearing data
+            setIsProcessingPayment(false); // Reset processing state
+          }}
+          onSubmit={handleMercadoPagoPaymentSubmit}
+          publicKey={mercadoPagoCheckoutData.publicKey}
+          amount={mercadoPagoCheckoutData.amount}
+          description={mercadoPagoCheckoutData.description}
+          payerEmail={mercadoPagoCheckoutData.payerEmail}
+          metadata={mercadoPagoCheckoutData.metadata}
+          isProcessing={isProcessingPayment}
         />
       )}
 

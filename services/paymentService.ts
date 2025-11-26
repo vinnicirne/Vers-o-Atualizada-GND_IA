@@ -6,9 +6,8 @@ import { supabase } from './supabaseClient';
 import { PLANS } from '../constants';
 
 /**
- * Simula a criação de uma preferência de pagamento no Mercado Pago.
- * Esta função agora é um fallback ou para outros métodos, o checkout transparente
- * usará `processMercadoPagoPayment`.
+ * Simula a criação de uma preferência de pagamento no Mercado Pago,
+ * adaptado para fluxos de redirecionamento (planos ou créditos).
  */
 export const createMercadoPagoPreference = async (
     item: { title: string; price: number; quantity: number; type: 'plan' | 'credits' },
@@ -19,27 +18,29 @@ export const createMercadoPagoPreference = async (
         const settings = await getPaymentSettings();
         const mpConfig = settings.gateways.mercadoPago;
 
-        if (!mpConfig.enabled || !mpConfig.publicKey) {
-            // Fallback para dev/teste se não estiver configurado, para não travar a UI
-            console.warn("Mercado Pago não configurado. Usando modo de simulação fallback.");
+        if (!mpConfig.enabled) {
+            throw new Error("Mercado Pago não configurado. Por favor, contate o suporte ou configure-o no painel de administração.");
         }
-
-        console.log(`[MOCK] Criando preferência MP para: ${item.title} - R$ ${item.price}`);
         
-        // Em produção, isso chamaria: supabase.functions.invoke('create-mp-preference', ...)
-        // Simulamos o registro da transação pendente no banco
+        // Em um cenário real, estas informações seriam enviadas para um backend.
+        // O backend chamaria a API do Mercado Pago para criar a preferência de pagamento (para um-time)
+        // ou um plano de pré-aprovação/assinatura (para recorrentes).
+        // Aqui, simulamos o processo.
+
+        // Simula o registro da transação como pendente no banco de dados.
         const { error } = await supabase.from('transactions').insert({
             usuario_id: user.id,
             valor: item.price,
-            metodo: 'pix', // Default mock method
+            metodo: 'card', // O método será determinado pelo MP no fluxo de redirecionamento. 'card' é um placeholder válido para iniciar.
             status: 'pending',
+            external_id: `MP_PREF_MOCK_${Date.now()}`, // ID da preferência MP simulado
             metadata: {
                 item_type: item.type,
                 plan_id: metadata?.planId,
                 credits_amount: metadata?.creditsAmount,
-                provider: 'mercado_pago',
+                provider: 'mercado_pago_redirect_flow',
                 description: item.title,
-                ...metadata // Inclui metadados passados, como o ID do plano ou quantidade de créditos
+                ...metadata // Inclui metadados passados
             }
         });
 
@@ -48,11 +49,13 @@ export const createMercadoPagoPreference = async (
             throw new Error("Erro ao registrar transação no banco de dados.");
         }
 
-        // Retorna Link Simulado do Mercado Pago
-        // URL real seria: https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=...
-        return `https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=MOCK-MP-${Date.now()}&user=${user.id}`;
+        // Gerar uma URL de redirecionamento simulada do Mercado Pago.
+        // Em um ambiente real, seria `response.init_point` da API do MP.
+        const mockRedirectUrl = `https://mp-redirect-flow.example.com/checkout?amount=${item.price}&type=${item.type}&user_id=${user.id}&plan_id=${metadata?.planId || ''}&payment_status=approved`;
+
+        return mockRedirectUrl;
     } catch (error: any) {
-        console.error("Erro no pagamento:", error);
+        console.error("Erro ao criar preferência de pagamento:", error);
         throw new Error(error.message || "Falha ao iniciar pagamento.");
     }
 };
@@ -65,14 +68,19 @@ export const createMercadoPagoPreference = async (
 export const processMercadoPagoPayment = async (
     paymentData: TransparentPaymentFormData,
     user: User,
-    publicMercadoPagoKey: string
 ): Promise<{ success: boolean; message: string }> => {
     console.log("[SIMULATION] Processando pagamento Mercado Pago Transparente...");
     console.log("Dados recebidos (simulados como backend):", paymentData);
     console.log("Usuário:", user.email);
-    console.log("Chave Pública Mercado Pago:", publicMercadoPagoKey);
 
     try {
+        const settings = await getPaymentSettings();
+        const mpConfig = settings.gateways.mercadoPago;
+        if (!mpConfig.enabled || !mpConfig.publicKey) { // public key is just for a check, secret key would be used on backend
+            return { success: false, message: "Mercado Pago não configurado. Por favor, contate o suporte." };
+        }
+        const publicMercadoPagoKey = mpConfig.publicKey;
+
         // --- SIMULAÇÃO DE CHAMADA AO BACKEND E API MERCADO PAGO ---
         // Aqui, um backend real faria a chamada para a API do Mercado Pago
         // utilizando o token do cartão e a secret_key.
@@ -83,6 +91,12 @@ export const processMercadoPagoPayment = async (
         if (!paymentData.token || !paymentData.amount || paymentData.amount <= 0) {
             return { success: false, message: "Dados de pagamento incompletos ou inválidos." };
         }
+
+        // Adiciona validação para payerEmail
+        if (!paymentData.payerEmail || paymentData.payerEmail.trim() === '') {
+            return { success: false, message: "E-mail do pagador é obrigatório." };
+        }
+
 
         // --- SIMULAÇÃO DE ATUALIZAÇÃO DO BANCO DE DADOS (Frontend) ---
         // Em um backend, isso seria feito após a confirmação da API do Mercado Pago.
@@ -145,18 +159,17 @@ export const processMercadoPagoPayment = async (
     }
 };
 
+/**
+ * Inicia o fluxo de assinatura de um plano via Mercado Pago (redirecionamento).
+ */
 export const handlePlanSubscription = async (planId: UserPlan, user: User): Promise<string> => {
     const plan = PLANS[planId];
     if (plan.price <= 0) {
-        // Para o plano gratuito, não há "assinatura" no sentido de pagamento.
-        // O usuário já "tem" o plano free ou pode estar tentando um downgrade.
-        // A lógica de downgrade deve ser tratada separadamente, geralmente pelo admin ou suporte.
-        throw new Error("Este plano não requer pagamento. Se deseja gerenciar seu plano, consulte as opções disponíveis.");
+        throw new Error("Este plano não requer pagamento.");
     }
 
-    // Para assinatura de plano, ainda pode-se preferir o redirect (futuramente uma função backend real)
     return createMercadoPagoPreference({
-        title: `Upgrade GDN_IA - Plano ${plan.name}`,
+        title: `Assinatura GDN_IA - Plano ${plan.name}`,
         price: plan.price,
         quantity: 1,
         type: 'plan'
@@ -165,7 +178,7 @@ export const handlePlanSubscription = async (planId: UserPlan, user: User): Prom
 
 // Esta função agora prepara os dados para o checkout transparente,
 // mas não inicia o processo de pagamento diretamente.
-export const getMercadoPagoCheckoutData = async (amount: number, price: number, user: User) => {
+export const getMercadoPagoCheckoutData = async (creditsAmount: number, price: number, user: User) => {
     const settings = await getPaymentSettings();
     const mpConfig = settings.gateways.mercadoPago;
 
@@ -176,11 +189,11 @@ export const getMercadoPagoCheckoutData = async (amount: number, price: number, 
     return {
         publicKey: mpConfig.publicKey,
         amount: price,
-        description: `Pacote de ${amount} Créditos GDN_IA`,
+        description: `Pacote de ${creditsAmount} Créditos GDN_IA`,
         payerEmail: user.email,
         metadata: {
             item_type: 'credits',
-            creditsAmount: amount,
+            creditsAmount: creditsAmount,
         }
     };
 };
