@@ -9,7 +9,6 @@ import { LandingPageBuilder } from './components/LandingPageBuilder';
 import { PlansModal } from './components/PlansModal';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
-import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
 import { supabase } from './services/supabaseClient';
 // Correctly import UserPlan from plan.types.ts
 import { ServiceKey, UserPlan } from './types/plan.types';
@@ -38,7 +37,7 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
-    fetch('./metadata.json')
+    fetch('/metadata.json')
       .then(response => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -169,30 +168,6 @@ Você pode:
     await signOut();
   };
 
-  const handlePlanSelection = async (planId: UserPlan) => {
-    if(!user) return;
-    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
-    try {
-        const link = await handlePlanSubscription(planId, user);
-        window.open(link, '_blank');
-        setShowPlansModal(false);
-    } catch (e: any) {
-        setToast({ message: e.message, type: 'error' });
-    }
-  };
-
-  const handleBuyCredits = async (amount: number, price: number) => {
-    if(!user) return;
-    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
-    try {
-        const link = await handleCreditPurchase(amount, price, user);
-        window.open(link, '_blank');
-        setShowPlansModal(false);
-    } catch (e: any) {
-        setToast({ message: e.message, type: 'error' });
-    }
-  };
-
   if (!user) {
     return null; 
   }
@@ -271,15 +246,13 @@ Você pode:
         <PlansModal 
             currentPlanId={currentPlan.id} // Passa o ID do plano atual
             onClose={() => setShowPlansModal(false)}
-            onSelectPlan={handlePlanSelection}
-            onBuyCredits={handleBuyCredits}
         />
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <footer className="text-center p-4 text-gray-500 text-sm">
-        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.3'}</p>
+        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.4'}</p>
       </footer>
     </div>
   );

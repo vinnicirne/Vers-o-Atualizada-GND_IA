@@ -33,7 +33,7 @@ export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavi
             {/* Status Badges */}
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Versão do Sistema">
               <i className="fas fa-code-branch"></i>
-              <span className="font-semibold text-gray-400">v1.0.3</span>
+              <span className="font-semibold text-gray-400">v1.0.5</span>
             </div>
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Ambiente">
               <i className="fas fa-server text-blue-400"></i>

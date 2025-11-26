@@ -1,10 +1,10 @@
 import React from 'react';
-import { Plan, ServicePermission } from './types/plan.types';
+import { Plan, ServicePermission } from '../types/plan.types';
 
 interface PlanCardProps {
   plan: Plan;
   isCurrent?: boolean;
-  onSelect?: (planId: string) => void;
+  onSelect?: (planId: string) => void; // Tipo atualizado para passar apenas o ID
 }
 
 // FIX: Explicitly define the functional component type using React.FC

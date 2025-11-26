@@ -1,20 +1,34 @@
 import React, { useState } from 'react';
-import { UserPlan } from './types/plan.types'; // Usar UserPlan do plan.types
+import { UserPlan } from '../types/plan.types'; // Usar UserPlan do plan.types
 import { PlanCard } from './PlanCard'; // Importar o novo PlanCard
 import { usePlans } from '../hooks/usePlans'; // Importar o novo hook usePlans
+import { useUser } from '../contexts/UserContext';
+import { handlePlanSubscription, handleCreditPurchase } from '../services/paymentService';
+import { Toast } from './admin/Toast';
+import { MercadoPagoCheckout } from './MercadoPagoCheckout'; // Importar o novo componente de checkout MP
 
 interface PlansModalProps {
   currentPlanId: UserPlan; // Renomeado para ID para maior clareza
   onClose: () => void;
-  onSelectPlan: (planId: UserPlan) => void;
-  onBuyCredits: (amount: number, price: number) => void;
+  // onSelectPlan: (planId: UserPlan) => void; // Removido, a lógica agora é interna
+  // onBuyCredits: (amount: number, price: number) => void; // Removido, a lógica agora é interna
 }
 
-export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits }: PlansModalProps) {
+export function PlansModal({ currentPlanId, onClose }: PlansModalProps) {
+  const { user, refresh: refreshUser } = useUser();
   const { allPlans, loading: loadingPlans, error: plansError } = usePlans(); // Usar o hook usePlans
   
   const [expressAmount, setExpressAmount] = useState(10);
-  
+  // FIX: Updated the type for the `toast` state to include 'info', aligning it with the ToastProps interface.
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  // States para o checkout transparente do Mercado Pago
+  const [showMpCheckout, setShowMpCheckout] = useState(false);
+  const [mpPreferenceId, setMpPreferenceId] = useState<string | null>(null);
+  const [mpPublicKey, setMpPublicKey] = useState<string | null>(null);
+  const [mpPaymentAmount, setMpPaymentAmount] = useState<number>(0);
+  const [mpPaymentType, setMpPaymentType] = useState<'plan' | 'credits' | null>(null);
+
   // Encontra o plano ativo com base nos planos carregados dinamicamente
   const activePlanConfig = allPlans.find(p => p.id === currentPlanId) || allPlans.find(p => p.id === 'free') || { // Fallback robusto
     id: 'free',
@@ -34,6 +48,58 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits 
 
   const calculateExpressTotal = () => {
     return expressAmount * activePlanConfig.expressCreditPrice;
+  };
+  
+  const handleInitiatePlanPayment = async (planId: UserPlan) => {
+    if (!user) {
+        setToast({ message: "Sessão inválida. Faça login novamente.", type: 'error' });
+        return;
+    }
+    // FIX: Updated the type for the `toast` message to include 'info', aligning it with the ToastProps interface.
+    setToast({ message: "Iniciando pagamento do plano...", type: 'info' });
+    try {
+        const { preferenceId, publicKey } = await handlePlanSubscription(planId, user);
+        setMpPreferenceId(preferenceId);
+        setMpPublicKey(publicKey);
+        setMpPaymentAmount(allPlans.find(p => p.id === planId)?.price || 0);
+        setMpPaymentType('plan');
+        setShowMpCheckout(true);
+        setToast(null); // Limpa o toast para a próxima etapa
+    } catch (e: any) {
+        setToast({ message: e.message, type: 'error' });
+    }
+  };
+
+  const handleInitiateCreditPayment = async (amount: number, price: number) => {
+    if (!user) {
+        setToast({ message: "Sessão inválida. Faça login novamente.", type: 'error' });
+        return;
+    }
+    // FIX: Updated the type for the `toast` message to include 'info', aligning it with the ToastProps interface.
+    setToast({ message: "Iniciando compra de créditos...", type: 'info' });
+    try {
+        const { preferenceId, publicKey } = await handleCreditPurchase(amount, price, user);
+        setMpPreferenceId(preferenceId);
+        setMpPublicKey(publicKey);
+        setMpPaymentAmount(price);
+        setMpPaymentType('credits');
+        setShowMpCheckout(true);
+        setToast(null); // Limpa o toast para a próxima etapa
+    } catch (e: any) {
+        setToast({ message: e.message, type: 'error' });
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    setToast({ message: "Pagamento realizado com sucesso! Atualizando seu saldo...", type: 'success' });
+    refreshUser(); // Força a atualização dos dados do usuário (plano, créditos)
+    setShowMpCheckout(false); // Fecha o modal de checkout MP
+    onClose(); // Fecha o PlansModal
+  };
+
+  const handlePaymentError = (message: string) => {
+    setToast({ message: `Erro no pagamento: ${message}`, type: 'error' });
+    setShowMpCheckout(false); // Fecha o modal de checkout MP para permitir nova tentativa
   };
 
   if (loadingPlans) {
@@ -61,6 +127,8 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits 
 
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       <div className="bg-black border border-green-900/50 rounded-2xl shadow-2xl w-full max-w-7xl my-8 flex flex-col max-h-[90vh]">
         
         {/* Header */}
@@ -83,7 +151,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits 
                  key={plan.id}
                  plan={plan}
                  isCurrent={currentPlanId === plan.id}
-                 onSelect={onSelectPlan}
+                 onSelect={handleInitiatePlanPayment} // Passa a nova função
                />
             ))}
           </div>
@@ -132,7 +200,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits 
                     <p className="text-3xl font-bold text-white">R$ {calculateExpressTotal().toFixed(2).replace('.', ',')}</p>
                   </div>
                   <button 
-                    onClick={() => onBuyCredits(expressAmount, calculateExpressTotal())}
+                    onClick={() => handleInitiateCreditPayment(expressAmount, calculateExpressTotal())} // Passa a nova função
                     className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-lg transition shadow-lg shadow-yellow-600/20 flex items-center"
                   >
                     Pagar com Mercado Pago <i className="fas fa-credit-card ml-2"></i>
@@ -144,6 +212,20 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits 
 
         </div>
       </div>
+      
+      {/* Mercado Pago Checkout Modal */}
+      {showMpCheckout && mpPreferenceId && mpPublicKey && mpPaymentAmount > 0 && user && (
+        <MercadoPagoCheckout
+          preferenceId={mpPreferenceId}
+          publicKey={mpPublicKey}
+          amount={mpPaymentAmount}
+          userEmail={user.email}
+          paymentType={mpPaymentType}
+          onSuccess={handlePaymentSuccess}
+          onError={handlePaymentError}
+          onClose={() => setShowMpCheckout(false)}
+        />
+      )}
     </div>
   );
 }
