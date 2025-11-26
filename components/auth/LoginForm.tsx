@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabaseClient';
@@ -29,7 +28,7 @@ const performLogin = async (email: string, password: string): Promise<User> => {
                 'Falha de comunicação com o servidor.\n\n' +
                 'Possíveis causas:\n' +
                 '1. Verifique sua conexão com a internet.\n' +
-                '2. Confirme se seu projeto Supabase está ativo (não pausado).\n' +
+                '2. Confirme se seu projeto Supabase (' + import.meta.env.VITE_SUPABASE_URL + ') está ativo (não pausado).\n' +
                 '3. Desative temporariamente bloqueadores de anúncios (AdBlockers).'
             );
         }
@@ -40,7 +39,8 @@ const performLogin = async (email: string, password: string): Promise<User> => {
 
     const { data: profile, error: profileError } = await supabase
         .from('app_users')
-        .select('id, full_name, role, status')
+        // Fix: Added 'plan' to the select query to satisfy the User interface
+        .select('id, full_name, role, status, plan')
         .eq('id', authData.user.id)
         .single();
     
@@ -94,6 +94,8 @@ Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminSer
         ...profile,
         email: authData.user.email!,
         credits: creditsData?.credits ?? 0,
+        // Fix: Explicitly assign 'plan' with a fallback to 'free' to match the User interface
+        plan: profile.plan || 'free',
     };
     
     return fullUser;
