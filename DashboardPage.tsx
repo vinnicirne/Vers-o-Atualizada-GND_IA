@@ -9,13 +9,16 @@ import { LandingPageBuilder } from './components/LandingPageBuilder';
 import { PlansModal } from './components/PlansModal';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
-import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
+import { getMercadoPagoCheckoutData, processMercadoPagoPayment } from './services/paymentService';
 import { supabase } from './services/supabaseClient';
 // Correctly import UserPlan from plan.types.ts
 import { ServiceKey, UserPlan } from './types/plan.types';
 import { PLANS } from './constants';
 import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan'; // Importar o novo hook
+import { TransparentPaymentFormData } from './types';
+import { getPaymentSettings } from './services/adminService';
+
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -33,9 +36,13 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator'); // Usar ServiceKey
   
-  // UI States
+  // UI States for Plans and Payments
   const [showPlansModal, setShowPlansModal] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  // FIX: Added 'info' to the Toast type to match the Toast component's props.
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false); // New state for payment processing
+  const [mercadoPagoCheckoutData, setMercadoPagoCheckoutData] = useState<any>(null);
+
 
   useEffect(() => {
     fetch('./metadata.json')
@@ -173,25 +180,71 @@ Você pode:
     if(!user) return;
     setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
     try {
-        const link = await handlePlanSubscription(planId, user);
-        window.open(link, '_blank');
+        // This still uses the redirect flow for plan subscriptions (for simplicity)
+        // A real implementation would involve a more complex subscription flow with webhooks
+        // const link = await handlePlanSubscription(planId, user);
+        // window.open(link, '_blank');
+        setToast({ message: "Simulação: Assinatura de plano via redirecionamento.", type: 'info' });
         setShowPlansModal(false);
     } catch (e: any) {
         setToast({ message: e.message, type: 'error' });
     }
   };
 
-  const handleBuyCredits = async (amount: number, price: number) => {
-    if(!user) return;
-    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
+  // This function prepares the data and opens the transparent checkout modal
+  const handleBuyCredits = async (checkoutData: any) => {
+    if (!user) return;
+    setIsProcessingPayment(true);
+    setToast(null); // Clear previous toasts
     try {
-        const link = await handleCreditPurchase(amount, price, user);
-        window.open(link, '_blank');
-        setShowPlansModal(false);
+        const settings = await getPaymentSettings();
+        const mpConfig = settings.gateways.mercadoPago;
+        if (!mpConfig.enabled || !mpConfig.publicKey) {
+            throw new Error("Mercado Pago não está configurado. Por favor, contate o suporte.");
+        }
+        
+        // Merge the actual public key from settings
+        const finalCheckoutData = { ...checkoutData, publicKey: mpConfig.publicKey };
+        setMercadoPagoCheckoutData(finalCheckoutData);
+        // The PlansModal will then open the TransparentCheckoutModal with this data
     } catch (e: any) {
         setToast({ message: e.message, type: 'error' });
+    } finally {
+        setIsProcessingPayment(false);
     }
   };
+
+  // This function is called when the TransparentCheckoutModal successfully gets a token
+  const handleMercadoPagoPaymentSubmit = async (paymentData: TransparentPaymentFormData) => {
+    if (!user) {
+        setToast({ message: "Sessão de usuário inválida. Por favor, faça login novamente.", type: 'error' });
+        return;
+    }
+    setIsProcessingPayment(true);
+    setToast(null); // Clear previous toasts
+    try {
+        const settings = await getPaymentSettings();
+        const mpConfig = settings.gateways.mercadoPago;
+        if (!mpConfig.enabled || !mpConfig.publicKey) {
+            throw new Error("Mercado Pago não está configurado. Por favor, contate o suporte.");
+        }
+
+        const result = await processMercadoPagoPayment(paymentData, user, mpConfig.publicKey);
+
+        if (result.success) {
+            setToast({ message: result.message, type: 'success' });
+            setShowPlansModal(false); // Close the PlansModal (which contains the checkout)
+            await refresh(); // Refresh user data to show updated credits
+        } else {
+            setToast({ message: result.message, type: 'error' });
+        }
+    } catch (e: any) {
+        setToast({ message: e.message, type: 'error' });
+    } finally {
+        setIsProcessingPayment(false);
+    }
+  };
+
 
   if (!user) {
     return null; 
@@ -272,7 +325,10 @@ Você pode:
             currentPlanId={currentPlan.id} // Passa o ID do plano atual
             onClose={() => setShowPlansModal(false)}
             onSelectPlan={handlePlanSelection}
-            onBuyCredits={handleBuyCredits}
+            onBuyCredits={handleBuyCredits} // This now prepares and opens the MP modal
+            user={user}
+            isProcessingPayment={isProcessingPayment}
+            onPaymentSubmit={handleMercadoPagoPaymentSubmit}
         />
       )}
 

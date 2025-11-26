@@ -139,3 +139,43 @@ export interface FeedbackData {
   rating: number;
   comment: string;
 }
+
+// --- MERCADO PAGO TRANSPARENT CHECKOUT TYPES ---
+export interface MercadoPagoCardToken {
+  id: string; // token id
+  card_number_id: string;
+  public_key: string;
+  first_six_digits: string;
+  last_four_digits: string;
+  expiration_month: number;
+  expiration_year: number;
+  security_code_length: number;
+  cardholder: {
+    name: string;
+    identification: {
+      type: string;
+      number: string;
+    };
+  };
+  status: string;
+  date_created: string;
+  date_last_updated: string;
+  date_due: string;
+  live_mode: boolean;
+  require_esc: boolean;
+  payment_method_id: string;
+  issuer: {
+    id: number;
+    name: string;
+  };
+}
+
+export interface TransparentPaymentFormData {
+    token: string; // Mercado Pago token
+    payerEmail: string;
+    installments: number;
+    paymentMethodId: string; // payment method ID from cardForm.getPaymentMethod
+    amount: number; // total amount
+    description: string;
+    metadata: any; // original metadata like creditsAmount, planId etc.
+}
