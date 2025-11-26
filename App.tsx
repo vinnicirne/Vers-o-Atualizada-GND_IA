@@ -1,18 +1,78 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import LoginPage from './LoginPage';
 import DashboardPage from './DashboardPage';
-import AdminPage from './pages/admin';
+// Lazy Load do Admin para reduzir bundle size inicial
+const AdminPage = React.lazy(() => import('./pages/admin'));
 import { AdminGate } from './components/admin/AdminGate';
+
+// Componente de Loading para o Suspense do Admin
+const AdminLoader = () => (
+  <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
+    <i className="fas fa-circle-notch fa-spin text-4xl text-green-500"></i>
+    <p className="text-gray-400 font-mono text-sm animate-pulse">Carregando Módulo Administrativo...</p>
+  </div>
+);
 
 // Este componente consome o contexto e lida com a lógica principal do aplicativo.
 function AppContent() {
   const { user, loading, error } = useUser();
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'admin'>('dashboard');
+  
+  // ROTEAMENTO: Inicializa o estado com base na URL (query param ?page=admin)
+  const getInitialPage = (): 'dashboard' | 'admin' => {
+    if (typeof window !== 'undefined' && window.location.search) {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const page = params.get('page');
+            return (page === 'admin') ? 'admin' : 'dashboard';
+        } catch (e) {
+            console.warn('Erro ao ler URLSearchParams:', e);
+            return 'dashboard';
+        }
+    }
+    return 'dashboard';
+  };
 
-  // Navega para a página de administração, mas apenas se a role do usuário permitir.
-  // O AdminGate cuidará do acesso não autorizado.
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'admin'>(getInitialPage);
+
+  // Sincroniza a URL quando o estado muda e lida com o botão "Voltar" do navegador
+  useEffect(() => {
+    const handlePopState = () => {
+       setCurrentPage(getInitialPage());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  useEffect(() => {
+    try {
+        const params = new URLSearchParams(window.location.search);
+        if (currentPage === 'dashboard') {
+          params.delete('page');
+        } else {
+          params.set('page', currentPage);
+        }
+        
+        const queryString = params.toString() ? '?' + params.toString() : '';
+        const newUrl = `${window.location.pathname}${queryString}`;
+        
+        // Evita pushState se a URL já for a mesma (evita loop ou histórico duplicado)
+        if (window.location.search !== queryString) {
+            try {
+                window.history.pushState({}, '', newUrl);
+            } catch (e) {
+                // Silencia erros de SecurityError em ambientes sandboxed (blob:) que bloqueiam pushState
+                console.warn('Navigation state update skipped due to environment restrictions:', e);
+            }
+        }
+    } catch (e) {
+        console.error('Erro na lógica de roteamento:', e);
+    }
+  }, [currentPage]);
+
+
+  // Navega para a página de administração
   const handleNavigateToAdmin = () => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
       setCurrentPage('admin');
@@ -103,9 +163,11 @@ function AppContent() {
           )}
           {currentPage === 'admin' && (
              <AdminGate onAccessDenied={handleNavigateToDashboard}>
-              <AdminPage 
-                onNavigateToDashboard={handleNavigateToDashboard}
-              />
+               <Suspense fallback={<AdminLoader />}>
+                  <AdminPage 
+                    onNavigateToDashboard={handleNavigateToDashboard}
+                  />
+               </Suspense>
             </AdminGate>
           )}
         </>

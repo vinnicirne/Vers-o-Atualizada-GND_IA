@@ -1,7 +1,7 @@
 {
   "name": "gdn_ia",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,22 +9,27 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react-dom": "^18.3.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "@google/genai": "^1.30.0",
-    "react": "^18.3.0",
-    "@supabase/supabase-js": "2",
-    "recharts": "2",
-    "uuid": "latest",
-    "react-simple-code-editor": "latest",
-    "prismjs": "latest",
-    "react-resizable-panels": "latest",
-    "grapesjs": "latest",
-    "grapesjs-preset-webpage": "latest"
+    "@supabase/supabase-js": "^2.39.0",
+    "recharts": "^2.12.0",
+    "uuid": "^9.0.1",
+    "react-simple-code-editor": "^0.13.1",
+    "prismjs": "^1.29.0",
+    "react-resizable-panels": "^2.0.0",
+    "grapesjs": "0.21.2",
+    "grapesjs-preset-webpage": "1.0.3"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@vitejs/plugin-react": "^4.2.0",
+    "typescript": "^5.3.0",
+    "vite": "^5.2.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3"
   }
 }

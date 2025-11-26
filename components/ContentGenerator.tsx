@@ -1,15 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { CREATOR_SUITE_MODES } from '../constants';
-import { ServiceKey } from '../types/plan.types'; // Usar ServiceKey
+import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
-import { usePlan } from '../hooks/usePlan'; // Importar o novo hook
+import { usePlan } from '../hooks/usePlan';
 
 interface ContentGeneratorProps {
+  mode: ServiceKey;
+  onModeChange: (mode: ServiceKey) => void;
   onGenerate: (
     prompt: string, 
-    mode: ServiceKey, // Usar ServiceKey
+    mode: ServiceKey, 
     generateAudio: boolean,
-    options?: { theme?: string; primaryColor?: string }
+    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
   ) => void;
   isLoading: boolean;
 }
@@ -24,32 +27,58 @@ const THEMES = [
   { value: 'dark', label: 'Dark Mode / Cyberpunk' },
 ];
 
-export function ContentGenerator({ onGenerate, isLoading }: ContentGeneratorProps) {
-  const { user } = useUser(); // Ainda necessário para verificar isAdmin diretamente
-  const { currentPlan, hasAccessToService } = usePlan(); // Usar usePlan para acesso
+const IMAGE_STYLES = [
+    { value: 'photorealistic', label: 'Fotorealista (8k)' },
+    { value: 'cyberpunk', label: 'Cyberpunk / Neon' },
+    { value: 'anime', label: 'Anime / Manga' },
+    { value: 'oil_painting', label: 'Pintura a Óleo' },
+    { value: '3d_render', label: 'Render 3D (Pixar Style)' },
+    { value: 'cinematic', label: 'Cinematográfico' },
+    { value: 'pixel_art', label: 'Pixel Art' },
+    { value: 'logo', label: 'Logo / Vetor Minimalista' },
+];
 
-  const [mode, setMode] = useState<ServiceKey>('news_generator'); // Usar ServiceKey
+const ASPECT_RATIOS = [
+    { value: '1:1', label: 'Quadrado (Instagram)' },
+    { value: '16:9', label: 'Paisagem (YouTube)' },
+    { value: '9:16', label: 'Retrato (Stories)' },
+];
+
+export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: ContentGeneratorProps) {
+  const { currentPlan, hasAccessToService } = usePlan();
+
   const [prompt, setPrompt] = useState('');
-  const [placeholder, setPlaceholder] = useState(CREATOR_SUITE_MODES[0].placeholder);
+  const [placeholder, setPlaceholder] = useState('');
   const [generateAudio, setGenerateAudio] = useState(false);
   
+  // Landing Page options
   const [theme, setTheme] = useState('modern');
   const [primaryColor, setPrimaryColor] = useState('#10B981'); 
 
-  // Ajustar para usar hasAccessToService do usePlan
+  // Image Generation options
+  const [aspectRatio, setAspectRatio] = useState('1:1');
+  const [imageStyle, setImageStyle] = useState('photorealistic');
+
   const isModeLocked = (modeValue: ServiceKey) => !hasAccessToService(modeValue);
 
+  // Atualiza o placeholder e reseta campos quando o modo muda (controlado pelo pai)
   useEffect(() => {
     const selectedMode = CREATOR_SUITE_MODES.find(m => m.value === mode);
     setPlaceholder(selectedMode?.placeholder || '');
     setPrompt('');
-    setGenerateAudio(false); // Resetar áudio ao mudar o modo
+    setGenerateAudio(false); 
   }, [mode]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // A validação de acesso e créditos agora é feita no DashboardPage via usePlan.canUseService
-    const options = mode === 'landingpage_generator' ? { theme, primaryColor } : undefined;
+    let options = undefined;
+    
+    if (mode === 'landingpage_generator') {
+        options = { theme, primaryColor };
+    } else if (mode === 'image_generation') {
+        options = { aspectRatio, imageStyle };
+    }
+
     onGenerate(prompt, mode, generateAudio, options);
   };
   
@@ -61,13 +90,13 @@ export function ContentGenerator({ onGenerate, isLoading }: ContentGeneratorProp
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label htmlFor="mode" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
-            Modo de Geração
+            Ferramenta Selecionada
           </label>
           <div className="grid grid-cols-1 gap-2">
             <select 
                 id="mode" 
                 value={mode} 
-                onChange={e => setMode(e.target.value as ServiceKey)} // Usar ServiceKey
+                onChange={e => onModeChange(e.target.value as ServiceKey)}
                 className={selectClasses} 
                 disabled={isLoading}
             >
@@ -127,10 +156,32 @@ export function ContentGenerator({ onGenerate, isLoading }: ContentGeneratorProp
             </div>
           </div>
         )}
+
+        {/* Opções Extras para Image Generation */}
+        {mode === 'image_generation' && !isModeLocked('image_generation') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+            <div>
+              <label htmlFor="imageStyle" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
+                Estilo da Arte
+              </label>
+              <select id="imageStyle" value={imageStyle} onChange={e => setImageStyle(e.target.value)} className={selectClasses} disabled={isLoading}>
+                {IMAGE_STYLES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="aspectRatio" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
+                Proporção (Formato)
+              </label>
+              <select id="aspectRatio" value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className={selectClasses} disabled={isLoading}>
+                {ASPECT_RATIOS.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
         
         <div>
           <label htmlFor="prompt" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
-            Seu Pedido
+            {mode === 'image_generation' ? 'Descreva sua Imagem' : 'Seu Pedido'}
           </label>
           <textarea
             id="prompt"
@@ -164,7 +215,7 @@ export function ContentGenerator({ onGenerate, isLoading }: ContentGeneratorProp
         <button
           type="submit"
           className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-black font-bold py-3 px-4 rounded-lg hover:from-green-600 hover:to-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-black focus:ring-green-500 transition-all duration-300 disabled:opacity-50 disabled:bg-gray-800 disabled:text-gray-500 disabled:from-gray-800 disabled:cursor-not-allowed flex items-center justify-center shadow-lg mt-4"
-          disabled={!prompt.trim() || isLoading || isModeLocked(mode)} // isModeLocked já verifica acesso
+          disabled={!prompt.trim() || isLoading || isModeLocked(mode)} 
         >
           {isLoading ? (
             <>
@@ -183,8 +234,8 @@ export function ContentGenerator({ onGenerate, isLoading }: ContentGeneratorProp
                  </>
               ) : (
                  <>
-                    <i className="fas fa-feather-alt mr-2"></i>
-                    Gerar Conteúdo
+                    <i className={`fas ${mode === 'image_generation' ? 'fa-paint-brush' : 'fa-feather-alt'} mr-2`}></i>
+                    {mode === 'image_generation' ? 'Criar Arte' : 'Gerar Conteúdo'}
                  </>
               )}
             </>

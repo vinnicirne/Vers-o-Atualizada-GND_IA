@@ -86,6 +86,24 @@ export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
          panelManager.removeButton('views', 'open-tm');
          panelManager.removeButton('views', 'open-layers');
          panelManager.removeButton('views', 'open-blocks');
+
+         // --- CSS INJECTION FOR CENTERING ---
+         // Isso garante que o conteúdo (ex: post quadrado de 1080px) fique centralizado na tela
+         const iframe = editor.Canvas.getFrameEl();
+         const head = iframe.contentDocument.head;
+         const style = document.createElement('style');
+         style.innerHTML = `
+            body { 
+                background-color: #111827; /* Dark BG */
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                min-height: 100vh;
+                margin: 0;
+                padding: 40px;
+            }
+         `;
+         head.appendChild(style);
       });
     }
 
@@ -93,14 +111,6 @@ export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
     if (editorRef.current && initialHtml) {
         // Pequena limpeza para garantir que o GrapesJS entenda o body background
         editorRef.current.setComponents(initialHtml);
-        
-        // Força o wrapper (body) a ter a cor de fundo correta se o Tailwind não aplicar imediatamente
-        // Isso ajuda a evitar o "flash" branco ou fundo transparente
-        const wrapper = editorRef.current.getWrapper();
-        if(wrapper) {
-            // Tenta extrair classes do body do HTML string original se necessário, 
-            // mas geralmente o setComponents já faz o parse das classes do body para o wrapper.
-        }
     }
 
     return () => {

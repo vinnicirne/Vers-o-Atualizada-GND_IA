@@ -1,28 +1,20 @@
 import React, { useState } from 'react';
-import { UserPlan } from '../types/plan.types'; // Usar UserPlan do plan.types
+import { UserPlan } from './types/plan.types'; // Usar UserPlan do plan.types
 import { PlanCard } from './PlanCard'; // Importar o novo PlanCard
 import { usePlans } from '../hooks/usePlans'; // Importar o novo hook usePlans
-// import { TransparentCheckoutModal } from './TransparentCheckoutModal'; // Importar novo modal - NO LONGER DIRECTLY RENDERED HERE
-import { User } from '../types'; // Importar User para passar ao modal
 
 interface PlansModalProps {
   currentPlanId: UserPlan; // Renomeado para ID para maior clareza
   onClose: () => void;
   onSelectPlan: (planId: UserPlan) => void;
-  // onBuyCredits agora recebe o resultado do TransparentCheckoutModal
-  onBuyCredits: (checkoutData: { publicKey: string; amount: number; description: string; payerEmail: string; metadata: any }) => void;
-  user: User; // Adiciona o usuário para passar ao checkout
-  isProcessingPayment: boolean; // Indica se o pagamento está em processamento
-  // onPaymentSubmit: (paymentData: any) => Promise<void>; // Para o submit do checkout transparente - MOVED TO DASHBOARDPAGE
+  onBuyCredits: (amount: number, price: number) => void;
 }
 
-export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits, user, isProcessingPayment }: PlansModalProps) {
+export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits }: PlansModalProps) {
   const { allPlans, loading: loadingPlans, error: plansError } = usePlans(); // Usar o hook usePlans
   
   const [expressAmount, setExpressAmount] = useState(10);
-  // const [showMercadoPagoModal, setShowMercadoPagoModal] = useState(false); // No longer needed here
-  // const [mercadoPagoCheckoutData, setMercadoPagoCheckoutData] = useState<any>(null); // No longer needed here
-
+  
   // Encontra o plano ativo com base nos planos carregados dinamicamente
   const activePlanConfig = allPlans.find(p => p.id === currentPlanId) || allPlans.find(p => p.id === 'free') || { // Fallback robusto
     id: 'free',
@@ -43,25 +35,6 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits,
   const calculateExpressTotal = () => {
     return expressAmount * activePlanConfig.expressCreditPrice;
   };
-
-  const handleOpenMercadoPagoModal = () => {
-    const totalAmount = calculateExpressTotal();
-    // Prepare data to pass to the TransparentCheckoutModal
-    const data = {
-        publicKey: '', // This will be dynamically set by DashboardPage's handleBuyCredits
-        amount: totalAmount,
-        description: `Pacote de ${expressAmount} Créditos GDN_IA`,
-        payerEmail: user.email,
-        metadata: {
-            item_type: 'credits',
-            creditsAmount: expressAmount,
-            userId: user.id,
-        },
-    };
-    // Call onBuyCredits to get the actual public key and update data if needed
-    onBuyCredits(data); // This will update the `mercadoPagoCheckoutData` in DashboardPage and trigger the modal there
-  };
-
 
   if (loadingPlans) {
     return (
@@ -159,9 +132,8 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits,
                     <p className="text-3xl font-bold text-white">R$ {calculateExpressTotal().toFixed(2).replace('.', ',')}</p>
                   </div>
                   <button 
-                    onClick={handleOpenMercadoPagoModal} // Open transparent checkout modal
+                    onClick={() => onBuyCredits(expressAmount, calculateExpressTotal())}
                     className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-lg transition shadow-lg shadow-yellow-600/20 flex items-center"
-                    disabled={isProcessingPayment}
                   >
                     Pagar com Mercado Pago <i className="fas fa-credit-card ml-2"></i>
                   </button>

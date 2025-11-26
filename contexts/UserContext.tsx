@@ -1,6 +1,7 @@
 
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import { supabase } from '../services/supabaseClient';
+import { api } from '../services/api';
 import { User } from '../types';
 import type { User as AuthUser } from '@supabase/supabase-js';
 
@@ -27,80 +28,47 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
     }
 
     try {
-      // Tenta buscar com a coluna 'plan'. Se falhar (ex: coluna não existe), tenta sem ela (fallback).
-      let profileData: any = null;
-      let profileError: any = null;
-      
-      const { data: profileWithPlan, error: errWithPlan } = await supabase
-        .from('app_users')
-        .select('id, full_name, role, status, plan')
-        .eq('id', authUser.id)
-        .maybeSingle();
-
-      profileError = errWithPlan;
-      profileData = profileWithPlan;
+      // Busca perfil real no Supabase
+      const { data: profiles, error: profileError } = await api.select('app_users', { id: authUser.id });
 
       if (profileError) {
-        // Se o erro for especificamente sobre a coluna 'plan' não existir, 
-        // tentamos buscar novamente sem ela para não bloquear o usuário.
-        if (profileError.message.includes('column app_users.plan does not exist')) {
-             console.warn("Coluna 'plan' não encontrada. Usando fallback para plano 'free'.");
-             const { data: profileFallback, error: fallbackError } = await supabase
-                .from('app_users')
-                .select('id, full_name, role, status')
-                .eq('id', authUser.id)
-                .maybeSingle();
-             
-             if (fallbackError) throw fallbackError;
-             profileData = { ...profileFallback, plan: 'free' }; // Atribui 'free' como padrão no fallback
-        } else {
-             // Erros reais (conexão, RLS, etc)
-             console.error("Erro ao buscar perfil do usuário:", profileError.message);
-             if (profileError.message.includes('permission denied for table app_users')) {
-                 const rlsErrorMessage = `SQL_CONFIG_ERROR: O acesso à tabela de usuários foi negado (RLS). Execute o SCRIPT de atualização do banco de dados (database_update.sql) para corrigir as permissões.`;
-                 setError(rlsErrorMessage);
-             } else {
-                 setError(`Não foi possível carregar o perfil do usuário: ${profileError.message}`);
-             }
-             await supabase.auth.signOut();
-             setUser(null);
-             return;
-        }
-      } 
+         console.error("Erro ao buscar perfil real:", profileError);
+         // Se for um erro de permissão RLS, passamos a mensagem exata para a UI tratar
+         if (profileError.includes('permission denied') || profileError.includes('policy')) {
+             setError(`SQL_CONFIG_ERROR: ${profileError}`);
+         } else {
+             setError(`Erro ao carregar perfil: ${profileError}`);
+         }
+         return;
+      }
       
-      if (profileData) {
-        // Usa maybeSingle para evitar erro se o registro de créditos ainda não existir
-        const { data: creditsData, error: creditsError } = await supabase
-            .from('user_credits')
-            .select('credits')
-            .eq('user_id', authUser.id)
-            .maybeSingle();
+      const profileData = profiles && profiles.length > 0 ? profiles[0] : null;
 
-        if (creditsError) {
-            console.error('Falha ao carregar créditos do usuário:', creditsError.message);
-        }
-
-        const userProfile: User = {
-            ...profileData,
-            email: authUser.email!,
-            credits: creditsData?.credits ?? 0,
-            plan: profileData.plan || 'free', // Garante que plan sempre tenha um valor
-        };
-        setUser(userProfile);
-      } else {
-        const errorMessage = `Inconsistência de dados crítica: Perfil para o usuário ${authUser.id} não encontrado.`;
-        console.error(errorMessage);
-        setError(errorMessage);
-        await supabase.auth.signOut();
-        setUser(null);
+      if (!profileData) {
+         // Perfil não existe no banco real.
+         // Isso acontece se o usuário foi criado no Auth mas não na tabela app_users (ex: trigger falhou ou não existe).
+         console.warn("Usuário autenticado, mas sem perfil na tabela 'app_users'.");
+         setError("Perfil de usuário não encontrado no banco de dados.");
+         setUser(null);
+         return;
       }
+
+      // Busca créditos reais
+      const { data: creditsData } = await api.select('user_credits', { user_id: authUser.id });
+      const userCredits = creditsData && creditsData.length > 0 ? creditsData[0].credits : 0;
+
+      const userProfile: User = {
+          ...profileData,
+          email: authUser.email!,
+          credits: userCredits,
+          plan: profileData.plan || 'free',
+      };
+      
+      setUser(userProfile);
+      
     } catch (e: any) {
-      console.error("Ocorreu um erro crítico em fetchUserProfile:", e);
-      let errorMessage = 'Ocorreu um erro inesperado ao carregar seus dados.';
-       if (e instanceof Error) {
-        errorMessage = e.message;
-      }
-      setError(errorMessage);
+      console.error("Erro crítico em fetchUserProfile:", e);
+      setError(e.message || 'Erro inesperado.');
       setUser(null);
     }
   }, []);
@@ -110,17 +78,15 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
     if (error) {
         console.error("Erro ao fazer logout:", error.message);
     }
+    setUser(null);
   }, []);
 
   const refresh = useCallback(async () => {
     try {
-        const { data: { user: authUser }, error } = await supabase.auth.getUser();
-        if (error) throw error;
+        const { data: { user: authUser } } = await supabase.auth.getUser();
         await fetchUserProfile(authUser);
-    } catch (error: any) {
-        if (error.message !== 'Auth session missing!') {
-            console.error("Erro ao tentar atualizar o usuário:", error.message);
-        }
+    } catch (error) {
+        console.error("Erro no refresh:", error);
     }
   }, [fetchUserProfile]);
 

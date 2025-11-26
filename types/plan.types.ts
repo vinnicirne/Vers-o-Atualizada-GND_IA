@@ -1,12 +1,12 @@
+
 export type ServiceKey =
   | 'landingpage_generator'
   | 'news_generator'
   | 'text_to_speech'
   | 'prompt_generator'
   | 'canva_structure'
-  | 'photoshop_structure'
-  | 'corel_structure'
-  | 'copy_generator'; // Adicionado para manter a compatibilidade com a feature 'copy_generator'
+  | 'copy_generator'
+  | 'image_generation'; // Novo modo adicionado
 
 export interface ServicePermission {
   key: ServiceKey;

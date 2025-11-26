@@ -1,3 +1,4 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ContentGenerator } from './components/ContentGenerator';
@@ -6,24 +7,42 @@ import { Loader } from './components/Loader';
 import { FeedbackWidget } from './components/FeedbackWidget';
 import { AudioPlayer } from './components/AudioPlayer';
 import { LandingPageBuilder } from './components/LandingPageBuilder'; 
+import { ImageStudio } from './components/ImageStudio'; // Importar ImageStudio
 import { PlansModal } from './components/PlansModal';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
-import { getMercadoPagoCheckoutData, processMercadoPagoPayment, handlePlanSubscription } from './services/paymentService'; // Import handlePlanSubscription
-import { supabase } from './services/supabaseClient';
-// Correctly import UserPlan from plan.types.ts
+import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
+import { api } from './services/api';
 import { ServiceKey, UserPlan } from './types/plan.types';
-import { PLANS } from './constants';
+import { PLANS, CREATOR_SUITE_MODES } from './constants';
 import { useUser } from './contexts/UserContext';
-import { usePlan } from './hooks/usePlan'; // Importar o novo hook
-import { TransparentPaymentFormData } from './types';
-import { getPaymentSettings } from './services/adminService';
-import { TransparentCheckoutModal } from './components/TransparentCheckoutModal';
-
+import { usePlan } from './hooks/usePlan'; 
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
 }
+
+// Mapeamento de Ícones para a Grade de Serviços
+const SERVICE_ICONS: Record<ServiceKey, string> = {
+    news_generator: 'fa-newspaper',
+    text_to_speech: 'fa-microphone-lines',
+    copy_generator: 'fa-pen-nib',
+    prompt_generator: 'fa-terminal',
+    landingpage_generator: 'fa-code',
+    canva_structure: 'fa-vector-square',
+    image_generation: 'fa-paint-brush',
+};
+
+// Cores para os cards da Grade
+const SERVICE_COLORS: Record<ServiceKey, string> = {
+    news_generator: 'text-green-400 border-green-500/30 hover:bg-green-900/20',
+    text_to_speech: 'text-blue-400 border-blue-500/30 hover:bg-blue-900/20',
+    copy_generator: 'text-purple-400 border-purple-500/30 hover:bg-purple-900/20',
+    prompt_generator: 'text-yellow-400 border-yellow-500/30 hover:bg-yellow-900/20',
+    landingpage_generator: 'text-pink-400 border-pink-500/30 hover:bg-pink-900/20',
+    canva_structure: 'text-cyan-400 border-cyan-500/30 hover:bg-cyan-900/20',
+    image_generation: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20',
+};
 
 function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const { user, signOut, refresh } = useUser();
@@ -35,14 +54,16 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [metadata, setMetadata] = useState<{ version: string } | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
-  const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator'); // Usar ServiceKey
   
-  // UI States for Plans and Payments
+  // States for Image Generation
+  const [generatedImagePrompt, setGeneratedImagePrompt] = useState<string>('');
+  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}>({width: 1024, height: 1024});
+  
+  // Estado "Lifted Up" - O Dashboard controla o modo atual
+  const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
+  
   const [showPlansModal, setShowPlansModal] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-  const [isProcessingPayment, setIsProcessingPayment] = useState(false); // New state for payment processing
-  const [mercadoPagoCheckoutData, setMercadoPagoCheckoutData] = useState<any>(null);
-
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     fetch('./metadata.json')
@@ -58,9 +79,9 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
 
   const handleGenerateContent = useCallback(async (
     prompt: string, 
-    mode: ServiceKey, // Usar ServiceKey
+    mode: ServiceKey, 
     generateAudio: boolean,
-    options?: { theme?: string; primaryColor?: string }
+    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
   ) => {
     if (!prompt.trim()) {
       setError('Por favor, insira uma descrição para o conteúdo a ser gerado.');
@@ -72,7 +93,7 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
       return;
     }
     
-    // 1. VERIFICAÇÃO DE PERMISSÃO DE MODO (HIERARQUIA) E CRÉDITOS combinada
+    // Verificação de Acesso e Créditos
     if (!canUseService(mode)) {
         if (!hasAccessToService(mode)) {
             setError(`Acesso Negado: O modo "${mode.replace(/_/g, ' ').toUpperCase()}" é exclusivo de planos superiores. Seu plano atual é: ${currentPlan.name}.`);
@@ -95,69 +116,78 @@ Você pode:
     setResultText(null);
     setShowFeedback(false);
     setAudioBase64(null);
-    setCurrentMode(mode); 
+    setGeneratedImagePrompt('');
 
     try {
       const { text, audioBase64: audioResult } = await generateCreativeContent(
         prompt, 
         mode, 
         user.id, 
-        // A geração de áudio agora depende diretamente do serviço 'text_to_speech' estar ativo no plano
         hasAccessToService('text_to_speech') && generateAudio,
         options
       );
       
-      // Atualiza créditos localmente para exibição imediata
       let updatedCredits = userCredits;
       if (userCredits !== -1) {
           updatedCredits = userCredits - cost;
-          const { error: creditError } = await supabase
-              .from('user_credits')
-              .update({ credits: updatedCredits })
-              .eq('user_id', user.id);
+          
+          const { error: creditError } = await api.update('user_credits', { credits: updatedCredits }, { user_id: user.id });
           
           if (creditError) {
-              console.error('Erro do Supabase ao atualizar créditos:', creditError);
+              console.error('Erro API Proxy ao atualizar créditos:', creditError);
           } else {
-              await refresh(); // Força a atualização do UserContext para refletir os novos créditos
+              await refresh();
           }
       }
 
-      // Processamento do Footer
       let processedText = text;
       const isAdmin = user.role === 'admin' || user.role === 'super_admin';
       const creditsDisplay = userCredits === -1 ? 'Ilimitado' : `${updatedCredits}`;
       const footerInfo = `\n\n---\nCréditos restantes: ${creditsDisplay} | Plano: ${currentPlan.name}`;
 
-      // Adiciona marca d'água se não for Premium (ou Admin)
-      if (currentPlan.id !== 'premium' && !isAdmin) {
-          if (mode === 'landingpage_generator') {
-              const watermark = `<div style="text-align:center; font-size:10px; color:#888; padding:20px; background:#f9f9f9; border-top:1px solid #eee;">Gerado por GDN_IA</div>`;
-              if (processedText.includes('</body>')) {
-                  processedText = processedText.replace('</body>', `${watermark}</body>`);
-              } else {
-                  processedText += watermark;
-              }
-          } else {
-              processedText += "\n\nGerado por GDN_IA";
-          }
+      // Adiciona rodapé se não for conteúdo visual/código
+      if (currentPlan.id !== 'premium' && !isAdmin && mode !== 'image_generation' && mode !== 'landingpage_generator' && mode !== 'canva_structure') {
+          processedText += "\n\nGerado por GDN_IA";
       }
 
-      if (mode !== 'landingpage_generator') {
+      if (mode !== 'landingpage_generator' && mode !== 'image_generation' && mode !== 'canva_structure') {
           processedText += footerInfo;
       }
       
-      setResultText(processedText);
+      // Adiciona marca d'água no código da landing page se não for premium
+      if (mode === 'landingpage_generator' && currentPlan.id !== 'premium' && !isAdmin) {
+            const watermark = `<div style="text-align:center; font-size:10px; color:#888; padding:20px; background:#f9f9f9; border-top:1px solid #eee;">Gerado por GDN_IA</div>`;
+            if (processedText.includes('</body>')) {
+                processedText = processedText.replace('</body>', `${watermark}</body>`);
+            } else {
+                processedText += watermark;
+            }
+      }
+
+      // Handle specific logic based on mode
+      if (mode === 'image_generation') {
+          // O 'text' retornado é o Prompt Otimizado em Inglês
+          setGeneratedImagePrompt(text);
+          
+          // Calcular dimensões baseadas no Aspect Ratio escolhido
+          let w = 1024, h = 1024;
+          if (options?.aspectRatio === '16:9') { w = 1280; h = 720; }
+          if (options?.aspectRatio === '9:16') { w = 720; h = 1280; }
+          setImageDimensions({ width: w, height: h });
+          
+          setResultText(prompt); // Guardar o prompt original do usuário para referência
+      } else {
+          setResultText(processedText);
+      }
+      
       setAudioBase64(audioResult);
       
-      const { error: logError } = await supabase.from('logs').insert([{
+      await api.insert('logs', {
            usuario_id: user.id,
            acao: `generated_content_${mode}`,
            modulo: 'CreatorSuite',
            detalhes: { cost: cost, credits_after: updatedCredits, plan: currentPlan.id }
-      }]);
-
-      if (logError) console.error('Erro do Supabase ao salvar log:', logError);
+      });
 
       setShowFeedback(true);
 
@@ -176,84 +206,29 @@ Você pode:
     await signOut();
   };
 
-  // Handles plan subscription via Mercado Pago redirect flow
   const handlePlanSelection = async (planId: UserPlan) => {
-    if (!user) {
-        setToast({ message: "Sessão inválida. Por favor, faça login novamente.", type: 'error' });
-        return;
-    }
-    setToast({ message: "Iniciando processo de assinatura com Mercado Pago...", type: 'info' });
-    setIsProcessingPayment(true);
-
+    if(!user) return;
+    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
     try {
-        const redirectUrl = await handlePlanSubscription(planId, user);
-        // Em um app real, o usuário seria redirecionado para o Mercado Pago.
-        // window.location.href = redirectUrl;
-
-        console.log("Simulação de redirecionamento para:", redirectUrl);
-        // Para fins de demonstração frontend-only, simulamos o sucesso após um pequeno delay.
-        // Em um app real, a atualização do plano seria feita via webhook do Mercado Pago.
-        await new Promise(resolve => setTimeout(resolve, 3000)); 
-        setToast({ message: `Assinatura do plano ${planId.toUpperCase()} concluída com sucesso!`, type: 'success' });
+        const link = await handlePlanSubscription(planId, user);
+        window.open(link, '_blank');
         setShowPlansModal(false);
-        await refresh(); // Atualiza dados do usuário para refletir o novo plano/créditos
     } catch (e: any) {
         setToast({ message: e.message, type: 'error' });
-    } finally {
-        setIsProcessingPayment(false);
     }
   };
 
-  // This function prepares the data and opens the transparent checkout modal
-  const handleBuyCredits = async (checkoutDataFromModal: any) => {
-    if (!user) return;
-    setIsProcessingPayment(true);
-    setToast(null); // Clear previous toasts
+  const handleBuyCredits = async (amount: number, price: number) => {
+    if(!user) return;
+    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
     try {
-        const settings = await getPaymentSettings();
-        const mpConfig = settings.gateways.mercadoPago;
-        if (!mpConfig.enabled || !mpConfig.publicKey) {
-            throw new Error("Mercado Pago não está configurado. Por favor, contate o suporte.");
-        }
-        
-        // Merge the actual public key from settings
-        const finalCheckoutData = { ...checkoutDataFromModal, publicKey: mpConfig.publicKey };
-        setMercadoPagoCheckoutData(finalCheckoutData);
-        setShowPlansModal(false); // Close plans modal before showing checkout modal
-        // The TransparentCheckoutModal is then opened via the conditional rendering based on mercadoPagoCheckoutData
+        const link = await handleCreditPurchase(amount, price, user);
+        window.open(link, '_blank');
+        setShowPlansModal(false);
     } catch (e: any) {
         setToast({ message: e.message, type: 'error' });
-    } finally {
-        setIsProcessingPayment(false);
     }
   };
-
-  // This function is called when the TransparentCheckoutModal successfully gets a token
-  const handleMercadoPagoPaymentSubmit = async (paymentData: TransparentPaymentFormData) => {
-    if (!user) {
-        setToast({ message: "Sessão de usuário inválida. Por favor, faça login novamente.", type: 'error' });
-        return;
-    }
-    setIsProcessingPayment(true);
-    setToast(null); // Clear previous toasts
-    try {
-        // No need to fetch settings here again, processMercadoPagoPayment will do it
-        const result = await processMercadoPagoPayment(paymentData, user);
-
-        if (result.success) {
-            setToast({ message: result.message, type: 'success' });
-            setMercadoPagoCheckoutData(null); // Close the TransparentCheckoutModal
-            await refresh(); // Refresh user data to show updated credits
-        } else {
-            setToast({ message: result.message, type: 'error' });
-        }
-    } catch (e: any) {
-        setToast({ message: e.message, type: 'error' });
-    } finally {
-        setIsProcessingPayment(false);
-    }
-  };
-
 
   if (!user) {
     return null; 
@@ -271,14 +246,11 @@ Você pode:
         userRole={user.role}
       />
       <main className="container mx-auto p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <p className="text-center text-lg text-gray-400 mb-8">
-            Selecione um modo, descreva o que você precisa e deixe a IA fazer o resto.
-          </p>
+        <div className="max-w-5xl mx-auto">
           
           {user && (
-             <div className="mb-4 text-center text-xs text-gray-500">
-                <span className="bg-gray-900 px-3 py-1 rounded-full border border-gray-800">
+             <div className="mb-8 text-center text-xs text-gray-500 animate-fade-in-up">
+                <span className="bg-gray-900 px-4 py-2 rounded-full border border-gray-800 shadow-md">
                     Seu Plano: <span className={`font-bold uppercase text-${currentPlan.color}-400`}>{currentPlan.name}</span>
                     {' | '}
                     Saldo: <span className="font-bold text-white">{userCredits === -1 ? '∞' : userCredits}</span> créditos
@@ -286,17 +258,61 @@ Você pode:
              </div>
           )}
 
-          <ContentGenerator onGenerate={handleGenerateContent} isLoading={isLoading} />
+          {/* SERVICE GRID: Grade Visual de Seleção */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+             {CREATOR_SUITE_MODES.map((svc) => {
+                 const isSelected = currentMode === svc.value;
+                 const isLocked = !hasAccessToService(svc.value);
+                 const icon = SERVICE_ICONS[svc.value] || 'fa-star';
+                 const colorClass = SERVICE_COLORS[svc.value] || 'text-gray-400 border-gray-600 hover:bg-gray-800';
+                 
+                 return (
+                     <button
+                        key={svc.value}
+                        onClick={() => setCurrentMode(svc.value)}
+                        disabled={isLoading}
+                        className={`relative p-4 rounded-xl border transition-all duration-300 flex flex-col items-center justify-center text-center gap-3 h-32 group
+                            ${isSelected 
+                                ? `bg-gray-900 border-2 shadow-lg shadow-green-900/20 scale-105 z-10 ${colorClass.split(' ')[0]} border-${colorClass.split(' ')[0].replace('text-', '')}` 
+                                : `bg-black/50 ${isLocked ? 'opacity-50 grayscale cursor-not-allowed border-gray-800' : `${colorClass}`}`
+                            }
+                        `}
+                     >
+                        <i className={`fas ${icon} text-3xl mb-1 transition-transform group-hover:scale-110`}></i>
+                        <span className="text-xs font-bold uppercase tracking-wider leading-tight">{svc.label}</span>
+                        
+                        {isLocked && (
+                            <div className="absolute top-2 right-2 text-gray-500">
+                                <i className="fas fa-lock text-xs"></i>
+                            </div>
+                        )}
+                        {isSelected && (
+                            <div className="absolute -bottom-2 bg-green-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                                SELECIONADO
+                            </div>
+                        )}
+                     </button>
+                 );
+             })}
+          </div>
+
+          <div className="transition-all duration-500">
+              <ContentGenerator 
+                mode={currentMode}
+                onModeChange={setCurrentMode}
+                onGenerate={handleGenerateContent} 
+                isLoading={isLoading} 
+              />
+          </div>
           
           {error && (
-            <div className="mt-8 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-center" role="alert">
-              <strong className="font-bold block mb-2">Atenção: </strong>
+            <div className="mt-8 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-center animate-fade-in" role="alert">
+              <strong className="font-bold block mb-2"><i className="fas fa-exclamation-circle mr-2"></i>Atenção</strong>
               <span className="block whitespace-pre-wrap text-left mx-auto max-w-lg text-sm font-mono">{error}</span>
-              {/* Botão de ação rápida se o erro for de plano/crédito */}
               {(error.includes('Acesso Negado') || error.includes('saldo acabou')) && (
                   <button 
                     onClick={() => setShowPlansModal(true)}
-                    className="mt-3 bg-red-600 hover:bg-red-500 text-white font-bold py-1 px-4 rounded text-sm transition"
+                    className="mt-4 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition shadow-lg shadow-red-600/20"
                   >
                     Resolver Agora
                   </button>
@@ -305,19 +321,37 @@ Você pode:
           )}
 
           <div className="mt-8 space-y-8">
-            {isLoading && <Loader />}
+            {isLoading && <Loader mode={currentMode} />}
             
-            {resultText && !isLoading && (
+            {!isLoading && (
               <>
-                {currentMode === 'landingpage_generator' ? (
+                {/* RENDERIZAÇÃO CONDICIONAL BASEADA NO TIPO DE CONTEÚDO */}
+                
+                {/* 1. Editores Visuais (Landing Page e Social Media) */}
+                {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure') && resultText && (
                    <LandingPageBuilder initialHtml={resultText} />
-                ) : (
+                )}
+
+                {/* 2. Studio de Arte (Imagem) */}
+                {currentMode === 'image_generation' && generatedImagePrompt && (
+                   <ImageStudio 
+                      prompt={resultText || ''} 
+                      originalPrompt={generatedImagePrompt} 
+                      width={imageDimensions.width} 
+                      height={imageDimensions.height} 
+                   />
+                )}
+
+                {/* 3. Display de Texto Padrão (News, Copy, etc) */}
+                {currentMode !== 'landingpage_generator' && currentMode !== 'image_generation' && currentMode !== 'canva_structure' && resultText && (
                    <ResultDisplay text={resultText} mode={currentMode} />
                 )}
 
+                {/* Player de Áudio (Se houver) */}
                 {audioBase64 && <AudioPlayer audioBase64={audioBase64} />}
                 
-                {showFeedback && (
+                {/* Widget de Feedback */}
+                {(resultText || generatedImagePrompt) && showFeedback && (
                   <FeedbackWidget 
                     userId={user.id} 
                     onClose={() => setShowFeedback(false)} 
@@ -331,38 +365,17 @@ Você pode:
       
       {showPlansModal && (
         <PlansModal 
-            currentPlanId={currentPlan.id} // Passa o ID do plano atual
+            currentPlanId={currentPlan.id} 
             onClose={() => setShowPlansModal(false)}
             onSelectPlan={handlePlanSelection}
-            onBuyCredits={handleBuyCredits} // This now prepares and opens the MP modal
-            user={user}
-            isProcessingPayment={isProcessingPayment}
-            // onPaymentSubmit is no longer directly passed to PlansModal for transparent checkout
-            // It's handled by TransparentCheckoutModal when it's rendered.
-        />
-      )}
-
-      {mercadoPagoCheckoutData && ( // Render TransparentCheckoutModal if data is available
-        <TransparentCheckoutModal
-          isOpen={true} // Always open if data is set
-          onClose={() => {
-            setMercadoPagoCheckoutData(null); // Close by clearing data
-            setIsProcessingPayment(false); // Reset processing state
-          }}
-          onSubmit={handleMercadoPagoPaymentSubmit}
-          publicKey={mercadoPagoCheckoutData.publicKey}
-          amount={mercadoPagoCheckoutData.amount}
-          description={mercadoPagoCheckoutData.description}
-          payerEmail={mercadoPagoCheckoutData.payerEmail}
-          metadata={mercadoPagoCheckoutData.metadata}
-          isProcessing={isProcessingPayment}
+            onBuyCredits={handleBuyCredits}
         />
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <footer className="text-center p-4 text-gray-500 text-sm">
-        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.3'}</p>
+      <footer className="text-center p-8 text-gray-600 text-xs border-t border-gray-900 mt-12">
+        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.5'}</p>
       </footer>
     </div>
   );

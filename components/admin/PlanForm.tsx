@@ -15,9 +15,8 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'text_to_speech',
   'prompt_generator',
   'canva_structure',
-  'photoshop_structure',
-  'corel_structure',
   'copy_generator',
+  'image_generation',
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil

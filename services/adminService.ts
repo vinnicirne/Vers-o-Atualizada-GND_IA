@@ -1,54 +1,42 @@
-/*
-  ================================================================================================
-  //  ATENÇÃO: CONFIGURAÇÃO NECESSÁRIA NO SUPABASE PARA O NOVO ESQUEMA DE USUÁRIOS  //
-  ================================================================================================
-  
-  // As funções de gerenciamento de usuário e os recursos da aplicação requerem colunas,
-  // funções e políticas de segurança (RLS) específicas no banco de dados.
-  
-  // POR FAVOR, EXECUTE O ARQUIVO `database_update.sql` (disponível na raiz do projeto) 
-  // no seu Editor SQL do Supabase.
-  
-  // Este arquivo SQL executa as seguintes ações críticas:
-  // 1. Cria/Altera as colunas 'plan' e 'status' em `app_users` e 'metadata' em `transactions`.
-  // 2. Garante a existência de tabelas como `user_credits`, `news`, `logs`, `ai_logs`, `system_config`, `user_memory`.
-  // 3. Atualiza a função de gatilho `create_new_user_profile` para:
-  //    - Definir Plano Free = 3 créditos (padrão para novos cadastros via `supabase.auth.signUp`).
-  //    - Definir Admin/Super Admin = Créditos Ilimitados (-1) - (Ajuste via painel admin ou edge function).
-  // 4. Configura TODAS as Políticas de Segurança (RLS) para evitar erros de "Permission denied" em diversas tabelas,
-  //    garantindo que usuários e administradores tenham o acesso adequado.
-  // 5. Cria as funções RPC necessárias para o dashboard (ex: `get_daily_platform_usage`).
-  // 6. Inclui a inicialização dos planos padrão na tabela `system_config`.
-  
-  // Se você encontrar erros de "SQL_CONFIG_ERROR", "Permission denied" ou tela preta após a implantação, rodar este SQL resolverá.
-*/
-import { supabase } from './supabaseClient';
-import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, TransactionStatus, PaymentMethod, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, AIPlatformSettings } from '../types';
-import { Plan } from '../types/plan.types'; // Importar o tipo Plan
+import { api } from './api';
+import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan } from '../types';
 
-// Helper for pagination
-const getPagination = (page: number, limit: number) => {
+// Helper for client-side pagination since API might return all data
+const paginate = (items: any[], page: number, limit: number) => {
   const from = (page - 1) * limit;
-  const to = from + limit - 1;
-  return { from, to };
+  const to = from + limit;
+  return items.slice(from, to);
 };
 
 // --- CONFIGURAÇÕES GERAIS (System Config) ---
-// Centraliza a lógica de acesso a `system_config`
+
 const getConfig = async <T>(key: string, defaultValue: T): Promise<T> => {
-    const { data, error } = await supabase.from('system_config').select('value').eq('key', key).single();
-    if (error || !data) return defaultValue;
-    return data.value as T;
+    const { data, error } = await api.select('system_config', { key });
+    if (error || !data || data.length === 0) return defaultValue;
+    return data[0].value as T;
 };
 
 const setConfig = async <T>(key: string, value: T, adminId: string) => {
-    const { error } = await supabase.from('system_config').upsert({
-        key,
-        value,
-        updated_by: adminId,
-        updated_at: new Date().toISOString()
-    });
-    if (error) throw error;
+    // Usamos insert/update (upsert logic via proxy usually handled by insert or update)
+    // Vamos tentar update primeiro, se não existir, insert (ou o proxy lida com isso)
+    // Para simplificar, assumimos que a config já existe ou o insert trata duplicação.
+    // Estratégia segura: buscar, se existir update, senão insert.
+    const existing = await api.select('system_config', { key });
+    
+    if (existing.data && existing.data.length > 0) {
+        await api.update('system_config', { 
+            value, 
+            updated_by: adminId, 
+            updated_at: new Date().toISOString() 
+        }, { key });
+    } else {
+        await api.insert('system_config', {
+            key,
+            value,
+            updated_by: adminId,
+            updated_at: new Date().toISOString()
+        });
+    }
 };
 
 // --- USERS ---
@@ -61,50 +49,58 @@ export interface GetUsersParams {
 }
 
 export const getUsers = async ({ page, limit, role, status }: GetUsersParams) => {
-  const { from, to } = getPagination(page, limit);
-  let query = supabase
-    .from('app_users')
-    .select('*, user_credits(credits)', { count: 'exact' });
+  // Busca todos e filtra no cliente (limitação do proxy simples)
+  const filters: any = {};
+  if (role !== 'all') filters.role = role;
+  if (status !== 'all') filters.status = status;
 
-  if (role !== 'all') query = query.eq('role', role);
-  if (status !== 'all') query = query.eq('status', status);
-
-  const { data, error, count } = await query.range(from, to).order('created_at', { ascending: false });
-
+  const { data, error } = await api.select('app_users', filters);
   if (error) throw error;
 
-  const users: User[] = (data || []).map((u: any) => ({
-    ...u,
-    credits: u.user_credits?.[0]?.credits ?? 0
+  let usersList = data || [];
+  
+  // Buscar créditos para cada usuário (pode ser pesado, ideal seria join no backend)
+  // Workaround: Buscar todos os créditos e mapear
+  const { data: creditsData } = await api.select('user_credits');
+  const creditsMap = new Map();
+  if (creditsData) {
+      creditsData.forEach((c: any) => creditsMap.set(c.user_id, c.credits));
+  }
+
+  const enrichedUsers: User[] = usersList.map((u: any) => ({
+      ...u,
+      credits: creditsMap.get(u.id) ?? 0
   }));
 
-  return { users, count: count || 0 };
+  // Ordenação Client-side
+  enrichedUsers.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+
+  const paginatedUsers = paginate(enrichedUsers, page, limit);
+
+  return { users: paginatedUsers, count: enrichedUsers.length };
 };
 
 export const updateUser = async (userId: string, updates: { role?: UserRole; credits?: number; status?: UserStatus }, adminId: string) => {
-  // Update profile
   const profileUpdates: any = {};
   if (updates.role) profileUpdates.role = updates.role;
   if (updates.status) profileUpdates.status = updates.status;
 
   if (Object.keys(profileUpdates).length > 0) {
-    const { error: profileError } = await supabase
-      .from('app_users')
-      .update(profileUpdates)
-      .eq('id', userId);
-    if (profileError) throw profileError;
+    const { error } = await api.update('app_users', profileUpdates, { id: userId });
+    if (error) throw error;
   }
 
-  // Update credits
   if (updates.credits !== undefined) {
-    const { error: creditsError } = await supabase
-      .from('user_credits')
-      .upsert({ user_id: userId, credits: updates.credits });
-    if (creditsError) throw creditsError;
+    // Verifica se já existe registro de crédito
+    const { data: existing } = await api.select('user_credits', { user_id: userId });
+    if (existing && existing.length > 0) {
+        await api.update('user_credits', { credits: updates.credits }, { user_id: userId });
+    } else {
+        await api.insert('user_credits', { user_id: userId, credits: updates.credits });
+    }
   }
 
-  // Log action
-  await supabase.from('logs').insert({
+  await api.insert('logs', {
     usuario_id: adminId,
     acao: 'update_user',
     modulo: 'Usuários',
@@ -121,64 +117,49 @@ export interface CreateUserPayload {
 }
 
 export const createUser = async (payload: CreateUserPayload, adminId: string) => {
-  // Creating a user with password requires Supabase Auth Admin API (backend/edge function).
-  // We will assume an Edge Function 'admin-create-user' exists for this purpose.
-  
-  const { data, error } = await supabase.functions.invoke('admin-create-user', {
-      body: payload
-  });
-
-  if (error) {
-      console.error("Erro ao chamar Edge Function:", error);
-      throw new Error("Falha ao criar usuário. Verifique se a Edge Function 'admin-create-user' está configurada.");
-  }
-  
-  // Log action
-  await supabase.from('logs').insert({
-    usuario_id: adminId,
-    acao: 'create_user',
-    modulo: 'Usuários',
-    detalhes: { new_user_email: payload.email, role: payload.role }
-  });
+  // NOTA: A criação de usuário com senha requer Supabase Auth Admin.
+  // O Proxy API 'insert' em 'app_users' não cria a conta de autenticação.
+  // Como estamos limitados ao Proxy, não podemos chamar Edge Functions ou Auth Admin diretamente.
+  // -> Vamos apenas simular o erro ou avisar.
+  throw new Error("A criação de usuários via Admin requer acesso direto à API de Autenticação, não suportada pelo modo Proxy atual.");
 };
 
 // --- NEWS ---
 
 export const getNewsWithAuthors = async ({ page, limit, status }: { page?: number; limit?: number; status?: NewsStatus | 'all' } = {}) => {
-  let query = supabase
-    .from('news')
-    .select('*, author:app_users(email)', { count: 'exact' });
+  const filters: any = {};
+  if (status && status !== 'all') filters.status = status;
 
-  if (status && status !== 'all') {
-    query = query.eq('status', status);
-  }
-
-  if (page !== undefined && limit !== undefined) {
-    const { from, to } = getPagination(page, limit);
-    query = query.range(from, to);
-  }
-
-  const { data, error, count } = await query.order('criado_em', { ascending: false });
-
+  const { data, error } = await api.select('news', filters);
   if (error) throw error;
 
-  const news: NewsArticle[] = (data || []).map((n: any) => ({
-    ...n,
-    author: Array.isArray(n.author) ? n.author[0] : n.author
+  let newsList = data || [];
+  
+  // Enriquecer com emails dos autores
+  const userIds = [...new Set(newsList.map((n: any) => n.author_id).filter(Boolean))];
+  // Fetch users logic skipped for brevity/performance in simple proxy mode, or fetching all users
+  const { data: users } = await api.select('app_users');
+  const userMap = new Map();
+  if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
+
+  const enrichedNews: NewsArticle[] = newsList.map((n: any) => ({
+      ...n,
+      author: { email: userMap.get(n.author_id) || 'Desconhecido' }
   }));
 
-  return { news, count: count || 0 };
+  enrichedNews.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
+
+  if (page !== undefined && limit !== undefined) {
+      return { news: paginate(enrichedNews, page, limit), count: enrichedNews.length };
+  }
+  return { news: enrichedNews, count: enrichedNews.length };
 };
 
 export const updateNewsStatus = async (newsId: number, status: NewsStatus, adminId: string) => {
-  const { error } = await supabase
-    .from('news')
-    .update({ status })
-    .eq('id', newsId);
-
+  const { error } = await api.update('news', { status }, { id: newsId });
   if (error) throw error;
 
-  await supabase.from('logs').insert({
+  await api.insert('logs', {
     usuario_id: adminId,
     acao: 'update_news_status',
     modulo: 'Notícias',
@@ -187,14 +168,10 @@ export const updateNewsStatus = async (newsId: number, status: NewsStatus, admin
 };
 
 export const updateNewsArticle = async (id: number, titulo: string, conteudo: string, adminId: string) => {
-  const { error } = await supabase
-    .from('news')
-    .update({ titulo, conteudo })
-    .eq('id', id);
-
+  const { error } = await api.update('news', { titulo, conteudo }, { id });
   if (error) throw error;
 
-  await supabase.from('logs').insert({
+  await api.insert('logs', {
     usuario_id: adminId,
     acao: 'update_news_content',
     modulo: 'Notícias',
@@ -204,84 +181,86 @@ export const updateNewsArticle = async (id: number, titulo: string, conteudo: st
 
 // --- LOGS ---
 
-export interface GetLogsParams {
-  page: number;
-  limit: number;
-  module: string;
-  action: string;
-  searchText: string;
-}
+export const getLogs = async ({ page, limit, module, action, searchText }: any) => {
+  // Fetching all logs might be heavy. Assuming proxy returns reasonable amount or we filter hard.
+  const filters: any = {};
+  if (module !== 'all') filters.modulo = module;
+  if (action !== 'all') filters.acao = action;
 
-export const getLogs = async ({ page, limit, module, action, searchText }: GetLogsParams) => {
-  const { from, to } = getPagination(page, limit);
-  let query = supabase
-    .from('logs')
-    .select('*', { count: 'exact' });
-
-  if (module !== 'all') query = query.eq('modulo', module);
-  if (action !== 'all') query = query.eq('acao', action);
-  if (searchText) {
-      query = query.or(`acao.ilike.%${searchText}%,modulo.ilike.%${searchText}%`);
-  }
-
-  const { data, error, count } = await query.range(from, to).order('data', { ascending: false });
-
+  const { data, error } = await api.select('logs', filters);
   if (error) throw error;
-  
-  // Enrich with user emails if possible
-  const userIds = [...new Set(data?.map((l: Log) => l.usuario_id).filter(Boolean))];
-  let userMap: Record<string, string> = {};
-  
-  if (userIds.length > 0) {
-      const { data: users } = await supabase.from('app_users').select('id, email').in('id', userIds);
-      if (users) {
-          users.forEach((u: any) => userMap[u.id] = u.email);
-      }
+
+  let logsList = data || [];
+
+  if (searchText) {
+      const lowerSearch = searchText.toLowerCase();
+      logsList = logsList.filter((l: any) => 
+          (l.acao && l.acao.toLowerCase().includes(lowerSearch)) || 
+          (l.modulo && l.modulo.toLowerCase().includes(lowerSearch))
+      );
   }
 
-  const logs: Log[] = (data || []).map((l: any) => ({
+  // Enrich emails
+  const { data: users } = await api.select('app_users');
+  const userMap = new Map();
+  if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
+
+  const enrichedLogs: Log[] = logsList.map((l: any) => ({
       ...l,
-      user_email: userMap[l.usuario_id] || 'Desconhecido'
+      user_email: userMap.get(l.usuario_id) || 'Sistema'
   }));
 
-  return { logs, count: count || 0 };
+  enrichedLogs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+  return { logs: paginate(enrichedLogs, page, limit), count: enrichedLogs.length };
 };
 
 // --- PAYMENTS ---
 
 export const getTransactions = async ({ page, limit, status, method, startDate, endDate }: any) => {
-    const { from, to } = getPagination(page, limit);
-    let query = supabase.from('transactions').select('*, user:app_users(email)', { count: 'exact' });
+    const filters: any = {};
+    if (status !== 'all') filters.status = status;
+    if (method !== 'all') filters.metodo = method;
 
-    if (status !== 'all') query = query.eq('status', status);
-    if (method !== 'all') query = query.eq('metodo', method);
-    if (startDate) query = query.gte('data', startDate);
-    if (endDate) query = query.lte('data', endDate);
-
-    const { data, error, count } = await query.range(from, to).order('data', { ascending: false });
+    const { data, error } = await api.select('transactions', filters);
     if (error) throw error;
 
-    const transactions: Transaction[] = (data || []).map((t: any) => ({
+    let txList = data || [];
+
+    // Date filtering client-side
+    if (startDate) {
+        txList = txList.filter((t: any) => new Date(t.data) >= new Date(startDate));
+    }
+    if (endDate) {
+        txList = txList.filter((t: any) => new Date(t.data) <= new Date(endDate));
+    }
+
+    const { data: users } = await api.select('app_users');
+    const userMap = new Map();
+    if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
+
+    const enrichedTx: Transaction[] = txList.map((t: any) => ({
         ...t,
-        user: Array.isArray(t.user) ? t.user[0] : t.user
+        user: { email: userMap.get(t.usuario_id) || 'Desconhecido' }
     }));
 
-    return { transactions, count: count || 0 };
+    enrichedTx.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+    return { transactions: paginate(enrichedTx, page, limit), count: enrichedTx.length };
 };
 
 export const getApprovedRevenueInRange = async (startDate: string, endDate: string) => {
-    let query = supabase.from('transactions').select('valor').eq('status', 'approved');
-    if (startDate) query = query.gte('data', startDate);
-    if (endDate) query = query.lte('data', endDate);
+    const { data } = await api.select('transactions', { status: 'approved' });
+    if (!data) return 0;
 
-    const { data, error } = await query;
-    if (error) throw error;
+    let filtered = data;
+    if (startDate) filtered = filtered.filter((t: any) => new Date(t.data) >= new Date(startDate));
+    if (endDate) filtered = filtered.filter((t: any) => new Date(t.data) <= new Date(endDate));
 
-    return data?.reduce((acc: number, curr: any) => acc + curr.valor, 0) || 0;
+    return filtered.reduce((acc: number, curr: any) => acc + curr.valor, 0);
 };
 
-// --- SETTINGS (Payments & Multi AI & PLANS) ---
-
+// --- SETTINGS ---
 
 export const getPaymentSettings = async (): Promise<PaymentSettings> => {
     return getConfig<PaymentSettings>('payment_settings', {
@@ -298,7 +277,7 @@ export const saveGatewaySettings = async (gateways: any, adminId: string) => {
     const newSettings = { ...current, gateways };
     await setConfig('payment_settings', newSettings, adminId);
     
-    await supabase.from('logs').insert({
+    await api.insert('logs', {
         usuario_id: adminId,
         acao: 'update_payment_settings',
         modulo: 'Pagamentos',
@@ -311,7 +290,7 @@ export const saveCreditPackages = async (packages: CreditPackage[], adminId: str
     const newSettings = { ...current, packages };
     await setConfig('payment_settings', newSettings, adminId);
     
-    await supabase.from('logs').insert({
+    await api.insert('logs', {
         usuario_id: adminId,
         acao: 'update_payment_settings',
         modulo: 'Pagamentos',
@@ -333,7 +312,7 @@ export const getMultiAISettings = async (): Promise<MultiAISettings> => {
 export const updateMultiAISettings = async (settings: MultiAISettings, adminId: string) => {
     await setConfig('multi_ai_settings', settings, adminId);
     
-    await supabase.from('logs').insert({
+    await api.insert('logs', {
         usuario_id: adminId,
         acao: 'update_multi_ai_settings',
         modulo: 'Sistema Multi-IA',
@@ -342,37 +321,31 @@ export const updateMultiAISettings = async (settings: MultiAISettings, adminId: 
 };
 
 export const getAILogs = async ({ page, limit }: { page: number, limit: number }) => {
-     const { from, to } = getPagination(page, limit);
-     const { data, error, count } = await supabase
-        .from('ai_logs')
-        .select('*, user:app_users(email)', { count: 'exact' })
-        .range(from, to)
-        .order('data', { ascending: false });
-        
-     if (error) {
-         if (error.message.includes('relation') && error.message.includes('does not exist')) {
-             return { logs: [], count: 0 };
-         }
-         throw error;
-     }
+     const { data, error } = await api.select('ai_logs');
+     if (error) return { logs: [], count: 0 };
      
-     const logs: AILog[] = (data || []).map((l: any) => ({
+     const { data: users } = await api.select('app_users');
+     const userMap = new Map();
+     if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
+
+     const enrichedLogs: AILog[] = (data || []).map((l: any) => ({
          ...l,
-         user: Array.isArray(l.user) ? l.user[0] : l.user
+         user: { email: userMap.get(l.usuario_id) || 'N/A' }
      }));
      
-     return { logs, count: count || 0 };
+     enrichedLogs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+     return { logs: paginate(enrichedLogs, page, limit), count: enrichedLogs.length };
 };
 
 // --- PLANOS ---
-// O `all_plans` é uma chave em system_config que guarda um array de objetos Plan
 export const getPlans = async (): Promise<Plan[]> => {
     return getConfig<Plan[]>('all_plans', []);
 };
 
 export const savePlans = async (plans: Plan[], adminId: string) => {
     await setConfig('all_plans', plans, adminId);
-    await supabase.from('logs').insert({
+    await api.insert('logs', {
         usuario_id: adminId,
         acao: 'update_plans_config',
         modulo: 'Planos',
