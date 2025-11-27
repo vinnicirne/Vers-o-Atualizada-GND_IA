@@ -7,25 +7,34 @@ Bem-vindo ao **GDN_IA**! Este é o seu manual completo para dominar nossa suíte
 
 ## 🏁 1. Primeiros Passos
 
-### Acessando sua Conta
+### Testar Grátis (Modo Visitante)
+Se você ainda não tem conta, pode experimentar o sistema imediatamente!
+*   **Acesso:** Basta entrar no site.
+*   **Créditos:** Você recebe **3 créditos gratuitos** para testar ferramentas básicas (Notícias, Copy, Prompts).
+*   **Limitações:** Ferramentas avançadas (Imagens, Sites, Áudio) aparecerão com um cadeado 🔒. Para desbloquear e salvar seu histórico, crie uma conta.
+
+### Acessando sua Conta (Login)
 *   **Login:** Utilize seu e-mail e senha cadastrados.
 *   **Dashboard:** Assim que entrar, você verá o **Painel Principal**. No topo, você encontra seu **Plano Atual** e seu **Saldo de Créditos**.
-*   **Menu de Ferramentas:** Logo abaixo, você verá uma grade de ícones. Cada ícone representa uma ferramenta criativa (Notícias, Imagens, Landing Pages, etc.).
+*   **Menu de Ferramentas:** Logo abaixo, você verá uma grade de ícones.
 
 ---
 
 ## 🛠️ 2. Ferramentas Criativas (Creator Suite)
 
-O sistema possui diversos modos de operação. Selecione o modo desejado clicando no ícone correspondente no Dashboard.
-
-### 📰 1. GDN Notícias (News Generator)
-Gera artigos jornalísticos completos baseados em fatos recentes.
-*   **O que faz:** A IA pesquisa no Google eventos das últimas 48 horas e escreve uma matéria imparcial e estruturada.
+### 📰 1. GDN Notícias (News Generator) - Com SEO Avançado
+Gera artigos jornalísticos completos e já otimizados para o Google.
 *   **Como usar:**
     1. Selecione "GDN Notícias".
-    2. No campo de texto, digite o tema. *Ex: "Resultados da rodada do campeonato brasileiro de ontem" ou "Avanços da IA na medicina em 2024".*
-    3. **Opcional:** Marque a caixa **"Gerar áudio da matéria"** para criar uma narração automática.
-    4. Clique em **"Gerar Conteúdo"**.
+    2. Digite o tema. *Ex: "Resultados da rodada do campeonato brasileiro".*
+    3. Clique em **"Gerar Conteúdo"**.
+*   **Novo Painel de Resultados:**
+    *   **Título:** Separado em um box no topo com botão "Copiar Título".
+    *   **Conteúdo:** Texto limpo, sem repetição do título, com botão "Copiar Texto".
+    *   **SEO Scorecard (Novo):** Uma barra lateral mostra a nota de SEO (0 a 100). O sistema gera automaticamente:
+        *   **Palavra-Chave Foco:** Escolhida pela IA.
+        *   **Slug:** URL amigável pronta para copiar.
+        *   **Meta Descrição:** Resumo otimizado de 160 caracteres.
 
 ### 🏢 2. Site Institucional (Novo)
 Cria sites corporativos completos (Home, Sobre, Serviços, Contato) em uma única página (One-Page).
@@ -33,101 +42,65 @@ Cria sites corporativos completos (Home, Sobre, Serviços, Contato) em uma únic
 *   **Como usar:**
     1. Selecione "Site Institucional".
     2. Defina o **Estilo Visual** e **Cor da Marca**.
-    3. No prompt, digite o nome da empresa e o ramo. *Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".*
+    3. No prompt, digite o nome da empresa e o ramo. *Ex: "TechSoluções, consultoria de TI".*
     4. O sistema abrirá o Editor Visual para você ver e exportar o site.
 
 ### 🎨 3. Studio de Arte IA (Image Generation)
 Cria imagens exclusivas a partir de texto.
-*   **O que faz:** Transforma sua descrição em português para um prompt técnico em inglês e gera uma imagem de alta definição.
 *   **Como usar:**
     1. Selecione "Studio de Arte IA".
-    2. **Configurações:** Escolha o **Estilo** (ex: Fotorealista, Cyberpunk, 3D) e o **Formato** (Quadrado para Feed, Retrato para Stories).
-    3. Descreva a imagem. *Ex: "Um astronauta meditando em um jardim zen em Marte, luz do pôr do sol, estilo cinematográfico".*
-    4. Clique em **"Criar Arte"**.
-*   **Editor de Imagem:** Após gerar, uma tela de edição se abre. Você pode ajustar **Brilho**, **Contraste**, **Saturação** e aplicar filtros antes de baixar a imagem.
+    2. Escolha o **Estilo** (ex: Fotorealista, Cyberpunk) e o **Formato** (Quadrado, Paisagem).
+    3. Descreva a imagem e clique em **"Criar Arte"**.
+*   **Editor:** Ajuste Brilho, Contraste e aplique filtros antes de baixar.
 
 ### 🌐 4. Gerador de Landing Page
-Cria páginas de vendas ou captura completas (código HTML + Design).
-*   **O que faz:** Escreve o código, aplica design moderno e monta a página para você.
-*   **Como usar:**
-    1. Selecione "Gerador de Landing Page".
-    2. Defina o **Estilo Visual** (ex: Moderno, Dark, Luxo) e a **Cor Principal**.
-    3. Descreva o objetivo. *Ex: "Página de venda para um ebook de receitas fitness, focado em perda de peso, com depoimentos e botão de compra verde".*
-    4. Clique em **"Gerar Conteúdo"**.
-*   **Editor Visual:** O sistema abrirá um editor onde você pode clicar nos textos para alterar, ver como fica no celular e **Exportar** o código pronto para seu site.
+Cria páginas de vendas ou captura completas.
+*   **Editor Visual:** O sistema abre um editor onde você pode ver como fica no celular, copiar o código HTML ou exportar o arquivo pronto.
 
 ### 📱 5. Editor Visual (Social Media)
-Gera layouts prontos para redes sociais (Instagram/Facebook).
-*   **O que faz:** Cria a estrutura visual (fundo, tipografia, disposição) baseada no seu pedido.
-*   **Como usar:**
-    1. Selecione "Editor Visual".
-    2. Descreva o post. *Ex: "Post de Promoção de Natal, fundo vermelho vibrante, texto grande '50% OFF' em dourado".*
-    3. O sistema gerará o layout e abrirá o editor para você ajustar os detalhes finais.
+Gera layouts prontos para redes sociais. Descreva o post (ex: "Promoção de Natal, fundo vermelho") e receba o design codificado.
 
 ### 🗣️ 6. Texto para Voz (Text-to-Speech)
-Transforma qualquer texto escrito em áudio narrado por IA.
-*   **Como usar:**
-    1. Selecione "Texto para Voz".
-    2. Cole o texto desejado e clique em gerar.
-    3. Clique em gerar e utilize o player para ouvir ou baixar o áudio.
+Transforma qualquer texto escrito em áudio narrado por IA. Ideal para criar narrações para seus vídeos ou notícias.
 
 ### ✍️ 7. Gerador de Copy & Prompts
-*   **Gerador de Copy:** Cria textos persuasivos para anúncios, e-mails ou legendas. *Ex: "Copy para vender um curso de inglês para viajantes".*
-*   **Gerador de Prompts:** Ajuda você a criar instruções perfeitas para usar em outras IAs (como ChatGPT ou Midjourney).
+*   **Gerador de Copy:** Cria textos persuasivos para anúncios (Facebook Ads, Google Ads).
+*   **Gerador de Prompts:** Cria instruções perfeitas para usar em outras IAs (ChatGPT, Midjourney).
 
 ---
 
 ## 🤝 3. Programa de Afiliados (Ganhe Dinheiro)
 
-Você pode ganhar dinheiro indicando o GDN_IA para outras pessoas.
-
-1.  **Acesso:** Clique no ícone de **Aperto de Mão** (🤝) no cabeçalho do Dashboard.
-2.  **Seu Link:** O sistema gerará um link exclusivo (ex: `gdn.ia/?ref=SEU-NOME-123`). Copie e envie para amigos ou clientes.
-3.  **Comissão:**
-    *   Você ganha **20% de comissão** sobre **todas** as compras que seus indicados fizerem (Planos ou Créditos).
-    *   A comissão é recorrente: se o usuário renovar o plano, você ganha novamente.
-4.  **Saque:** Quando tiver saldo disponível, clique no botão "Solicitar Saque" dentro do modal de afiliados.
+Você pode ganhar dinheiro indicando o GDN_IA.
+1.  Clique no ícone de **Aperto de Mão** (🤝) no topo.
+2.  Copie seu link exclusivo.
+3.  Ganhe **20% de comissão** recorrente sobre todas as compras dos seus indicados.
 
 ---
 
 ## 💎 4. Planos e Créditos
 
 O GDN_IA funciona com um sistema de economia baseada em créditos.
-
-### Consumo de Créditos
-Cada ferramenta tem um custo diferente baseado na complexidade da geração:
-*   **Texto Simples (News, Copy, Prompts, Voz):** 1 Crédito.
+*   **Texto Simples:** 1 Crédito.
 *   **Imagens e Artes:** 3 Créditos.
 *   **Landing Pages:** 5 Créditos.
 *   **Sites Institucionais:** 8 Créditos.
 
-### Gerenciando seu Plano
-No topo do site, clique no botão **"Planos"** ou no ícone de moedas.
-*   **Assinaturas:** Planos mensais (Basic, Standard, Premium) que renovam seus créditos todo mês e liberam ferramentas exclusivas.
-*   **Recarga Expressa:** Se seus créditos acabarem antes do mês virar, você pode comprar pacotes avulsos (pagamento único via Pix ou Cartão) sem precisar mudar de plano. Use a barra deslizante para escolher a quantidade.
+**Gerenciando seu Plano:**
+Clique no botão **"Planos"** ou no ícone de moedas para fazer upgrade ou comprar pacotes de créditos avulsos (Recarga Expressa).
 
 ---
 
 ## 🧠 5. Memória e Feedback
 
-A IA do GDN aprende com você!
-*   Após cada geração, um widget aparecerá perguntando: **"De 0 a 10, como ficou?"**.
-*   **Se você der nota alta (8-10):** O sistema salva aquele estilo como um "Padrão de Sucesso" e tentará replicar em futuras gerações.
-*   **Se você der nota baixa (0-4):** O sistema entende como um erro a ser evitado.
-*   **Dica:** Sempre avalie suas gerações para que a IA fique cada vez mais personalizada para o seu gosto.
+A IA aprende com você! Após cada geração, dê uma nota de 0 a 10. O sistema memoriza seus gostos (notas altas) e evita seus desgostos (notas baixas) nas próximas gerações.
 
 ---
 
-## ❓ Perguntas Frequentes
+## ❓ Dicas de Uso
 
-**1. Minha Landing Page não aparece corretamente no editor.**
-*   Às vezes, o carregamento visual pode demorar alguns segundos. Tente clicar no botão "Mostrar/Ocultar Bordas" no topo do editor para forçar uma atualização da tela.
-
-**2. Posso usar as imagens comercialmente?**
-*   Sim! Todas as imagens geradas no Studio de Arte são únicas e de sua propriedade.
-
-**3. O sistema parou de gerar (Tela de Erro).**
-*   Verifique se você tem créditos suficientes. Se o problema persistir, atualize a página.
+**Organização na hora de publicar:**
+Use os botões de "Copiar" individuais. Copie primeiro o **Título** para o campo de título do seu Blog, depois o **Conteúdo** para o corpo, e por fim use os dados do **SEO Scorecard** (Meta Descrição e Slug) nos campos de plugin de SEO (como Yoast ou Rank Math).
 
 ---
 

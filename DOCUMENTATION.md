@@ -10,25 +10,26 @@ Bem-vindo à documentação completa do **GDN_IA (Gerador de Notícias Inteligen
 O GDN_IA é uma suíte criativa impulsionada por Inteligência Artificial (Gemini 2.5) projetada para gerar notícias, imagens, landing pages, sites institucionais, áudio e textos de marketing com alta qualidade.
 
 ## 1. Acesso e Conta
-*   **Login/Cadastro:** Acesse a tela inicial. Se não tiver conta, clique em "Criar uma conta".
-    *   *Nota:* O cadastro pode estar restrito a domínios corporativos ou e-mails válidos, dependendo da configuração de segurança.
+*   **Modo Visitante (Novo):** Você pode testar ferramentas básicas (Notícias, Copy, Prompts) gratuitamente sem precisar fazer login. O sistema concede **3 créditos temporários**.
+*   **Login/Cadastro:** Para desbloquear ferramentas avançadas (Imagens, Sites, Áudio) e salvar seu histórico, crie uma conta gratuita.
 *   **Logout:** Clique no ícone de "Sair" (porta com seta) no cabeçalho superior direito.
 
 ## 2. Dashboard (Painel Principal)
-Ao logar, você verá o Dashboard. Ele contém:
-*   **Cabeçalho:** Mostra seu plano atual, saldo de créditos e data do último acesso.
-*   **Botão Histórico:** Um ícone de relógio para acessar suas gerações passadas.
-*   **Botão Afiliados:** Um ícone de aperto de mão (🤝) para acessar seu link de indicação e ver seus ganhos.
-*   **Seletor de Ferramentas:** Uma grade com ícones representando cada módulo da IA.
+Ao acessar, você verá o Dashboard. Ele contém:
+*   **Cabeçalho:** Mostra seu plano atual (ou "Visitante"), saldo de créditos e data do último acesso.
+*   **Botão Histórico:** Um ícone de relógio para acessar suas gerações passadas (Apenas usuários logados).
+*   **Botão Afiliados:** Um ícone de aperto de mão (🤝) para acessar seu link de indicação.
+*   **Seletor de Ferramentas:** Uma grade com ícones representando cada módulo da IA. Ícones com cadeado indicam recursos exclusivos de planos superiores ou login necessário.
 
 ## 3. Ferramentas do Creator Suite
 
 ### 📰 GDN Notícias (News Generator)
-Gera artigos jornalísticos baseados em fatos recentes.
+Gera artigos jornalísticos baseados em fatos recentes com foco total em **SEO (Search Engine Optimization)**.
+*   **SEO Automático (Score 100):** O sistema analisa o texto gerado, escolhe a melhor palavra-chave automaticamente e gera Título, Slug e Meta Descrição otimizados, prontos para copiar.
+*   **Organização:** O resultado é separado em caixas distintas: Título, Conteúdo e Metadados, facilitando a cópia para seu CMS (WordPress/Blog).
 *   **Busca:** A IA acessa o Google Search para buscar dados das últimas 48h.
-*   **Áudio:** Marque "Gerar áudio da matéria" para narração automática (TTS).
 
-### 🏢 Site Institucional (Novo)
+### 🏢 Site Institucional
 Cria sites corporativos completos em segundos.
 *   **Estrutura:** Gera Home, Sobre Nós, Serviços e Contato em formato One-Page.
 *   **Design:** Utiliza Tailwind CSS e imagens profissionais.
@@ -107,4 +108,4 @@ Auditoria completa do sistema.
 
 ---
 
-**GDN_IA v1.0.6** - Documentação atualizada.
+**GDN_IA v1.0.7** - Documentação atualizada com melhorias de SEO e Modo Visitante.

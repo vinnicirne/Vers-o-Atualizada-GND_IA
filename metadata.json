@@ -1,6 +1,6 @@
 {
-  "name": "GDN_IA_Versão_1.0.6 - Produção",
+  "name": "GDN_IA_Versão_1.0.7 - Produção",
   "description": "An intelligent news generator application that creates articles based on recent events within the last 48 hours using web search, as well as predictive news for future events.",
-  "version": "1.0.3",
+  "version": "1.0.7",
   "requestFramePermissions": []
 }

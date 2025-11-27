@@ -17,6 +17,13 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
+  // Sincroniza o código local se o usuário atualizar no contexto
+  useEffect(() => {
+      if (user?.affiliate_code) {
+          setCode(user.affiliate_code);
+      }
+  }, [user]);
+
   useEffect(() => {
     const init = async () => {
         if (!user) return;
@@ -28,7 +35,7 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
             try {
                 const newCode = await generateAffiliateCode(user.id, user.full_name || 'User');
                 setCode(newCode);
-                await refresh(); // Atualiza contexto
+                await refresh(); // Atualiza contexto para persistir
             } catch (e) {
                 console.error("Erro ao gerar código:", e);
             } finally {
@@ -56,13 +63,38 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [user, onClose]);
+  }, [user, onClose, refresh]); // Dependências ajustadas
 
-  const affiliateLink = code ? `${window.location.origin}?ref=${code}` : 'Gerando...';
+  // Construção robusta do link
+  const getAffiliateLink = () => {
+      if (!code) return '';
+      const origin = window.location.origin;
+      const separator = origin.endsWith('/') ? '' : '/';
+      return `${origin}${separator}?ref=${code}`;
+  };
 
-  const copyToClipboard = () => {
-      navigator.clipboard.writeText(affiliateLink);
-      alert("Link copiado para a área de transferência!");
+  const affiliateLink = code ? getAffiliateLink() : 'Gerando...';
+
+  const copyToClipboard = async () => {
+      if (!code) return;
+      try {
+          await navigator.clipboard.writeText(affiliateLink);
+          alert("Link copiado para a área de transferência!");
+      } catch (err) {
+          console.error("Falha ao copiar:", err);
+          // Fallback manual se a API falhar
+          const textArea = document.createElement("textarea");
+          textArea.value = affiliateLink;
+          document.body.appendChild(textArea);
+          textArea.select();
+          try {
+            document.execCommand("copy");
+            alert("Link copiado!");
+          } catch (e) {
+            alert("Não foi possível copiar automaticamente. Por favor selecione e copie.");
+          }
+          document.body.removeChild(textArea);
+      }
   };
 
   const requestPayout = () => {
@@ -121,7 +153,7 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
                     </div>
                     <button 
                         onClick={copyToClipboard}
-                        disabled={generating}
+                        disabled={generating || !code}
                         className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-lg transition shadow-lg shadow-yellow-600/20 whitespace-nowrap"
                     >
                         <i className="fas fa-copy mr-2"></i> Copiar Link

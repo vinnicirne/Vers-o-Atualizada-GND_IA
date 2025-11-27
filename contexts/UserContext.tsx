@@ -21,7 +21,10 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchUserProfile = useCallback(async (authUser: AuthUser | null) => {
+    // Resetar erro apenas se não for um erro crítico persistente, 
+    // mas aqui limpamos para tentar nova busca
     setError(null);
+    
     if (!authUser) {
       setUser(null);
       return;
@@ -34,17 +37,25 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       if (profileError) {
          console.error("Erro ao buscar perfil real:", profileError);
          
-         // Tratamento para erro de conexão/rede
+         // Tratamento para erro de conexão/rede (Failed to fetch)
+         // IMPORTANTE: Não definimos 'setError' aqui para não bloquear o app inteiro com a tela vermelha.
+         // Se falhar o fetch, assumimos que o usuário está "deslogado" temporariamente (Modo Visitante) 
+         // ou mostramos um aviso discreto na UI via Toast (se implementado globalmente), 
+         // mas permitimos o render do App.
          if (typeof profileError === 'string' && profileError.toLowerCase().includes('failed to fetch')) {
-             setError('Erro de Conexão: Não foi possível contactar o servidor. Verifique sua internet ou se há bloqueadores (AdBlock) ativos.');
+             console.warn("Entrando em modo de degradação graciosa devido a falha de rede.");
+             setUser(null); // Fallback para visitante
              return;
          }
 
-         // Se for um erro de permissão RLS
+         // Se for um erro de permissão RLS, isso é configuração crítica
          if (typeof profileError === 'string' && (profileError.includes('permission denied') || profileError.includes('policy'))) {
              setError(`SQL_CONFIG_ERROR: ${profileError}`);
          } else {
-             setError(`Erro ao carregar perfil: ${profileError}`);
+             // Outros erros (perfil não encontrado, etc)
+             // Não bloqueamos o app, apenas não logamos o usuário
+             console.warn(`Erro não fatal ao carregar perfil: ${profileError}`);
+             setUser(null);
          }
          return;
       }
@@ -54,7 +65,7 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       if (!profileData) {
          // Perfil não existe no banco real.
          console.warn("Usuário autenticado, mas sem perfil na tabela 'app_users'.");
-         setError("Perfil de usuário não encontrado no banco de dados.");
+         // Não bloqueia, apenas desloga
          setUser(null);
          return;
       }
@@ -73,15 +84,19 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       setUser(userProfile);
       
     } catch (e: any) {
-      console.error("Erro crítico em fetchUserProfile:", e);
+      console.error("Exceção em fetchUserProfile:", e);
       const msg = e.message || JSON.stringify(e);
       
+      // Se for erro de fetch na exceção
       if (msg.toLowerCase().includes('failed to fetch')) {
-          setError('Erro de Conexão: O sistema não conseguiu carregar seus dados. Verifique sua conexão com a internet.');
+          console.warn("Falha de rede detectada. Mantendo app em modo visitante.");
+          setUser(null);
+          // Não setamos setError para não ativar o Modal de Erro Crítico
       } else {
-          setError(msg || 'Erro inesperado ao carregar usuário.');
+          // Erros inesperados de lógica ainda podem ser críticos, mas preferimos não matar o app se possível
+          console.error(msg);
+          setUser(null);
       }
-      setUser(null);
     }
   }, []);
 
@@ -113,6 +128,7 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
         await fetchUserProfile(session?.user ?? null);
       } catch (err) {
         console.error("Falha na inicialização da sessão:", err);
+        // Em caso de erro fatal na inicialização, permitimos o app carregar como visitante
       } finally {
         setLoading(false);
       }

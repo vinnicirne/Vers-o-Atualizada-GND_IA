@@ -31,7 +31,27 @@ const DOMAIN_BLACKLIST = [
 
 // Gera um código de afiliado único (ex: JOHN-DOE-123)
 export const generateAffiliateCode = async (userId: string, fullName: string): Promise<string> => {
-    const base = fullName.split(' ')[0].toUpperCase().replace(/[^A-Z]/g, '');
+    let base = 'PARTNER';
+    
+    if (fullName) {
+        // 1. Pega o primeiro nome
+        // 2. Normaliza (separa acentos: Á -> A + ´)
+        // 3. Remove os caracteres de acento
+        // 4. Converte para maiúsculas
+        // 5. Remove tudo que não for letra A-Z
+        base = fullName
+            .split(' ')[0]
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, "")
+            .toUpperCase()
+            .replace(/[^A-Z]/g, '');
+    }
+    
+    // Fallback: Se o nome for vazio ou inválido (ex: símbolos), usa 'PARTNER'
+    if (!base || base.length < 2) {
+        base = 'PARTNER';
+    }
+
     const random = Math.floor(1000 + Math.random() * 9000);
     const code = `${base}-${random}`;
     
