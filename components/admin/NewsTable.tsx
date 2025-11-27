@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getNewsWithAuthors, updateNewsStatus } from '../../services/adminService';
 import { NewsArticle, NewsStatus } from '../../types';
@@ -10,9 +11,10 @@ const NEWS_PER_PAGE = 10;
 interface NewsTableProps {
     onEdit: (article: NewsArticle) => void;
     dataVersion: number;
+    statusFilter?: NewsStatus | 'all'; // Now optional and can be passed
 }
 
-export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
+export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilter = 'all' }: NewsTableProps) {
   const { user: adminUser } = useUser();
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [totalNews, setTotalNews] = useState(0);
@@ -24,7 +26,7 @@ export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
 
   // Filtering and pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState<NewsStatus | 'all'>('all');
+  const [currentStatusFilter, setCurrentStatusFilter] = useState<NewsStatus | 'all'>(initialStatusFilter);
 
   const fetchNews = useCallback(async () => {
     try {
@@ -33,7 +35,7 @@ export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
       const { news: newsList, count } = await getNewsWithAuthors({ 
           page: currentPage, 
           limit: NEWS_PER_PAGE,
-          status: statusFilter,
+          status: currentStatusFilter,
       });
       setNews(newsList);
       setTotalNews(count);
@@ -42,7 +44,7 @@ export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, statusFilter]);
+  }, [currentPage, currentStatusFilter]);
 
   useEffect(() => {
     fetchNews();
@@ -50,7 +52,12 @@ export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [statusFilter]);
+  }, [currentStatusFilter]);
+
+  useEffect(() => {
+    // Update local filter state if initialStatusFilter changes (e.g., when switching tabs in NewsManager)
+    setCurrentStatusFilter(initialStatusFilter);
+  }, [initialStatusFilter]);
 
   const handleStatusChange = async (newsId: number, status: NewsStatus) => {
     if (!adminUser) {
@@ -83,16 +90,18 @@ export function NewsTable({ onEdit, dataVersion }: NewsTableProps) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
           <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Gerenciamento de Notícias</h2>
           <div className="flex items-center space-x-4">
-            <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as NewsStatus | 'all')}
-                className="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500"
-            >
-              <option value="all">Todos os Status</option>
-              <option value="pending">Pendente</option>
-              <option value="approved">Aprovada</option>
-              <option value="rejected">Rejeitada</option>
-            </select>
+            {initialStatusFilter === 'all' && ( // Only show dropdown if it's the general news view
+              <select
+                  value={currentStatusFilter}
+                  onChange={(e) => setCurrentStatusFilter(e.target.value as NewsStatus | 'all')}
+                  className="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500"
+              >
+                <option value="all">Todos os Status</option>
+                <option value="pending">Pendente</option>
+                <option value="approved">Aprovada</option>
+                <option value="rejected">Rejeitada</option>
+              </select>
+            )}
           </div>
         </div>
 

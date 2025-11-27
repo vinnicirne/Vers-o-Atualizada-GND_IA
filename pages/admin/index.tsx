@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
 import { UserTable } from '../../components/admin/UserTable';
@@ -10,7 +11,8 @@ import { NewsManager } from '../../components/admin/NewsManager';
 import { PaymentsManager } from '../../components/admin/PaymentsManager';
 import { MultiIASystem } from '../../components/admin/MultiIASystem';
 import { CreateUserModal } from '../../components/admin/CreateUserModal';
-import { PlansManager } from '../../components/admin/PlansManager'; // Importar o PlansManager
+import { PlansManager } from '../../components/admin/PlansManager'; 
+import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; // Novo componente
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -31,6 +33,22 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   // State for UI feedback and data refresh
   const [dataVersion, setDataVersion] = useState(0);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); 
+
+  useEffect(() => {
+    fetch('./metadata.json')
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => setMetadata(data))
+      .catch(err => {
+        console.error("Failed to load metadata:", err);
+        setMetadata({ version: 'Erro' }); 
+      });
+  }, []);
 
   const refreshData = () => setDataVersion(v => v + 1);
 
@@ -72,7 +90,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       await createUser(payload, user.id);
       setToast({ message: `Usuário ${payload.email} criado com sucesso!`, type: 'success' });
       setCreateUserModalOpen(false);
-      refreshData(); // This will trigger a refresh in the UserTable
+      refreshData(); 
     } catch (error: any) {
       setToast({ message: error.message || 'Falha ao criar usuário.', type: 'error' });
     }
@@ -93,12 +111,14 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <NewsManager onEdit={handleOpenEditModal} dataVersion={dataVersion} />;
       case 'payments':
         return <PaymentsManager />;
-      case 'plans': // NOVO CASE
+      case 'plans': 
         return <PlansManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
       case 'logs':
         return <LogsViewer />;
+      case 'docs': // Novo case
+        return <DocumentationViewer />;
       default:
         return (
           <>
@@ -123,6 +143,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         pageTitle="Painel Administrativo"
         userCredits={user.credits}
         userRole={user.role}
+        metadata={metadata} 
       />
       <div className="container mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
         <Sidebar currentView={currentView} setCurrentView={setCurrentView} />

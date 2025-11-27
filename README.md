@@ -15,14 +15,6 @@ View your app in AI Studio: https://ai.studio/apps/drive/1o3ff8EzlWEDI0N6QP_6AX2
 
 1. Install dependencies:
    `npm install`
-2. Set the following environment variables in a `.env.local` file in the project root:
-   ```
-   VITE_SUPABASE_URL="YOUR_SUPABASE_URL"
-   VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
-   VITE_GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-   ```
-   Replace `YOUR_SUPABASE_URL`, `YOUR_SUPABASE_ANON_KEY`, and `YOUR_GEMINI_API_KEY` with your actual keys.
-   
-   **Important:** All client-side environment variables for Vite MUST be prefixed with `VITE_`.
+2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`

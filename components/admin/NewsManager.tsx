@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { NewsApprovalTable } from './NewsApprovalTable';
-import { NewsTable } from './NewsTable';
-import { NewsArticle } from '../../types';
+import { NewsTable } from './NewsTable'; // Use NewsTable for both
+import { NewsArticle, NewsStatus } from '../../types';
 
 interface NewsManagerProps {
     onEdit: (article: NewsArticle) => void;
@@ -38,8 +37,8 @@ export function NewsManager({ onEdit, dataVersion }: NewsManagerProps) {
 
             {/* Tab Content */}
             <div>
-                {activeTab === 'pending' && <NewsApprovalTable onEdit={onEdit} dataVersion={dataVersion} />}
-                {activeTab === 'history' && <NewsTable onEdit={onEdit} dataVersion={dataVersion} />}
+                {activeTab === 'pending' && <NewsTable onEdit={onEdit} dataVersion={dataVersion} statusFilter='pending' />}
+                {activeTab === 'history' && <NewsTable onEdit={onEdit} dataVersion={dataVersion} statusFilter='all' />}
             </div>
         </div>
     );

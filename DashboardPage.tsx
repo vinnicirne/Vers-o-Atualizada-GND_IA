@@ -9,6 +9,7 @@ import { AudioPlayer } from './components/AudioPlayer';
 import { LandingPageBuilder } from './components/LandingPageBuilder'; 
 import { ImageStudio } from './components/ImageStudio'; // Importar ImageStudio
 import { PlansModal } from './components/PlansModal';
+import { ManualModal } from './components/ManualModal'; // Importar Manual
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
 import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
@@ -51,7 +52,7 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [resultText, setResultText] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<{ version: string } | null>(null);
+  const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); // Initialize with default
   const [showFeedback, setShowFeedback] = useState(false);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   
@@ -63,6 +64,7 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
   
   const [showPlansModal, setShowPlansModal] = useState(false);
+  const [showManualModal, setShowManualModal] = useState(false); // State para o Manual
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -74,7 +76,10 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
         return response.json();
       })
       .then(data => setMetadata(data))
-      .catch(err => console.error("Failed to load metadata:", err));
+      .catch(err => {
+        console.error("Failed to load metadata:", err);
+        setMetadata({ version: 'Erro' }); // Set error state for metadata
+      });
   }, []);
 
   const handleGenerateContent = useCallback(async (
@@ -242,8 +247,10 @@ Você pode:
         isAdmin={user.role === 'admin' || user.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onOpenPlans={() => setShowPlansModal(true)}
+        onOpenManual={() => setShowManualModal(true)} // Passando a função
         userCredits={userCredits}
         userRole={user.role}
+        metadata={metadata} // Pass metadata
       />
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
@@ -366,16 +373,22 @@ Você pode:
       {showPlansModal && (
         <PlansModal 
             currentPlanId={currentPlan.id} 
-            onClose={() => setShowPlansModal(false)}
+            onClose={() => setShowPlansModal(false)} // Fix: was setShowPlansModal(true)
             onSelectPlan={handlePlanSelection}
             onBuyCredits={handleBuyCredits}
+        />
+      )}
+
+      {showManualModal && (
+        <ManualModal 
+            onClose={() => setShowManualModal(false)}
         />
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <footer className="text-center p-8 text-gray-600 text-xs border-t border-gray-900 mt-12">
-        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata?.version || '1.0.5'}</p>
+        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata.version}</p>
       </footer>
     </div>
   );

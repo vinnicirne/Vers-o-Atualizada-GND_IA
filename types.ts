@@ -1,3 +1,4 @@
+
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
 export type { Plan, ServiceKey, UserPlan }; // Re-exportar para uso em outros arquivos
@@ -46,7 +47,7 @@ export interface Log {
   detalhes?: Record<string, any>;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs';
 
 export type TransactionStatus = 'pending' | 'approved' | 'failed';
 export type PaymentMethod = 'pix' | 'card';

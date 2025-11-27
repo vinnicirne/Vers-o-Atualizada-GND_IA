@@ -11,8 +11,8 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        // Apenas a API Key do Gemini, que é usada diretamente com import.meta.env no código
-        // Removido o define para process.env.API_KEY, agora usado diretamente import.meta.env.GEMINI_API_KEY
+        // Apenas a API Key do Gemini, que é usada diretamente com process.env no código
+        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
       },
       resolve: {
         alias: {

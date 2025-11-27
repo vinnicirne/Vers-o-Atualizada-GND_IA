@@ -9,13 +9,15 @@ interface HeaderProps {
   onNavigateToAdmin?: () => void;
   onNavigateToDashboard?: () => void;
   onNewUserClick?: () => void;
-  onOpenPlans?: () => void; // New Prop
+  onOpenPlans?: () => void; 
+  onOpenManual?: () => void; // Nova prop
   pageTitle?: string;
   userCredits?: number;
   userRole?: UserRole;
+  metadata?: { version: string }; 
 }
 
-export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavigateToDashboard, onNewUserClick, onOpenPlans, pageTitle, userCredits, userRole }: HeaderProps) {
+export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavigateToDashboard, onNewUserClick, onOpenPlans, onOpenManual, pageTitle, userCredits, userRole, metadata }: HeaderProps) {
   const isAdminView = !!onNavigateToDashboard;
 
   if (isAdminView) {
@@ -33,7 +35,7 @@ export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavi
             {/* Status Badges */}
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Versão do Sistema">
               <i className="fas fa-code-branch"></i>
-              <span className="font-semibold text-gray-400">v1.0.3</span>
+              <span className="font-semibold text-gray-400">v{metadata?.version || 'N/A'}</span>
             </div>
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Ambiente">
               <i className="fas fa-server text-blue-400"></i>
@@ -107,6 +109,18 @@ export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavi
           <p className="text-center text-green-400/80 mt-1 text-sm md:text-base">{pageTitle || 'Seu Gerador de Notícias Inteligente'}</p>
         </div>
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-4">
+          
+          {/* Botão de Ajuda (Novo) */}
+          {onOpenManual && (
+            <button
+                onClick={onOpenManual}
+                className="hidden md:flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
+                title="Manual do Usuário"
+            >
+                <i className="fas fa-question text-sm"></i>
+            </button>
+          )}
+
           {userCredits !== undefined && (
              <div 
                 onClick={onOpenPlans} 
