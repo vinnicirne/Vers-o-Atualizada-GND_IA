@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -19,13 +20,15 @@ const AdminLoader = () => (
 function AppContent() {
   const { user, loading, error } = useUser();
   
-  // ROTEAMENTO: Inicializa o estado com base na URL (query param ?page=admin)
-  const getInitialPage = (): 'dashboard' | 'admin' => {
+  // ROTEAMENTO: Inicializa o estado com base na URL
+  const getInitialPage = (): 'dashboard' | 'admin' | 'login' => {
     if (typeof window !== 'undefined' && window.location.search) {
         try {
             const params = new URLSearchParams(window.location.search);
             const page = params.get('page');
-            return (page === 'admin') ? 'admin' : 'dashboard';
+            if (page === 'admin') return 'admin';
+            if (page === 'login') return 'login';
+            return 'dashboard';
         } catch (e) {
             console.warn('Erro ao ler URLSearchParams:', e);
             return 'dashboard';
@@ -34,7 +37,14 @@ function AppContent() {
     return 'dashboard';
   };
 
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'admin'>(getInitialPage);
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'admin' | 'login'>(getInitialPage);
+
+  // Se o usuário logar enquanto estiver na tela de login, manda pro dashboard
+  useEffect(() => {
+    if (user && currentPage === 'login') {
+      setCurrentPage('dashboard');
+    }
+  }, [user, currentPage]);
 
   // Sincroniza a URL quando o estado muda e lida com o botão "Voltar" do navegador
   useEffect(() => {
@@ -57,12 +67,11 @@ function AppContent() {
         const queryString = params.toString() ? '?' + params.toString() : '';
         const newUrl = `${window.location.pathname}${queryString}`;
         
-        // Evita pushState se a URL já for a mesma (evita loop ou histórico duplicado)
+        // Evita pushState se a URL já for a mesma
         if (window.location.search !== queryString) {
             try {
                 window.history.pushState({}, '', newUrl);
             } catch (e) {
-                // Silencia erros de SecurityError em ambientes sandboxed (blob:) que bloqueiam pushState
                 console.warn('Navigation state update skipped due to environment restrictions:', e);
             }
         }
@@ -72,7 +81,6 @@ function AppContent() {
   }, [currentPage]);
 
 
-  // Navega para a página de administração
   const handleNavigateToAdmin = () => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
       setCurrentPage('admin');
@@ -81,6 +89,10 @@ function AppContent() {
   
   const handleNavigateToDashboard = () => {
     setCurrentPage('dashboard');
+  };
+
+  const handleNavigateToLogin = () => {
+    setCurrentPage('login');
   };
 
   if (error) {
@@ -144,24 +156,35 @@ function AppContent() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        {/* Loader inicial simples */}
         <p className="text-green-400 animate-pulse">Iniciando sistema...</p>
       </div>
     );
   }
 
+  // ROTEAMENTO PRINCIPAL
   return (
     <>
-      {!user ? (
-        <LoginPage />
-      ) : (
-        <>
-          {currentPage === 'dashboard' && (
+        {currentPage === 'login' && (
+            <div className="relative">
+                {/* Botão para voltar ao modo visitante */}
+                <button 
+                    onClick={handleNavigateToDashboard}
+                    className="absolute top-4 left-4 z-50 text-gray-400 hover:text-white flex items-center gap-2 px-4 py-2 bg-black/50 rounded-lg"
+                >
+                    <i className="fas fa-arrow-left"></i> Voltar ao Dashboard (Visitante)
+                </button>
+                <LoginPage />
+            </div>
+        )}
+
+        {currentPage === 'dashboard' && (
             <DashboardPage 
-              onNavigateToAdmin={handleNavigateToAdmin}
+                onNavigateToAdmin={handleNavigateToAdmin}
+                onNavigateToLogin={handleNavigateToLogin}
             />
-          )}
-          {currentPage === 'admin' && (
+        )}
+        
+        {currentPage === 'admin' && (
              <AdminGate onAccessDenied={handleNavigateToDashboard}>
                <Suspense fallback={<AdminLoader />}>
                   <AdminPage 
@@ -169,9 +192,7 @@ function AppContent() {
                   />
                </Suspense>
             </AdminGate>
-          )}
-        </>
-      )}
+        )}
     </>
   );
 }

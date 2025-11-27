@@ -89,11 +89,16 @@ export const generateCreativeContent = async (
   const modelName = 'gemini-2.5-flash';
   
   let userMemory = '';
+  // Modificação: Só busca preferências se houver um usuário logado
   if (userId) {
-    userMemory = await getUserPreferences(userId);
+    try {
+        userMemory = await getUserPreferences(userId);
+    } catch (e) {
+        console.warn('Falha ao buscar memória do usuário, prosseguindo sem.', e);
+    }
   }
 
-  const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda."}`;
+  const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
   let fullPrompt = `
     Query do usuário: ${prompt}
@@ -193,6 +198,7 @@ export const generateCreativeContent = async (
     }
   }
 
+  // Modificação: Só salva memória se houver ID
   if (userId) {
     saveGenerationResult(userId, `Modo: ${mode}\nPrompt: ${prompt}\nResultado: ${text.substring(0, 500)}...`);
   }

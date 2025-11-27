@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { UserRole } from '../types';
 
@@ -7,7 +8,7 @@ interface HeaderProps {
   isAdmin?: boolean;
   onNavigateToAdmin?: () => void;
   onNavigateToDashboard?: () => void;
-  onNavigateToLogin?: () => void;
+  onNavigateToLogin?: () => void; // Novo prop para ir ao login
   onNewUserClick?: () => void;
   onOpenPlans?: () => void; 
   onOpenManual?: () => void; 
@@ -174,6 +175,7 @@ export function Header({
             </div>
           )}
           
+          {/* Se estiver logado, mostra "Planos". Se não, não mostra botão extra (o login já leva lá) */}
           {isLoggedIn && onOpenPlans && (
             <button
                 onClick={onOpenPlans}
@@ -194,6 +196,7 @@ export function Header({
                <span className="hidden md:inline ml-2">Admin</span>
             </button>
           )}
+
            {onNavigateToDashboard && (
              <button
               onClick={onNavigateToDashboard}
@@ -204,8 +207,9 @@ export function Header({
                <span className="hidden md:inline ml-2">Dashboard</span>
             </button>
           )}
+
           {isLoggedIn && onLogout ? (
-             <button
+              <button
                 onClick={onLogout}
                 className="bg-red-600/50 text-white px-3 py-2 rounded-lg hover:bg-red-500 transition-colors duration-200 text-sm font-semibold border border-red-500"
                 title="Sair"
