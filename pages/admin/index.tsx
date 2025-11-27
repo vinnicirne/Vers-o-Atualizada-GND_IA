@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -14,12 +12,13 @@ import { PaymentsManager } from '../../components/admin/PaymentsManager';
 import { MultiIASystem } from '../../components/admin/MultiIASystem';
 import { CreateUserModal } from '../../components/admin/CreateUserModal';
 import { PlansManager } from '../../components/admin/PlansManager'; 
-import { SecurityManager } from '../../components/admin/SecurityManager'; // Novo
+import { SecurityManager } from '../../components/admin/SecurityManager'; 
 import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; 
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
+import { downloadSitemap } from '../../services/sitemapService'; // Import Sitemap function
 
 interface AdminPageProps {
   onNavigateToDashboard: () => void;
@@ -99,11 +98,25 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     }
   };
 
+  // --- Sitemap Handler ---
+  const handleDownloadSitemap = async () => {
+      setToast({ message: "Gerando Sitemap...", type: 'success' });
+      await downloadSitemap();
+  };
+
   const renderContent = () => {
     switch (currentView) {
       case 'dashboard':
         return (
           <>
+            <div className="flex justify-end mb-4">
+                <button 
+                    onClick={handleDownloadSitemap}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg text-sm border border-gray-600 flex items-center gap-2"
+                >
+                    <i className="fas fa-sitemap text-orange-400"></i> Download Sitemap.xml
+                </button>
+            </div>
             <MetricsCards />
             <TokenUsageChart />
           </>
@@ -118,7 +131,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PlansManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
-      case 'security': // Novo Case
+      case 'security': 
         return <SecurityManager />;
       case 'logs':
         return <LogsViewer />;

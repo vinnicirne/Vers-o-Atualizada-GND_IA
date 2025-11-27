@@ -172,6 +172,36 @@ export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
     window.open(url, '_blank');
   };
 
+  const handleCopyCode = async () => {
+      if(!editorRef.current) return;
+      const html = editorRef.current.getHtml();
+      const css = editorRef.current.getCss();
+      
+      const fullHtml = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Landing Page</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+      ${css}
+    </style>
+</head>
+<body class="font-sans antialiased text-gray-900">
+    ${html}
+</body>
+</html>`;
+
+      try {
+          await navigator.clipboard.writeText(fullHtml);
+          setToast({ message: "Código HTML copiado com sucesso!", type: 'success' });
+      } catch (e) {
+          setToast({ message: "Erro ao copiar código.", type: 'error' });
+      }
+  };
+
   const handleExport = () => {
       if(!editorRef.current) return;
       const html = editorRef.current.getHtml();
@@ -204,7 +234,7 @@ export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      setToast({ message: "Código exportado com sucesso!", type: 'success' });
+      setToast({ message: "Arquivo baixado com sucesso!", type: 'success' });
   };
 
   const handlePublish = () => {
@@ -277,8 +307,11 @@ export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
             <button onClick={handlePreview} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium rounded text-xs flex items-center gap-2 border border-gray-700 transition">
                 <i className="fas fa-eye"></i> <span className="hidden sm:inline">Preview</span>
             </button>
-            <button onClick={handleExport} className="px-3 py-1.5 bg-blue-900/50 hover:bg-blue-800 text-blue-200 font-medium rounded text-xs flex items-center gap-2 border border-blue-800 transition">
-                <i className="fas fa-code"></i> <span className="hidden sm:inline">Exportar</span>
+            <button onClick={handleCopyCode} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-green-400 font-medium rounded text-xs flex items-center gap-2 border border-green-900/50 hover:border-green-600 transition" title="Copiar HTML para Área de Transferência">
+                <i className="fas fa-copy"></i> <span className="hidden sm:inline">Copiar HTML</span>
+            </button>
+            <button onClick={handleExport} className="px-3 py-1.5 bg-blue-900/50 hover:bg-blue-800 text-blue-200 font-medium rounded text-xs flex items-center gap-2 border border-blue-800 transition" title="Baixar Arquivo .html">
+                <i className="fas fa-download"></i> <span className="hidden sm:inline">Exportar</span>
             </button>
             <button onClick={handlePublish} className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-black font-bold rounded text-xs flex items-center gap-2 shadow-lg shadow-green-600/20 transition">
                 <i className="fas fa-rocket"></i> <span className="hidden sm:inline">Publicar</span>

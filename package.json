@@ -19,7 +19,8 @@
     "prismjs": "^1.29.0",
     "react-resizable-panels": "^2.0.0",
     "grapesjs": "0.21.2",
-    "grapesjs-preset-webpage": "1.0.3"
+    "grapesjs-preset-webpage": "1.0.3",
+    "react-helmet-async": "^2.0.4"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",

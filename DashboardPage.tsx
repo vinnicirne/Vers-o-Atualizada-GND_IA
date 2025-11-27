@@ -21,10 +21,12 @@ import { ServiceKey, UserPlan } from './types/plan.types';
 import { PLANS, CREATOR_SUITE_MODES } from './constants';
 import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan'; 
+import { SeoScorecard } from './components/SEO/SeoScorecard'; // SEO Integration
+import { SeoHead } from './components/SEO/SeoHead'; // SEO Integration
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
-  onNavigateToLogin?: () => void; // Prop para ir ao login
+  onNavigateToLogin?: () => void;
 }
 
 // Mapeamento de Ícones para a Grade de Serviços
@@ -54,15 +56,45 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
 // Modos permitidos para Visitantes (Free sem login)
 const GUEST_ALLOWED_MODES: ServiceKey[] = ['news_generator', 'copy_generator', 'prompt_generator'];
 
+const extractTitleAndContent = (text: string, mode: ServiceKey) => {
+    if (['landingpage_generator', 'institutional_website_generator', 'canva_structure', 'image_generation'].includes(mode)) {
+        return { title: null, content: text };
+    }
+
+    const lines = text.split('\n');
+    if (lines.length > 0) {
+        let firstLine = lines[0].trim();
+        
+        const isMarkdownTitle = firstLine.startsWith('**') && firstLine.endsWith('**');
+        const isHeaderTitle = firstLine.startsWith('#');
+        const isShortLine = firstLine.length > 3 && firstLine.length < 100 && lines.length > 1 && lines[1].trim() === '';
+
+        if (isMarkdownTitle || isHeaderTitle || isShortLine) {
+            let cleanTitle = firstLine;
+            if (cleanTitle.startsWith('**') && cleanTitle.endsWith('**')) {
+                cleanTitle = cleanTitle.slice(2, -2);
+            }
+            cleanTitle = cleanTitle.replace(/^#+\s*/, '').trim();
+
+            const startIndex = (lines.length > 1 && lines[1].trim() === '') ? 2 : 1;
+            
+            return {
+                title: cleanTitle,
+                content: lines.slice(startIndex).join('\n').trim()
+            };
+        }
+    }
+    
+    return { title: null, content: text };
+};
+
 function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPageProps) {
   const { user, signOut, refresh } = useUser();
   const { currentPlan, userCredits: dbCredits, hasAccessToService, getCreditsCostForService, canUseService } = usePlan();
 
-  // GUEST MODE LOGIC
   const [guestCredits, setGuestCredits] = useState<number>(3);
   
   useEffect(() => {
-    // Inicializa créditos de visitante do LocalStorage
     const stored = localStorage.getItem('gdn_guest_credits');
     if (stored !== null) {
         setGuestCredits(parseInt(stored, 10));
@@ -76,21 +108,22 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
   const activePlanName = isGuest ? 'Visitante' : currentPlan.name;
 
   const [resultText, setResultText] = useState<string | null>(null);
+  const [resultTitle, setResultTitle] = useState<string | null>(null); 
+  const [resultMetadata, setResultMetadata] = useState<{ plan: string; credits: string | number } | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); 
   const [showFeedback, setShowFeedback] = useState(false);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   
-  // States for Image Generation
   const [generatedImagePrompt, setGeneratedImagePrompt] = useState<string>('');
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}>({width: 1024, height: 1024});
   
   const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
   
   const [showPlansModal, setShowPlansModal] = useState(false);
-  const [showGuestLimitModal, setShowGuestLimitModal] = useState(false); // Modal exclusivo para guest sem créditos
-  const [showFeatureLockModal, setShowFeatureLockModal] = useState(false); // Modal para feature bloqueada no guest
+  const [showGuestLimitModal, setShowGuestLimitModal] = useState(false); 
+  const [showFeatureLockModal, setShowFeatureLockModal] = useState(false); 
   const [showManualModal, setShowManualModal] = useState(false); 
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
@@ -112,7 +145,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
   }, []);
 
   const handleModeSelection = (mode: ServiceKey) => {
-    // Verifica restrição de Guest
     if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
         setShowFeatureLockModal(true);
         return;
@@ -126,7 +158,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
     generateAudio: boolean,
     options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
   ) => {
-    // Segurança extra: impede geração se guest tentar burlar
     if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
         setShowFeatureLockModal(true);
         return;
@@ -139,7 +170,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
 
     const cost = getCreditsCostForService(mode);
 
-    // Verificações de permissão e crédito
     if (isGuest) {
         if (guestCredits < cost) {
             setShowGuestLimitModal(true);
@@ -160,6 +190,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
     setIsLoading(true);
     setError(null);
     setResultText(null);
+    setResultTitle(null);
+    setResultMetadata(null);
     setShowFeedback(false);
     setAudioBase64(null);
     setGeneratedImagePrompt('');
@@ -191,17 +223,15 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
 
       let processedText = text;
       const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
-      const creditsDisplay = activeCredits === -1 ? 'Ilimitado' : `${updatedCredits}`;
-      const footerInfo = `\n\n---\nCréditos restantes: ${creditsDisplay} | Plano: ${activePlanName}`;
-
-      // Watermark Logic
+      
       if (!isAdmin && (isGuest || currentPlan.id !== 'premium') && mode !== 'image_generation' && mode !== 'landingpage_generator' && mode !== 'institutional_website_generator' && mode !== 'canva_structure') {
           processedText += "\n\nGerado por GDN_IA";
       }
 
-      if (mode !== 'landingpage_generator' && mode !== 'institutional_website_generator' && mode !== 'image_generation' && mode !== 'canva_structure') {
-          processedText += footerInfo;
-      }
+      setResultMetadata({
+          plan: activePlanName,
+          credits: activeCredits === -1 ? 'Ilimitado' : updatedCredits
+      });
       
       if ((mode === 'landingpage_generator' || mode === 'institutional_website_generator') && (isGuest || (currentPlan.id !== 'premium' && !isAdmin))) {
             const watermark = `<div style="text-align:center; font-size:10px; color:#888; padding:20px; background:#f9f9f9; border-top:1px solid #eee;">Gerado por GDN_IA</div>`;
@@ -220,24 +250,24 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
           setImageDimensions({ width: w, height: h });
           setResultText(prompt); 
       } else {
-          setResultText(processedText);
+          const { title, content } = extractTitleAndContent(processedText, mode);
+          setResultTitle(title);
+          setResultText(content);
       }
       
       setAudioBase64(audioResult);
       
-      // LOG TÉCNICO (Apenas para users logados)
       if (user) {
          logContentGeneration(user.id, mode, cost, updatedCredits, currentPlan.id);
       }
 
-      // SALVAR NO HISTÓRICO GERAL (Apenas para users logados)
       if (user) {
           try {
               let historyTitle = '';
               const shortPrompt = prompt.length > 60 ? prompt.substring(0, 60) + '...' : prompt;
               
               switch(mode) {
-                  case 'news_generator': historyTitle = `Notícia: ${shortPrompt}`; break;
+                  case 'news_generator': historyTitle = resultTitle ? `Notícia: ${resultTitle}` : `Notícia: ${shortPrompt}`; break;
                   default: historyTitle = `Geração: ${shortPrompt}`;
               }
 
@@ -273,7 +303,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
     await signOut();
   };
 
-  // Payment Handlers (Only for logged users)
   const handlePlanSelection = async (planId: UserPlan) => {
     if(!user) return;
     setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
@@ -300,6 +329,12 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
 
   return (
     <div className="min-h-screen bg-black text-gray-300">
+      {/* Dynamic Head for SEO based on app state or static default */}
+      <SeoHead 
+        title={resultTitle || "GDN_IA - Creator Suite"} 
+        description="Plataforma de Inteligência Artificial para geração de notícias, imagens e sites." 
+      />
+
       <Header 
         userEmail={user?.email} 
         onLogout={handleLogout} 
@@ -344,8 +379,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
              {CREATOR_SUITE_MODES.map((svc) => {
                  const isSelected = currentMode === svc.value;
-                 
-                 // Lógica de Bloqueio Visual
                  const isRestrictedGuest = isGuest && !GUEST_ALLOWED_MODES.includes(svc.value);
                  const isLockedByPlan = !isGuest && !hasAccessToService(svc.value);
                  const isLocked = isRestrictedGuest || isLockedByPlan;
@@ -425,8 +458,26 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
                    />
                 )}
 
+                {/* RESULT DISPLAY & SEO WIDGET - Only for text modes */}
                 {currentMode !== 'landingpage_generator' && currentMode !== 'institutional_website_generator' && currentMode !== 'image_generation' && currentMode !== 'canva_structure' && resultText && (
-                   <ResultDisplay text={resultText} mode={currentMode} />
+                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                       <div className="lg:col-span-2">
+                           <ResultDisplay 
+                              title={resultTitle} 
+                              text={resultText} 
+                              mode={currentMode} 
+                              metadata={resultMetadata || undefined}
+                           />
+                       </div>
+                       
+                       {/* SEO Scorecard (Rank Math style) */}
+                       <div className="lg:col-span-1">
+                           <SeoScorecard 
+                                title={resultTitle || "Sem Título"} 
+                                content={resultText} 
+                           />
+                       </div>
+                   </div>
                 )}
 
                 {audioBase64 && <AudioPlayer audioBase64={audioBase64} />}
@@ -452,7 +503,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         />
       )}
 
-      {/* MODAL DE LIMITE DE VISITANTE (Créditos Esgotados) */}
       {showGuestLimitModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
              <div className="bg-black border border-green-500/50 rounded-2xl shadow-2xl w-full max-w-md p-8 text-center relative overflow-hidden">
@@ -484,7 +534,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         </div>
       )}
 
-      {/* MODAL DE FEATURE BLOQUEADA NO GUEST */}
       {showFeatureLockModal && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
              <div className="bg-black border border-purple-500/50 rounded-2xl shadow-2xl w-full max-w-md p-8 text-center relative overflow-hidden">
