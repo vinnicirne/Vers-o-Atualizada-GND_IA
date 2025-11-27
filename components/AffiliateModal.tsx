@@ -63,14 +63,15 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [user, onClose, refresh]); // Dependências ajustadas
+  }, [user, onClose, refresh]); 
 
   // Construção robusta do link
   const getAffiliateLink = () => {
       if (!code) return '';
-      const origin = window.location.origin;
-      const separator = origin.endsWith('/') ? '' : '/';
-      return `${origin}${separator}?ref=${code}`;
+      // Garante que o link de afiliado sempre aponte para a raiz (Landing Page/Login)
+      // Evita gerar links quebrados como /dashboard/?ref=... se o usuário copiar estando no dashboard
+      const baseUrl = window.location.origin;
+      return `${baseUrl}/?ref=${code}`;
   };
 
   const affiliateLink = code ? getAffiliateLink() : 'Gerando...';
@@ -81,17 +82,20 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
           await navigator.clipboard.writeText(affiliateLink);
           alert("Link copiado para a área de transferência!");
       } catch (err) {
-          console.error("Falha ao copiar:", err);
-          // Fallback manual se a API falhar
+          console.error("Falha ao copiar via API:", err);
+          // Fallback manual para navegadores que bloqueiam ou não suportam a API clipboard
           const textArea = document.createElement("textarea");
           textArea.value = affiliateLink;
+          // Torna invisível mas selecionável
+          textArea.style.position = "fixed";
+          textArea.style.left = "-9999px";
           document.body.appendChild(textArea);
           textArea.select();
           try {
             document.execCommand("copy");
             alert("Link copiado!");
           } catch (e) {
-            alert("Não foi possível copiar automaticamente. Por favor selecione e copie.");
+            alert("Não foi possível copiar automaticamente. Por favor selecione e copie manualmente.");
           }
           document.body.removeChild(textArea);
       }

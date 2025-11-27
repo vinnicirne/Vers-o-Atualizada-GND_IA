@@ -52,8 +52,33 @@ export const generateAffiliateCode = async (userId: string, fullName: string): P
         base = 'PARTNER';
     }
 
-    const random = Math.floor(1000 + Math.random() * 9000);
-    const code = `${base}-${random}`;
+    let code = '';
+    let isUnique = false;
+    let attempts = 0;
+
+    // Tenta gerar um código único até 5 vezes
+    while (!isUnique && attempts < 5) {
+        const random = Math.floor(1000 + Math.random() * 9000);
+        code = `${base}-${random}`;
+        
+        // Verifica se já existe
+        const { data, error } = await api.select('app_users', { affiliate_code: code });
+        
+        // Se der erro na API, assumimos que não é único para evitar conflito e tentamos de novo
+        // Se data for vazio, significa que não encontrou ninguém com esse código -> É único.
+        if (!error && (!data || data.length === 0)) {
+            isUnique = true;
+        }
+        attempts++;
+        
+        // Pequeno delay para evitar martelar a API em caso de falha
+        if (!isUnique) await new Promise(r => setTimeout(r, 200));
+    }
+
+    if (!isUnique) {
+        // Fallback final com timestamp se falhar nas tentativas aleatórias
+        code = `${base}-${Date.now().toString().slice(-4)}`;
+    }
     
     await api.update('app_users', { affiliate_code: code }, { id: userId });
     return code;
@@ -105,9 +130,13 @@ export const processAffiliateCommission = async (payerUserId: string, amount: nu
     const referrerId = payerData[0].referred_by;
     if (!referrerId) return; // No affiliate to pay
 
+    // Evita pagar comissão para si mesmo (caso haja erro no vínculo)
+    if (referrerId === payerUserId) return;
+
     // 2. Calculate Commission (e.g., 20%)
     const COMMISSION_RATE = 0.20;
-    const commission = amount * COMMISSION_RATE;
+    // Fix: Use float math correction
+    const commission = parseFloat((amount * COMMISSION_RATE).toFixed(2));
     
     if (commission <= 0) return;
 
@@ -117,7 +146,8 @@ export const processAffiliateCommission = async (payerUserId: string, amount: nu
     if (!affiliateData || affiliateData.length === 0) return;
     
     const currentBalance = Number(affiliateData[0].affiliate_balance || 0);
-    const newBalance = currentBalance + commission;
+    // Fix: Use float math correction to avoid 0.1 + 0.2 = 0.300000004
+    const newBalance = parseFloat((currentBalance + commission).toFixed(2));
 
     await api.update('app_users', { affiliate_balance: newBalance }, { id: referrerId });
 
@@ -129,7 +159,10 @@ export const processAffiliateCommission = async (payerUserId: string, amount: nu
         description: `${description} (20%)`
     });
     
-    console.log(`Comissão de R$${commission} paga para afiliado ${referrerId}`);
+    logger.info(referrerId, 'Pagamentos', 'affiliate_commission_paid', { 
+        amount: commission, 
+        source: payerUserId 
+    });
 };
 
 // --- CONFIGURAÇÕES GERAIS (System Config) ---

@@ -76,6 +76,56 @@ const performLogin = async (email: string, password: string): Promise<User> => {
     return fullUser;
 };
 
+// Helper function to link user to affiliate with retries
+const linkUserToAffiliate = async (newUserId: string, referralCode: string) => {
+    console.log(`Tentando vincular novo usuário ${newUserId} ao código ${referralCode}...`);
+    
+    try {
+        // 1. Encontrar o ID do afiliado dono do código
+        const { data: referrers } = await api.select('app_users', { affiliate_code: referralCode });
+        
+        if (!referrers || referrers.length === 0) {
+            console.warn(`Código de afiliado inválido ou não encontrado: ${referralCode}`);
+            return;
+        }
+        
+        const referrerId = referrers[0].id;
+        
+        if (referrerId === newUserId) {
+            console.warn("Usuário tentou se auto-indicar. Vínculo ignorado.");
+            return;
+        }
+
+        // 2. Tentar atualizar o usuário com retries (backoff exponencial)
+        // Isso é necessário pois o trigger do Supabase pode levar alguns segundos para criar a row em 'app_users'
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (attempts < maxAttempts) {
+            // Tenta atualizar
+            // IMPORTANTE: api.update retorna data[] com as linhas afetadas.
+            // Se o usuário ainda não existe (delay do trigger), data será vazio.
+            const { data, error } = await api.update('app_users', { referred_by: referrerId }, { id: newUserId });
+            
+            if (!error && data && data.length > 0) {
+                console.log(`Sucesso! Usuário vinculado ao afiliado ${referrerId}`);
+                return;
+            }
+            
+            // Se falhar (provavelmente row not found), espera e tenta de novo
+            attempts++;
+            const delay = 1500 * attempts; // Aumentado delay para 1.5s, 3s... para dar tempo ao DB
+            console.log(`Tentativa ${attempts} falhou (User not ready?). Retentando em ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+        
+        console.error("Falha ao vincular afiliado após várias tentativas.");
+        
+    } catch (e) {
+        console.error("Erro crítico no processo de vínculo de afiliado:", e);
+    }
+};
+
 export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -134,22 +184,9 @@ export function LoginForm() {
             setMessage({ type: 'error', text: error.message });
         } else {
             // MANUAL REFERRAL LINKING
-            // Como triggers de Supabase às vezes são complexos, podemos fazer o vinculo aqui se o usuário foi criado com sucesso
+            // Inicia o processo de vínculo em background (sem await para não travar a UI)
             if (signUpData.user && referralCode) {
-                try {
-                    // Find referrer ID
-                    const { data: referrer } = await api.select('app_users', { affiliate_code: referralCode });
-                    if (referrer && referrer.length > 0) {
-                        // Link new user to referrer
-                        // Note: User profile row might be created by trigger, so we update it
-                        // Retry logic might be needed if trigger is slow, but usually it's fast enough or we wait a bit
-                        setTimeout(async () => {
-                            await api.update('app_users', { referred_by: referrer[0].id }, { id: signUpData.user!.id });
-                        }, 1000); 
-                    }
-                } catch (e) {
-                    console.error("Erro ao vincular afiliado:", e);
-                }
+                linkUserToAffiliate(signUpData.user.id, referralCode);
             }
 
             setEmail('');
