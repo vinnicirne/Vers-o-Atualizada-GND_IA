@@ -1,7 +1,9 @@
+
 import { useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { Plan, ServiceKey, ServicePermission } from '../types/plan.types';
 import { usePlans } from './usePlans'; // Importar o novo hook usePlans
+import { PLANS } from '../constants'; // Importar constantes de planos
 
 interface UsePlanReturn {
   currentPlan: Plan;
@@ -20,18 +22,8 @@ export function usePlan(): UsePlanReturn {
   const currentPlan = useMemo<Plan>(() => {
     // Se ainda estiver carregando os planos ou não houver planos, retorna um plano 'free' placeholder
     if (loadingPlans || allPlans.length === 0) {
-        // Retorna um plano free minimalista para evitar erros enquanto carrega
-        return {
-            id: 'free',
-            name: 'Free (Carregando...)',
-            credits: 0,
-            price: 0,
-            interval: 'month',
-            isActive: true,
-            color: 'gray',
-            expressCreditPrice: 0,
-            services: [],
-        };
+        // Retorna o plano Free definido nas constantes como fallback seguro
+        return PLANS.free;
     }
     
     const userPlanId = user?.plan || 'free';
@@ -39,17 +31,7 @@ export function usePlan(): UsePlanReturn {
     
     // Se o plano do usuário não for encontrado na lista de planos ativos,
     // retorna o plano 'free' como fallback, garantindo que o usuário sempre tenha um plano base.
-    return foundPlan || allPlans.find(p => p.id === 'free') || {
-      id: 'free',
-      name: 'Free',
-      credits: 0,
-      price: 0,
-      interval: 'month',
-      isActive: true,
-      color: 'gray',
-      expressCreditPrice: 0,
-      services: [],
-    };
+    return foundPlan || allPlans.find(p => p.id === 'free') || PLANS.free;
   }, [user, allPlans, loadingPlans]);
 
   const userCredits = useMemo<number>(() => {

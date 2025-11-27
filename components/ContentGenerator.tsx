@@ -15,6 +15,8 @@ interface ContentGeneratorProps {
     options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
   ) => void;
   isLoading: boolean;
+  isGuest?: boolean;
+  guestAllowedModes?: ServiceKey[];
 }
 
 const THEMES = [
@@ -44,7 +46,7 @@ const ASPECT_RATIOS = [
     { value: '9:16', label: 'Retrato (Stories)' },
 ];
 
-export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: ContentGeneratorProps) {
+export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, isGuest = false, guestAllowedModes = [] }: ContentGeneratorProps) {
   const { currentPlan, hasAccessToService } = usePlan();
 
   const [prompt, setPrompt] = useState('');
@@ -59,7 +61,15 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [imageStyle, setImageStyle] = useState('photorealistic');
 
-  const isModeLocked = (modeValue: ServiceKey) => !hasAccessToService(modeValue);
+  // Lógica de Bloqueio Híbrida (Visitante vs Plano)
+  const isModeLocked = (modeValue: ServiceKey) => {
+      if (isGuest) {
+          // Se for visitante, bloqueia se não estiver na lista de permitidos explicitamente
+          return !guestAllowedModes.includes(modeValue);
+      }
+      // Se estiver logado, usa a lógica do plano
+      return !hasAccessToService(modeValue);
+  };
 
   // Atualiza o placeholder e reseta campos quando o modo muda (controlado pelo pai)
   useEffect(() => {
@@ -114,8 +124,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
               <div className="mt-2 p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-center text-red-300 text-xs animate-fade-in">
                   <i className="fas fa-lock mr-2 text-lg"></i>
                   <div>
-                      <span className="font-bold">Acesso Bloqueado:</span> A função <span className="underline">{mode.replace(/_/g, ' ').toUpperCase()}</span> não está incluída no seu plano <strong>{currentPlan.name}</strong>.
-                      <br/>Faça upgrade para desbloquear.
+                      <span className="font-bold">Acesso Bloqueado:</span> A função <span className="underline">{mode.replace(/_/g, ' ').toUpperCase()}</span> não está incluída no seu plano <strong>{isGuest ? 'Visitante' : currentPlan.name}</strong>.
+                      <br/>{isGuest ? 'Crie uma conta ou faça login.' : 'Faça upgrade para desbloquear.'}
                   </div>
               </div>
           )}
@@ -195,21 +205,24 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
         </div>
 
         {/* Gerar áudio só se o serviço text_to_speech estiver ativo e o modo for news_generator */}
-        {mode === 'news_generator' && hasAccessToService('text_to_speech') && !isModeLocked('news_generator') && (
-          <div className="flex items-center justify-center pt-4 animate-fade-in">
-            <label htmlFor="generate-audio" className="flex items-center cursor-pointer text-sm text-gray-400">
-              <input 
-                id="generate-audio"
-                type="checkbox"
-                checked={generateAudio}
-                onChange={(e) => setGenerateAudio(e.target.checked)}
-                className="h-5 w-5 bg-black border-2 border-green-900/60 rounded text-green-500 focus:ring-green-500 focus:ring-offset-black transition duration-200"
-                disabled={isLoading}
-              />
-              <span className="ml-3">Gerar áudio da matéria</span>
-              <i className="fas fa-volume-up ml-2 text-green-500"></i>
-            </label>
-          </div>
+        {mode === 'news_generator' && !isModeLocked('news_generator') && (
+          // Verifica se tem acesso ao TTS (se logado) ou se é visitante (liberado)
+          (isGuest || hasAccessToService('text_to_speech')) && (
+            <div className="flex items-center justify-center pt-4 animate-fade-in">
+                <label htmlFor="generate-audio" className="flex items-center cursor-pointer text-sm text-gray-400">
+                <input 
+                    id="generate-audio"
+                    type="checkbox"
+                    checked={generateAudio}
+                    onChange={(e) => setGenerateAudio(e.target.checked)}
+                    className="h-5 w-5 bg-black border-2 border-green-900/60 rounded text-green-500 focus:ring-green-500 focus:ring-offset-black transition duration-200"
+                    disabled={isLoading}
+                />
+                <span className="ml-3">Gerar áudio da matéria</span>
+                <i className="fas fa-volume-up ml-2 text-green-500"></i>
+                </label>
+            </div>
+          )
         )}
 
         <button

@@ -57,6 +57,7 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
 const GUEST_ALLOWED_MODES: ServiceKey[] = ['news_generator', 'copy_generator', 'prompt_generator'];
 
 const extractTitleAndContent = (text: string, mode: ServiceKey) => {
+    // Modos que retornam código ou não têm título estruturado
     if (['landingpage_generator', 'institutional_website_generator', 'canva_structure', 'image_generation'].includes(mode)) {
         return { title: null, content: text };
     }
@@ -65,18 +66,28 @@ const extractTitleAndContent = (text: string, mode: ServiceKey) => {
     if (lines.length > 0) {
         let firstLine = lines[0].trim();
         
-        const isMarkdownTitle = firstLine.startsWith('**') && firstLine.endsWith('**');
-        const isHeaderTitle = firstLine.startsWith('#');
-        const isShortLine = firstLine.length > 3 && firstLine.length < 100 && lines.length > 1 && lines[1].trim() === '';
+        // Critérios para considerar a primeira linha um título
+        const isMarkdownTitle = firstLine.startsWith('**') || firstLine.startsWith('#');
+        const hasPrefix = /^(título|title|headline|manchete|assunto|subject|prompt|copy):/i.test(firstLine);
+        // Aceita linhas curtas que pareçam títulos, mesmo sem markdown, se houver quebra de linha depois
+        const isShortLine = firstLine.length > 2 && firstLine.length < 150 && lines.length > 1;
 
-        if (isMarkdownTitle || isHeaderTitle || isShortLine) {
+        if (isMarkdownTitle || hasPrefix || isShortLine) {
             let cleanTitle = firstLine;
-            if (cleanTitle.startsWith('**') && cleanTitle.endsWith('**')) {
-                cleanTitle = cleanTitle.slice(2, -2);
-            }
-            cleanTitle = cleanTitle.replace(/^#+\s*/, '').trim();
 
-            const startIndex = (lines.length > 1 && lines[1].trim() === '') ? 2 : 1;
+            // 1. Remove Markdown (*, #)
+            cleanTitle = cleanTitle.replace(/[*#]/g, '').trim();
+
+            // 2. Remove Prefixos comuns (Ex: "Título: O Grande Jogo" -> "O Grande Jogo")
+            // Isso lida com "Intenção, Ação e Desejo" se vier como "Framework: Intenção..." ou similar,
+            // mas principalmente limpa "Headline: ..."
+            cleanTitle = cleanTitle.replace(/^(título|title|headline|manchete|assunto|subject|prompt|copy|foco)\s*[:|-]\s*/i, '').trim();
+
+            // Define onde começa o conteúdo real (pula a linha do título e linhas vazias subsequentes)
+            let startIndex = 1;
+            while (startIndex < lines.length && lines[startIndex].trim() === '') {
+                startIndex++;
+            }
             
             return {
                 title: cleanTitle,
@@ -421,7 +432,9 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
                 mode={currentMode}
                 onModeChange={handleModeSelection}
                 onGenerate={handleGenerateContent} 
-                isLoading={isLoading} 
+                isLoading={isLoading}
+                isGuest={isGuest}
+                guestAllowedModes={GUEST_ALLOWED_MODES}
               />
           </div>
           

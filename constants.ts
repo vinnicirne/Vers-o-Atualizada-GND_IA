@@ -98,7 +98,8 @@ export const PLANS: Record<UserPlan, Plan> = {
     expressCreditPrice: 15.00,
     color: 'gray', // Cor Tailwind
     services: [
-      ...commonServices
+      ...commonServices,
+      promptService // Adicionado ao Free
     ]
   },
   basic: {
