@@ -13,6 +13,20 @@ import { HelmetProvider } from 'react-helmet-async';
  * a mensagem de erro seja sempre exibida, evitando uma tela preta vazia.
  */
 const handleFatalError = (error: any) => {
+  // --- CORREÇÃO DE CHUNK LOAD ERROR ---
+  // Se o erro for de módulo dinâmico ausente (comum após deploys), recarrega a página.
+  const errorMsg = error?.message || (typeof error === 'string' ? error : '') || '';
+  if (
+      errorMsg.includes('dynamically imported module') || 
+      errorMsg.includes('Importing a module script failed') ||
+      errorMsg.includes('error loading dynamically imported module')
+  ) {
+      console.warn('Erro de versão detectado (Chunk Load Error). Recarregando aplicação para buscar nova versão...');
+      window.location.reload();
+      return;
+  }
+  // ------------------------------------
+
   console.error("ERRO GLOBAL CAPTURADO:", error);
   
   // Para a aplicação e limpa a tela para exibir apenas o erro.
@@ -64,11 +78,26 @@ window.addEventListener('error', (event) => {
   if (event.filename && (event.filename.includes('extension://') || !event.filename.includes(window.location.origin))) {
     return;
   }
+  
+  // Verifica se a mensagem do evento já é um chunk error antes de passar pro handler
+  const msg = event.message || '';
+  if (msg.includes('dynamically imported module') || msg.includes('Importing a module script failed')) {
+      window.location.reload();
+      return;
+  }
+
   handleFatalError(event.error || new Error(event.message));
 });
 
 // Listener para erros em Promises (ex: falhas em chamadas async/await não capturadas)
 window.addEventListener('unhandledrejection', (event) => {
+  // Verifica se o motivo da rejeição é um chunk error
+  const msg = event.reason?.message || String(event.reason);
+  if (msg.includes('dynamically imported module') || msg.includes('Importing a module script failed')) {
+      window.location.reload();
+      return;
+  }
+
   handleFatalError(event.reason || new Error('Unhandled promise rejection'));
 });
 
