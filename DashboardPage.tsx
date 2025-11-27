@@ -12,6 +12,7 @@ import { PlansModal } from './components/PlansModal';
 import { ManualModal } from './components/ManualModal'; 
 import { UserHistoryModal } from './components/UserHistoryModal'; 
 import { AffiliateModal } from './components/AffiliateModal'; 
+import { AffiliateInvitePopup } from './components/AffiliateInvitePopup'; // Import Popup
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
 import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
@@ -21,8 +22,8 @@ import { ServiceKey, UserPlan } from './types/plan.types';
 import { PLANS, CREATOR_SUITE_MODES } from './constants';
 import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan'; 
-import { SeoScorecard } from './components/SEO/SeoScorecard'; // SEO Integration
-import { SeoHead } from './components/SEO/SeoHead'; // SEO Integration
+import { SeoScorecard } from './components/SEO/SeoScorecard'; 
+import { SeoHead } from './components/SEO/SeoHead'; 
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -138,6 +139,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
   const [showManualModal, setShowManualModal] = useState(false); 
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
+  const [showAffiliateInvite, setShowAffiliateInvite] = useState(false); // Novo Estado para o Popup
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -154,6 +156,30 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         setMetadata({ version: 'Erro' }); 
       });
   }, []);
+
+  // Lógica para mostrar o convite de afiliado
+  useEffect(() => {
+    if (user && !isGuest) {
+      const hasSeenInvite = localStorage.getItem('gdn_seen_affiliate_invite');
+      if (!hasSeenInvite) {
+        // Mostra o convite após 3 segundos de sessão se ainda não viu
+        const timer = setTimeout(() => {
+          setShowAffiliateInvite(true);
+        }, 3000);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [user, isGuest]);
+
+  const handleCloseAffiliateInvite = () => {
+    setShowAffiliateInvite(false);
+    localStorage.setItem('gdn_seen_affiliate_invite', 'true');
+  };
+
+  const handleAcceptAffiliateInvite = () => {
+    handleCloseAffiliateInvite();
+    setShowAffiliateModal(true);
+  };
 
   const handleModeSelection = (mode: ServiceKey) => {
     if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
@@ -604,6 +630,14 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
       {showAffiliateModal && user && (
         <AffiliateModal
             onClose={() => setShowAffiliateModal(false)}
+        />
+      )}
+
+      {/* Convite Automático para Afiliados */}
+      {showAffiliateInvite && (
+        <AffiliateInvitePopup 
+            onClose={handleCloseAffiliateInvite}
+            onAccept={handleAcceptAffiliateInvite}
         />
       )}
 
