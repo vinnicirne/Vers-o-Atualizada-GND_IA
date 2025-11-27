@@ -187,12 +187,47 @@ Você pode:
       
       setAudioBase64(audioResult);
       
+      // LOG TÉCNICO
       await api.insert('logs', {
            usuario_id: user.id,
            acao: `generated_content_${mode}`,
            modulo: 'CreatorSuite',
            detalhes: { cost: cost, credits_after: updatedCredits, plan: currentPlan.id }
       });
+
+      // SALVAR NO HISTÓRICO GERAL (TABELA 'news')
+      try {
+          let historyTitle = '';
+          const shortPrompt = prompt.length > 60 ? prompt.substring(0, 60) + '...' : prompt;
+          
+          switch(mode) {
+              case 'news_generator': historyTitle = `Notícia: ${shortPrompt}`; break;
+              case 'image_generation': historyTitle = `Arte IA: ${shortPrompt}`; break;
+              case 'landingpage_generator': historyTitle = `Landing Page: ${shortPrompt}`; break;
+              case 'copy_generator': historyTitle = `Copywriting: ${shortPrompt}`; break;
+              case 'text_to_speech': historyTitle = `Áudio TTS: ${shortPrompt}`; break;
+              case 'prompt_generator': historyTitle = `Prompt: ${shortPrompt}`; break;
+              case 'canva_structure': historyTitle = `Social Media: ${shortPrompt}`; break;
+              default: historyTitle = `Geração: ${shortPrompt}`;
+          }
+
+          // Para imagens, salvamos o prompt original e o otimizado, já que a imagem em si não é salva no banco (é gerada on-the-fly pela Pollinations)
+          // Para Landing Pages, salvamos o código HTML.
+          const contentToSave = mode === 'image_generation' 
+            ? `PROMPT ORIGINAL: ${prompt}\n\nPROMPT OTIMIZADO (EN): ${text}` 
+            : processedText;
+
+          await api.insert('news', {
+              titulo: historyTitle,
+              conteudo: contentToSave,
+              status: 'approved', // Histórico pessoal é auto-aprovado ou apenas registrado
+              tipo: mode,
+              author_id: user.id,
+              sources: [] // Serviços gerais não usam sources do mesmo jeito que news
+          });
+      } catch (historyError) {
+          console.error("Erro ao salvar no histórico:", historyError);
+      }
 
       setShowFeedback(true);
 

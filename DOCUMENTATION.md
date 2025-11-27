@@ -148,7 +148,7 @@ Rastreabilidade total.
 
 ### Landing Page desconfigurada no Editor
 *   **Causa:** O CSS do Tailwind pode demorar alguns milissegundos para renderizar dentro do iframe.
-*   **Solução:** Clique no botão "Mostrar/Ocultar Bordas" ou faça uma pequena edição de texto para forçar a re-renderização.
+*   **Solução:** Clique no botão "Mostrar/Ocultar Bordas" no topo do editor para forçar uma atualização da tela.
 
 ---
 

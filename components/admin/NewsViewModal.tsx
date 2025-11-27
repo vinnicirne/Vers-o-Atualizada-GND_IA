@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { NewsArticle } from '../../types';
 
@@ -15,11 +16,25 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
+  const getTypeName = (type?: string) => {
+      if(!type) return 'GERAL';
+      if(type === 'news_generator') return 'NOTÍCIA';
+      if(type === 'image_generation') return 'IMAGEM (PROMPT)';
+      if(type === 'landingpage_generator') return 'LANDING PAGE (CÓDIGO)';
+      if(type === 'canva_structure') return 'SOCIAL MEDIA (CÓDIGO)';
+      return type.toUpperCase().replace('_', ' ');
+  };
+
   return (
     <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-black rounded-lg shadow-xl w-full max-w-3xl border border-green-500/30 max-h-[90vh] flex flex-col">
         <div className="p-6 border-b border-green-900/30 flex justify-between items-start">
           <div>
+            <div className="mb-2">
+                <span className="bg-gray-800 text-gray-300 text-xs px-2 py-1 rounded border border-gray-600 font-bold tracking-wider">
+                    {getTypeName(article.tipo)}
+                </span>
+            </div>
             <h2 className="text-2xl font-bold text-green-400">{article.titulo}</h2>
             <p className="text-sm text-gray-400 mt-1">
               Por <span className="font-semibold">{article.author?.email || 'Desconhecido'}</span> em {new Date(article.criado_em || '').toLocaleString('pt-BR')}
@@ -30,11 +45,22 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
           </button>
         </div>
         <div className="p-6 overflow-y-auto">
-          <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
-            {article.conteudo.split('\n').map((paragraph, index) => (
-              <p key={index} className="mb-4 last:mb-0">{paragraph}</p>
-            ))}
-          </div>
+          {/* Renderização condicional para código */}
+          {(article.tipo === 'landingpage_generator' || article.tipo === 'canva_structure') ? (
+              <div className="bg-gray-900 p-4 rounded border border-gray-700">
+                  <p className="text-xs text-gray-500 mb-2 uppercase">Código HTML Gerado:</p>
+                  <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-96">
+                      {article.conteudo}
+                  </pre>
+              </div>
+          ) : (
+              <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
+                {article.conteudo.split('\n').map((paragraph, index) => (
+                  <p key={index} className="mb-4 last:mb-0">{paragraph}</p>
+                ))}
+              </div>
+          )}
+
           {article.sources && article.sources.length > 0 && (
             <div className="mt-6 pt-6 border-t border-green-900/40">
               <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Fontes (Google Search):</h3>

@@ -16,7 +16,8 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: string; 
+  tipo?: string; // Tipo do conteúdo (news, image, landing_page, etc)
+  author_id?: string; // ID do autor
   criado_em?: string;
   author?: {
     email: string;

@@ -82,13 +82,37 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
     }
   };
 
+  const getTypeChip = (type?: string) => {
+    const base = "px-2 py-1 text-xs font-bold rounded-full border";
+    switch(type) {
+        case 'news_generator': return `${base} bg-green-900/30 text-green-300 border-green-800`;
+        case 'image_generation': return `${base} bg-purple-900/30 text-purple-300 border-purple-800`;
+        case 'landingpage_generator': return `${base} bg-pink-900/30 text-pink-300 border-pink-800`;
+        case 'canva_structure': return `${base} bg-cyan-900/30 text-cyan-300 border-cyan-800`;
+        case 'text_to_speech': return `${base} bg-blue-900/30 text-blue-300 border-blue-800`;
+        default: return `${base} bg-gray-800 text-gray-400 border-gray-700`;
+    }
+  };
+
+  const getTypeName = (type?: string) => {
+      if(!type) return 'GERAL';
+      if(type === 'news_generator') return 'NOTÍCIA';
+      if(type === 'image_generation') return 'IMAGEM';
+      if(type === 'landingpage_generator') return 'LANDING PAGE';
+      if(type === 'canva_structure') return 'SOCIAL MEDIA';
+      if(type === 'copy_generator') return 'COPY';
+      if(type === 'text_to_speech') return 'ÁUDIO';
+      if(type === 'prompt_generator') return 'PROMPT';
+      return type.toUpperCase().replace('_', ' ');
+  };
+
   const totalPages = Math.ceil(totalNews / NEWS_PER_PAGE);
 
   return (
     <>
       <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-          <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Gerenciamento de Notícias</h2>
+          <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Gerenciamento de Notícias e Histórico</h2>
           <div className="flex items-center space-x-4">
             {initialStatusFilter === 'all' && ( // Only show dropdown if it's the general news view
               <select
@@ -105,7 +129,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
           </div>
         </div>
 
-        {loading && <div className="text-center p-4">Carregando notícias...</div>}
+        {loading && <div className="text-center p-4">Carregando histórico...</div>}
         {error && <div className="text-center p-4 text-red-400 bg-red-900/20 border-red-500/30 rounded-md"><strong>Erro:</strong> {error}</div>}
         
         {!loading && !error && (
@@ -114,7 +138,8 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
               <table className="w-full text-sm text-left text-gray-300">
                 <thead className="text-xs text-green-300 uppercase bg-black/40">
                   <tr>
-                    <th scope="col" className="px-6 py-3">Título</th>
+                    <th scope="col" className="px-6 py-3">Título / Prompt</th>
+                    <th scope="col" className="px-6 py-3">Tipo</th>
                     <th scope="col" className="px-6 py-3">Autor</th>
                     <th scope="col" className="px-6 py-3 text-center">Status</th>
                     <th scope="col" className="px-6 py-3">Data</th>
@@ -125,6 +150,9 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
                   {news.map(article => (
                     <tr key={article.id} className="bg-gray-950/50 border-b border-green-900/20 hover:bg-green-900/10 transition-colors">
                       <td className="px-6 py-4 font-medium whitespace-nowrap max-w-xs truncate" title={article.titulo}>{article.titulo}</td>
+                      <td className="px-6 py-4">
+                         <span className={getTypeChip(article.tipo)}>{getTypeName(article.tipo)}</span>
+                      </td>
                       <td className="px-6 py-4 text-gray-400">{article.author?.email || 'N/A'}</td>
                       <td className="px-6 py-4 text-center">
                         <span className={getStatusChip(article.status)}>{article.status}</span>
@@ -135,7 +163,6 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
                         <button onClick={() => onEdit(article)} className="font-medium text-yellow-400 hover:underline">Editar</button>
                         {article.status === 'pending' && article.id && (
                           <>
-                            <button onClick={() => handleStatusChange(article.id!, 'approved')} className="font-medium text-green-400 hover:underline">Aprovar</button>
                             <button onClick={() => handleStatusChange(article.id!, 'rejected')} className="font-medium text-red-400 hover:underline">Rejeitar</button>
                           </>
                         )}
@@ -145,7 +172,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
                 </tbody>
               </table>
             </div>
-            {news.length === 0 && <p className="text-center text-gray-500 py-8">Nenhuma notícia encontrada para os filtros selecionados.</p>}
+            {news.length === 0 && <p className="text-center text-gray-500 py-8">Nenhum item encontrado.</p>}
             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
           </>
         )}

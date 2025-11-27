@@ -58,7 +58,7 @@ Gera layouts prontos para redes sociais (Instagram/Facebook).
 Transforma qualquer texto escrito em áudio narrado por IA.
 *   **Como usar:**
     1. Selecione "Texto para Voz".
-    2. Cole ou digite o texto que deseja ouvir.
+    2. Cole o texto desejado e clique em gerar.
     3. Clique em gerar e utilize o player para ouvir ou baixar o áudio.
 
 ### ✍️ 6. Gerador de Copy & Prompts

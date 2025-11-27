@@ -30,54 +30,60 @@ export function DocumentationViewer() {
                 <div className="space-y-8 text-gray-300">
                     <section>
                         <h3 className="text-xl font-bold text-white mb-2">Visão Geral do Admin</h3>
-                        <p>O painel administrativo permite controle total sobre usuários, conteúdo, pagamentos e configurações de IA. Requer role <code>admin</code> ou <code>super_admin</code>.</p>
+                        <p>O <strong>GDN_IA</strong> é uma plataforma SaaS focada em Inteligência Artificial Generativa. O sistema permite criar notícias, imagens, landing pages e áudios utilizando um sistema de créditos e planos.</p>
+                        <ul className="list-disc pl-5 text-sm space-y-1 mt-2">
+                           <li><strong>Frontend:</strong> React 18, Vite, TypeScript, Tailwind CSS.</li>
+                           <li><strong>Backend:</strong> Supabase (PostgreSQL, Auth, Realtime).</li>
+                           <li><strong>IA:</strong> Google Gemini (Texto/Áudio) e Pollinations.ai (Imagens).</li>
+                        </ul>
                     </section>
 
                     <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="bg-gray-950/50 p-4 rounded border border-gray-800">
-                            <h4 className="font-bold text-white mb-2">Gerenciamento de Usuários</h4>
-                            <ul className="list-disc pl-5 text-sm space-y-1">
-                                <li>Visualize todos os usuários e seus créditos.</li>
-                                <li>Edite roles (promova usuários).</li>
-                                <li>Ajuste créditos manualmente (use <code>-1</code> para ilimitado).</li>
+                            <h4 className="font-bold text-white mb-2">Banco de Dados e Usuários</h4>
+                            <p className="text-sm mb-2">A tabela <code>public.app_users</code> espelha os dados públicos. Os créditos são gerenciados em <code>public.user_credits</code>.</p>
+                            <ul className="list-disc pl-5 text-sm space-y-1 text-gray-400">
+                                <li><code>user_id</code> (FK) liga ao Auth do Supabase.</li>
+                                <li>Créditos <code>-1</code> significam ilimitado (admins).</li>
                             </ul>
                         </div>
                          <div className="bg-gray-950/50 p-4 rounded border border-gray-800">
                             <h4 className="font-bold text-white mb-2">Sistema Multi-IA</h4>
-                            <ul className="list-disc pl-5 text-sm space-y-1">
-                                <li>Configure chaves de API para Gemini, OpenAI e Claude.</li>
-                                <li>Ative/Desative modelos específicos.</li>
-                                <li>Monitore custos e uso de tokens em tempo real.</li>
+                            <p className="text-sm mb-2">Configurado via tabela <code>system_config</code>.</p>
+                            <ul className="list-disc pl-5 text-sm space-y-1 text-gray-400">
+                                <li>Gemini 2.5 Flash: Texto e Raciocínio.</li>
+                                <li>Pollinations.ai: Geração de imagens via prompt refinado.</li>
+                                <li>Logs de IA registram tokens e custos estimados.</li>
                             </ul>
                         </div>
                          <div className="bg-gray-950/50 p-4 rounded border border-gray-800">
                             <h4 className="font-bold text-white mb-2">Planos e Pagamentos</h4>
-                            <ul className="list-disc pl-5 text-sm space-y-1">
-                                <li>Crie planos de assinatura (Free, Basic, Premium).</li>
-                                <li>Defina quais ferramentas cada plano acessa na aba <strong>Planos</strong>.</li>
-                                <li>Configure Stripe/Mercado Pago na aba <strong>Pagamentos</strong>.</li>
+                            <ul className="list-disc pl-5 text-sm space-y-1 text-gray-400">
+                                <li>Planos são definidos como JSON no banco.</li>
+                                <li>Permissões de serviço (ex: <code>image_generation</code>) são ligadas a cada plano.</li>
+                                <li>Transações são registradas na tabela <code>transactions</code>.</li>
                             </ul>
                         </div>
                         <div className="bg-gray-950/50 p-4 rounded border border-gray-800">
-                            <h4 className="font-bold text-white mb-2">Logs de Auditoria</h4>
-                            <ul className="list-disc pl-5 text-sm space-y-1">
-                                <li>Rastreio completo de ações sensíveis.</li>
-                                <li>Filtre por usuário, módulo ou tipo de ação.</li>
-                                <li>Utilize para debugging e segurança.</li>
+                            <h4 className="font-bold text-white mb-2">Segurança (RLS)</h4>
+                            <ul className="list-disc pl-5 text-sm space-y-1 text-gray-400">
+                                <li>Todas as tabelas são protegidas por Row Level Security.</li>
+                                <li>Admins podem ler/escrever em tabelas sensíveis.</li>
+                                <li>Usuários só acessam seus próprios dados.</li>
                             </ul>
                         </div>
                     </section>
 
                     <section>
-                        <h3 className="text-xl font-bold text-white mb-2">Troubleshooting Comum</h3>
+                        <h3 className="text-xl font-bold text-white mb-2">Troubleshooting Técnico</h3>
                         <div className="space-y-4">
                             <div className="bg-red-900/10 border-l-4 border-red-500 p-4">
-                                <strong className="text-red-400">Erro RLS (Row Level Security)</strong>
-                                <p className="text-sm mt-1">Se usuários não conseguem logar ou ver dados, provavelmente faltam Policies no Supabase. Execute os scripts SQL fornecidos no código fonte (services/adminService.ts).</p>
+                                <strong className="text-red-400">Erro de RLS (Permission Denied)</strong>
+                                <p className="text-sm mt-1">Se o painel admin ou login falhar com erro de permissão, verifique se as Policies do Supabase foram aplicadas corretamente conforme o script em <code>services/adminService.ts</code>.</p>
                             </div>
-                             <div className="bg-yellow-900/10 border-l-4 border-yellow-500 p-4">
-                                <strong className="text-yellow-400">Imagens não carregam</strong>
-                                <p className="text-sm mt-1">A API da Pollinations pode estar lenta ou sendo bloqueada por extensões de privacidade no navegador do cliente.</p>
+                             <div className="bg-blue-900/10 border-l-4 border-blue-500 p-4">
+                                <strong className="text-blue-400">API Key Gemini</strong>
+                                <p className="text-sm mt-1">Certifique-se de que a variável <code>GEMINI_API_KEY</code> está configurada no <code>.env.local</code> e no ambiente de produção.</p>
                             </div>
                         </div>
                     </section>
@@ -86,7 +92,7 @@ export function DocumentationViewer() {
                 <div className="bg-gray-900 p-6 rounded text-center">
                     <i className="fas fa-info-circle text-4xl text-blue-400 mb-4"></i>
                     <p className="text-lg">O Manual do Usuário está disponível publicamente para todos os usuários através do botão de ajuda (?) no Dashboard principal.</p>
-                    <p className="text-sm text-gray-500 mt-2">Consulte a visualização "User" para ver exatamente o que eles veem.</p>
+                    <p className="text-sm text-gray-500 mt-2">Consulte o arquivo <code>MANUAL_DO_USUARIO.md</code> na raiz do projeto para o conteúdo completo.</p>
                 </div>
             )}
         </div>
