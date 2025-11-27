@@ -21,6 +21,7 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
       if(type === 'news_generator') return 'NOTÍCIA';
       if(type === 'image_generation') return 'IMAGEM (PROMPT)';
       if(type === 'landingpage_generator') return 'LANDING PAGE (CÓDIGO)';
+      if(type === 'institutional_website_generator') return 'SITE INSTITUCIONAL (CÓDIGO)';
       if(type === 'canva_structure') return 'SOCIAL MEDIA (CÓDIGO)';
       return type.toUpperCase().replace('_', ' ');
   };
@@ -46,7 +47,7 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
         </div>
         <div className="p-6 overflow-y-auto">
           {/* Renderização condicional para código */}
-          {(article.tipo === 'landingpage_generator' || article.tipo === 'canva_structure') ? (
+          {(article.tipo === 'landingpage_generator' || article.tipo === 'institutional_website_generator' || article.tipo === 'canva_structure') ? (
               <div className="bg-gray-900 p-4 rounded border border-gray-700">
                   <p className="text-xs text-gray-500 mb-2 uppercase">Código HTML Gerado:</p>
                   <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-96">
@@ -85,4 +86,4 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
       </div>
     </div>
   );
-};
+}

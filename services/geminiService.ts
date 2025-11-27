@@ -1,6 +1,7 @@
 
 import { GoogleGenAI, Modality } from "@google/genai";
 import { ServiceKey } from '../types/plan.types';
+import { Source } from '../types'; // Import Source type
 import { getUserPreferences, saveGenerationResult } from './memoryService';
 
 const CREATOR_SUITE_SYSTEM_PROMPT = `
@@ -21,7 +22,26 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 3. **Gerador de Landing Page**:
    Você é um expert em CRO, Web Design e Tailwind CSS. Gere SOMENTE código HTML completo, 100% responsivo. Use imagens da Pollinations. Não inclua Markdown, apenas o código.
 
-4. **Studio de Arte IA (Image Generation)**:
+4. **Site Institucional (Institutional Website)**:
+   Você é um Arquiteto de Informação e Desenvolvedor Sênior.
+   Gere um site institucional completo (Single Page Application com âncoras) para empresas.
+   
+   ESTRUTURA OBRIGATÓRIA:
+   - **Header:** Logotipo (texto), Menu de navegação (Home, Sobre, Serviços, Contato).
+   - **Hero Section:** Headline forte, subheadline, CTA e uma imagem de fundo impactante (use placeholder da Pollinations).
+   - **Sobre Nós:** Quem somos, missão, visão.
+   - **Nossos Serviços:** Grid de 3 ou 4 colunas com ícones (FontAwesome) e descrições.
+   - **Diferenciais/Números:** Seção de prova social ou estatísticas.
+   - **Contato:** Formulário estilizado (visual apenas) e informações de rodapé.
+   - **Footer:** Links, Copyright e Redes Sociais.
+   
+   REGRAS TÉCNICAS:
+   - Use **Tailwind CSS** para todo o estilo.
+   - Design corporativo, limpo e confiável.
+   - Use imagens da Pollinations (https://image.pollinations.ai/prompt/...) para deixar o site rico visualmente.
+   - Retorne APENAS o código HTML. Sem Markdown.
+
+5. **Studio de Arte IA (Image Generation)**:
    Você é um engenheiro de prompts especializado em Stable Diffusion XL e Flux Pro.
    Sua tarefa NÃO é gerar a imagem, mas sim transformar o pedido simples do usuário em português em um PROMPT TÉCNICO EM INGLÊS altamente detalhado.
    
@@ -32,9 +52,9 @@ MODOS DISPONÍVEIS (roteie baseado na query):
    - Adicione "magic words" de qualidade (ex: masterpiece, trending on artstation, sharp focus).
    - SAÍDA: Retorne APENAS o prompt em inglês. Nada mais. Sem "Aqui está o prompt". Apenas o texto cru.
 
-5. **Gerador de Copy**: Textos persuasivos para ads, emails, posts. Foque em AIDA (Atenção, Interesse, Desejo, Ação).
+6. **Gerador de Copy**: Textos persuasivos para ads, emails, posts. Foque em AIDA (Atenção, Interesse, Desejo, Ação).
 
-6. **Editor Visual (Social Media)**:
+7. **Editor Visual (Social Media)**:
    ATENÇÃO: MODO DE GERAÇÃO DE CÓDIGO ESTRITO. PROIBIDO RETORNAR TEXTO EXPLICATIVO.
    Você é um motor de renderização de templates.
    
@@ -60,7 +80,7 @@ export const generateCreativeContent = async (
     userId?: string,
     generateAudio?: boolean,
     options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
-): Promise<{ text: string, audioBase64: string | null }> => {
+): Promise<{ text: string, audioBase64: string | null, sources?: Source[] }> => {
   if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable not set");
   }
@@ -92,11 +112,12 @@ export const generateCreativeContent = async (
       `;
   }
 
-  if (mode === 'landingpage_generator' && options) {
+  if ((mode === 'landingpage_generator' || mode === 'institutional_website_generator') && options) {
     fullPrompt += `
-    **DIRETRIZES VISUAIS ESPECÍFICAS PARA A LANDING PAGE:**
-    - **Tema/Estilo Visual**: ${options.theme || 'Moderno e Clean'}.
+    **DIRETRIZES VISUAIS ESPECÍFICAS:**
+    - **Tema/Estilo Visual**: ${options.theme || 'Moderno e Corporativo'}.
     - **Cor Primária**: ${options.primaryColor || '#10B981'}.
+    - **Instrução Extra:** Use imagens da Pollinations.ai (com prompts em inglês na URL) para deixar o site visualmente rico.
     `;
   }
 
@@ -116,15 +137,28 @@ export const generateCreativeContent = async (
 
   let text = response.text;
 
+  // Extract sources if available (Grounding)
+  let sources: Source[] = [];
+  if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
+      sources = response.candidates[0].groundingMetadata.groundingChunks
+        .map((chunk: any) => {
+            if (chunk.web?.uri && chunk.web?.title) {
+                return { uri: chunk.web.uri, title: chunk.web.title };
+            }
+            return null;
+        })
+        .filter((s: any) => s !== null) as Source[];
+  }
+
   if (!text) {
     throw new Error('A API não retornou conteúdo de texto.');
   }
 
   // Limpeza de Markdown para modos que geram código HTML
-  if (mode === 'landingpage_generator' || mode === 'canva_structure') {
+  if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'institutional_website_generator') {
       text = text.replace(/```html/g, '').replace(/```/g, '').trim();
       
-      // Limpeza de emergência: se o modelo insistir em escrever texto antes do <div
+      // Limpeza de emergência: se o modelo insistir em escrever texto antes do <div para social media
       const divStartIndex = text.indexOf('<div');
       const divEndIndex = text.lastIndexOf('div>') + 4;
       
@@ -163,5 +197,5 @@ export const generateCreativeContent = async (
     saveGenerationResult(userId, `Modo: ${mode}\nPrompt: ${prompt}\nResultado: ${text.substring(0, 500)}...`);
   }
   
-  return { text, audioBase64 };
+  return { text, audioBase64, sources };
 };

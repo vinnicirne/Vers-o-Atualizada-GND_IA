@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { getUsers, updateUser } from '../../services/adminService';
+import { getUsers, updateUser, deleteUser } from '../../services/adminService';
 import { User, UserRole, UserStatus } from '../../types';
 import { Pagination } from './Pagination';
 import { UserEditModal } from './UserEditModal';
-import { useUser } from '../../contexts/UserContext'; // To get admin ID
+import { useUser } from '../../contexts/UserContext'; 
+import { Toast } from './Toast';
 
 const USERS_PER_PAGE = 10;
 
@@ -12,18 +14,22 @@ interface UserTableProps {
 }
 
 export function UserTable({ dataVersion }: UserTableProps) {
-  const { user: adminUser } = useUser(); // The logged-in admin
+  const { user: adminUser } = useUser();
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   
-  // State for editing
+  // State para Edição
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // State para Exclusão (Modal Customizado em vez de window.confirm)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // State for filtering and pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [statusFilter, setStatusFilter] = useState<UserStatus | 'all'>('all');
@@ -51,7 +57,6 @@ export function UserTable({ dataVersion }: UserTableProps) {
     fetchUsers();
   }, [fetchUsers, dataVersion]);
   
-  // Reset page to 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [roleFilter, statusFilter]);
@@ -60,13 +65,43 @@ export function UserTable({ dataVersion }: UserTableProps) {
     setSelectedUser(user);
     setIsEditModalOpen(true);
   };
+
+  // Abre o modal de confirmação
+  const handleDeleteClick = (user: User) => {
+    setUserToDelete(user);
+  };
+
+  // Executa a exclusão real
+  const confirmDelete = async () => {
+    if (!adminUser || !userToDelete) return;
+
+    try {
+        setIsDeleting(true);
+        await deleteUser(userToDelete.id, adminUser.id);
+        setToast({ message: "Usuário excluído com sucesso!", type: 'success' });
+        // Fecha modal
+        setUserToDelete(null);
+        // Pequeno delay para garantir que o banco processou antes de recarregar
+        setTimeout(() => fetchUsers(), 500);
+    } catch (err: any) {
+        console.error("Erro no frontend ao excluir:", err);
+        let msg = err.message || "Erro ao excluir usuário.";
+        if (msg.includes("foreign key")) {
+            msg = "Erro de integridade (Foreign Key). O usuário possui dados que não puderam ser apagados automaticamente.";
+        }
+        setToast({ message: msg, type: 'error' });
+        setUserToDelete(null); // Fecha modal mesmo com erro
+    } finally {
+        setIsDeleting(false);
+    }
+  };
   
-  const handleCloseModal = () => {
+  const handleCloseEditModal = () => {
     setSelectedUser(null);
     setIsEditModalOpen(false);
   };
   
-  const handleSaveUser = async (userId: string, updates: { role: UserRole; credits: number; }) => {
+  const handleSaveUser = async (userId: string, updates: { role: UserRole; credits: number; status: UserStatus; full_name: string }) => {
     if (!adminUser) {
         setError("Sessão de administrador inválida.");
         return;
@@ -74,10 +109,11 @@ export function UserTable({ dataVersion }: UserTableProps) {
     try {
         setIsSaving(true);
         await updateUser(userId, updates, adminUser.id);
-        handleCloseModal();
-        await fetchUsers(); // Refresh data
+        setToast({ message: "Usuário atualizado com sucesso!", type: 'success' });
+        handleCloseEditModal();
+        await fetchUsers(); 
     } catch (err: any) {
-        setError(err.message || "Falha ao atualizar o usuário.");
+        setToast({ message: err.message || "Falha ao atualizar o usuário.", type: 'error' });
     } finally {
         setIsSaving(false);
     }
@@ -101,7 +137,6 @@ export function UserTable({ dataVersion }: UserTableProps) {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
         <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Gerenciamento de Usuários</h2>
         <div className="flex items-center space-x-4">
-           {/* Filters */}
             <select
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value as UserRole | 'all')}
@@ -126,7 +161,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
         </div>
       </div>
 
-      {loading && <div className="text-center p-4">Carregando usuários...</div>}
+      {loading && <div className="text-center p-4"><i className="fas fa-spinner fa-spin text-green-500 mr-2"></i>Carregando...</div>}
       {error && <div className="text-center p-4 text-red-400 bg-red-900/20 border-red-500/30 rounded-md"><strong>Erro:</strong> {error}</div>}
       
       {!loading && !error && (
@@ -139,6 +174,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
                 <th scope="col" className="px-6 py-3">Role</th>
                 <th scope="col" className="px-6 py-3 text-center">Créditos</th>
                 <th scope="col" className="px-6 py-3 text-center">Status</th>
+                <th scope="col" className="px-6 py-3 text-center" title="Data do último login">Último Login</th>
                 <th scope="col" className="px-6 py-3 text-right">Ações</th>
                 </tr>
             </thead>
@@ -156,12 +192,23 @@ export function UserTable({ dataVersion }: UserTableProps) {
                     <td className="px-6 py-4 text-center">
                         <span className={getStatusChip(user.status)}>{user.status}</span>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-center text-xs text-gray-400" title={user.last_login ? new Date(user.last_login).toLocaleString() : ''}>
+                        {user.last_login ? new Date(user.last_login).toLocaleString('pt-BR') : 'Nunca'}
+                    </td>
+                    <td className="px-6 py-4 text-right space-x-3">
                         <button 
                             onClick={() => handleEditClick(user)}
-                            className="font-medium text-yellow-400 hover:underline"
+                            className="font-medium text-yellow-400 hover:underline disabled:opacity-50"
+                            disabled={isDeleting}
                         >
                             Editar
+                        </button>
+                        <button 
+                            onClick={() => handleDeleteClick(user)}
+                            className="font-medium text-red-500 hover:underline disabled:opacity-50"
+                            disabled={isDeleting}
+                        >
+                            Excluir
                         </button>
                     </td>
                 </tr>
@@ -177,11 +224,49 @@ export function UserTable({ dataVersion }: UserTableProps) {
     {isEditModalOpen && selectedUser && (
         <UserEditModal 
             user={selectedUser}
-            onClose={handleCloseModal}
+            onClose={handleCloseEditModal}
             onSave={handleSaveUser}
             isSaving={isSaving}
         />
     )}
+
+    {/* Modal de Confirmação de Exclusão Customizado */}
+    {userToDelete && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-black rounded-lg shadow-xl w-full max-w-md border border-red-500/50">
+                <div className="p-6 text-center">
+                    <div className="w-16 h-16 bg-red-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i className="fas fa-exclamation-triangle text-2xl text-red-500"></i>
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">Excluir Usuário?</h3>
+                    <p className="text-gray-400 text-sm mb-6">
+                        Você está prestes a excluir <strong>{userToDelete.email}</strong>.
+                        <br/><br/>
+                        Isso removerá permanentemente o acesso e todos os dados associados (créditos, logs, histórico). Esta ação não pode ser desfeita.
+                    </p>
+                    
+                    <div className="flex justify-center gap-3">
+                        <button 
+                            onClick={() => setUserToDelete(null)}
+                            disabled={isDeleting}
+                            className="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-white font-medium transition border border-gray-700"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            onClick={confirmDelete}
+                            disabled={isDeleting}
+                            className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold transition flex items-center"
+                        >
+                            {isDeleting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Excluindo...</> : 'Sim, Excluir'}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )}
+
+    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 };

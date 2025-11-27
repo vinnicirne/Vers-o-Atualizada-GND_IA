@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPaymentSettings, saveGatewaySettings, saveCreditPackages } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
@@ -46,7 +48,7 @@ export function PaymentsConfig() {
         fetchSettings();
     }, [fetchSettings]);
 
-    const handleGatewayChange = (gateway: 'stripe' | 'mercadoPago', field: keyof GatewayConfig, value: any) => {
+    const handleGatewayChange = (gateway: 'stripe' | 'mercadoPago' | 'asaas', field: keyof GatewayConfig, value: any) => {
         setSettings(prev => {
             if (!prev) return null;
             return {
@@ -102,10 +104,12 @@ export function PaymentsConfig() {
         }
 
         // Validation
-        for (const gw of Object.values(settings.gateways)) {
+        for (const [key, gw] of Object.entries(settings.gateways)) {
             const gatewayConfig = gw as GatewayConfig;
-            if (gatewayConfig.enabled && (!gatewayConfig.publicKey || !gatewayConfig.secretKey)) {
-                setToast({ message: 'Gateways ativos devem ter as chaves Public e Secret preenchidas.', type: 'error' });
+            // Para Asaas, talvez apenas apiKey seja obrigatória, depende da implementação. 
+            // Aqui assumimos que se enabled, precisa de chave.
+            if (gatewayConfig.enabled && !gatewayConfig.publicKey) {
+                setToast({ message: `Gateway ${key} ativo deve ter a chave API (Public Key) preenchida.`, type: 'error' });
                 return;
             }
         }
@@ -139,24 +143,24 @@ export function PaymentsConfig() {
     if (loading) return <div className="text-center p-8"><i className="fas fa-spinner fa-spin text-2xl text-green-400"></i></div>;
     if (!settings) return <div className="text-center p-8 text-red-400">Não foi possível carregar as configurações.</div>;
 
-    const renderGatewayConfig = (name: 'stripe' | 'mercadoPago', title: string, icon: string) => (
+    const renderGatewayConfig = (name: 'stripe' | 'mercadoPago' | 'asaas', title: string, icon: string, placeholderKey: string = 'Public Key / API Key') => (
         <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
             <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center space-x-3">
                     <i className={`${icon} text-2xl`}></i>
                     <h3 className="text-xl font-bold text-green-400">{title}</h3>
                 </div>
-                <ToggleSwitch enabled={settings.gateways[name].enabled} onChange={(e) => handleGatewayChange(name, 'enabled', e)} />
+                <ToggleSwitch enabled={settings.gateways[name]?.enabled ?? false} onChange={(e) => handleGatewayChange(name, 'enabled', e)} />
             </div>
             <div className="space-y-4">
                 <div>
-                    <label className="text-xs text-gray-400 block mb-1">Public Key</label>
-                    <input type="text" value={settings.gateways[name].publicKey} onChange={(e) => handleGatewayChange(name, 'publicKey', e.target.value)} className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm" />
+                    <label className="text-xs text-gray-400 block mb-1">{placeholderKey}</label>
+                    <input type="text" value={settings.gateways[name]?.publicKey ?? ''} onChange={(e) => handleGatewayChange(name, 'publicKey', e.target.value)} className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm" />
                 </div>
                 <div>
-                    <label className="text-xs text-gray-400 block mb-1">{name === 'stripe' ? 'Secret Key' : 'Access Token'}</label>
+                    <label className="text-xs text-gray-400 block mb-1">{name === 'stripe' ? 'Secret Key' : 'Secret / Wallet ID (Opcional)'}</label>
                      <div className="relative">
-                        <input type={visibleKeys[name] ? 'text' : 'password'} value={settings.gateways[name].secretKey} onChange={(e) => handleGatewayChange(name, 'secretKey', e.target.value)} className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm pr-10" />
+                        <input type={visibleKeys[name] ? 'text' : 'password'} value={settings.gateways[name]?.secretKey ?? ''} onChange={(e) => handleGatewayChange(name, 'secretKey', e.target.value)} className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-sm pr-10" />
                         <button onClick={() => setVisibleKeys(p => ({ ...p, [name]: !p[name]}))} className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-white">
                             <i className={`fas ${visibleKeys[name] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                         </button>
@@ -170,9 +174,10 @@ export function PaymentsConfig() {
         <div className="space-y-8">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {renderGatewayConfig('stripe', 'Stripe', 'fab fa-stripe-s')}
-                {renderGatewayConfig('mercadoPago', 'Mercado Pago', 'fas fa-hand-holding-usd')}
+                {renderGatewayConfig('mercadoPago', 'Mercado Pago', 'fas fa-hand-holding-usd', 'Access Token')}
+                {renderGatewayConfig('asaas', 'Asaas', 'fas fa-money-bill-wave', 'API Key (Asaas)')}
             </div>
 
             <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">

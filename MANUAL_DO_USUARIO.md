@@ -1,3 +1,4 @@
+
 # 🚀 Guia Oficial do Usuário - GDN_IA
 
 Bem-vindo ao **GDN_IA**! Este é o seu manual completo para dominar nossa suíte de criação inteligente. Aqui você aprenderá a gerar notícias, criar artes, desenvolver landing pages e muito mais, utilizando o poder da Inteligência Artificial.
@@ -15,7 +16,7 @@ Bem-vindo ao **GDN_IA**! Este é o seu manual completo para dominar nossa suíte
 
 ## 🛠️ 2. Ferramentas Criativas (Creator Suite)
 
-O sistema possui 7 modos de operação. Selecione o modo desejado clicando no ícone correspondente no Dashboard.
+O sistema possui diversos modos de operação. Selecione o modo desejado clicando no ícone correspondente no Dashboard.
 
 ### 📰 1. GDN Notícias (News Generator)
 Gera artigos jornalísticos completos baseados em fatos recentes.
@@ -26,7 +27,16 @@ Gera artigos jornalísticos completos baseados em fatos recentes.
     3. **Opcional:** Marque a caixa **"Gerar áudio da matéria"** para criar uma narração automática.
     4. Clique em **"Gerar Conteúdo"**.
 
-### 🎨 2. Studio de Arte IA (Image Generation)
+### 🏢 2. Site Institucional (Novo)
+Cria sites corporativos completos (Home, Sobre, Serviços, Contato) em uma única página (One-Page).
+*   **O que faz:** Gera a estrutura de código HTML profissional, textos corporativos e design responsivo usando Tailwind CSS.
+*   **Como usar:**
+    1. Selecione "Site Institucional".
+    2. Defina o **Estilo Visual** e **Cor da Marca**.
+    3. No prompt, digite o nome da empresa e o ramo. *Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".*
+    4. O sistema abrirá o Editor Visual para você ver e exportar o site.
+
+### 🎨 3. Studio de Arte IA (Image Generation)
 Cria imagens exclusivas a partir de texto.
 *   **O que faz:** Transforma sua descrição em português para um prompt técnico em inglês e gera uma imagem de alta definição.
 *   **Como usar:**
@@ -36,7 +46,7 @@ Cria imagens exclusivas a partir de texto.
     4. Clique em **"Criar Arte"**.
 *   **Editor de Imagem:** Após gerar, uma tela de edição se abre. Você pode ajustar **Brilho**, **Contraste**, **Saturação** e aplicar filtros antes de baixar a imagem.
 
-### 🌐 3. Gerador de Landing Page
+### 🌐 4. Gerador de Landing Page
 Cria páginas de vendas ou captura completas (código HTML + Design).
 *   **O que faz:** Escreve o código, aplica design moderno e monta a página para você.
 *   **Como usar:**
@@ -46,7 +56,7 @@ Cria páginas de vendas ou captura completas (código HTML + Design).
     4. Clique em **"Gerar Conteúdo"**.
 *   **Editor Visual:** O sistema abrirá um editor onde você pode clicar nos textos para alterar, ver como fica no celular e **Exportar** o código pronto para seu site.
 
-### 📱 4. Editor Visual (Social Media)
+### 📱 5. Editor Visual (Social Media)
 Gera layouts prontos para redes sociais (Instagram/Facebook).
 *   **O que faz:** Cria a estrutura visual (fundo, tipografia, disposição) baseada no seu pedido.
 *   **Como usar:**
@@ -54,20 +64,33 @@ Gera layouts prontos para redes sociais (Instagram/Facebook).
     2. Descreva o post. *Ex: "Post de Promoção de Natal, fundo vermelho vibrante, texto grande '50% OFF' em dourado".*
     3. O sistema gerará o layout e abrirá o editor para você ajustar os detalhes finais.
 
-### 🗣️ 5. Texto para Voz (Text-to-Speech)
+### 🗣️ 6. Texto para Voz (Text-to-Speech)
 Transforma qualquer texto escrito em áudio narrado por IA.
 *   **Como usar:**
     1. Selecione "Texto para Voz".
     2. Cole o texto desejado e clique em gerar.
     3. Clique em gerar e utilize o player para ouvir ou baixar o áudio.
 
-### ✍️ 6. Gerador de Copy & Prompts
+### ✍️ 7. Gerador de Copy & Prompts
 *   **Gerador de Copy:** Cria textos persuasivos para anúncios, e-mails ou legendas. *Ex: "Copy para vender um curso de inglês para viajantes".*
 *   **Gerador de Prompts:** Ajuda você a criar instruções perfeitas para usar em outras IAs (como ChatGPT ou Midjourney).
 
 ---
 
-## 💎 3. Planos e Créditos
+## 🤝 3. Programa de Afiliados (Ganhe Dinheiro)
+
+Você pode ganhar dinheiro indicando o GDN_IA para outras pessoas.
+
+1.  **Acesso:** Clique no ícone de **Aperto de Mão** (🤝) no cabeçalho do Dashboard.
+2.  **Seu Link:** O sistema gerará um link exclusivo (ex: `gdn.ia/?ref=SEU-NOME-123`). Copie e envie para amigos ou clientes.
+3.  **Comissão:**
+    *   Você ganha **20% de comissão** sobre **todas** as compras que seus indicados fizerem (Planos ou Créditos).
+    *   A comissão é recorrente: se o usuário renovar o plano, você ganha novamente.
+4.  **Saque:** Quando tiver saldo disponível, clique no botão "Solicitar Saque" dentro do modal de afiliados.
+
+---
+
+## 💎 4. Planos e Créditos
 
 O GDN_IA funciona com um sistema de economia baseada em créditos.
 
@@ -75,7 +98,8 @@ O GDN_IA funciona com um sistema de economia baseada em créditos.
 Cada ferramenta tem um custo diferente baseado na complexidade da geração:
 *   **Texto Simples (News, Copy, Prompts, Voz):** 1 Crédito.
 *   **Imagens e Artes:** 3 Créditos.
-*   **Landing Pages (Código Complexo):** 5 Créditos.
+*   **Landing Pages:** 5 Créditos.
+*   **Sites Institucionais:** 8 Créditos.
 
 ### Gerenciando seu Plano
 No topo do site, clique no botão **"Planos"** ou no ícone de moedas.
@@ -84,7 +108,7 @@ No topo do site, clique no botão **"Planos"** ou no ícone de moedas.
 
 ---
 
-## 🧠 4. Memória e Feedback
+## 🧠 5. Memória e Feedback
 
 A IA do GDN aprende com você!
 *   Após cada geração, um widget aparecerá perguntando: **"De 0 a 10, como ficou?"**.

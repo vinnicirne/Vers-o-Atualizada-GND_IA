@@ -33,8 +33,15 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
 
       if (profileError) {
          console.error("Erro ao buscar perfil real:", profileError);
-         // Se for um erro de permissão RLS, passamos a mensagem exata para a UI tratar
-         if (profileError.includes('permission denied') || profileError.includes('policy')) {
+         
+         // Tratamento para erro de conexão/rede
+         if (typeof profileError === 'string' && profileError.toLowerCase().includes('failed to fetch')) {
+             setError('Erro de Conexão: Não foi possível contactar o servidor. Verifique sua internet ou se há bloqueadores (AdBlock) ativos.');
+             return;
+         }
+
+         // Se for um erro de permissão RLS
+         if (typeof profileError === 'string' && (profileError.includes('permission denied') || profileError.includes('policy'))) {
              setError(`SQL_CONFIG_ERROR: ${profileError}`);
          } else {
              setError(`Erro ao carregar perfil: ${profileError}`);
@@ -46,7 +53,6 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
 
       if (!profileData) {
          // Perfil não existe no banco real.
-         // Isso acontece se o usuário foi criado no Auth mas não na tabela app_users (ex: trigger falhou ou não existe).
          console.warn("Usuário autenticado, mas sem perfil na tabela 'app_users'.");
          setError("Perfil de usuário não encontrado no banco de dados.");
          setUser(null);
@@ -68,7 +74,13 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       
     } catch (e: any) {
       console.error("Erro crítico em fetchUserProfile:", e);
-      setError(e.message || 'Erro inesperado.');
+      const msg = e.message || JSON.stringify(e);
+      
+      if (msg.toLowerCase().includes('failed to fetch')) {
+          setError('Erro de Conexão: O sistema não conseguiu carregar seus dados. Verifique sua conexão com a internet.');
+      } else {
+          setError(msg || 'Erro inesperado ao carregar usuário.');
+      }
       setUser(null);
     }
   }, []);
@@ -92,9 +104,18 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
 
   useEffect(() => {
     const initializeSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      await fetchUserProfile(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+            console.error("Erro ao recuperar sessão:", sessionError);
+            // Não bloqueia o app, apenas não loga
+        }
+        await fetchUserProfile(session?.user ?? null);
+      } catch (err) {
+        console.error("Falha na inicialização da sessão:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     initializeSession();

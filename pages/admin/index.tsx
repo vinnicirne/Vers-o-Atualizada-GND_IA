@@ -1,4 +1,6 @@
 
+
+
 import React, { useState, useEffect } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -12,7 +14,8 @@ import { PaymentsManager } from '../../components/admin/PaymentsManager';
 import { MultiIASystem } from '../../components/admin/MultiIASystem';
 import { CreateUserModal } from '../../components/admin/CreateUserModal';
 import { PlansManager } from '../../components/admin/PlansManager'; 
-import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; // Novo componente
+import { SecurityManager } from '../../components/admin/SecurityManager'; // Novo
+import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; 
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -115,9 +118,11 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PlansManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
+      case 'security': // Novo Case
+        return <SecurityManager />;
       case 'logs':
         return <LogsViewer />;
-      case 'docs': // Novo case
+      case 'docs': 
         return <DocumentationViewer />;
       default:
         return (

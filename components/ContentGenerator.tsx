@@ -51,7 +51,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
   const [placeholder, setPlaceholder] = useState('');
   const [generateAudio, setGenerateAudio] = useState(false);
   
-  // Landing Page options
+  // Landing Page & Website options
   const [theme, setTheme] = useState('modern');
   const [primaryColor, setPrimaryColor] = useState('#10B981'); 
 
@@ -73,7 +73,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
     e.preventDefault();
     let options = undefined;
     
-    if (mode === 'landingpage_generator') {
+    if (mode === 'landingpage_generator' || mode === 'institutional_website_generator') {
         options = { theme, primaryColor };
     } else if (mode === 'image_generation') {
         options = { aspectRatio, imageStyle };
@@ -121,8 +121,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
           )}
         </div>
         
-        {/* Opções Extras para Landing Page */}
-        {mode === 'landingpage_generator' && !isModeLocked('landingpage_generator') && (
+        {/* Opções Extras para Landing Page e Site Institucional */}
+        {(mode === 'landingpage_generator' || mode === 'institutional_website_generator') && !isModeLocked(mode) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
             <div>
               <label htmlFor="theme" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
@@ -181,7 +181,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading }: 
         
         <div>
           <label htmlFor="prompt" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
-            {mode === 'image_generation' ? 'Descreva sua Imagem' : 'Seu Pedido'}
+            {mode === 'image_generation' ? 'Descreva sua Imagem' : (mode === 'institutional_website_generator' ? 'Dados da Empresa' : 'Seu Pedido')}
           </label>
           <textarea
             id="prompt"

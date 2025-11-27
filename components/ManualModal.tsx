@@ -50,7 +50,7 @@ export function ManualModal({ onClose }: ManualModalProps) {
                     </div>
                     <div className="bg-gray-900/30 p-4 rounded-lg border border-gray-800">
                         <h4 className="font-bold text-white mb-2"><i className="fas fa-wallet text-yellow-400 mr-2"></i>Créditos</h4>
-                        <p className="text-sm text-gray-400">Cada ação consome créditos. Textos custam 1 crédito, Imagens custam 3 e Landing Pages custam 5.</p>
+                        <p className="text-sm text-gray-400">Cada ação consome créditos. Textos custam 1 crédito, Imagens custam 3, Sites custam 8.</p>
                     </div>
                 </div>
             </section>
@@ -78,6 +78,22 @@ export function ManualModal({ onClose }: ManualModalProps) {
                         </div>
                     </div>
 
+                    {/* Site Institucional (NOVO) */}
+                    <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-950/50 rounded-xl border border-gray-800 hover:border-orange-900/50 transition">
+                        <div className="bg-orange-900/20 w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <i className="fas fa-building text-2xl text-orange-400"></i>
+                        </div>
+                        <div>
+                            <h4 className="text-lg font-bold text-white">Site Institucional <span className="bg-orange-600 text-black text-[10px] px-2 py-0.5 rounded ml-2">NOVO</span></h4>
+                            <p className="text-sm text-gray-400 mb-2">Cria sites corporativos completos (Home, Sobre, Serviços) em segundos.</p>
+                            <ul className="text-xs text-gray-500 space-y-1">
+                                <li>• Informe o nome da empresa e o ramo de atuação.</li>
+                                <li>• A IA gera o código, as seções e o design responsivo.</li>
+                                <li>• Use o editor para visualizar e exportar o HTML.</li>
+                            </ul>
+                        </div>
+                    </div>
+
                     {/* Imagens */}
                     <div className="flex flex-col md:flex-row gap-4 p-4 bg-gray-950/50 rounded-xl border border-gray-800 hover:border-purple-900/50 transition">
                         <div className="bg-purple-900/20 w-16 h-16 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -101,7 +117,7 @@ export function ManualModal({ onClose }: ManualModalProps) {
                         </div>
                         <div>
                             <h4 className="text-lg font-bold text-white">Gerador de Landing Page</h4>
-                            <p className="text-sm text-gray-400 mb-2">Cria sites de venda completos com código HTML + CSS.</p>
+                            <p className="text-sm text-gray-400 mb-2">Cria sites de venda focados em conversão.</p>
                             <ul className="text-xs text-gray-500 space-y-1">
                                 <li>• Defina o tema (Moderno, Luxo) e cor principal.</li>
                                 <li>• O sistema abre um <strong>Editor Visual</strong> onde você pode editar textos e exportar o código.</li>
@@ -124,7 +140,7 @@ export function ManualModal({ onClose }: ManualModalProps) {
             </section>
 
              {/* Seção 3: Feedback */}
-             <section>
+             <section className="border-b border-gray-800 pb-8">
                 <h3 className="text-xl font-bold text-yellow-400 mb-4 flex items-center">
                     <span className="bg-yellow-900/30 w-8 h-8 rounded-full flex items-center justify-center text-sm mr-3 text-yellow-500">3</span>
                     Memória e Feedback
@@ -139,6 +155,33 @@ export function ManualModal({ onClose }: ManualModalProps) {
                             • Notas <strong>8 a 10</strong>: A IA entende que você gostou e tentará replicar o estilo.<br/>
                             • Notas <strong>0 a 4</strong>: A IA entende como erro e evitará fazer igual.
                         </p>
+                    </div>
+                </div>
+            </section>
+
+            {/* Seção 4: Afiliados (Novo) */}
+            <section>
+                <h3 className="text-xl font-bold text-white mb-4 flex items-center">
+                    <span className="bg-yellow-600/20 text-yellow-500 w-8 h-8 rounded-full flex items-center justify-center text-sm mr-3">4</span>
+                    Programa de Afiliados
+                </h3>
+                <div className="bg-gradient-to-r from-yellow-900/10 to-transparent border border-yellow-600/30 p-5 rounded-lg">
+                    <div className="flex items-start gap-4">
+                        <div className="bg-yellow-600/20 p-3 rounded-full">
+                            <i className="fas fa-handshake text-yellow-500 text-xl"></i>
+                        </div>
+                        <div>
+                            <h4 className="font-bold text-yellow-500 mb-2">Divulgue e Ganhe 20%</h4>
+                            <p className="text-sm text-gray-300 mb-3">
+                                Ganhe comissão recorrente sobre todas as compras (planos ou créditos) feitas por usuários que você indicou.
+                            </p>
+                            <ol className="text-sm text-gray-400 space-y-2 list-decimal pl-4">
+                                <li>Clique no ícone de <strong>Aperto de Mão</strong> no topo do Dashboard.</li>
+                                <li>Copie seu <strong>Link Exclusivo</strong>.</li>
+                                <li>Envie para amigos ou clientes.</li>
+                                <li>Acompanhe seu saldo e solicite saques pelo painel.</li>
+                            </ol>
+                        </div>
                     </div>
                 </div>
             </section>

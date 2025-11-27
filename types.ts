@@ -34,8 +34,23 @@ export interface User {
   role: UserRole;
   credits: number;
   status: UserStatus;
-  plan: UserPlan; // Usar UserPlan do types/plan.types.ts
+  plan: UserPlan; 
   created_at?: string;
+  last_login?: string;
+  // Affiliate System
+  affiliate_code?: string;
+  referred_by?: string;
+  affiliate_balance?: number;
+}
+
+export interface AffiliateLog {
+  id: string;
+  affiliate_id: string;
+  source_user_id?: string;
+  amount: number;
+  description: string;
+  created_at: string;
+  source_email?: string; // Enriched field
 }
 
 export interface Log {
@@ -48,7 +63,17 @@ export interface Log {
   detalhes?: Record<string, any>;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security';
+
+export interface AllowedDomain {
+  id: string;
+  domain: string;
+  created_at: string;
+}
+
+export interface SecuritySettings {
+  validationMode: 'strict_allowlist' | 'dns_validation';
+}
 
 export type TransactionStatus = 'pending' | 'approved' | 'failed';
 export type PaymentMethod = 'pix' | 'card';
@@ -74,8 +99,8 @@ export interface Transaction {
 
 export interface GatewayConfig {
   enabled: boolean;
-  publicKey: string;
-  secretKey: string;
+  publicKey: string; // Para Asaas pode ser usado como API Key se só houver uma
+  secretKey: string; // Para Asaas pode ser deixado em branco ou usado para WalletId
 }
 
 export interface CreditPackage {
@@ -90,6 +115,7 @@ export interface PaymentSettings {
   gateways: {
     stripe: GatewayConfig;
     mercadoPago: GatewayConfig;
+    asaas: GatewayConfig; // Novo Gateway Adicionado
   };
   packages: CreditPackage[];
 }

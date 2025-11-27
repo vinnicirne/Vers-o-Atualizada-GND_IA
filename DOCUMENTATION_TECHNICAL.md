@@ -1,3 +1,4 @@
+
 # 🏗️ Documentação Técnica do Sistema - GDN_IA
 
 ## 1. Visão Geral
@@ -6,7 +7,7 @@
 **GDN_IA** (Gerador de Notícias Inteligente & Creator Suite)
 
 ### Objetivo Principal
-O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligência Artificial Generativa**. O sistema permite que usuários criem diversos tipos de conteúdo — notícias baseadas em fatos reais, imagens artísticas, landing pages (código HTML/CSS), copys de marketing e áudio — utilizando um sistema de créditos e planos de assinatura.
+O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligência Artificial Generativa**. O sistema permite que usuários criem diversos tipos de conteúdo — notícias baseadas em fatos reais, imagens artísticas, landing pages (código HTML/CSS), sites institucionais, copys de marketing e áudio — utilizando um sistema de créditos e planos de assinatura.
 
 ### Tecnologias Utilizadas
 *   **Frontend:** React 18, Vite, TypeScript.
@@ -15,7 +16,7 @@ O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligênci
 *   **Inteligência Artificial:**
     *   Google Gemini API (`gemini-2.5-flash`, `gemini-2.5-flash-preview-tts`) para texto e áudio.
     *   Pollinations.ai para geração de imagens.
-*   **Editor Visual:** GrapesJS (para Landing Pages).
+*   **Editor Visual:** GrapesJS (para Landing Pages e Sites).
 *   **Visualização de Dados:** Recharts (Gráficos administrativos).
 
 ### Estrutura Geral de Pastas
@@ -24,16 +25,18 @@ A estrutura do projeto segue um padrão modular focado em funcionalidades e cont
 ```bash
 /
 ├── components/         # Componentes React reutilizáveis
-│   ├── admin/          # Componentes exclusivos do Painel Administrativo
+│   ├── admin/          # Componentes exclusivos do Painel Administrativo (UserTable, SecurityManager, etc)
 │   ├── auth/           # Formulários de Login/Registro
-│   └── ...             # Componentes gerais (Header, Loader, etc.)
+│   └── ...             # Componentes gerais (Header, Loader, AffiliateModal, etc.)
 ├── contexts/           # Context API (UserContext)
-├── hooks/              # Custom Hooks (usePlan, useMetrics, useTokenUsage)
+├── hooks/              # Custom Hooks (usePlan, useMetrics, usePlans)
 ├── pages/              # Páginas principais (Dashboard, Admin, Login)
-├── services/           # Camada de comunicação com APIs
+├── services/           # Camada de comunicação com APIs e Lógica de Negócio
 │   ├── api.ts          # Wrapper genérico para o Supabase client
-│   ├── adminService.ts # Lógica de negócio do admin
-│   ├── geminiService.ts# Integração com Google GenAI
+│   ├── adminService.ts # Lógica administrativa e de Afiliados
+│   ├── paymentService.ts # Processamento de pagamentos e comissões
+│   ├── geminiService.ts# Integração com Google GenAI (Core)
+│   ├── loggerService.ts# Sistema centralizado de logs (Fire-and-Forget)
 │   └── ...
 ├── types/              # Definições de Tipos TypeScript (Interfaces)
 └── ...                 # Arquivos de configuração (vite, tailwind, tsconfig)
@@ -41,32 +44,20 @@ A estrutura do projeto segue um padrão modular focado em funcionalidades e cont
 
 ---
 
-## 2. Autenticação e Usuários
+## 2. Autenticação e Segurança
 
 ### Fluxo de Autenticação
 O sistema utiliza o **Supabase Auth** para gerenciamento de sessões.
 1.  **Login/Registro:** Gerenciado pelo componente `LoginForm.tsx`.
 2.  **Sessão:** O estado do usuário é persistido e monitorado via `UserContext.tsx`.
 
-### Estrutura do Usuário (`app_users`)
-Diferente da tabela padrão `auth.users` do Supabase (que é interna e protegida), o sistema espelha os dados públicos dos usuários na tabela `public.app_users`.
-
-**Campos da tabela `public.app_users`:**
-| Campo | Tipo | Descrição |
-| :--- | :--- | :--- |
-| `id` | uuid | Chave primária (FK para auth.users) |
-| `email` | text | Email do usuário |
-| `full_name`| text | Nome completo |
-| `role` | text | Papel no sistema (`user`, `editor`, `admin`, `super_admin`) |
-| `status` | text | Estado da conta (`active`, `inactive`, `banned`) |
-| `plan` | text | ID do plano atual (ex: `free`, `premium`) |
-| `created_at`| timestamp| Data de criação |
-
-### Gerenciamento de Créditos (`user_credits`)
-Os créditos são desacoplados do perfil do usuário para facilitar transações e atualizações atômicas.
-*   **Tabela:** `public.user_credits`
-*   **Campos:** `user_id` (FK), `credits` (int).
-*   **Nota:** O valor `-1` no campo `credits` representa créditos **ilimitados** (usado para Admins).
+### Arquitetura de Segurança (Domínios)
+Implementada em `services/adminService.ts` e `SecurityManager.tsx`. O sistema possui um validador híbrido no cadastro:
+1.  **Blacklist Interna:** Bloqueia imediatamente domínios temporários ou de teste (`teste.com`, `tempmail.com`, etc).
+2.  **Allowlist (Banco de Dados):** Verifica a tabela `allowed_domains`. Se o domínio estiver lá, o cadastro é aprovado imediatamente (VIP).
+3.  **Validação Dinâmica (Configurável):**
+    *   *Modo Estrito:* Apenas domínios na Allowlist passam.
+    *   *Modo DNS:* Realiza uma consulta **DNS-over-HTTPS** (Google Public DNS) para verificar registros MX do domínio. Se o domínio existe e recebe emails, o cadastro é liberado.
 
 ---
 
@@ -75,104 +66,73 @@ Os créditos são desacoplados do perfil do usuário para facilitar transações
 O banco de dados é um PostgreSQL hospedado no Supabase.
 
 ### Principais Tabelas
-1.  **`app_users`**: Perfis públicos dos usuários.
+1.  **`app_users`**: Perfis públicos dos usuários (espelho do auth). Contém `role`, `status`, `plan`, `last_login`, `affiliate_code`, `referred_by` e `affiliate_balance`.
 2.  **`user_credits`**: Saldo de créditos de cada usuário.
-3.  **`news`**: Conteúdo gerado (notícias). Armazena título, conteúdo, autor e fontes.
+3.  **`news`**: Conteúdo gerado (histórico). Armazena título, conteúdo, tipo (ferramenta usada), autor e fontes.
 4.  **`transactions`**: Histórico financeiro (compras de planos ou créditos avulsos).
-5.  **`logs`**: Auditoria do sistema. Registra ações importantes (ex: `update_user`, `generated_content`).
-6.  **`system_config`**: Armazenamento Key-Value para configurações dinâmicas (Planos, Configs de IA, Gateways de Pagamento).
-7.  **`user_memory`**: Sistema RAG (Retrieval-Augmented Generation) para armazenar preferências e feedback do usuário.
+5.  **`affiliate_logs`**: (Novo) Histórico de comissões pagas aos afiliados. Contém `affiliate_id`, `source_user_id`, `amount` e `description`.
+6.  **`logs`**: Auditoria do sistema.
+7.  **`system_config`**: Armazenamento Key-Value JSON para configurações dinâmicas (Planos, Configs de IA, Gateways, Security Settings).
+8.  **`user_memory`**: Sistema RAG para armazenar preferências e feedback do usuário.
+9.  **`allowed_domains`**: Tabela para Whitelist de domínios corporativos ou permitidos.
 
 ### Relações Chave
 *   `app_users.id` 1:1 `user_credits.user_id`
 *   `app_users.id` 1:N `news.author_id`
-*   `app_users.id` 1:N `transactions.usuario_id`
-*   `app_users.id` 1:N `logs.usuario_id`
+*   `app_users.id` (Referrer) 1:N `app_users.referred_by` (Indicados)
 
 ---
 
-## 4. Serviços e APIs
+## 4. Sistema de Afiliados
 
-A camada de serviços abstrai a complexidade das chamadas externas.
+O sistema permite que usuários indiquem outros e ganhem comissão.
+
+### Fluxo de Captura
+1.  O afiliado compartilha o link: `url/?ref=CODIGO`.
+2.  O `LoginForm.tsx` detecta o parâmetro `ref`.
+3.  O código é salvo no `localStorage` ('gdn_referral') para persistir caso o usuário navegue antes de cadastrar.
+4.  No momento do `signUp`, o código é verificado e, se válido, o `id` do afiliado é salvo na coluna `referred_by` do novo usuário.
+
+### Comissionamento
+1.  Quando uma compra é aprovada em `paymentService.ts`.
+2.  A função `processAffiliateCommission` (em `adminService.ts`) é chamada.
+3.  Ela verifica se o comprador tem um `referred_by` (pai).
+4.  Calcula **20%** do valor da venda.
+5.  Adiciona ao `affiliate_balance` do afiliado (pai) e cria um registro em `affiliate_logs`.
+
+---
+
+## 5. Serviços e APIs
+
+### `services/loggerService.ts` (Novo)
+Um serviço Singleton para centralizar logs.
+*   **Padrão Fire-and-Forget:** As chamadas de log não usam `await` para não bloquear a interface do usuário.
 
 ### `services/api.ts`
-Um wrapper leve sobre o `supabase-js`. Padroniza as respostas e tratamento de erros para operações CRUD (`select`, `insert`, `update`, `delete`). Evita repetição de código try/catch nos componentes.
+Wrapper leve sobre o `supabase-js`. Padroniza respostas e captura erros de banco de dados.
 
 ### `services/geminiService.ts`
 Controla a interação com o Google Gemini.
-*   **Função Principal:** `generateCreativeContent`.
-*   **Lógica:** Constrói prompts dinâmicos baseados no modo escolhido (News, Image Prompt, Code Generation).
-*   **Memória:** Consulta `user_memory` antes de gerar conteúdo para personalizar a resposta baseada em feedbacks anteriores.
-
-### `services/adminService.ts`
-Centraliza operações privilegiadas.
-*   Busca paginada de usuários, logs e transações.
-*   Atualização de configurações do sistema (`system_config`).
-*   Edição de usuários e aprovação de notícias.
+*   **Memória:** Injeta o histórico de feedback do usuário (`user_memory`) no *System Prompt* para aprendizado contínuo.
+*   **Grounding:** Extrai fontes (URLs) quando o Google Search é utilizado.
+*   **Prompt Engineering:** Possui prompts especializados para Site Institucional, Landing Pages (Tailwind) e Imagens.
 
 ---
 
-## 5. Painel Administrativo
+## 6. Painel Administrativo
 
 O acesso é protegido pelo componente `<AdminGate>`, que verifica a role do usuário (`admin` ou `super_admin`).
 
-### Funcionalidades
-1.  **Dashboard:** Métricas gerais (Recharts) mostrando novos usuários vs. notícias geradas.
-2.  **Usuários:** Tabela com busca e edição de permissões/créditos.
-3.  **Notícias:** Fluxo de moderação (Pendente -> Aprovado/Rejeitado).
-4.  **Planos:** Editor visual para criar/editar planos JSON armazenados em `system_config`. Permite definir quais serviços cada plano acessa.
-5.  **Sistema Multi-IA:** Interface para inserir chaves de API e ativar/desativar modelos (Gemini/OpenAI/Claude) dinamicamente sem redeploy.
-6.  **Logs:** Visualizador de auditoria com filtros por módulo e ação.
+### Módulos
+1.  **Dashboard:** Métricas gerais (Recharts).
+2.  **Usuários:** Gestão completa (CRUD), banimento, ajuste de créditos e visualização de último login.
+    *   *Delete:* Implementa exclusão em cascata manual (remove logs, histórico e créditos antes do usuário).
+3.  **Histórico (News):** Visualização de todo conteúdo gerado (filtrado por tipo).
+4.  **Planos:** Editor visual para criar/editar planos e permissões de serviço (JSON em `system_config`).
+5.  **Segurança:** Gestão de Allowlist e modo de validação (Estrito vs DNS).
+6.  **Sistema Multi-IA:** Configuração de chaves de API (Gemini/OpenAI/Claude).
+7.  **Pagamentos:** Configuração de Gateways (Stripe, Mercado Pago, Asaas) e pacotes de créditos.
 
 ---
 
-## 6. Integração com IA
-
-O sistema utiliza uma arquitetura agnóstica a modelos, configurável via banco de dados (`system_config`), mas implementada primariamente com Gemini.
-
-### Modelos Suportados (Implementação Atual)
-*   **Texto/Código/Raciocínio:** `gemini-2.5-flash`
-*   **Audio (TTS):** `gemini-2.5-flash-preview-tts`
-*   **Imagens:** O sistema usa o Gemini para gerar um *prompt* otimizado em inglês, que é então enviado para a API da **Pollinations.ai** para renderização visual.
-
-### Controle de Custos e Tokens
-*   **Log de IA:** A tabela `ai_logs` registra cada chamada, o modelo usado, a quantidade de tokens (input/output) e o custo estimado.
-*   **User Credits:** Antes de cada geração, o hook `usePlan` verifica se o usuário tem saldo. Se tiver, o custo da operação é deduzido da tabela `user_credits`.
-
----
-
-## 7. Configuração do Supabase
-
-### Setup Inicial
-O projeto depende de variáveis de ambiente para conectar ao projeto Supabase.
-Arquivo `.env.local` (ou configuração da Vercel/Netlify):
-```bash
-VITE_SUPABASE_URL=https://seu-projeto.supabase.co
-VITE_SUPABASE_ANON_KEY=sua-anon-key
-GEMINI_API_KEY=sua-api-key-google
-```
-
-### Segurança (RLS - Row Level Security)
-O sistema depende fortemente de RLS para segurança. O arquivo `services/adminService.ts` contém (em comentários ou documentação interna) os scripts SQL necessários para configurar as *Policies*.
-*   Exemplo: Usuários só podem ler seus próprios créditos.
-*   Exemplo: Apenas admins podem ler a tabela `logs`.
-
-### Service Role
-A chave `service_role` **NÃO** é utilizada no frontend por razões de segurança. Todas as operações administrativas são validadas via RLS baseadas na claim `role` do usuário autenticado ou em verificações na tabela `app_users`.
-
----
-
-## 8. Próximos Passos (Roadmap Técnico)
-
-1.  **Implementação de Webhooks de Pagamento:**
-    *   Atualmente, o sistema gera links de pagamento (Mercado Pago/Stripe). O próximo passo é criar Edge Functions no Supabase para receber os Webhooks e aprovar transações automaticamente.
-2.  **Sistema de Notificações:**
-    *   Criar tabela `notifications` e usar Supabase Realtime para alertar usuários sobre término de gerações ou aprovação de pagamentos.
-3.  **Refinamento de RLS:**
-    *   Auditar todas as políticas de segurança para garantir isolamento total de dados entre tenants.
-4.  **Otimização de Imagens:**
-    *   Implementar upload automático das imagens geradas para o Supabase Storage (Bucket), pois atualmente elas são links temporários ou base64.
-
----
-
-*Documentação gerada automaticamente para o sistema GDN_IA v1.0.5.*
+*Documentação técnica atualizada para o sistema GDN_IA v1.0.6.*

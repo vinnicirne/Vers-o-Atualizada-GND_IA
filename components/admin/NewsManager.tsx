@@ -14,10 +14,10 @@ export function NewsManager({ onEdit, dataVersion }: NewsManagerProps) {
             <div className="border-b border-green-900/30 pb-4 mb-6">
                 <h2 className="text-xl font-bold text-green-400 flex items-center">
                     <i className="fas fa-history mr-3"></i>
-                    Histórico de Notícias
+                    Histórico de Gerações
                 </h2>
                 <p className="text-sm text-gray-500 mt-1 ml-1">
-                    Visualize e gerencie todas as notícias geradas pela plataforma.
+                    Visualize e gerencie todo o conteúdo (notícias, imagens, textos, etc.) gerado pela plataforma.
                 </p>
             </div>
 

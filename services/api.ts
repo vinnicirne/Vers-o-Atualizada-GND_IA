@@ -22,13 +22,16 @@ export const api = {
       const { data, error } = await query;
       
       if (error) {
-        console.error(`Erro Supabase SELECT em ${table}:`, error);
-        return { data: null, error: error.message };
+        const errorMsg = error.message || JSON.stringify(error);
+        console.error(`Erro Supabase SELECT em ${table}:`, errorMsg);
+        return { data: null, error: errorMsg };
       }
       
       return { data, error: null };
     } catch (err: any) {
-      return { data: null, error: err.message };
+      const errorMsg = err.message || JSON.stringify(err);
+      console.error(`Exceção em api.select (${table}):`, errorMsg);
+      return { data: null, error: errorMsg };
     }
   },
 
@@ -41,13 +44,16 @@ export const api = {
         .select(); // .select() é importante para retornar o objeto criado
 
       if (error) {
-        console.error(`Erro Supabase INSERT em ${table}:`, error);
-        return { data: null, error: error.message };
+        const errorMsg = error.message || JSON.stringify(error);
+        console.error(`Erro Supabase INSERT em ${table}:`, errorMsg);
+        return { data: null, error: errorMsg };
       }
 
       return { data: result, error: null };
     } catch (err: any) {
-      return { data: null, error: err.message };
+      const errorMsg = err.message || JSON.stringify(err);
+      console.error(`Exceção em api.insert (${table}):`, errorMsg);
+      return { data: null, error: errorMsg };
     }
   },
 
@@ -66,13 +72,16 @@ export const api = {
         .select();
 
       if (error) {
-        console.error(`Erro Supabase UPDATE em ${table}:`, error);
-        return { data: null, error: error.message };
+        const errorMsg = error.message || JSON.stringify(error);
+        console.error(`Erro Supabase UPDATE em ${table}:`, errorMsg);
+        return { data: null, error: errorMsg };
       }
 
       return { data: result, error: null };
     } catch (err: any) {
-      return { data: null, error: err.message };
+      const errorMsg = err.message || JSON.stringify(err);
+      console.error(`Exceção em api.update (${table}):`, errorMsg);
+      return { data: null, error: errorMsg };
     }
   },
 
@@ -89,13 +98,16 @@ export const api = {
         .match(filters);
 
       if (error) {
-        console.error(`Erro Supabase DELETE em ${table}:`, error);
-        return { data: null, error: error.message };
+        const errorMsg = error.message || JSON.stringify(error);
+        console.error(`Erro Supabase DELETE em ${table}:`, errorMsg);
+        return { data: null, error: errorMsg };
       }
 
       return { data: { success: true }, error: null };
     } catch (err: any) {
-      return { data: null, error: err.message };
+      const errorMsg = err.message || JSON.stringify(err);
+      console.error(`Exceção em api.delete (${table}):`, errorMsg);
+      return { data: null, error: errorMsg };
     }
   }
 };

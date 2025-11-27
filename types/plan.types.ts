@@ -6,7 +6,8 @@ export type ServiceKey =
   | 'prompt_generator'
   | 'canva_structure'
   | 'copy_generator'
-  | 'image_generation'; // Novo modo adicionado
+  | 'image_generation'
+  | 'institutional_website_generator'; // Novo modo adicionado
 
 export interface ServicePermission {
   key: ServiceKey;

@@ -88,6 +88,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
         case 'news_generator': return `${base} bg-green-900/30 text-green-300 border-green-800`;
         case 'image_generation': return `${base} bg-purple-900/30 text-purple-300 border-purple-800`;
         case 'landingpage_generator': return `${base} bg-pink-900/30 text-pink-300 border-pink-800`;
+        case 'institutional_website_generator': return `${base} bg-orange-900/30 text-orange-300 border-orange-800`;
         case 'canva_structure': return `${base} bg-cyan-900/30 text-cyan-300 border-cyan-800`;
         case 'text_to_speech': return `${base} bg-blue-900/30 text-blue-300 border-blue-800`;
         default: return `${base} bg-gray-800 text-gray-400 border-gray-700`;
@@ -99,6 +100,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
       if(type === 'news_generator') return 'NOTÍCIA';
       if(type === 'image_generation') return 'IMAGEM';
       if(type === 'landingpage_generator') return 'LANDING PAGE';
+      if(type === 'institutional_website_generator') return 'SITE INST.';
       if(type === 'canva_structure') return 'SOCIAL MEDIA';
       if(type === 'copy_generator') return 'COPY';
       if(type === 'text_to_speech') return 'ÁUDIO';
@@ -112,7 +114,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
     <>
       <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-          <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Gerenciamento de Notícias e Histórico</h2>
+          <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Gerenciamento de Histórico</h2>
           <div className="flex items-center space-x-4">
             {initialStatusFilter === 'all' && ( // Only show dropdown if it's the general news view
               <select
@@ -183,4 +185,4 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
       )}
     </>
   );
-};
+}

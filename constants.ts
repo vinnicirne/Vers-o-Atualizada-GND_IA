@@ -14,6 +14,11 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     placeholder: 'Ex: Final da Libertadores, eventos de Ano Novo, alta do dólar...',
   },
   {
+    value: 'institutional_website_generator',
+    label: 'Site Institucional',
+    placeholder: 'Nome da Empresa, Ramo de Atuação e Diferenciais. Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".',
+  },
+  {
     value: 'image_generation',
     label: 'Studio de Arte IA',
     placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
@@ -55,6 +60,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   prompt_generator: 1,
   canva_structure: 3, // Custo aumentado pois gera layout visual completo
   landingpage_generator: 5,
+  institutional_website_generator: 8, // Custo maior pois é um site completo
   image_generation: 3, 
 };
 
@@ -77,6 +83,8 @@ const artServices: ServicePermission[] = [
 const imageService: ServicePermission = { key: 'image_generation', name: 'Studio de Arte IA', enabled: true, creditsPerUse: TASK_COSTS.image_generation };
 
 const landingPageService: ServicePermission = { key: 'landingpage_generator', name: 'Gerador de Landing Page', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
+
+const institutionalSiteService: ServicePermission = { key: 'institutional_website_generator', name: 'Site Institucional', enabled: true, creditsPerUse: TASK_COSTS.institutional_website_generator };
 
 
 export const PLANS: Record<UserPlan, Plan> = {
@@ -121,6 +129,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       promptService,
       ...artServices, // Agora contém apenas o Editor Visual
       imageService, // Adicionado ao Standard
+      institutionalSiteService // Disponível no Standard
     ]
   },
   premium: {
@@ -137,7 +146,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       promptService,
       ...artServices,
       imageService, // Adicionado ao Premium
-      landingPageService
+      landingPageService,
+      institutionalSiteService // Disponível no Premium
     ]
   }
 };

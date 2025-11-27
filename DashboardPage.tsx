@@ -7,13 +7,16 @@ import { Loader } from './components/Loader';
 import { FeedbackWidget } from './components/FeedbackWidget';
 import { AudioPlayer } from './components/AudioPlayer';
 import { LandingPageBuilder } from './components/LandingPageBuilder'; 
-import { ImageStudio } from './components/ImageStudio'; // Importar ImageStudio
+import { ImageStudio } from './components/ImageStudio'; 
 import { PlansModal } from './components/PlansModal';
-import { ManualModal } from './components/ManualModal'; // Importar Manual
+import { ManualModal } from './components/ManualModal'; 
+import { UserHistoryModal } from './components/UserHistoryModal'; 
+import { AffiliateModal } from './components/AffiliateModal'; // Importado
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
 import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
 import { api } from './services/api';
+import { logContentGeneration } from './services/loggerService';
 import { ServiceKey, UserPlan } from './types/plan.types';
 import { PLANS, CREATOR_SUITE_MODES } from './constants';
 import { useUser } from './contexts/UserContext';
@@ -30,6 +33,7 @@ const SERVICE_ICONS: Record<ServiceKey, string> = {
     copy_generator: 'fa-pen-nib',
     prompt_generator: 'fa-terminal',
     landingpage_generator: 'fa-code',
+    institutional_website_generator: 'fa-building',
     canva_structure: 'fa-vector-square',
     image_generation: 'fa-paint-brush',
 };
@@ -41,6 +45,7 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
     copy_generator: 'text-purple-400 border-purple-500/30 hover:bg-purple-900/20',
     prompt_generator: 'text-yellow-400 border-yellow-500/30 hover:bg-yellow-900/20',
     landingpage_generator: 'text-pink-400 border-pink-500/30 hover:bg-pink-900/20',
+    institutional_website_generator: 'text-orange-400 border-orange-500/30 hover:bg-orange-900/20',
     canva_structure: 'text-cyan-400 border-cyan-500/30 hover:bg-cyan-900/20',
     image_generation: 'text-rose-400 border-rose-500/30 hover:bg-rose-900/20',
 };
@@ -52,7 +57,7 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [resultText, setResultText] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); // Initialize with default
+  const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); 
   const [showFeedback, setShowFeedback] = useState(false);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   
@@ -60,11 +65,12 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
   const [generatedImagePrompt, setGeneratedImagePrompt] = useState<string>('');
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}>({width: 1024, height: 1024});
   
-  // Estado "Lifted Up" - O Dashboard controla o modo atual
   const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
   
   const [showPlansModal, setShowPlansModal] = useState(false);
-  const [showManualModal, setShowManualModal] = useState(false); // State para o Manual
+  const [showManualModal, setShowManualModal] = useState(false); 
+  const [showHistoryModal, setShowHistoryModal] = useState(false); 
+  const [showAffiliateModal, setShowAffiliateModal] = useState(false); // State for Affiliate Modal
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -78,7 +84,7 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
       .then(data => setMetadata(data))
       .catch(err => {
         console.error("Failed to load metadata:", err);
-        setMetadata({ version: 'Erro' }); // Set error state for metadata
+        setMetadata({ version: 'Erro' }); 
       });
   }, []);
 
@@ -98,7 +104,6 @@ function DashboardPage({ onNavigateToAdmin }: DashboardPageProps) {
       return;
     }
     
-    // Verificação de Acesso e Créditos
     if (!canUseService(mode)) {
         if (!hasAccessToService(mode)) {
             setError(`Acesso Negado: O modo "${mode.replace(/_/g, ' ').toUpperCase()}" é exclusivo de planos superiores. Seu plano atual é: ${currentPlan.name}.`);
@@ -124,7 +129,7 @@ Você pode:
     setGeneratedImagePrompt('');
 
     try {
-      const { text, audioBase64: audioResult } = await generateCreativeContent(
+      const { text, audioBase64: audioResult, sources } = await generateCreativeContent(
         prompt, 
         mode, 
         user.id, 
@@ -150,17 +155,15 @@ Você pode:
       const creditsDisplay = userCredits === -1 ? 'Ilimitado' : `${updatedCredits}`;
       const footerInfo = `\n\n---\nCréditos restantes: ${creditsDisplay} | Plano: ${currentPlan.name}`;
 
-      // Adiciona rodapé se não for conteúdo visual/código
-      if (currentPlan.id !== 'premium' && !isAdmin && mode !== 'image_generation' && mode !== 'landingpage_generator' && mode !== 'canva_structure') {
+      if (currentPlan.id !== 'premium' && !isAdmin && mode !== 'image_generation' && mode !== 'landingpage_generator' && mode !== 'institutional_website_generator' && mode !== 'canva_structure') {
           processedText += "\n\nGerado por GDN_IA";
       }
 
-      if (mode !== 'landingpage_generator' && mode !== 'image_generation' && mode !== 'canva_structure') {
+      if (mode !== 'landingpage_generator' && mode !== 'institutional_website_generator' && mode !== 'image_generation' && mode !== 'canva_structure') {
           processedText += footerInfo;
       }
       
-      // Adiciona marca d'água no código da landing page se não for premium
-      if (mode === 'landingpage_generator' && currentPlan.id !== 'premium' && !isAdmin) {
+      if ((mode === 'landingpage_generator' || mode === 'institutional_website_generator') && currentPlan.id !== 'premium' && !isAdmin) {
             const watermark = `<div style="text-align:center; font-size:10px; color:#888; padding:20px; background:#f9f9f9; border-top:1px solid #eee;">Gerado por GDN_IA</div>`;
             if (processedText.includes('</body>')) {
                 processedText = processedText.replace('</body>', `${watermark}</body>`);
@@ -169,18 +172,15 @@ Você pode:
             }
       }
 
-      // Handle specific logic based on mode
       if (mode === 'image_generation') {
-          // O 'text' retornado é o Prompt Otimizado em Inglês
           setGeneratedImagePrompt(text);
           
-          // Calcular dimensões baseadas no Aspect Ratio escolhido
           let w = 1024, h = 1024;
           if (options?.aspectRatio === '16:9') { w = 1280; h = 720; }
           if (options?.aspectRatio === '9:16') { w = 720; h = 1280; }
           setImageDimensions({ width: w, height: h });
           
-          setResultText(prompt); // Guardar o prompt original do usuário para referência
+          setResultText(prompt); 
       } else {
           setResultText(processedText);
       }
@@ -188,12 +188,7 @@ Você pode:
       setAudioBase64(audioResult);
       
       // LOG TÉCNICO
-      await api.insert('logs', {
-           usuario_id: user.id,
-           acao: `generated_content_${mode}`,
-           modulo: 'CreatorSuite',
-           detalhes: { cost: cost, credits_after: updatedCredits, plan: currentPlan.id }
-      });
+      logContentGeneration(user.id, mode, cost, updatedCredits, currentPlan.id);
 
       // SALVAR NO HISTÓRICO GERAL (TABELA 'news')
       try {
@@ -204,29 +199,48 @@ Você pode:
               case 'news_generator': historyTitle = `Notícia: ${shortPrompt}`; break;
               case 'image_generation': historyTitle = `Arte IA: ${shortPrompt}`; break;
               case 'landingpage_generator': historyTitle = `Landing Page: ${shortPrompt}`; break;
-              case 'copy_generator': historyTitle = `Copywriting: ${shortPrompt}`; break;
+              case 'institutional_website_generator': historyTitle = `Site Institucional: ${shortPrompt}`; break;
+              case 'copy_generator': historyTitle = `Copy: ${shortPrompt}`; break;
               case 'text_to_speech': historyTitle = `Áudio TTS: ${shortPrompt}`; break;
               case 'prompt_generator': historyTitle = `Prompt: ${shortPrompt}`; break;
               case 'canva_structure': historyTitle = `Social Media: ${shortPrompt}`; break;
               default: historyTitle = `Geração: ${shortPrompt}`;
           }
 
-          // Para imagens, salvamos o prompt original e o otimizado, já que a imagem em si não é salva no banco (é gerada on-the-fly pela Pollinations)
-          // Para Landing Pages, salvamos o código HTML.
           const contentToSave = mode === 'image_generation' 
             ? `PROMPT ORIGINAL: ${prompt}\n\nPROMPT OTIMIZADO (EN): ${text}` 
             : processedText;
 
-          await api.insert('news', {
+          const { error: saveError } = await api.insert('news', {
               titulo: historyTitle,
               conteudo: contentToSave,
-              status: 'approved', // Histórico pessoal é auto-aprovado ou apenas registrado
+              status: 'approved', 
               tipo: mode,
               author_id: user.id,
-              sources: [] // Serviços gerais não usam sources do mesmo jeito que news
+              sources: sources || [] 
           });
-      } catch (historyError) {
-          console.error("Erro ao salvar no histórico:", historyError);
+
+          if (saveError) {
+             console.error("Erro ao salvar no histórico (Supabase):", saveError);
+             
+             if (saveError.includes('invalid input value for enum') || saveError.includes('news_type')) {
+                 setToast({ 
+                     message: "ERRO DE BANCO DE DADOS: O tipo de conteúdo é novo. Rode o SQL de correção (ver console).", 
+                     type: 'error' 
+                 });
+             }
+             else if (saveError.includes('column') && saveError.includes('author_id')) {
+                 setToast({ 
+                     message: "ERRO DE BANCO DE DADOS: Tabela desatualizada.", 
+                     type: 'error' 
+                 });
+             } else {
+                 setToast({ message: "Aviso: O conteúdo foi gerado, mas falhou ao salvar no histórico.", type: 'error' });
+             }
+          }
+
+      } catch (historyError: any) {
+          console.error("Exceção ao salvar no histórico:", historyError);
       }
 
       setShowFeedback(true);
@@ -282,25 +296,37 @@ Você pode:
         isAdmin={user.role === 'admin' || user.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onOpenPlans={() => setShowPlansModal(true)}
-        onOpenManual={() => setShowManualModal(true)} // Passando a função
+        onOpenManual={() => setShowManualModal(true)}
+        onOpenHistory={() => setShowHistoryModal(true)} 
+        onOpenAffiliates={() => setShowAffiliateModal(true)} // Pass handler
         userCredits={userCredits}
         userRole={user.role}
-        metadata={metadata} // Pass metadata
+        metadata={metadata} 
       />
       <main className="container mx-auto p-4 md:p-8">
         <div className="max-w-5xl mx-auto">
           
           {user && (
-             <div className="mb-8 text-center text-xs text-gray-500 animate-fade-in-up">
-                <span className="bg-gray-900 px-4 py-2 rounded-full border border-gray-800 shadow-md">
-                    Seu Plano: <span className={`font-bold uppercase text-${currentPlan.color}-400`}>{currentPlan.name}</span>
-                    {' | '}
-                    Saldo: <span className="font-bold text-white">{userCredits === -1 ? '∞' : userCredits}</span> créditos
-                </span>
+             <div className="mb-8 text-center animate-fade-in-up">
+                <div className="inline-block bg-gray-900 rounded-2xl border border-gray-800 shadow-md p-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-4 text-sm">
+                    <span className="bg-black/50 px-3 py-1 rounded-full border border-gray-800">
+                      Plano: <span className={`font-bold uppercase text-${currentPlan.color}-400`}>{currentPlan.name}</span>
+                    </span>
+                    <span className="bg-black/50 px-3 py-1 rounded-full border border-gray-800">
+                      Saldo: <span className="font-bold text-white">{userCredits === -1 ? '∞' : userCredits}</span> créditos
+                    </span>
+                    {user.last_login && (
+                       <span className="bg-black/50 px-3 py-1 rounded-full border border-gray-800 text-xs text-gray-400 flex items-center">
+                          <i className="fas fa-clock mr-1.5 text-green-500"></i>
+                           Acesso: <span className="text-gray-300 ml-1">{new Date(user.last_login).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                       </span>
+                    )}
+                  </div>
+                </div>
              </div>
           )}
 
-          {/* SERVICE GRID: Grade Visual de Seleção */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
              {CREATOR_SUITE_MODES.map((svc) => {
                  const isSelected = currentMode === svc.value;
@@ -367,14 +393,10 @@ Você pode:
             
             {!isLoading && (
               <>
-                {/* RENDERIZAÇÃO CONDICIONAL BASEADA NO TIPO DE CONTEÚDO */}
-                
-                {/* 1. Editores Visuais (Landing Page e Social Media) */}
-                {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure') && resultText && (
+                {(currentMode === 'landingpage_generator' || currentMode === 'institutional_website_generator' || currentMode === 'canva_structure') && resultText && (
                    <LandingPageBuilder initialHtml={resultText} />
                 )}
 
-                {/* 2. Studio de Arte (Imagem) */}
                 {currentMode === 'image_generation' && generatedImagePrompt && (
                    <ImageStudio 
                       prompt={resultText || ''} 
@@ -384,15 +406,12 @@ Você pode:
                    />
                 )}
 
-                {/* 3. Display de Texto Padrão (News, Copy, etc) */}
-                {currentMode !== 'landingpage_generator' && currentMode !== 'image_generation' && currentMode !== 'canva_structure' && resultText && (
+                {currentMode !== 'landingpage_generator' && currentMode !== 'institutional_website_generator' && currentMode !== 'image_generation' && currentMode !== 'canva_structure' && resultText && (
                    <ResultDisplay text={resultText} mode={currentMode} />
                 )}
 
-                {/* Player de Áudio (Se houver) */}
                 {audioBase64 && <AudioPlayer audioBase64={audioBase64} />}
                 
-                {/* Widget de Feedback */}
                 {(resultText || generatedImagePrompt) && showFeedback && (
                   <FeedbackWidget 
                     userId={user.id} 
@@ -408,7 +427,7 @@ Você pode:
       {showPlansModal && (
         <PlansModal 
             currentPlanId={currentPlan.id} 
-            onClose={() => setShowPlansModal(false)} // Fix: was setShowPlansModal(true)
+            onClose={() => setShowPlansModal(false)} 
             onSelectPlan={handlePlanSelection}
             onBuyCredits={handleBuyCredits}
         />
@@ -417,6 +436,19 @@ Você pode:
       {showManualModal && (
         <ManualModal 
             onClose={() => setShowManualModal(false)}
+        />
+      )}
+
+      {showHistoryModal && (
+        <UserHistoryModal
+            userId={user.id}
+            onClose={() => setShowHistoryModal(false)}
+        />
+      )}
+
+      {showAffiliateModal && (
+        <AffiliateModal
+            onClose={() => setShowAffiliateModal(false)}
         />
       )}
 

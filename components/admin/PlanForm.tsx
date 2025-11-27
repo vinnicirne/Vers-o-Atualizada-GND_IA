@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plan, ServiceKey, ServicePermission } from '../../types/plan.types';
 import { CREATOR_SUITE_MODES } from '../../constants'; // Importe CREATOR_SUITE_MODES para obter labels de serviço
@@ -17,6 +18,7 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'canva_structure',
   'copy_generator',
   'image_generation',
+  'institutional_website_generator', // Novo
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil

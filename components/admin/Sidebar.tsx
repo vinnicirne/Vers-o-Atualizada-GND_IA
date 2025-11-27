@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { AdminView } from '../../types';
 
@@ -15,8 +16,9 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
     { key: 'payments', label: 'Pagamentos', icon: 'fas fa-credit-card' },
     { key: 'plans', label: 'Planos', icon: 'fas fa-layer-group' },
     { key: 'multi_ia_system', label: 'Sistema Multi-IA', icon: 'fas fa-brain' },
+    { key: 'security', label: 'Segurança', icon: 'fas fa-shield-alt' }, // Novo Item
     { key: 'logs', label: 'Logs', icon: 'fas fa-clipboard-list' },
-    { key: 'docs', label: 'Documentação', icon: 'fas fa-book' }, // Novo Item
+    { key: 'docs', label: 'Documentação', icon: 'fas fa-book' }, 
   ];
 
   const linkClasses = (view: AdminView) =>

@@ -10,14 +10,16 @@ interface HeaderProps {
   onNavigateToDashboard?: () => void;
   onNewUserClick?: () => void;
   onOpenPlans?: () => void; 
-  onOpenManual?: () => void; // Nova prop
+  onOpenManual?: () => void; 
+  onOpenHistory?: () => void;
+  onOpenAffiliates?: () => void; // Novo
   pageTitle?: string;
   userCredits?: number;
   userRole?: UserRole;
   metadata?: { version: string }; 
 }
 
-export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavigateToDashboard, onNewUserClick, onOpenPlans, onOpenManual, pageTitle, userCredits, userRole, metadata }: HeaderProps) {
+export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavigateToDashboard, onNewUserClick, onOpenPlans, onOpenManual, onOpenHistory, onOpenAffiliates, pageTitle, userCredits, userRole, metadata }: HeaderProps) {
   const isAdminView = !!onNavigateToDashboard;
 
   if (isAdminView) {
@@ -110,7 +112,27 @@ export function Header({ userEmail, onLogout, isAdmin, onNavigateToAdmin, onNavi
         </div>
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-4">
           
-          {/* Botão de Ajuda (Novo) */}
+          {onOpenAffiliates && (
+             <button
+                onClick={onOpenAffiliates}
+                className="hidden lg:flex bg-yellow-600/20 text-yellow-400 w-9 h-9 items-center justify-center rounded-full hover:bg-yellow-600 hover:text-black transition-colors duration-200 border border-yellow-600/50"
+                title="Programa de Afiliados (Ganhe Dinheiro)"
+            >
+                <i className="fas fa-handshake text-sm"></i>
+            </button>
+          )}
+
+          {onOpenHistory && (
+             <button
+                onClick={onOpenHistory}
+                className="hidden md:flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
+                title="Meu Histórico"
+            >
+                <i className="fas fa-history text-sm"></i>
+            </button>
+          )}
+
+          {/* Botão de Ajuda */}
           {onOpenManual && (
             <button
                 onClick={onOpenManual}

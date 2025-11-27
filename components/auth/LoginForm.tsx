@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabaseClient';
+import { isDomainAllowed } from '../../services/adminService'; 
+import { api } from '../../services/api'; // Import api proxy for updates
 import type { User } from '../../types';
 
 const performLogin = async (email: string, password: string): Promise<User> => {
@@ -12,72 +14,47 @@ const performLogin = async (email: string, password: string): Promise<User> => {
             throw new Error('Credenciais inválidas. Verifique seu email e senha.');
         }
         if (authError.message.toLowerCase().includes('failed to fetch')) {
-            console.error(
-                "*********************************************************************************\n" +
-                "** ERRO DE REDE: 'Failed to fetch' **\n" +
-                "*********************************************************************************\n" +
-                "A aplicação não conseguiu se comunicar com o servidor Supabase.\n" +
-                "Causas comuns:\n" +
-                "1. Sem conexão com a internet.\n" +
-                "2. O serviço do Supabase (backend) pode estar pausado ou offline.\n" +
-                "3. Um bloqueador de anúncios (AdBlock) ou extensão de navegador está bloqueando a requisição.\n" +
-                "4. A URL do Supabase em 'services/supabaseClient.ts' está incorreta.\n" +
-                "*********************************************************************************"
-            );
-            throw new Error(
-                'Falha de comunicação com o servidor.\n\n' +
-                'Possíveis causas:\n' +
-                '1. Verifique sua conexão com a internet.\n' +
-                '2. Confirme se seu projeto Supabase está ativo (não pausado).\n' +
-                '3. Desative temporariamente bloqueadores de anúncios (AdBlockers).'
-            );
+            throw new Error('Falha de comunicação com o servidor. Verifique sua conexão.');
         }
         throw new Error('Falha na autenticação: ' + authError.message);
     }
 
     if (!authData.user) throw new Error('Usuário não encontrado após a autenticação.');
 
-    // Fix: Add 'plan' to the select query to ensure the User object is fully hydrated
+    // REGISTRAR ÚLTIMO LOGIN
+    try {
+        await supabase
+            .from('app_users')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', authData.user.id);
+    } catch (e) {
+        console.warn("Não foi possível atualizar o último login:", e);
+    }
+
     const { data: profile, error: profileError } = await supabase
         .from('app_users')
-        .select('id, full_name, role, status, plan')
+        .select('id, full_name, role, status, plan, created_at, last_login, affiliate_code, affiliate_balance')
         .eq('id', authData.user.id)
         .single();
     
     if (profileError) {
         await supabase.auth.signOut();
-        if (profileError.message.includes("Could not find the table") || profileError.message.includes("relation \"public.app_users\" does not exist")) {
-            throw new Error("Erro de configuração: A tabela 'app_users' não foi encontrada. Execute o script SQL em 'services/adminService.ts' para configurar o banco de dados.");
-        }
-        if (profileError.message.includes('permission denied for table app_users')) {
-            console.error(
-                "*********************************************************************************\n" +
-                "** ERRO DE CONFIGURAÇÃO DO SUPABASE (RLS) DETECTADO NA PÁGINA DE LOGIN **\n" +
-                "*********************************************************************************\n" +
-                "A requisição para `supabase.from('app_users').select(...)` falhou.\n" +
-                "Isso significa que a Row Level Security (RLS) está ativa, mas não há uma 'Policy' que permita ao usuário recém-autenticado ler seus próprios dados na tabela 'app_users'.\n\n" +
-                "==> SOLUÇÃO: Execute o SCRIPT 3 do arquivo 'services/adminService.ts' no seu Editor SQL do Supabase para criar as políticas de segurança necessárias.\n" +
-                "*********************************************************************************"
-            );
-            const rlsErrorMessage = `SQL_CONFIG_ERROR:
-O acesso à tabela de usuários foi negado. Isso ocorre porque a "Row Level Security" (RLS) do Supabase está ativa, mas as permissões (Policies) necessárias não foram configuradas.
-
-Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminService.ts' no seu painel Supabase. Ele contém as políticas de segurança mais recentes que evitam erros comuns.
-`;
-            throw new Error(rlsErrorMessage);
-        }
-        if (profileError.message.toLowerCase().includes('failed to fetch')) {
-            throw new Error(
-                'Falha de comunicação ao buscar seu perfil.\n\n' +
-                'A autenticação inicial funcionou, mas não foi possível carregar seus dados. Verifique sua conexão com a internet.'
-            );
-        }
         throw new Error('Falha ao consultar o perfil do usuário: ' + profileError.message);
     }
     
     if (!profile) {
         await supabase.auth.signOut();
         throw new Error('Perfil de usuário não encontrado.');
+    }
+
+    if (profile.status === 'banned') {
+        await supabase.auth.signOut();
+        throw new Error('Sua conta foi suspensa permanentemente.');
+    }
+
+    if (profile.status === 'inactive') {
+        await supabase.auth.signOut();
+        throw new Error('Sua conta está inativa.');
     }
 
     const { data: creditsData, error: creditsError } = await supabase
@@ -87,7 +64,7 @@ Para corrigir, copie e execute o SCRIPT 3 completo do arquivo 'services/adminSer
         .single();
     
     if (creditsError) {
-        console.error('Falha ao consultar os créditos do usuário, definindo como 0:', creditsError.message);
+        console.error('Falha ao consultar os créditos do usuário:', creditsError.message);
     }
 
     const fullUser: User = {
@@ -106,8 +83,22 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [referralCode, setReferralCode] = useState<string | null>(null);
 
   useEffect(() => {
+    // Capture Referral Code from URL
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref');
+    if (ref) {
+        setReferralCode(ref);
+        // Persist for page reloads during signup process
+        localStorage.setItem('gdn_referral', ref);
+    } else {
+        // Try local storage if URL param is gone
+        const stored = localStorage.getItem('gdn_referral');
+        if (stored) setReferralCode(stored);
+    }
+
     if (isSignUp) {
         setIsAdminMode(false);
     }
@@ -119,14 +110,53 @@ export function LoginForm() {
     setMessage(null);
 
     if (isSignUp) {
-        const { error } = await supabase.auth.signUp({ email, password });
+        // --- DOMAIN VALIDATION ---
+        const allowed = await isDomainAllowed(email);
+        if (!allowed) {
+            setMessage({ type: 'error', text: 'Cadastro não permitido para este domínio de e-mail. Entre em contato com o administrador.' });
+            setIsLoading(false);
+            return;
+        }
+        // -------------------------
+
+        const { data: signUpData, error } = await supabase.auth.signUp({ 
+            email, 
+            password,
+            options: {
+                data: {
+                    // Pass referral code to trigger (if configured) or handle manually after
+                    referral_code: referralCode 
+                }
+            }
+        });
+
         if (error) {
             setMessage({ type: 'error', text: error.message });
         } else {
+            // MANUAL REFERRAL LINKING
+            // Como triggers de Supabase às vezes são complexos, podemos fazer o vinculo aqui se o usuário foi criado com sucesso
+            if (signUpData.user && referralCode) {
+                try {
+                    // Find referrer ID
+                    const { data: referrer } = await api.select('app_users', { affiliate_code: referralCode });
+                    if (referrer && referrer.length > 0) {
+                        // Link new user to referrer
+                        // Note: User profile row might be created by trigger, so we update it
+                        // Retry logic might be needed if trigger is slow, but usually it's fast enough or we wait a bit
+                        setTimeout(async () => {
+                            await api.update('app_users', { referred_by: referrer[0].id }, { id: signUpData.user!.id });
+                        }, 1000); 
+                    }
+                } catch (e) {
+                    console.error("Erro ao vincular afiliado:", e);
+                }
+            }
+
             setEmail('');
             setPassword('');
             setMessage({ type: 'success', text: 'Conta criada! Por favor, verifique seu email para confirmar.' });
             setIsSignUp(false);
+            localStorage.removeItem('gdn_referral'); // Clean up
         }
     } else {
         try {
@@ -197,6 +227,11 @@ export function LoginForm() {
                 className={`w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md ${theme.focusBorderColor} focus:outline-none focus:ring-0 transition duration-300`}
               />
             </div>
+            {isSignUp && referralCode && (
+                <div className="text-xs text-yellow-500 bg-yellow-900/20 p-2 rounded border border-yellow-700/30 text-center">
+                    <i className="fas fa-gift mr-1"></i> Você foi indicado! Código: <strong>{referralCode}</strong>
+                </div>
+            )}
             <button type="submit" disabled={isLoading}
               className={`w-full font-bold py-3 text-sm uppercase tracking-widest rounded-md transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-wait ${theme.buttonBg}`}
             >
@@ -250,4 +285,4 @@ export function LoginForm() {
       )}
     </>
   );
-};
+}

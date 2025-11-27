@@ -1,15 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
-import { User, UserRole } from '../../types';
+import { User, UserRole, UserStatus } from '../../types';
 
 interface UserEditModalProps {
   user: User;
-  onSave: (userId: string, updates: { role: UserRole, credits: number }) => void;
+  onSave: (userId: string, updates: { role: UserRole, credits: number, status: UserStatus, full_name: string }) => void;
   onClose: () => void;
   isSaving: boolean;
 }
 
 export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModalProps) {
   const [role, setRole] = useState<UserRole>(user.role);
+  const [status, setStatus] = useState<UserStatus>(user.status || 'active');
+  const [fullName, setFullName] = useState(user.full_name || '');
   const [credits, setCredits] = useState<string>(String(user.credits === -1 ? 0 : user.credits));
 
   useEffect(() => {
@@ -34,7 +37,7 @@ export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModal
     // Admins e super admins têm créditos ilimitados, representados por -1.
     const finalCredits = (role === 'admin' || role === 'super_admin') ? -1 : newCredits;
 
-    onSave(user.id, { role, credits: finalCredits });
+    onSave(user.id, { role, credits: finalCredits, status, full_name: fullName });
   };
 
   return (
@@ -45,6 +48,33 @@ export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModal
           <p className="text-sm text-gray-400">{user.email}</p>
         </div>
         <div className="p-6 space-y-4">
+           <div>
+            <label htmlFor="fullName" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
+              Nome Completo
+            </label>
+            <input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-0"
+            />
+          </div>
+          <div>
+            <label htmlFor="status" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
+              Status da Conta
+            </label>
+            <select
+                id="status"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as UserStatus)}
+                className="w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-0"
+            >
+                <option value="active">Ativo (Acesso Liberado)</option>
+                <option value="inactive">Inativo (Acesso Bloqueado)</option>
+                <option value="banned">Banido (Suspenso)</option>
+            </select>
+          </div>
           <div>
             <label htmlFor="role" className="block text-xs uppercase font-bold mb-2 tracking-wider text-green-400">
               Role
@@ -91,7 +121,7 @@ export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModal
             disabled={isSaving}
             className="px-6 py-2 font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition disabled:opacity-50 disabled:cursor-wait"
           >
-            {isSaving ? 'Salvando...' : 'Salvar'}
+            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
           </button>
         </div>
       </div>

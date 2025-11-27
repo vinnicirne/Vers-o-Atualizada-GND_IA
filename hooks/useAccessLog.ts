@@ -1,28 +1,21 @@
-import { supabase } from '../services/supabaseClient';
+
 import { useCallback } from 'react';
+import { logger } from '../services/loggerService';
 
 export const useAccessLog = () => {
   const logAccessAttempt = useCallback(async (userId: string | undefined, reason: string) => {
     try {
-      if (!userId) {
-        // Log attempt without user ID if someone tries to access a protected route while logged out
-        console.warn(`Access attempt log triggered without user ID. Reason: ${reason}`);
-        // Depending on requirements, you might still want to log this attempt without a user_id
-        // For now, we'll just log to console.
-        return;
-      }
-
-      const { error } = await supabase.from('logs').insert([{
-        usuario_id: userId,
-        acao: reason,
-        modulo: 'Sistema',
-      }]);
-
-      if (error) {
-        console.error('Error logging access attempt:', error.message);
+      // Se não houver ID de usuário (tentativa anônima), logamos com um placeholder ou ignoramos dependendo da política.
+      // Aqui, vamos logar como sistema ou criar um log de 'Segurança' com ID 'anonymous' se necessário,
+      // mas a tabela exige UUID válido para usuario_id em muitos casos.
+      
+      if (userId) {
+          logger.warn(userId, 'Segurança', 'access_denied', { reason });
+      } else {
+          console.warn(`[AccessLog] Tentativa de acesso anônima bloqueada: ${reason}`);
       }
     } catch (e) {
-      console.error('A critical error occurred in logAccessAttempt:', e);
+      console.error('Critical error in logAccessAttempt:', e);
     }
   }, []);
 
