@@ -1,3 +1,4 @@
+
 import { WordPressConfig } from '../types';
 
 const STORAGE_KEY = 'gdn_wp_config';
@@ -25,16 +26,24 @@ export const clearWordPressConfig = () => {
  */
 export const validateWordPressConnection = async (config: WordPressConfig): Promise<{ success: boolean; message?: string }> => {
   try {
-    // Codificação segura para caracteres especiais (UTF-8)
-    const credentials = `${config.username}:${config.applicationPassword}`;
-    // Buffer ou btoa robusto
-    const auth = btoa(unescape(encodeURIComponent(credentials)));
+    if (!config.siteUrl) return { success: false, message: 'URL do site é obrigatória.' };
     
     // URL normalize
     let cleanUrl = config.siteUrl.trim().replace(/\/$/, '');
     if (!cleanUrl.startsWith('http')) {
         cleanUrl = 'https://' + cleanUrl;
     }
+
+    try {
+        new URL(cleanUrl);
+    } catch (e) {
+        return { success: false, message: 'URL do site inválida. Verifique o formato.' };
+    }
+
+    // Codificação segura para caracteres especiais (UTF-8)
+    const credentials = `${config.username}:${config.applicationPassword}`;
+    // Buffer ou btoa robusto
+    const auth = btoa(unescape(encodeURIComponent(credentials)));
     
     // Tenta buscar o endpoint de usuários (apenas o próprio usuário 'me') para validar credenciais
     // Adiciona timestamp para evitar cache
