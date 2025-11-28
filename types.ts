@@ -176,3 +176,15 @@ export interface WordPressConfig {
   applicationPassword: string;
   isConnected: boolean;
 }
+
+// --- DEVELOPER API ---
+export interface ApiKey {
+  id: string;
+  user_id?: string;
+  name: string;
+  key_prefix: string; // Mostramos apenas o começo ou fim
+  full_key?: string; // Usado apenas na criação para mostrar uma vez
+  created_at: string;
+  last_used_at?: string;
+  status: 'active' | 'revoked';
+}
