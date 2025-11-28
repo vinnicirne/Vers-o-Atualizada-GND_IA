@@ -64,8 +64,9 @@ export const validateWordPressConnection = async (config: WordPressConfig): Prom
     try {
         const errorData = await response.json();
         if (errorData.message) errorMsg = `WordPress recusou: ${errorData.message}`;
+        if (errorData.code === 'rest_cannot_view') errorMsg = 'Permissão negada. O usuário precisa de permissão de edição.';
     } catch (e) {
-        // Ignora erro de parse
+        // Ignora erro de parse se não for JSON
     }
 
     if (response.status === 401 || response.status === 403) {
@@ -86,7 +87,14 @@ export const validateWordPressConnection = async (config: WordPressConfig): Prom
         msg.includes('Network request failed') ||
         error instanceof TypeError // Fetch falha com TypeError em problemas de rede/CORS
     ) {
-        msg = 'Falha de Conexão (CORS/Rede). O navegador bloqueou a requisição. Isso acontece se o seu site não tiver HTTPS ou se algum plugin de segurança estiver bloqueando a REST API.';
+        msg = `Falha de Conexão (CORS/Rede). O navegador bloqueou a requisição.
+        
+Possíveis causas:
+1. Seu site WordPress não tem HTTPS (obrigatório).
+2. Um plugin de segurança está bloqueando a API REST.
+3. Cabeçalhos CORS não configurados no WordPress.
+
+Solução rápida: Instale o plugin "Application Passwords" e certifique-se que seu hosting permite requisições externas.`;
     }
     
     return { success: false, message: msg };
@@ -137,7 +145,7 @@ export const postToWordPress = async (
   } catch (error: any) {
     let msg = error.message;
     if (msg === 'Failed to fetch' || error instanceof TypeError) {
-        msg = 'Erro de CORS ou Rede. Verifique se o plugin de segurança do WP não está bloqueando a API.';
+        msg = 'Erro de CORS ou Rede. Verifique se o plugin de segurança do WP não está bloqueando a API ou se você está usando HTTPS.';
     }
     return { success: false, message: msg };
   }
