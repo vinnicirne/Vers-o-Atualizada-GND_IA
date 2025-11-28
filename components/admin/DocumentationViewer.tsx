@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useUser } from '../../contexts/UserContext';
-import { createApiKey, listApiKeys, revokeApiKey } from '../../services/developerService';
+import { createApiKey, listApiKeys, revokeApiKey, generateWordPressPluginZip } from '../../services/developerService';
 import { ApiKey } from '../../types';
 import { Toast } from './Toast';
 
@@ -44,7 +44,7 @@ export function DocumentationViewer() {
           loadKeys();
           setToast({ message: "Chave criada com sucesso!", type: 'success' });
       } catch (e: any) {
-          setToast({ message: "Erro ao criar chave.", type: 'error' });
+          setToast({ message: "Erro ao criar chave. Verifique se a tabela 'api_keys' existe no Supabase.", type: 'error' });
       }
   };
 
@@ -57,6 +57,11 @@ export function DocumentationViewer() {
       } catch (e) {
           setToast({ message: "Erro ao revogar.", type: 'error' });
       }
+  };
+
+  const handleDownloadPlugin = () => {
+      generateWordPressPluginZip();
+      setToast({ message: "Download do plugin iniciado!", type: 'success' });
   };
 
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-black' : 'text-gray-400 hover:text-white'}`;
@@ -81,6 +86,22 @@ export function DocumentationViewer() {
         <div className="prose prose-invert max-w-none prose-headings:text-green-400 prose-a:text-blue-400">
             {activeTab === 'api' && (
                 <div className="space-y-8 animate-fade-in">
+                    {/* WP Plugin Generator */}
+                    <div className="bg-gradient-to-r from-blue-900/20 to-black p-6 rounded-xl border border-blue-500/30 flex flex-col md:flex-row items-center justify-between gap-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-blue-400 m-0 mb-2"><i className="fab fa-wordpress mr-2"></i>Plugin WordPress Oficial</h3>
+                            <p className="text-sm text-gray-400 m-0">
+                                Baixe o plugin conector pré-configurado. Instale no seu site WordPress para importar notícias geradas pelo GDN_IA automaticamente via Shortcode ou Cron Job.
+                            </p>
+                        </div>
+                        <button 
+                            onClick={handleDownloadPlugin}
+                            className="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-3 rounded-lg shadow-lg shadow-blue-600/20 transition flex items-center gap-2 whitespace-nowrap"
+                        >
+                            <i className="fas fa-download"></i> Baixar Plugin .zip
+                        </button>
+                    </div>
+
                     {/* Key Manager */}
                     <div className="bg-gray-950/50 p-6 rounded-xl border border-green-900/30">
                         <div className="flex items-center gap-3 mb-6">
@@ -89,7 +110,7 @@ export function DocumentationViewer() {
                             </div>
                             <div>
                                 <h3 className="text-xl font-bold text-white m-0">Minhas Chaves de API</h3>
-                                <p className="text-sm text-gray-400 m-0">Gerencie chaves para integrar o GDN_IA em seus aplicativos.</p>
+                                <p className="text-sm text-gray-400 m-0">Gerencie chaves para integrar o GDN_IA em seus aplicativos ou no Plugin WordPress.</p>
                             </div>
                         </div>
                         
@@ -100,13 +121,14 @@ export function DocumentationViewer() {
                                     <code className="text-lg text-white font-mono flex-grow break-all">{createdKey}</code>
                                     <button onClick={() => navigator.clipboard.writeText(createdKey)} className="text-gray-400 hover:text-white px-2 py-1"><i className="fas fa-copy"></i></button>
                                 </div>
+                                <p className="text-xs text-gray-400 mt-2">Use esta chave nas configurações do Plugin WordPress.</p>
                             </div>
                         )}
 
                         <div className="flex flex-col sm:flex-row gap-4 mb-6">
                             <input 
                                 type="text" 
-                                placeholder="Nome da Chave (ex: Integração Blog)" 
+                                placeholder="Nome da Chave (ex: Meu Blog WP)" 
                                 value={newKeyName}
                                 onChange={e => setNewKeyName(e.target.value)}
                                 className="flex-grow bg-black border border-gray-700 rounded p-2 text-white text-sm focus:border-green-500 focus:outline-none"
@@ -162,23 +184,7 @@ export function DocumentationViewer() {
                                     <span className="text-purple-400">curl</span> -X POST https://api.gdn.ia/v1/generate/news \<br/>
                                     &nbsp;&nbsp;-H <span className="text-green-300">"Authorization: Bearer gdn_live_..."</span> \<br/>
                                     &nbsp;&nbsp;-H <span className="text-green-300">"Content-Type: application/json"</span> \<br/>
-                                    {/* CORREÇÃO DO ERRO DE SINTAXE: Usar template string para escapar os caracteres JSON */}
                                     &nbsp;&nbsp;-d <span className="text-yellow-300">{`'{ "prompt": "Eleições 2024", "include_image": true }'`}</span>
-                                </div>
-                            </div>
-
-                            <div className="bg-gray-900 p-6 rounded-lg border border-gray-800">
-                                <div className="flex items-center gap-3 mb-4">
-                                    <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">POST</span>
-                                    <code className="text-blue-300 font-mono text-sm">/v1/generate/tts</code>
-                                </div>
-                                <p className="text-sm text-gray-400 mb-4">Converte texto em áudio.</p>
-                                
-                                <div className="bg-black p-4 rounded border border-gray-700 font-mono text-xs overflow-x-auto text-gray-300">
-                                    <span className="text-purple-400">curl</span> -X POST https://api.gdn.ia/v1/generate/tts \<br/>
-                                    &nbsp;&nbsp;-H <span className="text-green-300">"Authorization: Bearer gdn_live_..."</span> \<br/>
-                                    {/* CORREÇÃO DO ERRO DE SINTAXE: Usar template string para escapar os caracteres JSON */}
-                                    &nbsp;&nbsp;-d <span className="text-yellow-300">{`'{ "text": "Bem vindo ao GDN IA", "voice": "alloy" }'`}</span>
                                 </div>
                             </div>
                         </div>
@@ -197,26 +203,6 @@ export function DocumentationViewer() {
                            <li><strong>IA:</strong> Google Gemini (Texto/Áudio) e Pollinations.ai (Imagens).</li>
                         </ul>
                     </section>
-
-                    <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="bg-gray-950/50 p-4 rounded border border-gray-800">
-                            <h4 className="font-bold text-white mb-2">Banco de Dados e Usuários</h4>
-                            <p className="text-sm mb-2">A tabela <code>public.app_users</code> espelha os dados públicos. Os créditos são gerenciados em <code>public.user_credits</code>.</p>
-                            <ul className="list-disc pl-5 text-sm space-y-1 text-gray-400">
-                                <li><code>user_id</code> (FK) liga ao Auth do Supabase.</li>
-                                <li>Créditos <code>-1</code> significam ilimitado (admins).</li>
-                            </ul>
-                        </div>
-                         <div className="bg-gray-950/50 p-4 rounded border border-gray-800">
-                            <h4 className="font-bold text-white mb-2">Sistema Multi-IA</h4>
-                            <p className="text-sm mb-2">Configurado via tabela <code>system_config</code>.</p>
-                            <ul className="list-disc pl-5 text-sm space-y-1 text-gray-400">
-                                <li>Gemini 2.5 Flash: Texto e Raciocínio.</li>
-                                <li>Pollinations.ai: Geração de imagens via prompt refinado.</li>
-                                <li>Logs de IA registram tokens e custos estimados.</li>
-                            </ul>
-                        </div>
-                    </section>
                 </div>
             )}
 
@@ -233,7 +219,7 @@ export function DocumentationViewer() {
                     {/* Versão Atual */}
                     <div className="border-l-2 border-green-500 pl-6 relative">
                         <div className="absolute -left-[9px] top-0 w-4 h-4 bg-green-500 rounded-full border-4 border-black"></div>
-                        <h3 className="text-xl font-bold text-white">v1.0.9 - Developer API & WordPress</h3>
+                        <h3 className="text-xl font-bold text-white">v1.1.0 - Plugin WordPress & API Keys</h3>
                         <p className="text-sm text-gray-500 mb-4">Lançamento: Hoje</p>
                         
                         <div className="space-y-4">
@@ -241,7 +227,7 @@ export function DocumentationViewer() {
                                 <h4 className="font-bold text-green-400 mb-2"><i className="fas fa-plug mr-2"></i>Integrações & API</h4>
                                 <ul className="list-disc pl-5 text-sm text-gray-300 space-y-1">
                                     <li>Lançamento da <strong>API de Desenvolvedor</strong>: Crie chaves e integre o GDN_IA ao seu sistema.</li>
-                                    <li><strong>Integração WordPress</strong>: Publique notícias geradas diretamente no seu blog com um clique.</li>
+                                    <li><strong>Plugin WordPress</strong>: Download direto do plugin conector.</li>
                                 </ul>
                             </div>
                         </div>
