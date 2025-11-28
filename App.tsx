@@ -4,30 +4,39 @@ import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import LoginPage from './LoginPage';
 import DashboardPage from './DashboardPage';
-// Lazy Load do Admin para reduzir bundle size inicial
+// Lazy Load do Admin e Páginas Legais para reduzir bundle size inicial
 const AdminPage = React.lazy(() => import('./pages/admin'));
+const PrivacyPage = React.lazy(() => import('./pages/legal/PrivacyPage'));
+const TermsPage = React.lazy(() => import('./pages/legal/TermsPage'));
+const CookiesPage = React.lazy(() => import('./pages/legal/CookiesPage'));
+const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
+
 import { AdminGate } from './components/admin/AdminGate';
 
-// Componente de Loading para o Suspense do Admin
-const AdminLoader = () => (
+// Componente de Loading Simples
+const SimpleLoader = () => (
   <div className="min-h-screen bg-black flex flex-col items-center justify-center space-y-4">
     <i className="fas fa-circle-notch fa-spin text-4xl text-green-500"></i>
-    <p className="text-gray-400 font-mono text-sm animate-pulse">Carregando Módulo Administrativo...</p>
   </div>
 );
+
+// Define as rotas possíveis
+type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about';
 
 // Este componente consome o contexto e lida com a lógica principal do aplicativo.
 function AppContent() {
   const { user, loading, error } = useUser();
   
   // ROTEAMENTO: Inicializa o estado com base na URL
-  const getInitialPage = (): 'dashboard' | 'admin' | 'login' => {
+  const getInitialPage = (): PageRoute => {
     if (typeof window !== 'undefined' && window.location.search) {
         try {
             const params = new URLSearchParams(window.location.search);
             const page = params.get('page');
-            if (page === 'admin') return 'admin';
-            if (page === 'login') return 'login';
+            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about'];
+            if (page && validPages.includes(page as PageRoute)) {
+                return page as PageRoute;
+            }
             return 'dashboard';
         } catch (e) {
             console.warn('Erro ao ler URLSearchParams:', e);
@@ -37,7 +46,7 @@ function AppContent() {
     return 'dashboard';
   };
 
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'admin' | 'login'>(getInitialPage);
+  const [currentPage, setCurrentPage] = useState<PageRoute>(getInitialPage);
 
   // Se o usuário logar enquanto estiver na tela de login, manda pro dashboard
   useEffect(() => {
@@ -80,19 +89,16 @@ function AppContent() {
     }
   }, [currentPage]);
 
+  // Handler genérico de navegação
+  const handleNavigate = (page: PageRoute) => {
+      setCurrentPage(page);
+      window.scrollTo(0, 0);
+  };
 
   const handleNavigateToAdmin = () => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
-      setCurrentPage('admin');
+      handleNavigate('admin');
     }
-  };
-  
-  const handleNavigateToDashboard = () => {
-    setCurrentPage('dashboard');
-  };
-
-  const handleNavigateToLogin = () => {
-    setCurrentPage('login');
   };
 
   if (error) {
@@ -163,12 +169,12 @@ function AppContent() {
 
   // ROTEAMENTO PRINCIPAL
   return (
-    <>
+    <Suspense fallback={<SimpleLoader />}>
         {currentPage === 'login' && (
             <div className="relative">
                 {/* Botão para voltar ao modo visitante */}
                 <button 
-                    onClick={handleNavigateToDashboard}
+                    onClick={() => handleNavigate('dashboard')}
                     className="absolute top-4 left-4 z-50 text-gray-400 hover:text-white flex items-center gap-2 px-4 py-2 bg-black/50 rounded-lg"
                 >
                     <i className="fas fa-arrow-left"></i> Voltar ao Dashboard (Visitante)
@@ -180,20 +186,25 @@ function AppContent() {
         {currentPage === 'dashboard' && (
             <DashboardPage 
                 onNavigateToAdmin={handleNavigateToAdmin}
-                onNavigateToLogin={handleNavigateToLogin}
+                onNavigateToLogin={() => handleNavigate('login')}
+                onNavigate={(page) => handleNavigate(page as PageRoute)}
             />
         )}
         
         {currentPage === 'admin' && (
-             <AdminGate onAccessDenied={handleNavigateToDashboard}>
-               <Suspense fallback={<AdminLoader />}>
+             <AdminGate onAccessDenied={() => handleNavigate('dashboard')}>
                   <AdminPage 
-                    onNavigateToDashboard={handleNavigateToDashboard}
+                    onNavigateToDashboard={() => handleNavigate('dashboard')}
                   />
-               </Suspense>
             </AdminGate>
         )}
-    </>
+
+        {/* Páginas Legais */}
+        {currentPage === 'privacy' && <PrivacyPage onBack={() => handleNavigate('dashboard')} />}
+        {currentPage === 'terms' && <TermsPage onBack={() => handleNavigate('dashboard')} />}
+        {currentPage === 'cookies' && <CookiesPage onBack={() => handleNavigate('dashboard')} />}
+        {currentPage === 'about' && <AboutPage onBack={() => handleNavigate('dashboard')} />}
+    </Suspense>
   );
 }
 

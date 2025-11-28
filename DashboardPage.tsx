@@ -28,6 +28,7 @@ import { SeoHead } from './components/SEO/SeoHead';
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
   onNavigateToLogin?: () => void;
+  onNavigate?: (page: string) => void;
 }
 
 // Mapeamento de Ícones para a Grade de Serviços
@@ -98,7 +99,7 @@ const extractTitleAndContent = (text: string, mode: ServiceKey) => {
     return { title: null, content: text };
 };
 
-function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPageProps) {
+function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: DashboardPageProps) {
   const { user, signOut, refresh } = useUser();
   const { currentPlan, userCredits: dbCredits, hasAccessToService, getCreditsCostForService, canUseService } = usePlan();
 
@@ -619,8 +620,41 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
       {showAffiliateInvite && <AffiliateInvitePopup onClose={handleCloseAffiliateInvite} onAccept={handleAcceptAffiliateInvite} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <footer className="text-center p-8 text-gray-600 text-xs border-t border-gray-900 mt-12">
-        <p>Desenvolvido com IA | GDN_IA &copy; 2024 | Versão {metadata.version}</p>
+      <footer className="border-t border-gray-900 mt-12 py-12 bg-black/30">
+        <div className="container mx-auto px-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8 text-sm">
+                <div>
+                    <h4 className="text-white font-bold mb-4 uppercase tracking-wider">GDN_IA</h4>
+                    <p className="text-gray-500 mb-4">
+                        Plataforma líder em geração de conteúdo com Inteligência Artificial.
+                    </p>
+                </div>
+                <div>
+                    <h4 className="text-white font-bold mb-4 uppercase tracking-wider">Institucional</h4>
+                    <ul className="space-y-2 text-gray-500">
+                        <li><button onClick={() => onNavigate?.('about')} className="hover:text-green-400 transition">Quem Somos</button></li>
+                        <li><button onClick={() => onNavigate?.('about')} className="hover:text-green-400 transition">Missão e Valores</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="text-white font-bold mb-4 uppercase tracking-wider">Legal</h4>
+                    <ul className="space-y-2 text-gray-500">
+                        <li><button onClick={() => onNavigate?.('terms')} className="hover:text-green-400 transition">Termos de Uso</button></li>
+                        <li><button onClick={() => onNavigate?.('privacy')} className="hover:text-green-400 transition">Política de Privacidade</button></li>
+                        <li><button onClick={() => onNavigate?.('cookies')} className="hover:text-green-400 transition">Política de Cookies</button></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="text-white font-bold mb-4 uppercase tracking-wider">Contato</h4>
+                    <ul className="space-y-2 text-gray-500">
+                        <li><a href="mailto:suporte@gdn.ia" className="hover:text-green-400 transition">suporte@gdn.ia</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div className="text-center pt-8 border-t border-gray-900 text-gray-600 text-xs">
+                <p>&copy; {new Date().getFullYear()} GDN_IA. Todos os direitos reservados. Versão {metadata.version}</p>
+            </div>
+        </div>
       </footer>
     </div>
   );
