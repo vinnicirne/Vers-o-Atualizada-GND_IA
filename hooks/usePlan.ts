@@ -3,7 +3,7 @@ import { useCallback, useMemo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { Plan, ServiceKey, ServicePermission } from '../types/plan.types';
 import { usePlans } from './usePlans'; // Importar o novo hook usePlans
-import { PLANS } from '../constants'; // Importar constantes de planos
+import { PLANS, TASK_COSTS } from '../constants'; // Importar constantes de planos
 
 interface UsePlanReturn {
   currentPlan: Plan;
@@ -54,8 +54,8 @@ export function usePlan(): UsePlanReturn {
 
   const getCreditsCostForService = useCallback((serviceKey: ServiceKey): number => {
     const service = getServicePermission(serviceKey);
-    // Se creditsPerUse não estiver definido, usa 1 como padrão.
-    return service?.creditsPerUse ?? 1;
+    // Prioriza o custo definido no plano, senão usa o custo global (constants), senão 1
+    return service?.creditsPerUse ?? TASK_COSTS[serviceKey] ?? 1;
   }, [getServicePermission]);
 
   const hasEnoughCredits = useCallback((serviceKey: ServiceKey): boolean => {

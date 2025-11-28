@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plan, ServiceKey, ServicePermission } from '../../types/plan.types';
-import { CREATOR_SUITE_MODES } from '../../constants'; // Importe CREATOR_SUITE_MODES para obter labels de serviço
+import { CREATOR_SUITE_MODES, TASK_COSTS } from '../../constants'; // Importe CREATOR_SUITE_MODES para obter labels de serviço
 
 interface PlanFormProps {
   initialData?: Plan; // Para edição de plano existente
@@ -53,7 +53,7 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
       key: key,
       name: serviceKeyToNameMap.get(key) || key.replace(/_/g, ' ').toUpperCase(),
       enabled: false,
-      creditsPerUse: 1, // Default cost
+      creditsPerUse: TASK_COSTS[key] ?? 1, // Usa o custo definido na constante ou 1 como fallback
     }));
 
     if (initialData) {

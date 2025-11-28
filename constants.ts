@@ -53,17 +53,16 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
 ];
 
 // --- CUSTO POR AÇÃO (CRÉDITOS) ---
-// Note: Este objeto TASK_COSTS não é mais o principal local para buscar custos.
-// Os custos agora são definidos dentro de cada ServicePermission no objeto PLANS.
+// Estes valores são a fonte da verdade. O Admin deve sincronizar os planos para aplicar mudanças no DB.
 export const TASK_COSTS: Record<ServiceKey, number> = {
   news_generator: 1,
-  text_to_speech: 2, // Atualizado para 2
+  text_to_speech: 2,
   copy_generator: 1,
   prompt_generator: 1,
   canva_structure: 3,
-  landingpage_generator: 15, // Atualizado para 15
-  institutional_website_generator: 25, // Atualizado para 25
-  image_generation: 5, // Atualizado para 5
+  landingpage_generator: 15,
+  institutional_website_generator: 25,
+  image_generation: 5,
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
