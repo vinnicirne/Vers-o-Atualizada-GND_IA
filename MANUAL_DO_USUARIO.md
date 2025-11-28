@@ -75,6 +75,7 @@ Você pode ganhar dinheiro indicando o GDN_IA.
 1.  Clique no ícone de **Aperto de Mão** (🤝) no topo.
 2.  Copie seu link exclusivo.
 3.  Ganhe **20% de comissão** recorrente sobre todas as compras dos seus indicados.
+4.  **Novo:** Fique atento ao popup de convite dourado para acessar rapidamente seu painel.
 
 ---
 

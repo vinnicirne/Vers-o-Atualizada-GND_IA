@@ -34,11 +34,6 @@ export const generateAffiliateCode = async (userId: string, fullName: string): P
     let base = 'PARTNER';
     
     if (fullName) {
-        // 1. Pega o primeiro nome
-        // 2. Normaliza (separa acentos: Á -> A + ´)
-        // 3. Remove os caracteres de acento
-        // 4. Converte para maiúsculas
-        // 5. Remove tudo que não for letra A-Z
         base = fullName
             .split(' ')[0]
             .normalize('NFD')
@@ -47,7 +42,6 @@ export const generateAffiliateCode = async (userId: string, fullName: string): P
             .replace(/[^A-Z]/g, '');
     }
     
-    // Fallback: Se o nome for vazio ou inválido (ex: símbolos), usa 'PARTNER'
     if (!base || base.length < 2) {
         base = 'PARTNER';
     }
@@ -56,31 +50,29 @@ export const generateAffiliateCode = async (userId: string, fullName: string): P
     let isUnique = false;
     let attempts = 0;
 
-    // Tenta gerar um código único até 5 vezes
     while (!isUnique && attempts < 5) {
         const random = Math.floor(1000 + Math.random() * 9000);
         code = `${base}-${random}`;
         
-        // Verifica se já existe
         const { data, error } = await api.select('app_users', { affiliate_code: code });
         
-        // Se der erro na API, assumimos que não é único para evitar conflito e tentamos de novo
-        // Se data for vazio, significa que não encontrou ninguém com esse código -> É único.
         if (!error && (!data || data.length === 0)) {
             isUnique = true;
         }
         attempts++;
         
-        // Pequeno delay para evitar martelar a API em caso de falha
         if (!isUnique) await new Promise(r => setTimeout(r, 200));
     }
 
     if (!isUnique) {
-        // Fallback final com timestamp se falhar nas tentativas aleatórias
         code = `${base}-${Date.now().toString().slice(-4)}`;
     }
     
     await api.update('app_users', { affiliate_code: code }, { id: userId });
+    
+    // Log de auditoria
+    logger.info(userId, 'Usuários', 'generate_affiliate_code', { code });
+    
     return code;
 };
 
@@ -141,12 +133,10 @@ export const processAffiliateCommission = async (payerUserId: string, amount: nu
     if (commission <= 0) return;
 
     // 3. Update Affiliate Balance
-    // First fetch current balance
     const { data: affiliateData } = await api.select('app_users', { id: referrerId });
     if (!affiliateData || affiliateData.length === 0) return;
     
     const currentBalance = Number(affiliateData[0].affiliate_balance || 0);
-    // Fix: Use float math correction to avoid 0.1 + 0.2 = 0.300000004
     const newBalance = parseFloat((currentBalance + commission).toFixed(2));
 
     await api.update('app_users', { affiliate_balance: newBalance }, { id: referrerId });
@@ -161,7 +151,8 @@ export const processAffiliateCommission = async (payerUserId: string, amount: nu
     
     logger.info(referrerId, 'Pagamentos', 'affiliate_commission_paid', { 
         amount: commission, 
-        source: payerUserId 
+        source: payerUserId,
+        original_amount: amount
     });
 };
 

@@ -53,6 +53,7 @@ Ganhe 20% de comissão indicando novos usuários.
 *   Acesse o ícone 🤝 no topo.
 *   Copie seu link exclusivo (`?ref=...`).
 *   Acompanhe extrato e saldo em tempo real.
+*   **Popup de Convite:** O sistema convida proativamente usuários a se tornarem parceiros.
 
 ## 5. Histórico
 Clique no ícone de Relógio no topo para ver "Meu Histórico".
@@ -108,4 +109,4 @@ Auditoria completa do sistema.
 
 ---
 
-**GDN_IA v1.0.7** - Documentação atualizada com melhorias de SEO e Modo Visitante.
+**GDN_IA v1.0.9** - Documentação atualizada com melhorias de afiliados, popup de convite e refatoração de código.

@@ -12,7 +12,7 @@ import { PlansModal } from './components/PlansModal';
 import { ManualModal } from './components/ManualModal'; 
 import { UserHistoryModal } from './components/UserHistoryModal'; 
 import { AffiliateModal } from './components/AffiliateModal'; 
-import { AffiliateInvitePopup } from './components/AffiliateInvitePopup'; // Import Popup
+import { AffiliateInvitePopup } from './components/AffiliateInvitePopup';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
 import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
@@ -79,9 +79,7 @@ const extractTitleAndContent = (text: string, mode: ServiceKey) => {
             // 1. Remove Markdown (*, #)
             cleanTitle = cleanTitle.replace(/[*#]/g, '').trim();
 
-            // 2. Remove Prefixos comuns (Ex: "Título: O Grande Jogo" -> "O Grande Jogo")
-            // Isso lida com "Intenção, Ação e Desejo" se vier como "Framework: Intenção..." ou similar,
-            // mas principalmente limpa "Headline: ..."
+            // 2. Remove Prefixos comuns
             cleanTitle = cleanTitle.replace(/^(título|title|headline|manchete|assunto|subject|prompt|copy|foco)\s*[:|-]\s*/i, '').trim();
 
             // Define onde começa o conteúdo real (pula a linha do título e linhas vazias subsequentes)
@@ -105,16 +103,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
   const { currentPlan, userCredits: dbCredits, hasAccessToService, getCreditsCostForService, canUseService } = usePlan();
 
   const [guestCredits, setGuestCredits] = useState<number>(3);
-  
-  useEffect(() => {
-    const stored = localStorage.getItem('gdn_guest_credits');
-    if (stored !== null) {
-        setGuestCredits(parseInt(stored, 10));
-    } else {
-        localStorage.setItem('gdn_guest_credits', '3');
-    }
-  }, []);
-
   const isGuest = !user;
   const activeCredits = isGuest ? guestCredits : dbCredits;
   const activePlanName = isGuest ? 'Visitante' : currentPlan.name;
@@ -133,39 +121,39 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
   
   const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
   
+  // Modals States
   const [showPlansModal, setShowPlansModal] = useState(false);
   const [showGuestLimitModal, setShowGuestLimitModal] = useState(false); 
   const [showFeatureLockModal, setShowFeatureLockModal] = useState(false); 
   const [showManualModal, setShowManualModal] = useState(false); 
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
-  const [showAffiliateInvite, setShowAffiliateInvite] = useState(false); // Novo Estado para o Popup
+  const [showAffiliateInvite, setShowAffiliateInvite] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  // Inicialização de Dados
   useEffect(() => {
+    // 1. Carrega créditos de visitante
+    const stored = localStorage.getItem('gdn_guest_credits');
+    if (stored !== null) {
+        setGuestCredits(parseInt(stored, 10));
+    } else {
+        localStorage.setItem('gdn_guest_credits', '3');
+    }
+
+    // 2. Carrega metadados do app
     fetch('./metadata.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
+      .then(response => response.ok ? response.json() : { version: 'Error' })
       .then(data => setMetadata(data))
-      .catch(err => {
-        console.error("Failed to load metadata:", err);
-        setMetadata({ version: 'Erro' }); 
-      });
+      .catch(err => console.error("Failed to load metadata:", err));
   }, []);
 
-  // Lógica para mostrar o convite de afiliado
+  // Lógica de Popup de Afiliados
   useEffect(() => {
     if (user && !isGuest) {
       const hasSeenInvite = localStorage.getItem('gdn_seen_affiliate_invite');
       if (!hasSeenInvite) {
-        // Mostra o convite após 3 segundos de sessão se ainda não viu
-        const timer = setTimeout(() => {
-          setShowAffiliateInvite(true);
-        }, 3000);
+        const timer = setTimeout(() => setShowAffiliateInvite(true), 3000);
         return () => clearTimeout(timer);
       }
     }
@@ -195,6 +183,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
     generateAudio: boolean,
     options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
   ) => {
+    // Validações Iniciais
     if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
         setShowFeatureLockModal(true);
         return;
@@ -224,6 +213,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         }
     }
 
+    // Reset de Estado
     setIsLoading(true);
     setError(null);
     setResultText(null);
@@ -242,6 +232,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         options
       );
       
+      // Atualização de Créditos
       let updatedCredits = activeCredits;
 
       if (isGuest) {
@@ -258,6 +249,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
           }
       }
 
+      // Processamento de Texto
       let processedText = text;
       const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
       
@@ -279,6 +271,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
             }
       }
 
+      // Tratamento Específico por Modo
       if (mode === 'image_generation') {
           setGeneratedImagePrompt(text);
           let w = 1024, h = 1024;
@@ -296,10 +289,9 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
       
       if (user) {
          logContentGeneration(user.id, mode, cost, updatedCredits, currentPlan.id);
-      }
-
-      if (user) {
-          try {
+         
+         // Salvar no Histórico
+         try {
               let historyTitle = '';
               const shortPrompt = prompt.length > 60 ? prompt.substring(0, 60) + '...' : prompt;
               
@@ -366,7 +358,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
 
   return (
     <div className="min-h-screen bg-black text-gray-300">
-      {/* Dynamic Head for SEO based on app state or static default */}
       <SeoHead 
         title={resultTitle || "GDN_IA - Creator Suite"} 
         description="Plataforma de Inteligência Artificial para geração de notícias, imagens e sites." 
@@ -419,6 +410,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
                  const isRestrictedGuest = isGuest && !GUEST_ALLOWED_MODES.includes(svc.value);
                  const isLockedByPlan = !isGuest && !hasAccessToService(svc.value);
                  const isLocked = isRestrictedGuest || isLockedByPlan;
+                 const cost = getCreditsCostForService(svc.value);
 
                  const icon = SERVICE_ICONS[svc.value] || 'fa-star';
                  const colorClass = SERVICE_COLORS[svc.value] || 'text-gray-400 border-gray-600 hover:bg-gray-800';
@@ -435,6 +427,13 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
                             }
                         `}
                      >
+                        {!isLocked && (
+                            <div className="absolute top-2 left-2 bg-black/60 text-xs text-gray-400 px-2 py-0.5 rounded border border-gray-700 backdrop-blur-sm group-hover:bg-black/80 transition-colors flex items-center">
+                                <i className="fas fa-coins text-yellow-500 mr-1 text-[10px]"></i>
+                                {cost}
+                            </div>
+                        )}
+
                         <i className={`fas ${icon} text-3xl mb-1 transition-transform group-hover:scale-110`}></i>
                         <span className="text-xs font-bold uppercase tracking-wider leading-tight">{svc.label}</span>
                         
@@ -497,7 +496,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
                    />
                 )}
 
-                {/* RESULT DISPLAY & SEO WIDGET - Only for text modes */}
+                {/* RESULT DISPLAY & SEO WIDGET */}
                 {currentMode !== 'landingpage_generator' && currentMode !== 'institutional_website_generator' && currentMode !== 'image_generation' && currentMode !== 'canva_structure' && resultText && (
                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                        <div className="lg:col-span-2">
@@ -509,7 +508,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
                            />
                        </div>
                        
-                       {/* SEO Scorecard (Rank Math style) */}
                        <div className="lg:col-span-1">
                            <SeoScorecard 
                                 title={resultTitle || "Sem Título"} 
@@ -533,6 +531,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         </div>
       </main>
       
+      {/* Modals */}
       {showPlansModal && user && (
         <PlansModal 
             currentPlanId={currentPlan.id} 
@@ -614,33 +613,10 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin }: DashboardPagePr
         </div>
       )}
 
-      {showManualModal && (
-        <ManualModal 
-            onClose={() => setShowManualModal(false)}
-        />
-      )}
-
-      {showHistoryModal && user && (
-        <UserHistoryModal
-            userId={user.id}
-            onClose={() => setShowHistoryModal(false)}
-        />
-      )}
-
-      {showAffiliateModal && user && (
-        <AffiliateModal
-            onClose={() => setShowAffiliateModal(false)}
-        />
-      )}
-
-      {/* Convite Automático para Afiliados */}
-      {showAffiliateInvite && (
-        <AffiliateInvitePopup 
-            onClose={handleCloseAffiliateInvite}
-            onAccept={handleAcceptAffiliateInvite}
-        />
-      )}
-
+      {showManualModal && <ManualModal onClose={() => setShowManualModal(false)} />}
+      {showHistoryModal && user && <UserHistoryModal userId={user.id} onClose={() => setShowHistoryModal(false)} />}
+      {showAffiliateModal && user && <AffiliateModal onClose={() => setShowAffiliateModal(false)} />}
+      {showAffiliateInvite && <AffiliateInvitePopup onClose={handleCloseAffiliateInvite} onAccept={handleAcceptAffiliateInvite} />}
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <footer className="text-center p-8 text-gray-600 text-xs border-t border-gray-900 mt-12">
