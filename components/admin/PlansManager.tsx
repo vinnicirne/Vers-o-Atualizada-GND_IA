@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plan } from '../../types/plan.types';
 import { PlanForm } from './PlanForm';
@@ -84,6 +85,26 @@ export function PlansManager() {
     }
   };
 
+  // Sincroniza os custos no banco de dados com os valores definidos no código
+  const handleSyncCosts = async () => {
+    if (!adminUser) return;
+    if (!window.confirm("Isso atualizará os custos de crédito de todos os serviços no banco de dados para corresponder aos valores atuais do sistema (constants.ts). Deseja continuar?")) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Ao chamar updateAndSavePlans com os planos atuais, o hook usePlans aplicará a lógica de syncPlanCosts antes de salvar
+      await updateAndSavePlans(allPlans, adminUser.id);
+      setToast({ message: "Custos sincronizados e salvos no banco de dados!", type: 'success' });
+      refreshPlans();
+    } catch (err: any) {
+      setToast({ message: err.message || "Falha ao sincronizar custos.", type: 'error' });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="text-center p-8">
@@ -106,16 +127,26 @@ export function PlansManager() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
           <h2 className="text-2xl font-bold text-green-400">Gerenciamento de Planos</h2>
-          {!isFormOpen && (
+          <div className="flex gap-3">
             <button
-              onClick={handleAddNewPlan}
-              className="px-4 py-2 text-sm font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition-all shadow-md shadow-green-600/20"
+                onClick={handleSyncCosts}
+                disabled={isSaving}
+                className="px-4 py-2 text-sm font-bold text-yellow-900 bg-yellow-500 rounded-lg hover:bg-yellow-400 transition-all shadow-md shadow-yellow-600/20 disabled:opacity-50"
+                title="Forçar atualização dos preços no banco de dados"
             >
-              <i className="fas fa-plus mr-2"></i> Adicionar Novo Plano
+                <i className="fas fa-sync-alt mr-2"></i> Sincronizar Custos (DB)
             </button>
-          )}
+            {!isFormOpen && (
+                <button
+                onClick={handleAddNewPlan}
+                className="px-4 py-2 text-sm font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition-all shadow-md shadow-green-600/20"
+                >
+                <i className="fas fa-plus mr-2"></i> Adicionar Novo Plano
+                </button>
+            )}
+          </div>
         </div>
 
         {isFormOpen ? (

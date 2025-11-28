@@ -195,20 +195,37 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       return;
     }
 
-    const cost = getCreditsCostForService(mode);
+    // Calculate Costs
+    const mainCost = getCreditsCostForService(mode);
+    const audioServiceEnabled = hasAccessToService('text_to_speech') || isGuest;
+    const shouldGenerateAudio = generateAudio && audioServiceEnabled;
+    const audioCost = shouldGenerateAudio ? getCreditsCostForService('text_to_speech') : 0;
+    const totalCost = mainCost + audioCost;
 
     if (isGuest) {
-        if (guestCredits < cost) {
+        if (guestCredits < totalCost) {
             setShowGuestLimitModal(true);
             return;
         }
     } else {
-        if (!canUseService(mode)) {
-            if (!hasAccessToService(mode)) {
-                setError(`Acesso Negado: O modo "${mode.replace(/_/g, ' ').toUpperCase()}" é exclusivo de planos superiores.`);
-            } else {
-                setError(`Seu saldo acabou. Custo da operação: ${cost}.`);
-            }
+        // 1. Check permission for Main Service
+        if (!hasAccessToService(mode)) {
+             setError(`Acesso Negado: O modo "${mode.replace(/_/g, ' ').toUpperCase()}" é exclusivo de planos superiores.`);
+             setShowPlansModal(true);
+             return;
+        }
+
+        // 2. Check permission for Audio if requested
+        if (generateAudio && !hasAccessToService('text_to_speech')) {
+             setError(`Acesso Negado: A ferramenta de Texto para Voz é exclusiva de planos superiores.`);
+             setShowPlansModal(true);
+             return;
+        }
+
+        // 3. Check Total Balance
+        // Admins (credits === -1) always pass
+        if (activeCredits !== -1 && activeCredits < totalCost) {
+            setError(`Saldo insuficiente. Esta operação custa ${totalCost} créditos (Conteúdo: ${mainCost} + Áudio: ${audioCost}).`);
             setShowPlansModal(true);
             return;
         }
@@ -229,19 +246,19 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         prompt, 
         mode, 
         user?.id, 
-        (hasAccessToService('text_to_speech') || isGuest) && generateAudio,
+        shouldGenerateAudio,
         options
       );
       
-      // Atualização de Créditos
+      // Atualização de Créditos (Deduct Total Cost)
       let updatedCredits = activeCredits;
 
       if (isGuest) {
-          updatedCredits = guestCredits - cost;
+          updatedCredits = guestCredits - totalCost;
           setGuestCredits(updatedCredits);
           localStorage.setItem('gdn_guest_credits', updatedCredits.toString());
       } else if (user && activeCredits !== -1) {
-          updatedCredits = activeCredits - cost;
+          updatedCredits = activeCredits - totalCost;
           const { error: creditError } = await api.update('user_credits', { credits: updatedCredits }, { user_id: user.id });
           if (creditError) {
               console.error('Erro API Proxy ao atualizar créditos:', creditError);
@@ -292,8 +309,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       const userIdToLog = user ? user.id : GUEST_ID;
       const planIdToLog = user ? currentPlan.id : 'guest';
       
-      // Registra a ação no log geral (permite monitorar o uso de visitantes)
-      logContentGeneration(userIdToLog, mode, cost, updatedCredits, planIdToLog);
+      // Registra a ação no log geral com o CUSTO TOTAL
+      logContentGeneration(userIdToLog, mode, totalCost, updatedCredits, planIdToLog);
       
       if (user) {
          // Salvar no Histórico Pessoal (Apenas para usuários logados)
@@ -332,7 +349,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
     } finally {
       setIsLoading(false);
     }
-  }, [user, activeCredits, isGuest, guestCredits, currentPlan, refresh, hasAccessToService, getCreditsCostForService, canUseService]);
+  }, [user, activeCredits, isGuest, guestCredits, currentPlan, refresh, hasAccessToService, getCreditsCostForService]);
   
   const handleLogout = async () => {
     await signOut();
@@ -473,7 +490,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
             <div className="mt-8 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-center animate-fade-in" role="alert">
               <strong className="font-bold block mb-2"><i className="fas fa-exclamation-circle mr-2"></i>Atenção</strong>
               <span className="block whitespace-pre-wrap text-left mx-auto max-w-lg text-sm font-mono">{error}</span>
-              {!isGuest && (error.includes('Acesso Negado') || error.includes('saldo acabou')) && (
+              {!isGuest && (error.includes('Acesso Negado') || error.includes('saldo acabou') || error.includes('Saldo insuficiente')) && (
                   <button 
                     onClick={() => setShowPlansModal(true)}
                     className="mt-4 bg-red-600 hover:bg-red-500 text-white font-bold py-2 px-6 rounded-lg text-sm transition shadow-lg shadow-red-600/20"

@@ -47,7 +47,8 @@ const ASPECT_RATIOS = [
 ];
 
 export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, isGuest = false, guestAllowedModes = [] }: ContentGeneratorProps) {
-  const { currentPlan, hasAccessToService } = usePlan();
+  const { currentPlan, hasAccessToService, getCreditsCostForService } = usePlan();
+  const ttsCost = getCreditsCostForService('text_to_speech');
 
   const [prompt, setPrompt] = useState('');
   const [placeholder, setPlaceholder] = useState('');
@@ -208,8 +209,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
         {mode === 'news_generator' && !isModeLocked('news_generator') && (
           // Verifica se tem acesso ao TTS (se logado) ou se é visitante (liberado)
           (isGuest || hasAccessToService('text_to_speech')) && (
-            <div className="flex items-center justify-center pt-4 animate-fade-in">
-                <label htmlFor="generate-audio" className="flex items-center cursor-pointer text-sm text-gray-400">
+            <div className="flex flex-col items-center justify-center pt-4 animate-fade-in">
+                <label htmlFor="generate-audio" className="flex items-center cursor-pointer text-sm text-gray-400 hover:text-white transition-colors">
                 <input 
                     id="generate-audio"
                     type="checkbox"
@@ -218,9 +219,15 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                     className="h-5 w-5 bg-black border-2 border-green-900/60 rounded text-green-500 focus:ring-green-500 focus:ring-offset-black transition duration-200"
                     disabled={isLoading}
                 />
-                <span className="ml-3">Gerar áudio da matéria</span>
+                <span className="ml-3">Gerar áudio da matéria <span className="text-xs text-yellow-500 font-bold ml-1">({ttsCost} créditos)</span></span>
                 <i className="fas fa-volume-up ml-2 text-green-500"></i>
                 </label>
+                {generateAudio && (
+                    <p className="text-[10px] text-yellow-500/80 mt-1">
+                        <i className="fas fa-info-circle mr-1"></i>
+                        Serão descontados créditos adicionais pela geração do áudio.
+                    </p>
+                )}
             </div>
           )
         )}

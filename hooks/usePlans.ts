@@ -1,7 +1,8 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { Plan } from '../types/plan.types';
 import { getPlans, savePlans } from '../services/adminService';
-import { PLANS as DEFAULT_PLANS_CONSTANT } from '../constants'; // Importar os planos padrão
+import { PLANS as DEFAULT_PLANS_CONSTANT, TASK_COSTS } from '../constants'; // Importar os planos padrão e custos
 
 interface UsePlansReturn {
   allPlans: Plan[];
@@ -16,6 +17,18 @@ export function usePlans(): UsePlansReturn {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Helper to sync costs from constant code to plan objects
+  const syncPlanCosts = (plans: Plan[]): Plan[] => {
+    return plans.map(plan => ({
+      ...plan,
+      services: plan.services.map(service => ({
+        ...service,
+        // Override credit cost with the constant value if it exists in TASK_COSTS
+        creditsPerUse: TASK_COSTS[service.key] ?? service.creditsPerUse ?? 1
+      }))
+    }));
+  };
+
   const fetchPlans = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -28,9 +41,12 @@ export function usePlans(): UsePlansReturn {
         // Converte o objeto de planos padrão para um array
         fetchedPlans = Object.values(DEFAULT_PLANS_CONSTANT);
         // NOTA: Não salvamos automaticamente aqui. O admin deve explicitamente salvar a primeira vez.
-        // Isso evita que `savePlans` seja chamado em cada carregamento se a config estiver vazia.
       }
-      setAllPlans(fetchedPlans.filter(p => p.isActive)); // Filtra apenas planos ativos por padrão na UI
+      
+      // Sincroniza custos para garantir que a UI mostre os valores do código
+      const syncedPlans = syncPlanCosts(fetchedPlans);
+
+      setAllPlans(syncedPlans.filter(p => p.isActive)); // Filtra apenas planos ativos por padrão na UI
     } catch (err: any) {
       console.error("Erro ao buscar planos:", err);
       setError(err.message || 'Falha ao carregar planos.');
@@ -43,8 +59,11 @@ export function usePlans(): UsePlansReturn {
     setLoading(true); // Pode setar loading para indicar que está salvando
     setError(null);
     try {
-      await savePlans(updatedPlans, adminId);
-      setAllPlans(updatedPlans.filter(p => p.isActive)); // Atualiza o estado local e filtra
+      // Garante que estamos salvando com os custos sincronizados
+      const syncedPlans = syncPlanCosts(updatedPlans);
+
+      await savePlans(syncedPlans, adminId);
+      setAllPlans(syncedPlans.filter(p => p.isActive)); // Atualiza o estado local e filtra
     } catch (err: any) {
       console.error("Erro ao salvar planos:", err);
       setError(err.message || 'Falha ao salvar planos.');

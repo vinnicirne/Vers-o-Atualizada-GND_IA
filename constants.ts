@@ -57,13 +57,13 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
 // Os custos agora são definidos dentro de cada ServicePermission no objeto PLANS.
 export const TASK_COSTS: Record<ServiceKey, number> = {
   news_generator: 1,
-  text_to_speech: 1,
+  text_to_speech: 2, // Atualizado para 2
   copy_generator: 1,
   prompt_generator: 1,
-  canva_structure: 3, // Custo aumentado pois gera layout visual completo
-  landingpage_generator: 5,
-  institutional_website_generator: 8, // Custo maior pois é um site completo
-  image_generation: 3, 
+  canva_structure: 3,
+  landingpage_generator: 15, // Atualizado para 15
+  institutional_website_generator: 25, // Atualizado para 25
+  image_generation: 5, // Atualizado para 5
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
