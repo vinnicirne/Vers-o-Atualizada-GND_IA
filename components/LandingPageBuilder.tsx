@@ -1,226 +1,223 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import grapesjs from 'grapesjs';
-// @ts-ignore
-import webpagePlugin from 'grapesjs-preset-webpage';
+import React, { useRef, useEffect, useState } from 'react';
 import { Toast } from './admin/Toast';
 
 interface LandingPageBuilderProps {
   initialHtml: string;
+  onClose: () => void;
 }
 
-export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
-  const editorRef = useRef<any>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info'} | null>(null);
-  const [activeDevice, setActiveDevice] = useState<'Desktop' | 'Tablet' | 'Mobile'>('Desktop');
+export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [editor, setEditor] = useState<any>(null);
+  const [isEditorReady, setIsEditorReady] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
-    if (!editorRef.current) {
-      const editor = grapesjs.init({
-        container: '#gjs',
-        height: '100%',
-        width: '100%',
-        fromElement: false,
-        storageManager: false,
-        plugins: [webpagePlugin],
-        pluginsOpts: {
-          [webpagePlugin]: {
-            modalImportTitle: 'Importar Código',
-            modalImportLabel: '<div style="margin-bottom: 10px; font-size: 13px;">Cole seu HTML aqui</div>',
-            modalImportContent: '',
-            importPlaceholder: '',
-            inlineCss: true,
-            // Disable default panels we are replacing with our UI
-            textCleanCanvas: 'Limpar Canvas',
-            showDevices: false, 
-          }
-        },
-        assetManager: {
-            // Habilita o gerenciador de assets para permitir colar URLs externas facilmente
-            embedAsBase64: false,
-            assets: [
-                // Exemplos iniciais
-                'https://via.placeholder.com/350x250/78c5d6/fff', 
-                'https://via.placeholder.com/350x250/459ba8/fff',
-            ],
-            upload: false, // Upload de arquivos locais desativado (requer backend)
-            inputPlaceholder: 'Cole a URL da imagem aqui (ex: Google Imagens)',
-            addBtnText: 'Adicionar Imagem',
-            modalTitle: 'Gerenciador de Imagens',
-        },
-        canvas: {
-            styles: [
-                // CSS Libraries (FontAwesome, Google Fonts, etc.)
-                'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css',
-                'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap'
-            ],
-            scripts: [
-                // CORREÇÃO CRÍTICA: Tailwind é um script JS, não um arquivo CSS.
-                // Deve estar em 'scripts' para processar as classes dentro do iframe.
-                'https://cdn.tailwindcss.com'
+    let editorInstance: any = null;
+
+    const initializeEditor = async () => {
+      if (!editorContainerRef.current) return;
+
+      try {
+        // Dynamic import to prevent SSR issues and ensure controlled loading
+        // @ts-ignore
+        const grapesjsModule = await import('grapesjs');
+        const GrapesJS = grapesjsModule.default || grapesjsModule;
+
+        // Clean initialization without plugins to avoid 'BlockManager undefined' errors
+        editorInstance = GrapesJS.init({
+          container: editorContainerRef.current,
+          components: initialHtml || '<div>Comece a editar...</div>',
+          height: '100%',
+          width: '100%',
+          panels: { defaults: [] },
+          storageManager: { type: 'local', autosave: false, autoload: false },
+          plugins: [], // Zero plugins at startup for stability
+          // FIX: Custom Rich Text Editor actions to ensure Link works
+          richTextEditor: {
+            actions: [
+              'bold', 'italic', 'underline', 'strikethrough',
+              {
+                name: 'link',
+                icon: '<i class="fa fa-link"></i>',
+                attributes: { title: 'Inserir Link' },
+                result: (rte: any) => {
+                  const url = window.prompt('Digite a URL do link (https://...):', 'https://');
+                  if (url) rte.exec('createLink', url);
+                }
+              },
+              {
+                 name: 'unlink',
+                 icon: '<i class="fa fa-unlink"></i>',
+                 attributes: { title: 'Remover Link' },
+                 result: (rte: any) => rte.exec('unlink')
+              }
             ]
-        },
-        deviceManager: {
+          },
+          deviceManager: {
             devices: [
                 { name: 'Desktop', width: '' },
                 { name: 'Tablet', width: '768px', widthMedia: '992px' },
                 { name: 'Mobile', width: '375px', widthMedia: '480px' },
             ]
-        },
-        panels: { 
-            defaults: [
-                // We keep standard panels but might hide some via CSS/Config if needed
-            ] 
-        }
-      });
+          },
+        });
 
-      editorRef.current = editor;
+        // Safe configuration after 'load' event
+        editorInstance.on('load', () => {
+          setEditor(editorInstance);
+          setIsEditorReady(true);
 
-      // Ensure dark theme consistency and clean UI
-      editor.on('load', () => {
-         const panelManager = editor.Panels;
-         // Remove default buttons that might clutter the UI if they exist
-         panelManager.removeButton('options', 'canvas-clear');
-         panelManager.removeButton('options', 'gjs-open-import-webpage');
-         panelManager.removeButton('views', 'open-sm');
-         panelManager.removeButton('views', 'open-tm');
-         panelManager.removeButton('views', 'open-layers');
-         panelManager.removeButton('views', 'open-blocks');
+          // Inject CSS for correct Canvas (Iframe) visualization
+          const frameEl = editorInstance.Canvas.getFrameEl();
+          if (frameEl) {
+              const head = frameEl.contentDocument?.head;
+              if (head) {
+                  // Tailwind CDN
+                  const script = document.createElement('script');
+                  script.src = "https://cdn.tailwindcss.com";
+                  head.appendChild(script);
+                  
+                  // Base Styles
+                  // FIX: Adicionado padding para toolbar não cobrir conteúdo e estilo para links
+                  const style = document.createElement('style');
+                  style.innerHTML = `
+                    body { 
+                        background-color: #111827; 
+                        color: #f3f4f6; 
+                        font-family: sans-serif;
+                        padding-top: 60px; 
+                        padding-bottom: 60px;
+                        padding-left: 20px;
+                        padding-right: 20px;
+                        min-height: 100vh;
+                    }
+                    /* Visualização clara de links no editor */
+                    a { color: #60a5fa; text-decoration: underline; cursor: pointer; }
+                    ::-webkit-scrollbar { width: 8px; background: #000; }
+                    ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+                  `;
+                  head.appendChild(style);
+              }
+          }
 
-         // --- CSS INJECTION FOR CENTERING ---
-         // Isso garante que o conteúdo (ex: post quadrado de 1080px) fique centralizado na tela
-         const iframe = editor.Canvas.getFrameEl();
-         const head = iframe.contentDocument.head;
-         const style = document.createElement('style');
-         style.innerHTML = `
-            body { 
-                background-color: #111827; /* Dark BG */
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                min-height: 100vh;
-                margin: 0;
-                padding: 40px;
-            }
-         `;
-         head.appendChild(style);
-      });
-    }
+          // Add blocks only when BlockManager is guaranteed to exist
+          addEssentialBlocks(editorInstance);
+        });
 
-    // Carrega o HTML gerado pela IA no editor
-    if (editorRef.current && initialHtml) {
-        // Pequena limpeza para garantir que o GrapesJS entenda o body background
-        editorRef.current.setComponents(initialHtml);
-    }
+      } catch (error) {
+        console.error('Error initializing editor:', error);
+        setToast({ message: "Falha ao carregar o editor visual.", type: 'error' });
+      }
+    };
 
+    initializeEditor();
+
+    // Cleanup
     return () => {
-        // Cleanup if needed
+      if (editorInstance) {
+        try {
+            editorInstance.destroy();
+        } catch (e) {
+            console.error("Error destroying editor:", e);
+        }
+      }
+      setEditor(null);
+      setIsEditorReady(false);
     };
   }, [initialHtml]);
 
-  // --- ACTIONS ---
+  const addEssentialBlocks = (ed: any) => {
+    if (!ed || !ed.BlockManager) return;
 
-  const handleDeviceChange = (device: 'Desktop' | 'Tablet' | 'Mobile') => {
-      if(!editorRef.current) return;
-      setActiveDevice(device);
-      const deviceManager = editorRef.current.DeviceManager;
-      
-      if (device === 'Desktop') deviceManager.select('Desktop');
-      if (device === 'Tablet') deviceManager.select('Tablet');
-      if (device === 'Mobile') deviceManager.select('Mobile');
-  };
-
-  const handleUndo = () => editorRef.current?.runCommand('core:undo');
-  const handleRedo = () => editorRef.current?.runCommand('core:redo');
-  
-  const handleToggleBorders = () => {
-      editorRef.current?.runCommand('sw-visibility');
-  };
-
-  const handleClear = () => {
-      if(window.confirm("Tem certeza que deseja limpar tudo?")) {
-        editorRef.current?.runCommand('core:canvas-clear');
+    const blocks = [
+      {
+        id: 'hero-section',
+        label: 'Hero Section',
+        category: 'Estrutura',
+        content: `
+          <section class="relative bg-gray-900 text-white py-20 px-6 text-center">
+            <div class="max-w-4xl mx-auto">
+              <h1 class="text-5xl font-bold mb-6">Título Principal</h1>
+              <p class="text-xl text-gray-300 mb-8">Subtítulo persuasivo para sua audiência.</p>
+              <button class="bg-green-600 hover:bg-green-500 text-black font-bold py-3 px-8 rounded-lg text-lg transition">Ação Principal</button>
+            </div>
+          </section>
+        `
+      },
+      {
+        id: 'features-grid',
+        label: 'Grid de Benefícios',
+        category: 'Conteúdo',
+        content: `
+          <section class="py-16 bg-black">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto px-4">
+              <div class="p-6 bg-gray-800 rounded-xl border border-gray-700">
+                <h3 class="text-xl font-bold text-green-400 mb-2">Benefício 1</h3>
+                <p class="text-gray-400">Descrição do benefício.</p>
+              </div>
+              <div class="p-6 bg-gray-800 rounded-xl border border-gray-700">
+                <h3 class="text-xl font-bold text-green-400 mb-2">Benefício 2</h3>
+                <p class="text-gray-400">Descrição do benefício.</p>
+              </div>
+              <div class="p-6 bg-gray-800 rounded-xl border border-gray-700">
+                <h3 class="text-xl font-bold text-green-400 mb-2">Benefício 3</h3>
+                <p class="text-gray-400">Descrição do benefício.</p>
+              </div>
+            </div>
+          </section>
+        `
+      },
+      {
+        id: 'text-block',
+        label: 'Bloco de Texto',
+        category: 'Básico',
+        content: '<div class="p-4 text-gray-300"><p>Insira seu texto aqui...</p></div>'
+      },
+      {
+        id: 'image-block',
+        label: 'Imagem',
+        category: 'Básico',
+        content: '<img src="https://via.placeholder.com/600x400" alt="Placeholder" class="w-full h-auto rounded-lg shadow-lg" />'
+      },
+      {
+        id: 'cta-section',
+        label: 'Chamada para Ação',
+        category: 'Estrutura',
+        content: '<section class="py-20 bg-green-900/20 text-center border-t border-green-900/50"><div class="max-w-2xl mx-auto px-4"><h2 class="text-3xl font-bold text-white mb-6">Pronto para começar?</h2><button class="bg-green-500 hover:bg-green-400 text-black font-bold py-4 px-10 rounded-full shadow-lg transition transform hover:scale-105">Inscreva-se Agora</button></div></section>'
       }
+    ];
+
+    blocks.forEach(block => {
+        // Check if block exists to avoid duplicate error on fast remounts
+        if(ed.BlockManager.get(block.id)) return;
+        
+        ed.BlockManager.add(block.id, {
+            label: block.label,
+            category: block.category,
+            content: block.content,
+            attributes: { class: 'fa fa-cube' }
+        });
+    });
   };
 
-  const handlePreview = () => {
-    if(!editorRef.current) return;
-    const html = editorRef.current.getHtml();
-    const css = editorRef.current.getCss();
-    
-    const fullContent = `
-      <!DOCTYPE html>
-      <html lang="pt-BR">
-      <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Preview Landing Page</title>
-          <script src="https://cdn.tailwindcss.com"></script>
-          <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-          <style>
-            body { background-color: #ffffff; } 
-            /* Se o usuário definir bg-black no tailwind, ele sobrescreve isso */
-            ${css}
-          </style>
-      </head>
-      <body>${html}</body>
-      </html>
-    `;
-
-    const blob = new Blob([fullContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-  };
-
-  const handleCopyCode = async () => {
-      if(!editorRef.current) return;
-      const html = editorRef.current.getHtml();
-      const css = editorRef.current.getCss();
+  const handleSave = () => {
+    if (editor && isEditorReady) {
+      const html = editor.getHtml();
+      const css = editor.getCss();
       
-      const fullHtml = `<!DOCTYPE html>
+      const fullHtml = `
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Landing Page</title>
+    <title>Landing Page Gerada - GDN_IA</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-      ${css}
-    </style>
+    <style>${css}</style>
 </head>
-<body class="font-sans antialiased text-gray-900">
-    ${html}
-</body>
-</html>`;
-
-      try {
-          await navigator.clipboard.writeText(fullHtml);
-          setToast({ message: "Código HTML copiado com sucesso!", type: 'success' });
-      } catch (e) {
-          setToast({ message: "Erro ao copiar código.", type: 'error' });
-      }
-  };
-
-  const handleExport = () => {
-      if(!editorRef.current) return;
-      const html = editorRef.current.getHtml();
-      const css = editorRef.current.getCss();
-      
-      const fullHtml = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Landing Page</title>
-    <meta name="description" content="Landing page gerada via GDN_IA">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <style>
-      ${css}
-    </style>
-</head>
-<body class="font-sans antialiased text-gray-900">
+<body class="bg-black text-gray-200 font-sans">
     ${html}
 </body>
 </html>`;
@@ -229,100 +226,54 @@ export function LandingPageBuilder({ initialHtml }: LandingPageBuilderProps) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'landing-page-export.html';
+      a.download = `landing-page-${Date.now()}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      setToast({ message: "Arquivo baixado com sucesso!", type: 'success' });
-  };
-
-  const handlePublish = () => {
-      setToast({ message: "Iniciando publicação...", type: 'info' });
-      setTimeout(() => {
-          setToast({ message: "Landing Page publicada! (Simulação: URL seria gerada aqui)", type: 'success' });
-      }, 1500);
+      
+      setToast({ message: "HTML exportado com sucesso!", type: 'success' });
+    }
   };
 
   return (
-    <div className="bg-gray-900 border border-green-900/40 rounded-xl shadow-lg shadow-black/30 overflow-hidden animate-fade-in-up flex flex-col h-[90vh]">
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      
-      {/* PROFESSIONAL TOOLBAR */}
-      <div className="bg-gray-950 border-b border-green-900/30 flex flex-col md:flex-row justify-between items-center px-4 py-2 gap-3 text-white">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-gray-900 animate-fade-in">
+      {/* Header / Toolbar */}
+      <div className="h-16 border-b border-gray-800 bg-gray-950 flex justify-between items-center px-6 shadow-md z-10">
+        <div className="flex items-center gap-3">
+            <span className="text-green-500 font-bold text-lg"><i className="fas fa-layer-group mr-2"></i>Editor Visual</span>
+            <span className="text-xs text-gray-500 bg-gray-900 px-2 py-1 rounded border border-gray-800">Modo Seguro</span>
+        </div>
         
-        {/* Left: Brand & Modes */}
-        <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-start">
-            <div className="flex items-center gap-2 text-green-400 font-bold text-sm">
-                <i className="fas fa-layer-group"></i>
-                <span className="hidden lg:inline">Editor Visual</span>
-            </div>
-            
-            {/* Device Switcher */}
-            <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
-                <button 
-                    onClick={() => handleDeviceChange('Desktop')}
-                    className={`px-3 py-1 rounded text-xs transition-all ${activeDevice === 'Desktop' ? 'bg-green-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
-                    title="Desktop"
-                >
-                    <i className="fas fa-desktop"></i>
-                </button>
-                <button 
-                    onClick={() => handleDeviceChange('Tablet')}
-                    className={`px-3 py-1 rounded text-xs transition-all ${activeDevice === 'Tablet' ? 'bg-green-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
-                    title="Tablet"
-                >
-                    <i className="fas fa-tablet-alt"></i>
-                </button>
-                <button 
-                    onClick={() => handleDeviceChange('Mobile')}
-                    className={`px-3 py-1 rounded text-xs transition-all ${activeDevice === 'Mobile' ? 'bg-green-600 text-white shadow' : 'text-gray-400 hover:text-white'}`}
-                    title="Mobile"
-                >
-                    <i className="fas fa-mobile-alt"></i>
-                </button>
-            </div>
+        <div className="flex gap-3">
+            <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white rounded-lg text-sm font-medium transition border border-gray-700"
+            >
+                Cancelar
+            </button>
+            <button
+                onClick={handleSave}
+                disabled={!isEditorReady}
+                className="px-5 py-2 bg-green-600 text-black hover:bg-green-500 rounded-lg text-sm font-bold transition shadow-lg shadow-green-900/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+                <i className="fas fa-download"></i> Baixar HTML
+            </button>
         </div>
+      </div>
 
-        {/* Center: Edit Actions */}
-        <div className="flex items-center gap-2">
-            <button onClick={handleToggleBorders} className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-white transition" title="Mostrar/Ocultar Bordas">
-                <i className="fas fa-border-none text-xs"></i>
-            </button>
-            <div className="w-px h-4 bg-gray-700 mx-1"></div>
-            <button onClick={handleUndo} className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-white transition" title="Desfazer">
-                <i className="fas fa-undo text-xs"></i>
-            </button>
-            <button onClick={handleRedo} className="w-8 h-8 flex items-center justify-center rounded hover:bg-gray-800 text-gray-400 hover:text-white transition" title="Refazer">
-                <i className="fas fa-redo text-xs"></i>
-            </button>
-            <div className="w-px h-4 bg-gray-700 mx-1"></div>
-            <button onClick={handleClear} className="w-8 h-8 flex items-center justify-center rounded hover:bg-red-900/30 text-gray-400 hover:text-red-400 transition" title="Limpar Tudo">
-                <i className="fas fa-trash-alt text-xs"></i>
-            </button>
-        </div>
-
-        {/* Right: Publish Actions */}
-        <div className="flex gap-2 w-full md:w-auto justify-end">
-            <button onClick={handlePreview} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-200 font-medium rounded text-xs flex items-center gap-2 border border-gray-700 transition">
-                <i className="fas fa-eye"></i> <span className="hidden sm:inline">Preview</span>
-            </button>
-            <button onClick={handleCopyCode} className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-green-400 font-medium rounded text-xs flex items-center gap-2 border border-green-900/50 hover:border-green-600 transition" title="Copiar HTML para Área de Transferência">
-                <i className="fas fa-copy"></i> <span className="hidden sm:inline">Copiar HTML</span>
-            </button>
-            <button onClick={handleExport} className="px-3 py-1.5 bg-blue-900/50 hover:bg-blue-800 text-blue-200 font-medium rounded text-xs flex items-center gap-2 border border-blue-800 transition" title="Baixar Arquivo .html">
-                <i className="fas fa-download"></i> <span className="hidden sm:inline">Exportar</span>
-            </button>
-            <button onClick={handlePublish} className="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-black font-bold rounded text-xs flex items-center gap-2 shadow-lg shadow-green-600/20 transition">
-                <i className="fas fa-rocket"></i> <span className="hidden sm:inline">Publicar</span>
-            </button>
-        </div>
+      {/* Editor Canvas */}
+      <div className="flex-1 relative bg-black overflow-hidden">
+        {!isEditorReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black z-20">
+                <i className="fas fa-spinner fa-spin text-4xl text-green-500"></i>
+                <span className="ml-4 text-gray-400">Carregando Editor...</span>
+            </div>
+        )}
+        <div ref={editorContainerRef} className="h-full w-full" />
       </div>
       
-      {/* Editor Canvas */}
-      <div className="flex-grow relative bg-gray-900 overflow-hidden">
-        <div id="gjs" className="h-full w-full" style={{ border: 'none' }}></div>
-      </div>
+      {/* Toast Notification */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

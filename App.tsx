@@ -12,6 +12,7 @@ const CookiesPage = React.lazy(() => import('./pages/legal/CookiesPage'));
 const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
 
 import { AdminGate } from './components/admin/AdminGate';
+import { initGA4 } from './services/analyticsService'; // Import GA4 init
 
 // Componente de Loading Simples
 const SimpleLoader = () => (
@@ -26,6 +27,11 @@ type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookie
 // Este componente consome o contexto e lida com a lógica principal do aplicativo.
 function AppContent() {
   const { user, loading, error } = useUser();
+  
+  // Inicializa Analytics ao montar o app
+  useEffect(() => {
+      initGA4();
+  }, []);
   
   // ROTEAMENTO: Inicializa o estado com base na URL
   const getInitialPage = (): PageRoute => {
@@ -66,6 +72,9 @@ function AppContent() {
 
   useEffect(() => {
     try {
+        // Verifica se window.location está disponível
+        if (typeof window === 'undefined' || !window.location) return;
+
         const params = new URLSearchParams(window.location.search);
         if (currentPage === 'dashboard') {
           params.delete('page');
@@ -79,9 +88,19 @@ function AppContent() {
         // Evita pushState se a URL já for a mesma
         if (window.location.search !== queryString) {
             try {
-                window.history.pushState({}, '', newUrl);
+                // Proteção contra ambientes restritos (Blob, Data URI, Sandboxes estritos)
+                const isRestrictedEnv = ['blob:', 'data:', 'file:'].includes(window.location.protocol);
+                
+                if (!isRestrictedEnv) {
+                    window.history.pushState({}, '', newUrl);
+                }
             } catch (e) {
-                console.warn('Navigation state update skipped due to environment restrictions:', e);
+                // Silencia erros de segurança esperados em previews (StackBlitz, Replit, etc)
+                // para não poluir o console do usuário.
+                if (e instanceof Error && (e.name === 'SecurityError' || e.message.includes('SecurityError'))) {
+                    return; // Ignore completely
+                }
+                console.warn('Navigation state update skipped:', e);
             }
         }
     } catch (e) {

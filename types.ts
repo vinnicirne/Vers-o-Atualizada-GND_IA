@@ -178,6 +178,12 @@ export interface WordPressConfig {
   isConnected: boolean;
 }
 
+// --- ANALYTICS INTEGRATION ---
+export interface AnalyticsConfig {
+  measurementId: string; // G-XXXXXXXXXX
+  isConnected: boolean;
+}
+
 // --- DEVELOPER API ---
 export interface ApiKey {
   id: string;

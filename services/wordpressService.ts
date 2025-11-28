@@ -33,7 +33,7 @@ export const validateWordPressConnection = async (config: WordPressConfig): Prom
     
     // Check for mixed content (HTTP site in HTTPS app)
     const isAppHttps = window.location.protocol === 'https:';
-    const isWpHttp = cleanUrl.startsWith('http://');
+    const isWpHttp = cleanUrl.startsWith('http://') || cleanUrl.startsWith('http:');
     
     if (isAppHttps && isWpHttp) {
         return { 
@@ -99,7 +99,7 @@ export const validateWordPressConnection = async (config: WordPressConfig): Prom
         msg.includes('Network request failed') ||
         error instanceof TypeError // Fetch falha com TypeError em problemas de rede/CORS
     ) {
-        msg = `Falha de Conexão (CORS/Rede).\n\n1. Verifique se o plugin "Application Passwords" está instalado.\n2. Se seu site for HTTP, ele não funcionará aqui (requer HTTPS).\n3. Verifique se algum plugin de segurança (Wordfence/iThemes) está bloqueando a API REST.\n4. Se possível, instale um plugin de CORS no WordPress para liberar acesso.`;
+        msg = `Falha de Conexão (CORS ou Rede).\n\nO navegador bloqueou o acesso ao seu site. Isso geralmente acontece porque o WordPress não permite requisições externas por padrão.\n\nSOLUÇÃO:\n1. Instale o plugin "Application Passwords" (se ainda não fez).\n2. Instale um plugin de "Enable CORS" no seu WordPress.\n3. Verifique se seu site é HTTPS (obrigatório).`;
     }
     
     return { success: false, message: msg };

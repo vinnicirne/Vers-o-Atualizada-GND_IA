@@ -1,6 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
-import { WordPressConfig } from '../../types';
+import { WordPressConfig, AnalyticsConfig } from '../../types';
 import { saveWordPressConfig, getWordPressConfig, validateWordPressConnection, clearWordPressConfig } from '../../services/wordpressService';
+import { saveAnalyticsConfig, getAnalyticsConfig, clearAnalyticsConfig } from '../../services/analyticsService';
 import { Toast } from '../admin/Toast';
 
 interface IntegrationsModalProps {
@@ -9,20 +11,36 @@ interface IntegrationsModalProps {
 
 export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   const [activeTab, setActiveTab] = useState('external');
+  
+  // WordPress State
   const [wpConfig, setWpConfig] = useState<WordPressConfig>({
     siteUrl: '',
     username: '',
     applicationPassword: '',
     isConnected: false
   });
+  
+  // Analytics State
+  const [gaConfig, setGaConfig] = useState<AnalyticsConfig>({
+      measurementId: '',
+      isConnected: false
+  });
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
-    const saved = getWordPressConfig();
-    if (saved) {
-        setWpConfig(saved);
+    // Load WP Config
+    const savedWP = getWordPressConfig();
+    if (savedWP) {
+        setWpConfig(savedWP);
+    }
+
+    // Load GA Config
+    const savedGA = getAnalyticsConfig();
+    if (savedGA) {
+        setGaConfig(savedGA);
     }
 
     const handleEsc = (event: KeyboardEvent) => {
@@ -32,6 +50,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
+  // --- WP HANDLERS ---
   const handleConnectWP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -70,6 +89,24 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
       setWpConfig({ siteUrl: '', username: '', applicationPassword: '', isConnected: false });
       setToast({ message: "WordPress desconectado.", type: 'success' });
       setConnectionError(null);
+  };
+
+  // --- GA4 HANDLERS ---
+  const handleConnectGA = (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!gaConfig.measurementId.startsWith('G-')) {
+          setToast({ message: "ID inválido. Deve começar com 'G-'.", type: 'error' });
+          return;
+      }
+      
+      const newConfig = { ...gaConfig, isConnected: true };
+      setGaConfig(newConfig);
+      saveAnalyticsConfig(newConfig);
+      setToast({ message: "Google Analytics ativado!", type: 'success' });
+  };
+
+  const handleDisconnectGA = () => {
+      clearAnalyticsConfig(); // Isso vai recarregar a página
   };
 
   return (
@@ -195,20 +232,57 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                         )}
                     </div>
 
-                    {/* Placeholder for Analytics */}
-                    <div className="p-6 rounded-xl border border-gray-800 bg-gray-900/30 opacity-75">
+                    {/* Google Analytics 4 Card */}
+                    <div className={`p-6 rounded-xl border transition-all ${gaConfig.isConnected ? 'bg-gray-900/80 border-orange-500/50' : 'bg-gray-900/30 border-gray-800'}`}>
                         <div className="flex justify-between items-start mb-6">
                             <div className="flex items-center gap-3">
                                 <i className="fas fa-chart-line text-4xl text-orange-500"></i>
                                 <div>
                                     <h3 className="text-lg font-bold text-white">Google Analytics 4</h3>
-                                    <p className="text-xs text-gray-400 max-w-[200px]">Acompanhe a performance das suas notícias geradas (Views, CTR).</p>
+                                    <p className="text-xs text-gray-400 max-w-[200px]">Ative o rastreamento para acompanhar a performance deste dashboard.</p>
                                 </div>
                             </div>
+                            {gaConfig.isConnected && <span className="bg-orange-900/30 text-orange-400 text-xs px-2 py-1 rounded border border-orange-800 font-bold">Ativo</span>}
                         </div>
-                        <div className="bg-black/50 p-4 rounded border border-gray-800 text-center">
-                            <p className="text-gray-500 text-sm">Em breve</p>
-                        </div>
+                        
+                        {!gaConfig.isConnected ? (
+                            <form onSubmit={handleConnectGA} className="space-y-4">
+                                <div className="bg-black/50 p-4 rounded border border-gray-800">
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">ID de Medição (Measurement ID)</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="G-XXXXXXXXXX"
+                                        value={gaConfig.measurementId}
+                                        onChange={e => setGaConfig({...gaConfig, measurementId: e.target.value})}
+                                        className="w-full bg-gray-900 border border-gray-700 text-white p-2 rounded-md focus:border-orange-500 focus:outline-none font-mono text-sm"
+                                        required
+                                    />
+                                    <p className="text-[10px] text-gray-500 mt-2">
+                                        Encontre em: Admin GA4 → Fluxo de Dados (Data Streams) → ID da Medição.
+                                    </p>
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-2 rounded transition flex justify-center items-center gap-2"
+                                >
+                                    Ativar Rastreamento
+                                </button>
+                            </form>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="bg-orange-900/10 border border-orange-900/30 p-4 rounded text-sm text-gray-300">
+                                    <p className="font-bold text-orange-400 mb-1">Rastreamento Ativo</p>
+                                    <p>ID: <span className="font-mono text-white">{gaConfig.measurementId}</span></p>
+                                    <p className="text-xs text-gray-500 mt-2">O script do GA4 foi injetado na aplicação.</p>
+                                </div>
+                                <button 
+                                    onClick={handleDisconnectGA}
+                                    className="w-full bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-900/50 font-bold py-2 rounded transition"
+                                >
+                                    Desativar
+                                </button>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

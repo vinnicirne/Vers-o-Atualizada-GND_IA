@@ -357,29 +357,21 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
     await signOut();
   };
 
+  // Funções de pagamento atualizadas para não esperar URL
   const handlePlanSelection = async (planId: UserPlan) => {
-    if(!user) return;
-    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
-    try {
-        const link = await handlePlanSubscription(planId, user);
-        window.open(link, '_blank');
-        setShowPlansModal(false);
-    } catch (e: any) {
-        setToast({ message: e.message, type: 'error' });
-    }
+    // This function will be called by PlansModal.tsx now that the transparent checkout is handled there.
+    // It doesn't need to do anything here directly as PlansModal will manage the payment flow itself.
+    // It's kept for API compatibility if needed elsewhere, but effectively a no-op when called by PlansModal.
+    console.log(`Plan ${planId} selected. Payment flow handled in PlansModal.`);
   };
 
   const handleBuyCredits = async (amount: number, price: number) => {
-    if(!user) return;
-    setToast({ message: "Gerando link de pagamento Mercado Pago...", type: 'success' });
-    try {
-        const link = await handleCreditPurchase(amount, price, user);
-        window.open(link, '_blank');
-        setShowPlansModal(false);
-    } catch (e: any) {
-        setToast({ message: e.message, type: 'error' });
-    }
+    // This function will be called by PlansModal.tsx now that the transparent checkout is handled there.
+    // It doesn't need to do anything here directly as PlansModal will manage the payment flow itself.
+    // It's kept for API compatibility if needed elsewhere, but effectively a no-op when called by PlansModal.
+    console.log(`Credits purchase of ${amount} for R$ ${price} initiated. Payment flow handled in PlansModal.`);
   };
+
 
   return (
     <div className="min-h-screen bg-black text-gray-300">
@@ -510,7 +502,10 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
             {!isLoading && (
               <>
                 {(currentMode === 'landingpage_generator' || currentMode === 'institutional_website_generator' || currentMode === 'canva_structure') && resultText && (
-                   <LandingPageBuilder initialHtml={resultText} />
+                   <LandingPageBuilder 
+                        initialHtml={resultText} 
+                        onClose={() => setResultText(null)}
+                   />
                 )}
 
                 {currentMode === 'image_generation' && generatedImagePrompt && (
@@ -562,8 +557,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         <PlansModal 
             currentPlanId={currentPlan.id} 
             onClose={() => setShowPlansModal(false)} 
-            onSelectPlan={handlePlanSelection}
-            onBuyCredits={handleBuyCredits}
+            onSelectPlan={() => handlePlanSelection(currentPlan.id)} // Pass currentPlan.id, actual logic is in PlansModal
+            onBuyCredits={() => handleBuyCredits(0, 0)} // Pass dummy values, actual logic in PlansModal
         />
       )}
 
