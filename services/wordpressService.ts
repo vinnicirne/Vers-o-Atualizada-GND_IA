@@ -30,6 +30,18 @@ export const validateWordPressConnection = async (config: WordPressConfig): Prom
     
     // URL normalize
     let cleanUrl = config.siteUrl.trim().replace(/\/$/, '');
+    
+    // Check for mixed content (HTTP site in HTTPS app)
+    const isAppHttps = window.location.protocol === 'https:';
+    const isWpHttp = cleanUrl.startsWith('http://');
+    
+    if (isAppHttps && isWpHttp) {
+        return { 
+            success: false, 
+            message: 'Erro de Segurança (Mixed Content): O GDN_IA está em HTTPS, mas seu site WordPress está em HTTP. O navegador bloqueou a conexão automaticamente. Instale um certificado SSL no seu site (HTTPS) para prosseguir.' 
+        };
+    }
+
     if (!cleanUrl.startsWith('http')) {
         cleanUrl = 'https://' + cleanUrl;
     }
@@ -87,14 +99,7 @@ export const validateWordPressConnection = async (config: WordPressConfig): Prom
         msg.includes('Network request failed') ||
         error instanceof TypeError // Fetch falha com TypeError em problemas de rede/CORS
     ) {
-        msg = `Falha de Conexão (CORS/Rede). O navegador bloqueou a requisição.
-        
-Possíveis causas:
-1. Seu site WordPress não tem HTTPS (obrigatório).
-2. Um plugin de segurança está bloqueando a API REST.
-3. Cabeçalhos CORS não configurados no WordPress.
-
-Solução rápida: Instale o plugin "Application Passwords" e certifique-se que seu hosting permite requisições externas.`;
+        msg = `Falha de Conexão (CORS/Rede).\n\n1. Verifique se o plugin "Application Passwords" está instalado.\n2. Se seu site for HTTP, ele não funcionará aqui (requer HTTPS).\n3. Verifique se algum plugin de segurança (Wordfence/iThemes) está bloqueando a API REST.\n4. Se possível, instale um plugin de CORS no WordPress para liberar acesso.`;
     }
     
     return { success: false, message: msg };
@@ -144,8 +149,9 @@ export const postToWordPress = async (
     }
   } catch (error: any) {
     let msg = error.message;
+    // Melhoria nas mensagens de erro para o usuário final
     if (msg === 'Failed to fetch' || error instanceof TypeError) {
-        msg = 'Erro de CORS ou Rede. Verifique se o plugin de segurança do WP não está bloqueando a API ou se você está usando HTTPS.';
+        msg = 'Erro de Rede ou CORS. O navegador bloqueou a conexão. Verifique se o seu WordPress suporta solicitações CORS e se está usando HTTPS.';
     }
     return { success: false, message: msg };
   }

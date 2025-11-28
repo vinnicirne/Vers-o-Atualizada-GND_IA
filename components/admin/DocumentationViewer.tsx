@@ -80,48 +80,65 @@ export function DocumentationViewer() {
 
         <div className="prose prose-invert max-w-none prose-headings:text-green-400 prose-a:text-blue-400">
             {activeTab === 'api' && (
-                <div className="space-y-8">
+                <div className="space-y-8 animate-fade-in">
                     {/* Key Manager */}
                     <div className="bg-gray-950/50 p-6 rounded-xl border border-green-900/30">
-                        <h3 className="text-xl font-bold text-white mb-4"><i className="fas fa-key mr-2 text-yellow-500"></i>Minhas Chaves de API</h3>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="bg-yellow-500/20 p-3 rounded-full">
+                                <i className="fas fa-key text-yellow-500 text-xl"></i>
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-bold text-white m-0">Minhas Chaves de API</h3>
+                                <p className="text-sm text-gray-400 m-0">Gerencie chaves para integrar o GDN_IA em seus aplicativos.</p>
+                            </div>
+                        </div>
                         
                         {createdKey && (
                             <div className="mb-6 p-4 bg-green-900/20 border border-green-500 rounded-lg">
-                                <p className="text-green-400 font-bold mb-2">Chave criada com sucesso! Copie agora, você não a verá novamente.</p>
+                                <p className="text-green-400 font-bold mb-2 text-sm"><i className="fas fa-check-circle mr-2"></i>Chave criada com sucesso! Copie agora, você não a verá novamente.</p>
                                 <div className="flex items-center gap-2 bg-black p-3 rounded border border-green-900/50">
-                                    <code className="text-lg text-white font-mono flex-grow">{createdKey}</code>
-                                    <button onClick={() => navigator.clipboard.writeText(createdKey)} className="text-gray-400 hover:text-white"><i className="fas fa-copy"></i></button>
+                                    <code className="text-lg text-white font-mono flex-grow break-all">{createdKey}</code>
+                                    <button onClick={() => navigator.clipboard.writeText(createdKey)} className="text-gray-400 hover:text-white px-2 py-1"><i className="fas fa-copy"></i></button>
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex gap-4 mb-6">
+                        <div className="flex flex-col sm:flex-row gap-4 mb-6">
                             <input 
                                 type="text" 
                                 placeholder="Nome da Chave (ex: Integração Blog)" 
                                 value={newKeyName}
                                 onChange={e => setNewKeyName(e.target.value)}
-                                className="flex-grow bg-black border border-gray-700 rounded p-2 text-white text-sm"
+                                className="flex-grow bg-black border border-gray-700 rounded p-2 text-white text-sm focus:border-green-500 focus:outline-none"
                             />
                             <button 
                                 onClick={handleCreateKey}
-                                className="bg-green-600 hover:bg-green-500 text-black font-bold px-4 py-2 rounded text-sm whitespace-nowrap"
+                                className="bg-green-600 hover:bg-green-500 text-black font-bold px-4 py-2 rounded text-sm whitespace-nowrap disabled:opacity-50"
+                                disabled={!newKeyName.trim()}
                             >
-                                Gerar Nova Chave
+                                <i className="fas fa-plus mr-2"></i> Gerar Nova Chave
                             </button>
                         </div>
 
                         <div className="space-y-2">
-                            {loadingKeys ? <p className="text-gray-500 text-sm">Carregando chaves...</p> : apiKeys.length === 0 ? (
-                                <p className="text-gray-500 text-sm">Nenhuma chave ativa.</p>
+                            {loadingKeys ? <p className="text-gray-500 text-sm italic">Carregando chaves...</p> : apiKeys.length === 0 ? (
+                                <div className="text-center py-8 bg-gray-900/30 rounded border border-gray-800 border-dashed">
+                                    <p className="text-gray-500 text-sm">Nenhuma chave ativa. Crie uma para começar.</p>
+                                </div>
                             ) : (
                                 apiKeys.map(key => (
-                                    <div key={key.id} className="flex justify-between items-center bg-gray-900 p-3 rounded border border-gray-800">
+                                    <div key={key.id} className="flex justify-between items-center bg-gray-900 p-4 rounded border border-gray-800 hover:border-gray-700 transition">
                                         <div>
-                                            <p className="font-bold text-gray-200 text-sm">{key.name}</p>
-                                            <p className="font-mono text-xs text-gray-500">{key.key_prefix}</p>
+                                            <p className="font-bold text-gray-200 text-sm m-0">{key.name}</p>
+                                            <p className="font-mono text-xs text-gray-500 m-0 mt-1">Prefixo: {key.key_prefix}</p>
+                                            <p className="text-[10px] text-gray-600 m-0 mt-1">Criada em: {new Date(key.created_at).toLocaleDateString()}</p>
                                         </div>
-                                        <button onClick={() => handleRevokeKey(key.id)} className="text-red-500 hover:text-red-400 text-xs font-bold border border-red-900/30 px-2 py-1 rounded">Revogar</button>
+                                        <button 
+                                            onClick={() => handleRevokeKey(key.id)} 
+                                            className="text-red-500 hover:text-white hover:bg-red-600 transition text-xs font-bold border border-red-900/30 px-3 py-1.5 rounded"
+                                        >
+                                            Revogar
+                                        </button>
                                     </div>
                                 ))
                             )}
@@ -137,7 +154,7 @@ export function DocumentationViewer() {
                             <div className="bg-gray-900 p-6 rounded-lg border border-gray-800">
                                 <div className="flex items-center gap-3 mb-4">
                                     <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">POST</span>
-                                    <code className="text-blue-300 font-mono">/v1/generate/news</code>
+                                    <code className="text-blue-300 font-mono text-sm">/v1/generate/news</code>
                                 </div>
                                 <p className="text-sm text-gray-400 mb-4">Gera uma notícia completa com SEO.</p>
                                 
@@ -145,21 +162,23 @@ export function DocumentationViewer() {
                                     <span className="text-purple-400">curl</span> -X POST https://api.gdn.ia/v1/generate/news \<br/>
                                     &nbsp;&nbsp;-H <span className="text-green-300">"Authorization: Bearer gdn_live_..."</span> \<br/>
                                     &nbsp;&nbsp;-H <span className="text-green-300">"Content-Type: application/json"</span> \<br/>
-                                    &nbsp;&nbsp;-d <span className="text-yellow-300">'{ "prompt": "Eleições 2024", "include_image": true }'</span>
+                                    {/* CORREÇÃO DO ERRO DE SINTAXE: Usar template string para escapar os caracteres JSON */}
+                                    &nbsp;&nbsp;-d <span className="text-yellow-300">{`'{ "prompt": "Eleições 2024", "include_image": true }'`}</span>
                                 </div>
                             </div>
 
                             <div className="bg-gray-900 p-6 rounded-lg border border-gray-800">
                                 <div className="flex items-center gap-3 mb-4">
                                     <span className="bg-blue-600 text-white text-xs font-bold px-2 py-1 rounded">POST</span>
-                                    <code className="text-blue-300 font-mono">/v1/generate/tts</code>
+                                    <code className="text-blue-300 font-mono text-sm">/v1/generate/tts</code>
                                 </div>
                                 <p className="text-sm text-gray-400 mb-4">Converte texto em áudio.</p>
                                 
                                 <div className="bg-black p-4 rounded border border-gray-700 font-mono text-xs overflow-x-auto text-gray-300">
                                     <span className="text-purple-400">curl</span> -X POST https://api.gdn.ia/v1/generate/tts \<br/>
                                     &nbsp;&nbsp;-H <span className="text-green-300">"Authorization: Bearer gdn_live_..."</span> \<br/>
-                                    &nbsp;&nbsp;-d <span className="text-yellow-300">'{ "text": "Bem vindo ao GDN IA", "voice": "alloy" }'</span>
+                                    {/* CORREÇÃO DO ERRO DE SINTAXE: Usar template string para escapar os caracteres JSON */}
+                                    &nbsp;&nbsp;-d <span className="text-yellow-300">{`'{ "text": "Bem vindo ao GDN IA", "voice": "alloy" }'`}</span>
                                 </div>
                             </div>
                         </div>
@@ -168,7 +187,7 @@ export function DocumentationViewer() {
             )}
 
             {activeTab === 'admin' && (
-                <div className="space-y-8 text-gray-300">
+                <div className="space-y-8 text-gray-300 animate-fade-in">
                     <section>
                         <h3 className="text-xl font-bold text-white mb-2">Visão Geral do Admin</h3>
                         <p>O <strong>GDN_IA</strong> é uma plataforma SaaS focada em Inteligência Artificial Generativa. O sistema permite criar notícias, imagens, landing pages e áudios utilizando um sistema de créditos e planos.</p>
@@ -202,7 +221,7 @@ export function DocumentationViewer() {
             )}
 
             {activeTab === 'user' && (
-                <div className="bg-gray-900 p-6 rounded text-center">
+                <div className="bg-gray-900 p-6 rounded text-center animate-fade-in">
                     <i className="fas fa-info-circle text-4xl text-blue-400 mb-4"></i>
                     <p className="text-lg">O Manual do Usuário está disponível publicamente para todos os usuários através do botão de ajuda (?) no Dashboard principal.</p>
                     <p className="text-sm text-gray-500 mt-2">Consulte o arquivo <code>MANUAL_DO_USUARIO.md</code> na raiz do projeto para o conteúdo completo.</p>
@@ -210,7 +229,7 @@ export function DocumentationViewer() {
             )}
 
             {activeTab === 'updates' && (
-                <div className="space-y-8">
+                <div className="space-y-8 animate-fade-in">
                     {/* Versão Atual */}
                     <div className="border-l-2 border-green-500 pl-6 relative">
                         <div className="absolute -left-[9px] top-0 w-4 h-4 bg-green-500 rounded-full border-4 border-black"></div>
