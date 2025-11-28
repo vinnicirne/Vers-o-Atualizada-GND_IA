@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
 import { UserTable } from '../../components/admin/UserTable';
@@ -18,7 +18,8 @@ import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
-import { downloadSitemap } from '../../services/sitemapService'; // Import Sitemap function
+import { downloadSitemap } from '../../services/sitemapService'; 
+import { supabase } from '../../services/supabaseClient'; // Import para Realtime
 
 interface AdminPageProps {
   onNavigateToDashboard: () => void;
@@ -28,37 +29,56 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const { user, signOut } = useUser();
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   
-  // State for modals
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
   const [isCreateUserModalOpen, setCreateUserModalOpen] = useState(false);
   
-  // State for UI feedback and data refresh
   const [dataVersion, setDataVersion] = useState(0);
+  const [realtimeStatus, setRealtimeStatus] = useState<string>('CONNECTING'); // Status da conexão
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); 
+  
+  // Ref para debounce do realtime
+  const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     fetch('./metadata.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Network response was not ok');
-        }
-        return response.json();
-      })
+      .then(response => response.ok ? response.json() : { version: 'Error' })
       .then(data => setMetadata(data))
-      .catch(err => {
-        console.error("Failed to load metadata:", err);
-        setMetadata({ version: 'Erro' }); 
-      });
+      .catch(err => setMetadata({ version: 'Erro' }));
   }, []);
 
-  const refreshData = () => setDataVersion(v => v + 1);
+  const refreshData = () => {
+      // Debounce simples para evitar multiplos refreshes seguidos
+      if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+      refreshTimeout.current = setTimeout(() => {
+          console.log("Admin: Detectada mudança no banco. Atualizando...");
+          setDataVersion(v => v + 1);
+      }, 500);
+  };
+
+  // --- REALTIME LISTENER ---
+  useEffect(() => {
+      // Escuta mudanças globais em tabelas críticas para o admin
+      const channel = supabase.channel('admin_dashboard_global')
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, refreshData)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, refreshData)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
+          .subscribe((status) => {
+              console.log(`[Admin] Realtime status: ${status}`);
+              setRealtimeStatus(status);
+          });
+
+      return () => {
+          supabase.removeChannel(channel);
+          if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
+      };
+  }, []);
 
   const handleLogout = async () => {
     await signOut();
   };
   
-  // --- News Editing Handlers ---
   const handleOpenEditModal = (article: NewsArticle) => {
     setEditingNews(article);
   };
@@ -82,7 +102,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     }
   };
   
-  // --- User Creation Handlers ---
   const handleSaveNewUser = async (payload: CreateUserPayload) => {
     if (!user) {
       setToast({ message: "Sessão de administrador inválida.", type: 'error' });
@@ -98,7 +117,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     }
   };
 
-  // --- Sitemap Handler ---
   const handleDownloadSitemap = async () => {
       setToast({ message: "Gerando Sitemap...", type: 'success' });
       await downloadSitemap();
@@ -117,7 +135,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
                     <i className="fas fa-sitemap text-orange-400"></i> Download Sitemap.xml
                 </button>
             </div>
-            <MetricsCards />
+            <MetricsCards dataVersion={dataVersion} />
             <TokenUsageChart />
           </>
         );
@@ -126,7 +144,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       case 'news':
         return <NewsManager onEdit={handleOpenEditModal} dataVersion={dataVersion} />;
       case 'payments':
-        return <PaymentsManager />;
+        return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
       case 'multi_ia_system':
@@ -134,13 +152,13 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       case 'security': 
         return <SecurityManager />;
       case 'logs':
-        return <LogsViewer />;
+        return <LogsViewer dataVersion={dataVersion} />;
       case 'docs': 
         return <DocumentationViewer />;
       default:
         return (
           <>
-            <MetricsCards />
+            <MetricsCards dataVersion={dataVersion} />
             <TokenUsageChart />
           </>
         );
@@ -162,6 +180,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         userCredits={user.credits}
         userRole={user.role}
         metadata={metadata} 
+        realtimeStatus={realtimeStatus} 
       />
       <div className="container mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
         <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
@@ -170,7 +189,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         </main>
       </div>
       
-       {/* Modals and Toasts */}
        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
        {editingNews && (

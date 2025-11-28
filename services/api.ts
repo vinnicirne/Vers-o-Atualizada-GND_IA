@@ -48,27 +48,29 @@ const retryOperation = async <T>(
 /**
  * API Service (Direct Connection)
  * Conecta diretamente ao Supabase usando o cliente oficial.
- * Removemos o Mock e o Proxy intermediário.
  */
 
 export const api = {
-  // Busca dados (SELECT)
-  select: async (table: string, filters: Record<string, any> = {}) => {
+  // Busca dados (SELECT) com suporte a filtros exatos e lista (IN)
+  select: async (table: string, filters: Record<string, any> = {}, options: { inColumn?: string, inValues?: any[] } = {}) => {
     return retryOperation(async () => {
       try {
         let query = supabase.from(table).select('*');
         
-        // Aplica filtros se existirem
+        // Aplica filtros exatos (match)
         if (Object.keys(filters).length > 0) {
-          // .match é uma forma shorthand de aplicar vários .eq()
           query = query.match(filters);
+        }
+
+        // Aplica filtro IN (lista de valores) - Otimização de Performance
+        if (options.inColumn && options.inValues && options.inValues.length > 0) {
+            query = query.in(options.inColumn, options.inValues);
         }
 
         const { data, error } = await query;
         
         if (error) {
           const errorMsg = error.message || JSON.stringify(error);
-          // Não loga como erro crítico se for falha de fetch (será tratado pelo retry)
           if (!errorMsg.includes('Failed to fetch')) {
              console.error(`Erro Supabase SELECT em ${table}:`, errorMsg);
           }
@@ -90,7 +92,7 @@ export const api = {
         const { data: result, error } = await supabase
             .from(table)
             .insert(data)
-            .select(); // .select() é importante para retornar o objeto criado
+            .select();
 
         if (error) {
             const errorMsg = error.message || JSON.stringify(error);
@@ -104,14 +106,13 @@ export const api = {
         console.error(`Exceção em api.insert (${table}):`, errorMsg);
         return { data: null, error: errorMsg };
         }
-    }, 2); // Menos retries para inserts para evitar duplicidade acidental em casos raros
+    }, 2);
   },
 
   // Atualiza dados (UPDATE)
   update: async (table: string, data: Record<string, any>, filters: Record<string, any>) => {
     return retryOperation(async () => {
         try {
-        // Segurança: impede update sem filtro para não alterar a tabela toda
         if (Object.keys(filters).length === 0) {
             throw new Error("Operação UPDATE requer filtros para segurança.");
         }

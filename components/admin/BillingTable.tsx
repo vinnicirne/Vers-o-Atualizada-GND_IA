@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTransactions, getApprovedRevenueInRange } from '../../services/adminService';
 import { Transaction, TransactionStatus, PaymentMethod } from '../../types';
@@ -6,7 +7,11 @@ import { Toast } from './Toast';
 
 const TRANSACTIONS_PER_PAGE = 15;
 
-export function BillingTable() {
+interface BillingTableProps {
+    dataVersion?: number;
+}
+
+export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [totalTransactions, setTotalTransactions] = useState(0);
     const [approvedTotal, setApprovedTotal] = useState(0);
@@ -52,7 +57,7 @@ export function BillingTable() {
     
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, dataVersion]); // Recarrega se dataVersion mudar
 
     const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;

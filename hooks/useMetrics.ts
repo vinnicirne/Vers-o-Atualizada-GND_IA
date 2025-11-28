@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { getDashboardMetrics, DashboardMetrics } from '../services/metricsService';
 
@@ -7,7 +8,7 @@ interface UseMetricsReturn {
   error: string | null;
 }
 
-export const useMetrics = (): UseMetricsReturn => {
+export const useMetrics = (refreshTrigger: number = 0): UseMetricsReturn => {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -15,7 +16,8 @@ export const useMetrics = (): UseMetricsReturn => {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        setLoading(true);
+        // Apenas seta loading true se for a primeira carga
+        if (refreshTrigger === 0) setLoading(true);
         setError(null);
         const data = await getDashboardMetrics();
         setMetrics(data);
@@ -27,7 +29,7 @@ export const useMetrics = (): UseMetricsReturn => {
     };
 
     fetchMetrics();
-  }, []); // O array de dependências vazio garante que a busca ocorra apenas uma vez (cache leve)
+  }, [refreshTrigger]); 
 
   return { metrics, loading, error };
 };

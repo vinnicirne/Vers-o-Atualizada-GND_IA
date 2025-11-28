@@ -1,7 +1,12 @@
-
+import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
 export type { Plan, ServiceKey, UserPlan }; // Re-exportar para uso em outros arquivos
+
+export interface BaseComponentProps {
+  children?: ReactNode;
+  className?: string;
+}
 
 export type NewsStatus = 'pending' | 'approved' | 'rejected';
 

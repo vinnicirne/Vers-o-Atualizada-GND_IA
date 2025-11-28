@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { UserRole } from '../types';
 
@@ -17,6 +18,7 @@ interface HeaderProps {
   userCredits?: number;
   userRole?: UserRole;
   metadata?: { version: string }; 
+  realtimeStatus?: string; // New prop for Realtime Status
 }
 
 export function Header({ 
@@ -34,10 +36,28 @@ export function Header({
     pageTitle, 
     userCredits, 
     userRole, 
-    metadata 
+    metadata,
+    realtimeStatus
 }: HeaderProps) {
   const isAdminView = !!onNavigateToDashboard;
   const isLoggedIn = !!userEmail;
+
+  // Helper to determine status color and label
+  const getRealtimeBadge = (status?: string) => {
+      if (status === 'SUBSCRIBED') {
+          return { color: 'bg-green-500', label: 'Online' };
+      }
+      if (status === 'CONNECTING' || status === 'CHANNEL_ERROR') {
+          return { color: 'bg-yellow-500', label: 'Conectando...' };
+      }
+      if (status === 'TIMED_OUT' || status === 'CLOSED') {
+          return { color: 'bg-red-500', label: 'Offline' };
+      }
+      // Default / Initial state
+      return { color: 'bg-gray-500', label: 'Desconectado' };
+  };
+
+  const badge = getRealtimeBadge(realtimeStatus);
 
   if (isAdminView) {
     // New Admin Header Layout
@@ -60,12 +80,12 @@ export function Header({
               <i className="fas fa-server text-blue-400"></i>
               <span>Produção</span>
             </div>
-            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Status do Sistema">
+            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title={`Status do Realtime: ${realtimeStatus}`}>
               <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                {realtimeStatus === 'SUBSCRIBED' && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${badge.color} opacity-75`}></span>}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${badge.color}`}></span>
               </div>
-              <span>Online</span>
+              <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-400 font-semibold' : 'text-gray-400'}>{badge.label}</span>
             </div>
           </div>
         </div>
@@ -174,6 +194,7 @@ export function Header({
             </div>
           )}
           
+          {/* Se estiver logado, mostra "Planos". Se não, não mostra botão extra (o login já leva lá) */}
           {isLoggedIn && onOpenPlans && (
             <button
                 onClick={onOpenPlans}
@@ -194,6 +215,7 @@ export function Header({
                <span className="hidden md:inline ml-2">Admin</span>
             </button>
           )}
+
            {onNavigateToDashboard && (
              <button
               onClick={onNavigateToDashboard}
@@ -204,8 +226,9 @@ export function Header({
                <span className="hidden md:inline ml-2">Dashboard</span>
             </button>
           )}
+
           {isLoggedIn && onLogout ? (
-             <button
+              <button
                 onClick={onLogout}
                 className="bg-red-600/50 text-white px-3 py-2 rounded-lg hover:bg-red-500 transition-colors duration-200 text-sm font-semibold border border-red-500"
                 title="Sair"

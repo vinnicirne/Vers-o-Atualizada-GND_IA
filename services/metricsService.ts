@@ -1,3 +1,4 @@
+
 import { api } from './api';
 
 export interface DashboardMetrics {
@@ -5,6 +6,7 @@ export interface DashboardMetrics {
   activeUsers: number;
   creditsInCirculation: number;
   totalRevenue: number;
+  totalGenerations: number; // Novo campo
 }
 
 export interface DailyUsageDataPoint {
@@ -51,11 +53,16 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
         totalRevenue = transactionsData.reduce((sum: number, t: any) => sum + t.valor, 0);
     }
 
+    // 5. Total Generations (News/Content Table)
+    const { data: newsData } = await api.select('news');
+    const totalGenerations = newsData ? newsData.length : 0;
+
     return {
       totalUsers,
       activeUsers,
       creditsInCirculation,
       totalRevenue,
+      totalGenerations
     };
   } catch (error) {
     console.error('Erro ao buscar métricas via Proxy:', error);

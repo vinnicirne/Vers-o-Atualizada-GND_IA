@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { User, AffiliateLog } from '../types';
 import { generateAffiliateCode, getAffiliateStats } from '../services/adminService';
 import { useUser } from '../contexts/UserContext';
+import { supabase } from '../services/supabaseClient';
 
 interface AffiliateModalProps {
   onClose: () => void;
@@ -17,59 +18,83 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
 
-  // Sincroniza o código local se o usuário atualizar no contexto
   useEffect(() => {
       if (user?.affiliate_code) {
           setCode(user.affiliate_code);
       }
   }, [user]);
 
+  const loadData = async () => {
+      if (!user) return;
+      try {
+          const stats = await getAffiliateStats(user.id);
+          setLogs(stats.logs);
+          setReferralCount(stats.referralCount);
+          setTotalEarnings(stats.totalEarnings);
+          
+          // Se o usuário não tiver código, tenta gerar
+          if (!stats.logs.length && !user.affiliate_code && !code) {
+             // Lógica de geração aqui se necessário, mas melhor via botão
+          }
+      } catch (e) {
+          console.error("Erro ao buscar stats:", e);
+      } finally {
+          setLoading(false);
+      }
+  };
+
   useEffect(() => {
     const init = async () => {
         if (!user) return;
         setLoading(true);
-        
-        // Se usuário não tiver código, gera um.
+        await refresh();
+
         if (!user.affiliate_code && !code) {
             setGenerating(true);
             try {
                 const newCode = await generateAffiliateCode(user.id, user.full_name || 'User');
                 setCode(newCode);
-                await refresh(); // Atualiza contexto para persistir
+                await refresh(); 
             } catch (e) {
                 console.error("Erro ao gerar código:", e);
             } finally {
                 setGenerating(false);
             }
         }
-
-        // Busca dados
-        try {
-            const stats = await getAffiliateStats(user.id);
-            setLogs(stats.logs);
-            setReferralCount(stats.referralCount);
-            setTotalEarnings(stats.totalEarnings);
-        } catch (e) {
-            console.error("Erro ao buscar stats:", e);
-        } finally {
-            setLoading(false);
-        }
+        await loadData();
     };
 
     init();
 
+    // REALTIME: Escuta novas comissões
+    if(user) {
+        const channel = supabase.channel(`affiliate_view:${user.id}`)
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'affiliate_logs', filter: `affiliate_id=eq.${user.id}` }, () => {
+                console.log("Nova comissão detectada!");
+                refresh(); // Atualiza saldo no contexto
+                loadData(); // Atualiza tabela
+            })
+            .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users', filter: `referred_by=eq.${user.id}` }, () => {
+                console.log("Novo indicado!");
+                loadData();
+            })
+            .subscribe();
+            
+        return () => { supabase.removeChannel(channel); };
+    }
+
+  }, []); // Dependência vazia para mount, lógica interna usa refs/state seguro
+
+  useEffect(() => {
     const handleEsc = (event: KeyboardEvent) => {
         if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [user, onClose, refresh]); 
+  }, [onClose]);
 
-  // Construção robusta do link
   const getAffiliateLink = () => {
       if (!code) return '';
-      // Garante que o link de afiliado sempre aponte para a raiz (Landing Page/Login)
-      // Evita gerar links quebrados como /dashboard/?ref=... se o usuário copiar estando no dashboard
       const baseUrl = window.location.origin;
       return `${baseUrl}/?ref=${code}`;
   };
@@ -82,11 +107,8 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
           await navigator.clipboard.writeText(affiliateLink);
           alert("Link copiado para a área de transferência!");
       } catch (err) {
-          console.error("Falha ao copiar via API:", err);
-          // Fallback manual para navegadores que bloqueiam ou não suportam a API clipboard
           const textArea = document.createElement("textarea");
           textArea.value = affiliateLink;
-          // Torna invisível mas selecionável
           textArea.style.position = "fixed";
           textArea.style.left = "-9999px";
           document.body.appendChild(textArea);
@@ -95,7 +117,7 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
             document.execCommand("copy");
             alert("Link copiado!");
           } catch (e) {
-            alert("Não foi possível copiar automaticamente. Por favor selecione e copie manualmente.");
+            alert("Erro ao copiar.");
           }
           document.body.removeChild(textArea);
       }
@@ -109,7 +131,6 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
     <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-black border border-yellow-600/30 rounded-2xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh]">
         
-        {/* Header */}
         <div className="p-6 border-b border-yellow-600/20 flex justify-between items-center bg-gradient-to-r from-yellow-900/10 to-black rounded-t-2xl">
           <div className="flex items-center gap-3">
              <div className="bg-yellow-600/20 p-3 rounded-full">
@@ -127,10 +148,10 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
 
         <div className="p-8 overflow-y-auto custom-scrollbar space-y-8">
             
-            {/* Stats Cards */}
             <div className="grid md:grid-cols-3 gap-6">
                 <div className="bg-gray-900/50 p-6 rounded-xl border border-gray-800 text-center">
                     <p className="text-gray-400 text-sm mb-2">Saldo Disponível</p>
+                    {/* Usa o saldo do contexto que é atualizado em realtime */}
                     <p className="text-3xl font-bold text-green-400">R$ {Number(user?.affiliate_balance || 0).toFixed(2).replace('.', ',')}</p>
                     {Number(user?.affiliate_balance || 0) > 0 && (
                         <button onClick={requestPayout} className="mt-3 text-xs bg-green-900/30 text-green-300 px-3 py-1 rounded hover:bg-green-900/50 transition">
@@ -148,7 +169,6 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
                 </div>
             </div>
 
-            {/* Link Generator */}
             <div className="bg-yellow-900/10 border border-yellow-600/30 p-6 rounded-xl">
                 <h3 className="text-lg font-bold text-white mb-4">Seu Link Exclusivo</h3>
                 <div className="flex flex-col md:flex-row gap-4">
@@ -168,9 +188,8 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
                 </p>
             </div>
 
-            {/* History Table */}
             <div>
-                <h3 className="text-lg font-bold text-white mb-4">Extrato Financeiro</h3>
+                <h3 className="text-lg font-bold text-white mb-4">Extrato Financeiro (Tempo Real)</h3>
                 {loading ? (
                     <div className="text-center py-8 text-gray-500"><i className="fas fa-spinner fa-spin mr-2"></i> Carregando extrato...</div>
                 ) : logs.length === 0 ? (
@@ -192,7 +211,7 @@ export function AffiliateModal({ onClose }: AffiliateModalProps) {
                             <tbody>
                                 {logs.map(log => (
                                     <tr key={log.id} className="bg-gray-900/20 border-b border-gray-800 hover:bg-gray-900/40">
-                                        <td className="px-6 py-4">{new Date(log.created_at).toLocaleDateString('pt-BR')}</td>
+                                        <td className="px-6 py-4">{new Date(log.created_at).toLocaleDateString('pt-BR')} {new Date(log.created_at).toLocaleTimeString('pt-BR')}</td>
                                         <td className="px-6 py-4">{log.source_email}</td>
                                         <td className="px-6 py-4">{log.description}</td>
                                         <td className="px-6 py-4 text-right font-bold text-green-400">

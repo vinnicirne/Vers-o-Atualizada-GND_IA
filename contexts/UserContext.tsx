@@ -37,23 +37,15 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       if (profileError) {
          console.error("Erro ao buscar perfil real:", profileError);
          
-         // Tratamento para erro de conexão/rede (Failed to fetch)
-         // IMPORTANTE: Não definimos 'setError' aqui para não bloquear o app inteiro com a tela vermelha.
-         // Se falhar o fetch, assumimos que o usuário está "deslogado" temporariamente (Modo Visitante) 
-         // ou mostramos um aviso discreto na UI via Toast (se implementado globalmente), 
-         // mas permitimos o render do App.
          if (typeof profileError === 'string' && profileError.toLowerCase().includes('failed to fetch')) {
              console.warn("Entrando em modo de degradação graciosa devido a falha de rede.");
              setUser(null); // Fallback para visitante
              return;
          }
 
-         // Se for um erro de permissão RLS, isso é configuração crítica
          if (typeof profileError === 'string' && (profileError.includes('permission denied') || profileError.includes('policy'))) {
              setError(`SQL_CONFIG_ERROR: ${profileError}`);
          } else {
-             // Outros erros (perfil não encontrado, etc)
-             // Não bloqueamos o app, apenas não logamos o usuário
              console.warn(`Erro não fatal ao carregar perfil: ${profileError}`);
              setUser(null);
          }
@@ -63,9 +55,7 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       const profileData = profiles && profiles.length > 0 ? profiles[0] : null;
 
       if (!profileData) {
-         // Perfil não existe no banco real.
          console.warn("Usuário autenticado, mas sem perfil na tabela 'app_users'.");
-         // Não bloqueia, apenas desloga
          setUser(null);
          return;
       }
@@ -87,13 +77,10 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
       console.error("Exceção em fetchUserProfile:", e);
       const msg = e.message || JSON.stringify(e);
       
-      // Se for erro de fetch na exceção
       if (msg.toLowerCase().includes('failed to fetch')) {
           console.warn("Falha de rede detectada. Mantendo app em modo visitante.");
           setUser(null);
-          // Não setamos setError para não ativar o Modal de Erro Crítico
       } else {
-          // Erros inesperados de lógica ainda podem ser críticos, mas preferimos não matar o app se possível
           console.error(msg);
           setUser(null);
       }
@@ -117,18 +104,62 @@ export function UserProvider({ children }: { children?: React.ReactNode }) {
     }
   }, [fetchUserProfile]);
 
+  // --- REALTIME LISTENER ---
+  useEffect(() => {
+    if (!user) return;
+
+    // Escuta mudanças na tabela de créditos para o usuário atual
+    const creditsChannel = supabase
+      .channel(`public:user_credits:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Insert, Update, Delete
+          schema: 'public',
+          table: 'user_credits',
+          filter: `user_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Realtime] Créditos atualizados:', payload);
+          refresh();
+        }
+      )
+      .subscribe();
+
+    // Escuta mudanças no perfil (ex: mudança de plano pelo admin)
+    const profileChannel = supabase
+      .channel(`public:app_users:${user.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'app_users',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Realtime] Perfil atualizado:', payload);
+          refresh();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(creditsChannel);
+      supabase.removeChannel(profileChannel);
+    };
+  }, [user?.id, refresh]); // Recria apenas se o ID mudar
+
   useEffect(() => {
     const initializeSession = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         if (sessionError) {
             console.error("Erro ao recuperar sessão:", sessionError);
-            // Não bloqueia o app, apenas não loga
         }
         await fetchUserProfile(session?.user ?? null);
       } catch (err) {
         console.error("Falha na inicialização da sessão:", err);
-        // Em caso de erro fatal na inicialização, permitimos o app carregar como visitante
       } finally {
         setLoading(false);
       }

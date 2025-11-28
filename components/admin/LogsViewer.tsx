@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getLogs } from '../../services/adminService';
 import { Log } from '../../types';
@@ -14,7 +15,11 @@ const ACTION_OPTIONS = [
 
 const MODULE_OPTIONS = ['Usuários', 'Notícias', 'Pagamentos', 'Sistema Multi-IA', 'Sistema'];
 
-export function LogsViewer() {
+interface LogsViewerProps {
+    dataVersion?: number;
+}
+
+export function LogsViewer({ dataVersion = 0 }: LogsViewerProps) {
   const [logs, setLogs] = useState<Log[]>([]);
   const [totalLogs, setTotalLogs] = useState(0);
   const [loading, setLoading] = useState<boolean>(true);
@@ -52,7 +57,7 @@ export function LogsViewer() {
 
   useEffect(() => {
     fetchLogs();
-  }, [fetchLogs]);
+  }, [fetchLogs, dataVersion]); // Recarrega se dataVersion mudar
 
   const handleApplyFilters = () => {
     setCurrentPage(1);
