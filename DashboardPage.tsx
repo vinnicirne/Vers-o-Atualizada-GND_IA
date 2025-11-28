@@ -19,7 +19,7 @@ import { handlePlanSubscription, handleCreditPurchase } from './services/payment
 import { api } from './services/api';
 import { logContentGeneration } from './services/loggerService';
 import { ServiceKey, UserPlan } from './types/plan.types';
-import { PLANS, CREATOR_SUITE_MODES } from './constants';
+import { PLANS, CREATOR_SUITE_MODES, GUEST_ID } from './constants';
 import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan'; 
 import { SeoScorecard } from './components/SEO/SeoScorecard'; 
@@ -288,10 +288,15 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       
       setAudioBase64(audioResult);
       
+      // LOG DE USO (Misto: Usuário ou Visitante)
+      const userIdToLog = user ? user.id : GUEST_ID;
+      const planIdToLog = user ? currentPlan.id : 'guest';
+      
+      // Registra a ação no log geral (permite monitorar o uso de visitantes)
+      logContentGeneration(userIdToLog, mode, cost, updatedCredits, planIdToLog);
+      
       if (user) {
-         logContentGeneration(user.id, mode, cost, updatedCredits, currentPlan.id);
-         
-         // Salvar no Histórico
+         // Salvar no Histórico Pessoal (Apenas para usuários logados)
          try {
               let historyTitle = '';
               const shortPrompt = prompt.length > 60 ? prompt.substring(0, 60) + '...' : prompt;

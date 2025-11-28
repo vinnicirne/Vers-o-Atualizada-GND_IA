@@ -13,7 +13,10 @@ export function MetricsCards({ dataVersion = 0 }: MetricsCardsProps) {
 
   if (loading && !metrics) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
+        <MetricCardSkeleton />
         <MetricCardSkeleton />
         <MetricCardSkeleton />
         <MetricCardSkeleton />
@@ -40,13 +43,32 @@ export function MetricsCards({ dataVersion = 0 }: MetricsCardsProps) {
       value: metrics?.totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00', 
       icon: "fa-wallet" 
     },
+    { 
+        title: "Comissões Pagas", 
+        value: metrics?.totalCommissions.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) || 'R$ 0,00', 
+        icon: "fa-hand-holding-dollar",
+        variant: 'warning'
+    },
     { title: "Serviços Gerados", value: metrics?.totalGenerations.toLocaleString('pt-BR') || '0', icon: "fa-robot" },
+    { title: "Visitantes (Ações)", value: metrics?.guestGenerations.toLocaleString('pt-BR') || '0', icon: "fa-user-secret" },
+    { 
+        title: "Erros (24h)", 
+        value: metrics?.systemErrors.toLocaleString('pt-BR') || '0', 
+        icon: "fa-triangle-exclamation",
+        variant: (metrics?.systemErrors || 0) > 0 ? 'danger' : 'default'
+    },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
       {formattedMetrics.map((metric, index) => (
-        <MetricCard key={index} title={metric.title} value={metric.value} icon={metric.icon} />
+        <MetricCard 
+            key={index} 
+            title={metric.title} 
+            value={metric.value} 
+            icon={metric.icon} 
+            variant={metric.variant as any}
+        />
       ))}
     </div>
   );

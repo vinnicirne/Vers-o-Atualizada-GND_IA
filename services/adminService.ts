@@ -2,6 +2,7 @@
 import { api } from './api';
 import { logger } from './loggerService';
 import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog } from '../types';
+import { GUEST_ID } from '../constants';
 
 // Helper for client-side pagination since API might return all data
 const paginate = (items: any[], page: number, limit: number) => {
@@ -336,14 +337,28 @@ export const getLogs = async ({ page, limit, module, action, searchText }: any) 
   const userIds = [...new Set(logsList.map((l: any) => l.usuario_id).filter(Boolean))];
   const userMap = new Map();
   if (userIds.length > 0) {
-      const { data: users } = await api.select('app_users', {}, { inColumn: 'id', inValues: userIds });
-      if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
+      // Filter out GUEST_ID before querying app_users
+      const realUserIds = userIds.filter((id) => id !== GUEST_ID);
+      
+      if (realUserIds.length > 0) {
+          const { data: users } = await api.select('app_users', {}, { inColumn: 'id', inValues: realUserIds });
+          if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
+      }
   }
 
-  const enrichedLogs: Log[] = logsList.map((l: any) => ({
-      ...l,
-      user_email: userMap.get(l.usuario_id) || 'Sistema'
-  }));
+  const enrichedLogs: Log[] = logsList.map((l: any) => {
+      let userEmail = 'Sistema';
+      if (l.usuario_id === GUEST_ID) {
+          userEmail = 'Visitante (Guest)';
+      } else {
+          userEmail = userMap.get(l.usuario_id) || (l.usuario_id ? 'Usuário (Removido)' : 'Sistema');
+      }
+      
+      return {
+          ...l,
+          user_email: userEmail
+      };
+  });
 
   enrichedLogs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 

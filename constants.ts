@@ -7,6 +7,8 @@ interface CreatorSuiteModeConfig {
   placeholder: string;
 }
 
+export const GUEST_ID = '00000000-0000-0000-0000-000000000000';
+
 export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
   {
     value: 'news_generator',

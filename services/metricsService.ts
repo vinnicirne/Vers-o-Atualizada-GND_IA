@@ -1,12 +1,16 @@
 
 import { api } from './api';
+import { GUEST_ID } from '../constants';
 
 export interface DashboardMetrics {
   totalUsers: number;
   activeUsers: number;
   creditsInCirculation: number;
   totalRevenue: number;
-  totalGenerations: number; // Novo campo
+  totalGenerations: number;
+  guestGenerations: number;
+  systemErrors: number;
+  totalCommissions: number;
 }
 
 export interface DailyUsageDataPoint {
@@ -24,12 +28,13 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
     const { data: usersData } = await api.select('app_users');
     const totalUsers = usersData ? usersData.length : 0;
 
+    // Fetch logs - might be heavy, but necessary without RPC
+    const { data: logsData } = await api.select('logs');
+
     // 2. Active Users (Last 7 Days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     
-    // Fetch logs - might be heavy, but necessary without RPC
-    const { data: logsData } = await api.select('logs');
     let activeUsers = 0;
     if (logsData) {
         const recentLogs = logsData.filter((log: any) => new Date(log.data) >= sevenDaysAgo);
@@ -53,16 +58,50 @@ export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
         totalRevenue = transactionsData.reduce((sum: number, t: any) => sum + t.valor, 0);
     }
 
-    // 5. Total Generations (News/Content Table)
+    // 5. Guest Generations (Based on logs with GUEST_ID)
+    let guestGenerations = 0;
+    if (logsData) {
+        guestGenerations = logsData.filter((log: any) => 
+            log.usuario_id === GUEST_ID && 
+            log.acao && log.acao.startsWith('generated_content_')
+        ).length;
+    }
+
+    // 6. Total Generations (News Table + Guest Logs)
     const { data: newsData } = await api.select('news');
-    const totalGenerations = newsData ? newsData.length : 0;
+    const userGenerations = newsData ? newsData.length : 0;
+    const totalGenerations = userGenerations + guestGenerations;
+
+    // 7. System Errors (Last 24h)
+    let systemErrors = 0;
+    if (logsData) {
+        const oneDayAgo = new Date();
+        oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+        
+        systemErrors = logsData.filter((log: any) => {
+            const isRecent = new Date(log.data) >= oneDayAgo;
+            // Check if level is 'error' inside detalhes JSON
+            const isError = log.detalhes?.level === 'error' || log.detalhes?.error; 
+            return isRecent && isError;
+        }).length;
+    }
+
+    // 8. Total Commissions Paid
+    const { data: affiliateLogs } = await api.select('affiliate_logs');
+    let totalCommissions = 0;
+    if (affiliateLogs) {
+        totalCommissions = affiliateLogs.reduce((sum: number, log: any) => sum + Number(log.amount), 0);
+    }
 
     return {
       totalUsers,
       activeUsers,
       creditsInCirculation,
       totalRevenue,
-      totalGenerations
+      totalGenerations,
+      guestGenerations,
+      systemErrors,
+      totalCommissions
     };
   } catch (error) {
     console.error('Erro ao buscar métricas via Proxy:', error);
