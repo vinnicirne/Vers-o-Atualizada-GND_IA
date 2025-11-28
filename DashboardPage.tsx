@@ -12,6 +12,7 @@ import { PlansModal } from './components/PlansModal';
 import { ManualModal } from './components/ManualModal'; 
 import { UserHistoryModal } from './components/UserHistoryModal'; 
 import { AffiliateModal } from './components/AffiliateModal'; 
+import { IntegrationsModal } from './components/integrations/IntegrationsModal'; // Importar Modal
 import { AffiliateInvitePopup } from './components/AffiliateInvitePopup';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
@@ -129,6 +130,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
   const [showManualModal, setShowManualModal] = useState(false); 
   const [showHistoryModal, setShowHistoryModal] = useState(false); 
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
+  const [showIntegrationsModal, setShowIntegrationsModal] = useState(false); // Novo state
   const [showAffiliateInvite, setShowAffiliateInvite] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
@@ -396,6 +398,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         onOpenManual={() => setShowManualModal(true)}
         onOpenHistory={() => setShowHistoryModal(true)} 
         onOpenAffiliates={() => setShowAffiliateModal(true)} 
+        onOpenIntegrations={() => setShowIntegrationsModal(true)}
         userCredits={activeCredits}
         userRole={user?.role}
         metadata={metadata} 
@@ -562,6 +565,10 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
             onSelectPlan={handlePlanSelection}
             onBuyCredits={handleBuyCredits}
         />
+      )}
+
+      {showIntegrationsModal && (
+          <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
       )}
 
       {showGuestLimitModal && (

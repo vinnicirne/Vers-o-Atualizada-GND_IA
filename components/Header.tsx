@@ -14,6 +14,7 @@ interface HeaderProps {
   onOpenManual?: () => void; 
   onOpenHistory?: () => void;
   onOpenAffiliates?: () => void;
+  onOpenIntegrations?: () => void; // Novo Prop
   pageTitle?: string;
   userCredits?: number;
   userRole?: UserRole;
@@ -33,6 +34,7 @@ export function Header({
     onOpenManual, 
     onOpenHistory, 
     onOpenAffiliates, 
+    onOpenIntegrations,
     pageTitle, 
     userCredits, 
     userRole, 
@@ -149,6 +151,16 @@ export function Header({
         </div>
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-4">
           
+          {isLoggedIn && onOpenIntegrations && (
+             <button
+                onClick={onOpenIntegrations}
+                className="hidden lg:flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
+                title="Integrações (WordPress)"
+            >
+                <i className="fas fa-plug text-sm"></i>
+            </button>
+          )}
+
           {isLoggedIn && onOpenAffiliates && (
              <button
                 onClick={onOpenAffiliates}

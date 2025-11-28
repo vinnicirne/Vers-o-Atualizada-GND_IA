@@ -1,6 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
+import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
 
 interface ResultDisplayProps {
   text: string;
@@ -15,6 +16,15 @@ interface ResultDisplayProps {
 export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProps) {
   const [copiedText, setCopiedText] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
+  const [wpConfigured, setWpConfigured] = useState(false);
+  const [postingToWp, setPostingToWp] = useState(false);
+  const [wpStatus, setWpStatus] = useState<{success?: boolean; message?: string} | null>(null);
+
+  useEffect(() => {
+      // Verifica se WP está configurado para mostrar o botão
+      const config = getWordPressConfig();
+      setWpConfigured(config?.isConnected || false);
+  }, []);
 
   const handleCopyText = async () => {
     try {
@@ -35,6 +45,21 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
     } catch (err) {
       console.error('Failed to copy title: ', err);
     }
+  };
+
+  const handlePostToWordPress = async () => {
+      if (!title || !text) return;
+      setPostingToWp(true);
+      setWpStatus(null);
+      
+      const result = await postToWordPress(title, text);
+      
+      if (result.success) {
+          setWpStatus({ success: true, message: 'Postado com sucesso!' });
+      } else {
+          setWpStatus({ success: false, message: result.message || 'Erro ao postar.' });
+      }
+      setPostingToWp(false);
   };
 
   const getTitleLabel = () => {
@@ -86,7 +111,7 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       {/* Box Principal: Conteúdo Gerado */}
       <div className="bg-black/30 border border-green-900/40 rounded-xl shadow-lg shadow-black/30 overflow-hidden group">
         {/* Toolbar Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-gray-900/80 border-b border-green-900/30">
+        <div className="flex flex-wrap items-center justify-between px-4 py-3 bg-gray-900/80 border-b border-green-900/30 gap-2">
            <div className="flex items-center gap-2">
               {!title && <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>}
               <span className="text-xs font-bold text-green-400 uppercase tracking-wider">
@@ -94,19 +119,49 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
               </span>
            </div>
            
-           <button
-              onClick={handleCopyText}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
-                  copiedText
-                  ? 'bg-green-600 text-black border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)] scale-105'
-                  : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white hover:border-gray-500'
-              }`}
-              title="Copiar conteúdo para a área de transferência"
-           >
-              <i className={`fas ${copiedText ? 'fa-check-circle' : 'fa-copy'} text-sm`}></i>
-              {copiedText ? 'Copiado!' : 'Copiar Texto'}
-           </button>
+           <div className="flex gap-2">
+               {/* Botão de Postar no WP */}
+               {wpConfigured && title && mode === 'news_generator' && (
+                   <button
+                        onClick={handlePostToWordPress}
+                        disabled={postingToWp}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
+                            wpStatus?.success 
+                            ? 'bg-green-900/50 text-green-400 border-green-600'
+                            : 'bg-blue-900/30 text-blue-300 border-blue-800 hover:bg-blue-900/50'
+                        } disabled:opacity-50`}
+                        title="Publicar automaticamente no WordPress configurado"
+                   >
+                       {postingToWp ? (
+                           <><i className="fas fa-spinner fa-spin"></i> Postando...</>
+                       ) : wpStatus?.success ? (
+                           <><i className="fas fa-check"></i> Publicado!</>
+                       ) : (
+                           <><i className="fab fa-wordpress"></i> Publicar no WP</>
+                       )}
+                   </button>
+               )}
+
+               <button
+                  onClick={handleCopyText}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
+                      copiedText
+                      ? 'bg-green-600 text-black border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.4)] scale-105'
+                      : 'bg-gray-800 text-gray-300 border-gray-600 hover:bg-gray-700 hover:text-white hover:border-gray-500'
+                  }`}
+                  title="Copiar conteúdo para a área de transferência"
+               >
+                  <i className={`fas ${copiedText ? 'fa-check-circle' : 'fa-copy'} text-sm`}></i>
+                  {copiedText ? 'Copiado!' : 'Copiar Texto'}
+               </button>
+           </div>
         </div>
+
+        {wpStatus && !wpStatus.success && (
+            <div className="bg-red-900/20 px-4 py-2 text-xs text-red-400 border-b border-red-900/30">
+                <i className="fas fa-exclamation-circle mr-1"></i> {wpStatus.message}
+            </div>
+        )}
 
         <div className="p-6 relative">
           {/* Usamos 'whitespace-pre-wrap' para preservar quebras de linha e espaços */}

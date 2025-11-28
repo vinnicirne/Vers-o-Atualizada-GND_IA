@@ -175,3 +175,11 @@ export interface FeedbackData {
   rating: number;
   comment: string;
 }
+
+// --- WORDPRESS INTEGRATION ---
+export interface WordPressConfig {
+  siteUrl: string;
+  username: string;
+  applicationPassword: string;
+  isConnected: boolean;
+}
