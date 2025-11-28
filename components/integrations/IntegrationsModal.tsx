@@ -17,6 +17,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = getWordPressConfig();
@@ -34,6 +35,8 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   const handleConnectWP = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setToast(null);
+    setConnectionError(null);
 
     // Normaliza URL (remove barra final se houver)
     let url = wpConfig.siteUrl.trim().replace(/\/$/, '');
@@ -43,15 +46,21 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
 
     const configToTest = { ...wpConfig, siteUrl: url };
 
-    const isValid = await validateWordPressConnection(configToTest);
+    const result = await validateWordPressConnection(configToTest);
 
-    if (isValid) {
+    if (result.success) {
         const finalConfig = { ...configToTest, isConnected: true };
         setWpConfig(finalConfig);
         saveWordPressConfig(finalConfig);
         setToast({ message: "WordPress conectado com sucesso!", type: 'success' });
     } else {
-        setToast({ message: "Falha na conexão. Verifique URL, Usuário e Application Password.", type: 'error' });
+        const errorMsg = result.message || "Falha na conexão.";
+        setToast({ message: errorMsg, type: 'error' });
+        
+        // Se for erro de CORS/Fetch, mostra mensagem detalhada na UI
+        if (errorMsg.includes('CORS') || errorMsg.includes('Failed to fetch') || errorMsg.includes('Network')) {
+            setConnectionError(errorMsg);
+        }
     }
     setLoading(false);
   };
@@ -60,6 +69,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
       clearWordPressConfig();
       setWpConfig({ siteUrl: '', username: '', applicationPassword: '', isConnected: false });
       setToast({ message: "WordPress desconectado.", type: 'success' });
+      setConnectionError(null);
   };
 
   return (
@@ -116,6 +126,13 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
 
                         {!wpConfig.isConnected ? (
                             <form onSubmit={handleConnectWP} className="space-y-4">
+                                {connectionError && (
+                                    <div className="bg-red-900/20 border border-red-500/30 p-3 rounded text-[10px] text-red-300 mb-2">
+                                        <p className="font-bold mb-1"><i className="fas fa-exclamation-circle"></i> Erro de Conexão (CORS)</p>
+                                        <p>{connectionError}</p>
+                                        <p className="mt-2 text-gray-400">Dica: Instale o plugin <strong>"Application Passwords"</strong> e um plugin de <strong>"Enable CORS"</strong> no seu site WordPress se o problema persistir.</p>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">URL do Site</label>
                                     <input 
@@ -148,16 +165,18 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                                         className="w-full bg-black border border-gray-700 rounded p-2 text-sm text-white focus:border-green-500 focus:outline-none"
                                         required
                                     />
-                                    <p className="text-[10px] text-gray-500 mt-1">
-                                        Para obter: Painel WP → Usuários → Perfil → Application Passwords.
-                                    </p>
+                                    <div className="flex flex-col gap-1 mt-2">
+                                        <p className="text-[10px] text-gray-500">
+                                            Para obter: Painel WP → Usuários → Perfil → Application Passwords.
+                                        </p>
+                                    </div>
                                 </div>
                                 <button 
                                     type="submit" 
                                     disabled={loading}
-                                    className="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-2 rounded transition flex justify-center items-center gap-2"
+                                    className="w-full bg-green-600 hover:bg-green-500 text-black font-bold py-2 rounded transition flex justify-center items-center gap-2 disabled:opacity-50"
                                 >
-                                    {loading ? <i className="fas fa-spinner fa-spin"></i> : 'Conectar'}
+                                    {loading ? <><i className="fas fa-spinner fa-spin"></i> Conectando...</> : 'Conectar'}
                                 </button>
                             </form>
                         ) : (

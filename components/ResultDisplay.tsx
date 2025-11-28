@@ -22,8 +22,19 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
 
   useEffect(() => {
       // Verifica se WP está configurado para mostrar o botão
-      const config = getWordPressConfig();
-      setWpConfigured(config?.isConnected || false);
+      const checkConfig = () => {
+          const config = getWordPressConfig();
+          setWpConfigured(config?.isConnected || false);
+      };
+      
+      checkConfig();
+
+      // Ouve evento customizado para atualização em tempo real
+      window.addEventListener('wordpress-config-updated', checkConfig);
+      
+      return () => {
+          window.removeEventListener('wordpress-config-updated', checkConfig);
+      };
   }, []);
 
   const handleCopyText = async () => {

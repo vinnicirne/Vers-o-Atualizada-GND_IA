@@ -97,15 +97,10 @@ export interface Transaction {
   };
 }
 
-// --- CONFIGURAÇÃO DE PLANOS ---
-// O PlanConfig antigo foi substituído pela interface Plan de types/plan.types.ts
-
-// --- NEW PAYMENT SETTINGS TYPES ---
-
 export interface GatewayConfig {
   enabled: boolean;
-  publicKey: string; // Para Asaas pode ser usado como API Key se só houver uma
-  secretKey: string; // Para Asaas pode ser deixado em branco ou usado para WalletId
+  publicKey: string; 
+  secretKey: string; 
 }
 
 export interface CreditPackage {
@@ -120,12 +115,10 @@ export interface PaymentSettings {
   gateways: {
     stripe: GatewayConfig;
     mercadoPago: GatewayConfig;
-    asaas: GatewayConfig; // Novo Gateway Adicionado
+    asaas: GatewayConfig; 
   };
   packages: CreditPackage[];
 }
-
-// --- NEW MULTI-AI SYSTEM TYPES ---
 
 export interface AIPlatform {
   enabled: boolean;

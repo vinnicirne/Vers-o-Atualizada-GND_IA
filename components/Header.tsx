@@ -154,7 +154,7 @@ export function Header({
           {isLoggedIn && onOpenIntegrations && (
              <button
                 onClick={onOpenIntegrations}
-                className="hidden lg:flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
+                className="flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
                 title="Integrações (WordPress)"
             >
                 <i className="fas fa-plug text-sm"></i>
