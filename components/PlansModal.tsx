@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserPlan } from '../types/plan.types';
 import { PlanCard } from './PlanCard';
@@ -133,6 +134,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
                 itemType={selectedPaymentItem.type}
                 itemId={selectedPaymentItem.data.planId || selectedPaymentItem.data.amount.toString()} // itemId can be planId or credits amount
                 mpPublicKey={mpPublicKey}
+                // Pass the asaasPublicKey prop
                 asaasPublicKey={asaasPublicKey}
                 onSuccess={handleCheckoutSuccess}
                 onError={handleCheckoutError}
