@@ -1,20 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { supabase } from '../services/supabaseClient'; // Import supabase
-
-declare global {
-  interface Window {
-    MercadoPago: any;
-    mpReady?: boolean;
-  }
-}
+import { supabase } from '../services/supabaseClient';
 
 interface CheckoutCompletoProps {
   amount: number;
   itemType: 'plan' | 'credits';
   itemId: string;
   mpPublicKey: string | null;
-  asaasPublicKey: string | null;
+  asaasPublicKey?: string | null; // Adicionado para compatibilidade de interface
   onSuccess: () => void;
   onError: (message: string) => void;
   onCancel: () => void;
@@ -25,383 +18,220 @@ export default function CheckoutCompleto({
   itemType,
   itemId,
   mpPublicKey,
-  asaasPublicKey, // Not used directly in MP component, but prop is here
   onSuccess,
+  onError,
   onCancel,
-  onError, // Use onError prop instead of internal state for consistency
 }: CheckoutCompletoProps) {
   const { user } = useUser();
   
-  // Internal UI states
-  const [loadingSdk, setLoadingSdk] = useState(true);
-  const [processingPayment, setProcessingPayment] = useState(false);
-  const [internalError, setInternalError] = useState<string | null>(null); // For errors before calling onError prop
+  // Refs para manter os valores atuais sem disparar re-render do useEffect de inicialização
+  const userRef = useRef(user);
+  const itemTypeRef = useRef(itemType);
+  const itemIdRef = useRef(itemId);
 
-  // SDK/DOM readiness states
-  const [isComponentRendered, setIsComponentRendered] = useState(false);
-  const [isMpScriptLoaded, setIsMpScriptLoaded] = useState(false);
-
-  // States for dynamic dropdowns
-  const [issuerOptions, setIssuerOptions] = useState<any[]>([]);
-  const [installmentsOptions, setInstallmentsOptions] = useState<any[]>([]);
-  const [isIssuerLoading, setIsIssuerLoading] = useState(false);
-  const [isInstallmentsLoading, setIsInstallmentsLoading] = useState(false);
-
-
-  // Refs for Mercado Pago SDK instance and script element
-  const cardFormInstanceRef = useRef<any>(null);
-  const mpScriptRef = useRef<HTMLScriptElement | null>(null);
-  const componentMountedRef = useRef(true); // To track component mount status for async operations
-
-  // --- 1. Effect for Component Mount Status ---
+  // Atualiza refs quando props mudam
   useEffect(() => {
-    componentMountedRef.current = true;
-    setIsComponentRendered(true); // Signal that component's JSX is rendered
+    userRef.current = user;
+    itemTypeRef.current = itemType;
+    itemIdRef.current = itemId;
+  }, [user, itemType, itemId]);
+
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cardFormRef = useRef<any>(null);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
     return () => {
-      componentMountedRef.current = false;
-      setIsComponentRendered(false);
+      mountedRef.current = false;
     };
   }, []);
 
-  // --- 2. Effect for Mercado Pago Script Loading ---
+  // Cleanup ao desmontar
   useEffect(() => {
-    if (!mpPublicKey || !isComponentRendered) {
-      // If no public key, or component not rendered, ensure script is removed and state reset
-      if (mpScriptRef.current && document.body.contains(mpScriptRef.current)) {
-        document.body.removeChild(mpScriptRef.current);
-        mpScriptRef.current = null;
+    return () => {
+      if (cardFormRef.current) {
+        try {
+          cardFormRef.current.unmount();
+        } catch (e) {}
       }
-      setIsMpScriptLoaded(false);
-      setLoadingSdk(false);
-      if (!mpPublicKey && isComponentRendered) { // Only set error if it's the actual issue and component is rendered
-        setInternalError('Chave Mercado Pago não configurada');
-        onError('Chave Mercado Pago não configurada');
-      }
+    };
+  }, []);
+
+  // Carrega SDK + inicializa CardForm de forma 100% segura
+  useEffect(() => {
+    if (!mpPublicKey) {
+      setError('Chave do Mercado Pago não configurada.');
+      setLoading(false);
       return;
     }
 
-    // Prevent duplicate script loading
-    if (window.MercadoPago && window.mpReady && mpScriptRef.current) {
-      setIsMpScriptLoaded(true);
-      return;
-    }
-
-    // If script is already being loaded by this ref, just monitor it
-    if (mpScriptRef.current && document.body.contains(mpScriptRef.current)) {
-        // If it's already in the DOM and we just need to wait for onload
-        if (!window.mpReady) {
-            mpScriptRef.current.onload = () => {
-                if (componentMountedRef.current) {
-                    window.mpReady = true;
-                    setIsMpScriptLoaded(true);
-                }
-            };
-            mpScriptRef.current.onerror = () => {
-                if (componentMountedRef.current) {
-                    setInternalError('Falha ao carregar SDK Mercado Pago (existente)');
-                    onError('Falha ao carregar SDK Mercado Pago (existente)');
-                    setIsMpScriptLoaded(false);
-                    setLoadingSdk(false);
-                }
-            };
-        } else {
-            setIsMpScriptLoaded(true); // Script is loaded and ready
-        }
+    const loadMercadoPago = async () => {
+      // Se já carregou, só inicializa
+      if ((window as any).MercadoPago && (window as any).mpInstanceReady) {
+        initializeCardForm();
         return;
-    }
-
-    setLoadingSdk(true);
-    setInternalError(null);
-
-    const script = document.createElement('script');
-    script.src = 'https://sdk.mercadopago.com/js/v2';
-    script.async = true;
-    script.id = 'mercadopago-sdk'; // Add an ID for easier tracking
-
-    script.onload = () => {
-      if (componentMountedRef.current) {
-        window.mpReady = true;
-        setIsMpScriptLoaded(true);
-        setLoadingSdk(false);
       }
-    };
-    script.onerror = () => {
-      if (componentMountedRef.current) {
-        setInternalError('Falha ao carregar SDK Mercado Pago');
-        onError('Falha ao carregar SDK Mercado Pago');
-        setIsMpScriptLoaded(false);
-        setLoadingSdk(false);
-      }
-    };
 
-    document.body.appendChild(script);
-    mpScriptRef.current = script;
+      // Carrega o script
+      const script = document.createElement('script');
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.async = true;
 
-    return () => {
-      // Cleanup: Remove the script on component unmount or dependency change
-      if (mpScriptRef.current && document.body.contains(mpScriptRef.current)) {
-        document.body.removeChild(mpScriptRef.current);
-        mpScriptRef.current = null;
-      }
-      window.mpReady = false;
-      setIsMpScriptLoaded(false);
-    };
-  }, [mpPublicKey, isComponentRendered, onError]);
+      script.onload = () => {
+        (window as any).mpInstanceReady = true;
+        if (mountedRef.current) initializeCardForm();
+      };
 
-  // --- 3. Effect for Mercado Pago Form Initialization ---
-  useEffect(() => {
-    // Log the amount to confirm what value is being passed
-    console.log('CheckoutCompleto: Initializing with amount:', amount);
-
-    // Conditions for initialization: MP Key exists, script loaded, component rendered, MercadoPago global object available.
-    if (!mpPublicKey || !isMpScriptLoaded || !isComponentRendered || !window.MercadoPago) {
-      // If prerequisites are not met, ensure the form is unmounted and state is clean.
-      if (cardFormInstanceRef.current?.unmount) {
-        try {
-          cardFormInstanceRef.current.unmount();
-        } catch (e) {
-          console.warn("Error unmounting Mercado Pago form due to missing prerequisites:", e);
+      script.onerror = () => {
+        if (mountedRef.current) {
+          setError('Falha ao carregar Mercado Pago.');
+          setLoading(false);
         }
-        cardFormInstanceRef.current = null;
-      }
-      if (!mpPublicKey && isComponentRendered && !internalError) {
-          setInternalError('Chave Mercado Pago não configurada');
-          onError('Chave Mercado Pago não configurada');
-      }
-      setProcessingPayment(false);
-      setLoadingSdk(false);
-      
-      // Reset dropdowns
-      setIssuerOptions([]);
-      setInstallmentsOptions([]);
-      setIsIssuerLoading(false);
-      setIsInstallmentsLoading(false);
-      return;
-    }
-    
-    // If all conditions are met, proceed with initialization.
-    setInternalError(null);
-    setLoadingSdk(false); // SDK is loaded, now form is initializing.
+      };
 
-    // Unmount any existing form instance before creating a new one
-    // This is crucial to prevent "CardForm is not mounted" errors if the effect re-runs.
-    if (cardFormInstanceRef.current?.unmount) {
+      document.body.appendChild(script);
+    };
+
+    const initializeCardForm = async () => {
       try {
-        cardFormInstanceRef.current.unmount();
-        console.log("Mercado Pago CardForm instance unmounted during cleanup.");
-      } catch (e) {
-        console.warn("Error during Mercado Pago form cleanup (unmount safety):", e);
-      }
-      cardFormInstanceRef.current = null;
-    }
+        // Inicializa instância
+        const mp = new (window as any).MercadoPago(mpPublicKey, {
+          locale: 'pt-BR',
+        });
 
-    try {
-      const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
-      
-      const newCardForm = mp.cardForm({
-        amount: amount.toFixed(2),
-        autoMount: true, // This requires the elements to be in DOM already
-        form: {
-          id: 'form-checkout',
-          cardNumber: { id: 'form-checkout__cardNumber', placeholder: 'Número do cartão' },
-          expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
-          securityCode: { id: 'form-checkout__securityCode', placeholder: 'CVV' },
-          cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Titular do cartão' },
-          cardholderEmail: { id: 'form-checkout__cardholderEmail', placeholder: 'E-mail' },
-          issuer: { id: 'form-checkout__issuer' }, // This will be a <select>
-          installments: { id: 'form-checkout__installments' }, // This will be a <select>
-        },
-        callbacks: {
-          onFormMounted: () => {
-            if (!componentMountedRef.current) return;
-            console.log('Mercado Pago Form Mounted!');
-            setLoadingSdk(false); // Form is fully mounted
-            if (user?.email) {
-              const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
-              if (emailInput) emailInput.value = user.email;
-            }
+        // Limpa instância anterior (seguro)
+        if (cardFormRef.current) {
+          try {
+             cardFormRef.current.unmount();
+          } catch(e) { console.warn('Erro ao desmontar form anterior', e); }
+          cardFormRef.current = null;
+        }
+
+        const cardForm = mp.cardForm({
+          amount: amount.toString(),
+          autoMount: true,
+          form: {
+            id: 'form-checkout',
+            cardNumber: { id: 'form-checkout__cardNumber', placeholder: 'Número do cartão' },
+            expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
+            securityCode: { id: 'form-checkout__securityCode', placeholder: 'CVV' },
+            cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Titular do cartão' },
+            cardholderEmail: { id: 'form-checkout__cardholderEmail' },
+            issuer: { id: 'form-checkout__issuer' },
+            installments: { id: 'form-checkout__installments' },
           },
-          onFormUnmounted: () => {
-              console.log('Mercado Pago Form Unmounted!');
-              cardFormInstanceRef.current = null; // Ensure ref is cleared on unmount
-              // Reset dropdowns on unmount
-              setIssuerOptions([]);
-              setInstallmentsOptions([]);
-              setIsIssuerLoading(false);
-              setIsInstallmentsLoading(false);
-          },
-          onPaymentMethodReceived: (data: any) => {
-              if (!componentMountedRef.current) return;
-              console.log('Mercado Pago: Payment Method Received', data);
-              setIsIssuerLoading(true);
-              if (data && data.issuer && data.issuer.name) {
-                  setIssuerOptions([{ value: data.issuer.id, label: data.issuer.name }]);
-              } else {
-                  setIssuerOptions([]);
+          callbacks: {
+            onFormMounted: (error: any) => {
+              if (error) {
+                console.warn('Erro no mount:', error);
+                return;
               }
-              setIsIssuerLoading(false);
+              console.log('Formulário Mercado Pago montado com sucesso');
 
-              // Trigger installments lookup if card number is valid and amount > 0
-              if (data?.paymentMethodId && amount > 0) {
-                  setIsInstallmentsLoading(true);
-                  mp.getInstallments({
-                      amount: amount.toFixed(2),
-                      payment_method_id: data.paymentMethodId,
-                      issuer_id: data.issuer?.id,
-                  }).then((instData: any) => {
-                      if (!componentMountedRef.current) return;
-                      console.log('Mercado Pago: Installments Received (after PM)', instData);
-                      if (instData && instData.payer_costs && instData.payer_costs.length > 0) {
-                          setInstallmentsOptions(instData.payer_costs);
-                      } else {
-                          setInstallmentsOptions([]);
-                      }
-                      setIsInstallmentsLoading(false);
-                  }).catch((err: any) => {
-                      if (!componentMountedRef.current) return;
-                      console.error('Error fetching installments after PM:', err);
-                      setInstallmentsOptions([]);
-                      setIsInstallmentsLoading(false);
-                  });
-              } else {
-                  setInstallmentsOptions([]);
-                  setIsInstallmentsLoading(false);
+              // Preenche e-mail automaticamente usando REF para evitar dependência
+              if (userRef.current?.email) {
+                const el = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
+                if (el) el.value = userRef.current.email;
               }
-          },
-          onInstallmentsReceived: (data: any) => {
-              if (!componentMountedRef.current) return;
-              // This callback can be triggered directly by SDK based on other events too.
-              // It's a fallback/alternative to the logic inside onPaymentMethodReceived.
-              console.log('Mercado Pago: Installments Received (direct)', data);
-              setIsInstallmentsLoading(true);
-              if (data && data.payer_costs && data.payer_costs.length > 0) {
-                  setInstallmentsOptions(data.payer_costs);
-              } else {
-                  setInstallmentsOptions([]);
-              }
-              setIsInstallmentsLoading(false);
-          },
-          onSubmit: async (event: any) => {
-            event.preventDefault();
-            if (!componentMountedRef.current || !user?.id) {
-              onError('Usuário não autenticado ou componente desmontado.');
-              return;
-            }
+            },
 
-            setProcessingPayment(true);
-            setInternalError(null); // Clear internal errors
+            onSubmit: async (e: any) => {
+              e.preventDefault();
+              if (processing || !mountedRef.current) return;
 
-            const { token: mpToken, paymentMethodId, issuerId, installments: numInstallments, cardholderEmail } = newCardForm.getCardFormData();
+              setProcessing(true);
+              setError(null);
 
-            // Get Supabase session token
-            const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+              try {
+                // GERA O TOKEN PRIMEIRO (obrigatório!)
+                const { token, error: tokenError } = await cardForm.createCardToken();
 
-            if (sessionError || !sessionData.session?.access_token) {
-              onError(sessionError?.message || 'Não foi possível obter o token de autenticação do usuário.');
-              setProcessingPayment(false);
-              return;
-            }
+                if (tokenError || !token) {
+                  const msg = tokenError?.[0]?.message || 'Dados do cartão inválidos.';
+                  onError(msg);
+                  setProcessing(false); // Garante que libera o processamento
+                  return;
+                }
 
-            const supabaseFunctionUrl = 'https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar';
+                // Agora pega os dados
+                const formData = cardForm.getCardFormData();
 
-            try {
-              const res = await fetch(supabaseFunctionUrl, {
-                method: 'POST',
-                headers: { 
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${sessionData.session.access_token}`, // JWT for Supabase Function
-                },
-                body: JSON.stringify({
-                  token: mpToken,
-                  payment_method_id: paymentMethodId,
-                  issuer_id: issuerId,
-                  installments: Number(numInstallments),
-                  amount,
-                  user_email: cardholderEmail || user.email,
-                  item_type: itemType,
-                  item_id: itemId,
-                }),
-              });
+                const { data: { session } } = await supabase.auth.getSession();
 
-              const result = await res.json();
+                // Usa REFs para pegar os dados mais atuais sem depender do closure do useEffect
+                const currentItemType = itemTypeRef.current;
+                const currentItemId = itemIdRef.current;
+                const currentUserEmail = formData.cardholderEmail || userRef.current?.email;
 
-              if (result.status === 'approved' || result.status === 'pending' || result.status === 'CONFIRMED' || result.status === 'PENDING') {
+                const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${session?.access_token}`,
+                  },
+                  body: JSON.stringify({
+                    token,
+                    payment_method_id: formData.paymentMethodId,
+                    issuer_id: formData.issuerId || null,
+                    installments: Number(formData.installments) || 1,
+                    amount: amount,
+                    user_email: currentUserEmail,
+                    item_type: currentItemType,
+                    item_id: currentItemId,
+                  }),
+                });
+
+                const result = await res.json();
+
+                if (!res.ok || !['approved', 'pending', 'in_process'].includes(result.status)) {
+                  throw new Error(result.message || result.error || 'Pagamento não aprovado');
+                }
+
                 onSuccess();
-              } else {
-                const errorMessage = result.message || result.error || result.error_description || `Pagamento: ${result.status}`;
-                onError(errorMessage); // Use onError prop
+              } catch (err: any) {
+                console.error('Erro no pagamento:', err);
+                onError(err.message || 'Erro ao processar pagamento');
+              } finally {
+                if (mountedRef.current) setProcessing(false);
               }
-            } catch (error: any) {
-              console.error('Erro MP (fetch):', error);
-              onError(error.message || 'Falha no pagamento'); // Use onError prop
-            } finally {
-              if (componentMountedRef.current) setProcessingPayment(false);
-            }
+            },
           },
-          onError: (errors: any) => {
-            if (!componentMountedRef.current) return;
-            const msg = errors[0]?.message || 'Erro desconhecido no formulário Mercado Pago';
-            onError(msg); // Use onError prop
-          },
-        },
-      });
+        });
 
-      cardFormInstanceRef.current = newCardForm;
-
-    } catch (err: any) {
-      if (componentMountedRef.current) {
-        setInternalError(err.message || 'Erro ao inicializar formulário Mercado Pago');
-        onError(err.message || 'Erro ao inicializar formulário Mercado Pago');
-      }
-    }
-
-    return () => {
-      // Cleanup: Unmount the Mercado Pago form instance when component unmounts or dependencies change.
-      // This try-catch block is important as the SDK might throw if it's already unmounted internally.
-      if (cardFormInstanceRef.current?.unmount) {
-        try {
-          cardFormInstanceRef.current.unmount();
-          console.log("Mercado Pago CardForm instance unmounted during cleanup.");
-        } catch (e) {
-          console.warn("Error during Mercado Pago form cleanup (unmount safety):", e);
+        cardFormRef.current = cardForm;
+        if (mountedRef.current) setLoading(false);
+      } catch (err) {
+        console.error('Erro fatal no Mercado Pago:', err);
+        if (mountedRef.current) {
+          setError('Erro crítico no pagamento. Recarregue a página.');
+          setLoading(false);
         }
       }
-      cardFormInstanceRef.current = null;
     };
-  }, [
-    amount, itemType, itemId, mpPublicKey, isMpScriptLoaded, isComponentRendered, 
-    user?.id, user?.email, onSuccess, onError
-  ]);
 
-  // Handle local errors
-  useEffect(() => {
-    if (internalError) {
-      onError(internalError);
-    }
-  }, [internalError, onError]);
+    loadMercadoPago();
+    // DEPENDENCY ARRAY CRÍTICO: Não inclua 'user', 'itemType' ou 'itemId' aqui para evitar re-inits
+  }, [mpPublicKey, amount]); 
 
-  // --- Render Logic ---
-  const currentError = internalError; // Prefer internal error message for display
-
-  if (loadingSdk && (!isMpScriptLoaded || !isComponentRendered)) {
+  // UI de loading e erro
+  if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center bg-black/80 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
-        <i className="fas fa-spinner fa-spin text-4xl text-green-400 mb-4"></i>
-        <p className="text-lg font-bold text-white">Carregando SDK de Pagamento...</p>
-        <button onClick={onCancel} className="mt-6 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
-          Fechar
-        </button>
+      <div className="flex flex-col items-center justify-center p-10 bg-gray-900 rounded-xl">
+        <i className="fas fa-spinner fa-spin text-4xl text-green-500 mb-4"></i>
+        <p className="text-gray-400">Carregando pagamento seguro...</p>
       </div>
     );
   }
 
-  if (currentError) {
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-red-400 bg-black/80 rounded-lg shadow-xl w-full max-w-md border border-red-500">
-        <i className="fas fa-exclamation-triangle text-4xl mb-4"></i>
-        <p className="text-lg font-bold">Erro de Pagamento</p>
-        <p className="mt-2 text-sm">{currentError}</p>
-        <button onClick={onCancel} className="mt-6 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
+      <div className="p-6 bg-red-900/30 border border-red-600 rounded-xl text-center">
+        <p className="text-red-200 text-center">{error}</p>
+        <button onClick={onCancel} className="mt-4 w-full py-2 bg-red-700 hover:bg-red-600 rounded text-white">
           Fechar
         </button>
       </div>
@@ -409,110 +239,95 @@ export default function CheckoutCompleto({
   }
 
   return (
-    <div className="max-w-sm mx-auto bg-black/80 backdrop-blur-md p-10 rounded-xl shadow-lg border border-green-500/30">
-      <h2 className="text-3xl font-bold mb-6 text-center text-white">Checkout - R$ {amount.toFixed(2).replace('.', ',')}</h2>
-      <p className="text-sm text-gray-400 text-center mb-6">
-        Item: <span className="font-bold">{itemType === 'plan' ? `Plano ${itemId}` : `${itemId} Créditos`}</span>
-      </p>
-
-      <form id="form-checkout" className="space-y-4">
-        <div className="mt-4 p-2 text-xs text-yellow-400 bg-yellow-900/20 rounded border border-yellow-700/30 flex items-center gap-2">
-          <i className="fas fa-exclamation-triangle"></i>
-          <span>Pagamento seguro via Mercado Pago.</span>
+    <div className="max-w-md mx-auto bg-gray-950 p-6 rounded-2xl border border-gray-800 shadow-2xl">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h3 className="text-lg font-bold text-white flex items-center gap-2">
+            <i className="fas fa-lock text-green-500"></i> Pagamento Seguro
+          </h3>
+          <p className="text-xs text-gray-500">Mercado Pago</p>
         </div>
-
-        <div className="form-control">
-          <label htmlFor="form-checkout__cardNumber" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Número do Cartão</label>
-          <input type="text" id="form-checkout__cardNumber" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="Número do cartão" />
+        <div className="text-right">
+          <p className="text-2xl font-bold text-green-400">R$ {amount.toFixed(2).replace('.', ',')}</p>
         </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="form-control">
-            <label htmlFor="form-checkout__expirationDate" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Validade</label>
-            <input type="text" id="form-checkout__expirationDate" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="MM/AA" />
-          </div>
-          <div className="form-control">
-            <label htmlFor="form-checkout__securityCode" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">CVC</label>
-            <input type="text" id="form-checkout__securityCode" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="CVV" />
-          </div>
-        </div>
-
-        <div className="form-control">
-          <label htmlFor="form-checkout__cardholderName" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Nome no Cartão</label>
-          <input type="text" id="form-checkout__cardholderName" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="Titular do cartão" />
-        </div>
-
-        <div className="form-control">
-          <label htmlFor="form-checkout__cardholderEmail" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">E-mail</label>
-          <input type="email" id="form-checkout__cardholderEmail" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="E-mail" />
-        </div>
-
-        <div className="form-control">
-          <label htmlFor="form-checkout__issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">
-            Banco Emissor
-            {isIssuerLoading && <i className="fas fa-spinner fa-spin ml-2 text-green-500 text-sm"></i>}
-          </label>
-          <select 
-            id="form-checkout__issuer" 
-            className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"
-            disabled={isIssuerLoading || issuerOptions.length === 0} // Disable if loading or no options
-          >
-            <option value="" disabled selected>
-              {isIssuerLoading 
-                ? 'Carregando bancos...' 
-                : (issuerOptions.length > 0 ? 'Selecione o banco' : 'Digite o nº do cartão primeiro')}
-            </option>
-            {issuerOptions.map((issuer) => (
-                <option key={issuer.value} value={issuer.value}>{issuer.label}</option>
-            ))}
-          </select>
-        </div>
-
-        <div className="form-control">
-          <label htmlFor="form-checkout__installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">
-            Parcelas
-            {isInstallmentsLoading && <i className="fas fa-spinner fa-spin ml-2 text-green-500 text-sm"></i>}
-          </label>
-          <select 
-            id="form-checkout__installments" 
-            className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"
-            disabled={isInstallmentsLoading || installmentsOptions.length === 0} // Disable if loading or no options
-          >
-            <option value="" disabled selected>
-              {isInstallmentsLoading 
-                ? 'Carregando parcelas...' 
-                : (installmentsOptions.length > 0 ? 'Selecione o número de parcelas' : 'Digite o nº do cartão primeiro')}
-            </option>
-            {installmentsOptions.map((inst: any) => (
-                <option key={inst.installments} value={inst.installments}>
-                    {inst.installments}x de {inst.installment_amount?.toFixed(2).replace('.', ',')} ({inst.total_amount?.toFixed(2).replace('.', ',')})
-                </option>
-            ))}
-          </select>
-        </div>
-        <button
-            type="submit"
-            disabled={processingPayment}
-            className="mt-8 bg-gradient-to-r from-green-500 to-emerald-600 text-black w-full py-5 rounded-lg text-xl font-bold hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-wait transition-all"
-        >
-            {processingPayment ? (
-            <>
-                <i className="fas fa-spinner fa-spin mr-2"></i>
-                Processando...
-            </>
-            ) : (
-            'PAGAR COM CARTÃO'
-            )}
-        </button>
-      </form>
+      </div>
 
       <button
         onClick={onCancel}
-        className="mt-4 w-full py-3 bg-transparent hover:bg-gray-700 text-gray-400 rounded-lg text-sm transition"
-        disabled={processingPayment}
+        className="absolute top-4 right-4 text-gray-500 hover:text-white"
       >
-        Cancelar
+        <i className="fas fa-times text-xl"></i>
       </button>
+
+      <form id="form-checkout" className="space-y-4">
+        <input
+          type="text"
+          id="form-checkout__cardNumber"
+          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-green-500 outline-none"
+          placeholder="Número do cartão"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <input
+            type="text"
+            id="form-checkout__expirationDate"
+            className="px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-green-500"
+            placeholder="MM/AA"
+          />
+          <input
+            type="text"
+            id="form-checkout__securityCode"
+            className="px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-green-500"
+            placeholder="CVV"
+          />
+        </div>
+
+        <input
+          type="text"
+          id="form-checkout__cardholderName"
+          className="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:border-green-500"
+          placeholder="Nome no cartão"
+        />
+
+        <input
+          type="email"
+          id="form-checkout__cardholderEmail"
+          className="w-full px-4 py-3 bg-gray-900/70 border border-gray-800 rounded-lg text-gray-400"
+          readOnly={!!userRef.current?.email}
+          defaultValue={userRef.current?.email || ''}
+          placeholder="seu@email.com"
+        />
+
+        <div className="grid grid-cols-2 gap-4">
+          <select
+            id="form-checkout__issuer"
+            className="px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm"
+          >
+            <option value="" disabled selected>Banco emissor</option>
+          </select>
+
+          <select
+            id="form-checkout__installments"
+            className="px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm"
+          >
+            <option value="" disabled selected>Parcelas</option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          disabled={processing}
+          className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:bg-gray-700 text-black font-bold rounded-lg text-lg transition shadow-lg disabled:cursor-not-allowed"
+        >
+          {processing ? (
+            <span className="flex items-center justify-center gap-3">
+              <i className="fas fa-spinner fa-spin"></i> Processando...
+            </span>
+          ) : (
+            'Pagar Agora'
+          )}
+        </button>
+      </form>
     </div>
   );
 }
