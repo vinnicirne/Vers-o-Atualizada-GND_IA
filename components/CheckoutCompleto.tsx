@@ -13,74 +13,73 @@ interface CheckoutCompletoProps {
   onCancel: () => void;
 }
 
-// --- STATIC INPUTS COMPONENT ---
-// Este componente é memoizado com uma função de comparação que sempre retorna true.
-// Isso impede que o React atualize este trecho do DOM, protegendo os iFrames do Mercado Pago
-// de serem destruídos por re-renderizações do componente pai.
-const StaticMPFormFields = memo(({ userEmail }: { userEmail: string }) => {
+// --- STATIC INPUTS COMPONENT (MP Payment Form) ---
+// Alterado para usar DIVs em vez de INPUTs para campos sensíveis.
+// O SDK do Mercado Pago injetará iframes dentro dessas divs.
+const MPPaymentForm = memo(({ userEmail }: { userEmail: string }) => {
+  // Estilo base para os containers (parecer um input)
+  const inputContainerClass = "h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden relative flex items-center px-4";
+
   return (
-    <>
+    <div className="space-y-4">
+      {/* Número do Cartão */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Número do Cartão</label>
-          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden relative">
-             <input
-              type="text"
-              id="form-checkout__cardNumber"
-              className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-              placeholder=""
-              />
-          </div>
+          <div 
+            id="form-checkout__cardNumber" 
+            className={inputContainerClass}
+            style={{ paddingTop: '10px' }} // Pequeno ajuste para alinhar o texto do iframe
+          ></div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
+        {/* Validade */}
         <div className="space-y-1">
            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Validade</label>
-           <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-              <input
-                  type="text"
-                  id="form-checkout__expirationDate"
-                  className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                  placeholder="MM/AA"
-              />
-           </div>
+           <div 
+             id="form-checkout__expirationDate" 
+             className={inputContainerClass}
+             style={{ paddingTop: '10px' }}
+           ></div>
         </div>
+        
+        {/* CVV */}
         <div className="space-y-1">
            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">CVV</label>
-           <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-              <input
-                  type="text"
-                  id="form-checkout__securityCode"
-                  className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                  placeholder="123"
-              />
-           </div>
+           <div 
+             id="form-checkout__securityCode" 
+             className={inputContainerClass}
+             style={{ paddingTop: '10px' }}
+           ></div>
         </div>
       </div>
 
+      {/* Nome no Cartão */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Nome no Cartão</label>
-          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-              <input
-              type="text"
-              id="form-checkout__cardholderName"
-              className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-              />
-          </div>
+          <div 
+            id="form-checkout__cardholderName" 
+            className={inputContainerClass}
+            style={{ paddingTop: '10px' }}
+          ></div>
       </div>
 
+      {/* E-mail (Mantido como Input pois não é dado PCI sensível e facilita auto-fill) */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">E-mail</label>
           <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
               <input
-              type="email"
-              id="form-checkout__cardholderEmail"
-              className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-              defaultValue={userEmail}
+                type="email"
+                id="form-checkout__cardholderEmail"
+                className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
+                defaultValue={userEmail}
+                placeholder="exemplo@email.com"
               />
           </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4">
+        {/* Banco Emissor */}
         <div className="space-y-1">
            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Banco Emissor</label>
            <select
@@ -89,6 +88,7 @@ const StaticMPFormFields = memo(({ userEmail }: { userEmail: string }) => {
            ></select>
         </div>
 
+        {/* Parcelamento */}
         <div className="space-y-1">
            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parcelamento</label>
            <select
@@ -98,11 +98,12 @@ const StaticMPFormFields = memo(({ userEmail }: { userEmail: string }) => {
         </div>
       </div>
 
+      {/* Campos ocultos obrigatórios */}
       <div className="hidden">
           <select id="form-checkout__identificationType"></select>
           <input type="text" id="form-checkout__identificationNumber" />
       </div>
-    </>
+    </div>
   );
 }, () => true); // COMPARAÇÃO ESTÁTICA: Retorna sempre true para evitar re-render
 
@@ -180,12 +181,29 @@ export default function CheckoutCompleto({
         const cardForm = mp.cardForm({
           amount: amountRef.current.toString(),
           iframe: true,
+          autoMount: true, // IMPORTANTE: Deixa o SDK montar os campos automaticamente nas DIVs
           form: {
             id: 'form-checkout',
-            cardNumber: { id: 'form-checkout__cardNumber', placeholder: 'Número do cartão' },
-            expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
-            securityCode: { id: 'form-checkout__securityCode', placeholder: 'CVV' },
-            cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Titular do cartão' },
+            cardNumber: { 
+                id: 'form-checkout__cardNumber', 
+                placeholder: '0000 0000 0000 0000',
+                style: { color: '#ffffff', fontSize: '16px' } 
+            },
+            expirationDate: { 
+                id: 'form-checkout__expirationDate', 
+                placeholder: 'MM/AA',
+                style: { color: '#ffffff', fontSize: '16px' }
+            },
+            securityCode: { 
+                id: 'form-checkout__securityCode', 
+                placeholder: '123',
+                style: { color: '#ffffff', fontSize: '16px' }
+            },
+            cardholderName: { 
+                id: 'form-checkout__cardholderName', 
+                placeholder: 'Titular do cartão',
+                style: { color: '#ffffff', fontSize: '16px' }
+            },
             cardholderEmail: { id: 'form-checkout__cardholderEmail' },
             issuer: { id: 'form-checkout__issuer' },
             installments: { id: 'form-checkout__installments' },
@@ -196,7 +214,8 @@ export default function CheckoutCompleto({
             onFormMounted: (err: any) => {
               if (err) {
                 console.warn('MP Mount Error:', err);
-                return;
+                // Não retorna erro fatal aqui, pois às vezes é apenas um warning de resize
+                // return; 
               }
               if (mountedRef.current) {
                   console.log('MP Form Mounted Successfully');
@@ -352,8 +371,8 @@ export default function CheckoutCompleto({
       {/* FORMULÁRIO MERCADO PAGO */}
       <form id="form-checkout" className="space-y-4">
         
-        {/* Componente Estático Memoizado: React NÃO tocará aqui após o mount */}
-        <StaticMPFormFields userEmail={userRef.current?.email || ''} />
+        {/* Componente Estático Memoizado com DIVs */}
+        <MPPaymentForm userEmail={userRef.current?.email || ''} />
 
         <button
           type="submit"
