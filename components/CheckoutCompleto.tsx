@@ -1,25 +1,20 @@
+// components/CheckoutFinal.tsx
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useUser } from '../contexts/UserContext';
 
-declare global {
-  interface Window {
-    MercadoPago: any;
-  }
-}
-
-interface CheckoutCompletoProps {
+interface Props {
   amount: number;
   itemType: 'plan' | 'credits';
   itemId: string;
-  mpPublicKey: string | null;
+  mpPublicKey: string;
   onSuccess: () => void;
-  onError: (message: string) => void;
+  onError: (msg: string) => void;
   onCancel: () => void;
 }
 
-export default function CheckoutCompleto({
+export default function CheckoutFinal({
   amount,
   itemType,
   itemId,
@@ -27,126 +22,165 @@ export default function CheckoutCompleto({
   onSuccess,
   onError,
   onCancel,
-}: CheckoutCompletoProps) {
+}: Props) {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
-  const cardFormRef = useRef<any>(null);
-  const initialized = useRef(false);
+
+  // Referências para limpar tudo com segurança
+  const mpInstance = useRef<any>(null);
+  const cardFormInstance = useRef<any>(null);
+  const scriptElement = useRef<HTMLScriptElement | null>(null);
+  const isMounted = useRef(true); // Controla se o componente ainda está vivo
 
   useEffect(() => {
-    // Evita executar duas vezes no StrictMode
-    if (initialized.current || !mpPublicKey) return;
-    initialized.current = true;
+    isMounted.current = true;
 
-    const script = document.createElement('script');
-    script.src = 'https://sdk.mercadopago.com/js/v2';
-    script.async = true;
+    const loadMercadoPago = async () => {
+      // Evita carregar duas vezes
+      if (mpInstance.current || !isMounted.current) return;
 
-    script.onload = () => {
-      const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
+      scriptElement.current = document.createElement('script');
+      scriptElement.current.src = 'https://sdk.mercadopago.com/js/v2';
+      scriptElement.current.async = true;
 
-      const cardForm = mp.cardForm({
-        amount: amount.toString(),
-        autoMount: true,
-        form: {
-          id: 'form-checkout',
-          cardNumber: { id: 'form-checkout__cardNumber' },
-          expirationDate: { id: 'form-checkout__expirationDate' },
-          securityCode: { id: 'form-checkout__securityCode' },
-          cardholderName: { id: 'form-checkout__cardholderName' },
-          cardholderEmail: { id: 'form-checkout__cardholderEmail' },
-          issuer: { id: 'form-checkout__issuer' },
-          installments: { id: 'form-checkout__installments' },
-        },
-        callbacks: {
-          onFormMounted: () => {
-            console.log('Formulário Mercado Pago montado com sucesso!');
+      scriptElement.current.onload = () => {
+        if (!isMounted.current) return;
+
+        const mp = new (window as any).MercadoPago(mpPublicKey, { locale: 'pt-BR' });
+        mpInstance.current = mp;
+
+        try {
+          const cardForm = mp.cardForm({
+            amount: amount.toString(),
+            autoMount: true,
+            form: {
+              id: 'form-checkout',
+              cardNumber: { id: 'form-checkout__cardNumber' },
+              expirationDate: { id: 'form-checkout__expirationDate' },
+              securityCode: { id: 'form-checkout__securityCode' },
+              cardholderName: { id: 'form-checkout__cardholderName' },
+              cardholderEmail: { id: 'form-checkout__cardholderEmail' },
+              issuer: { id: 'form-checkout__issuer' },
+              installments: { id: 'form-checkout__installments' },
+            },
+            callbacks: {
+              onFormMounted: () => {
+                if (!isMounted.current) return;
+                console.log('Formulário Mercado Pago carregado!');
+                setLoading(false);
+                if (user?.email) {
+                  const el = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
+                  if (el) el.value = user.email;
+                }
+              },
+              onSubmit: async (e: any) => {
+                e.preventDefault();
+                if (!user || !isMounted.current) return;
+
+                setProcessing(true);
+                try {
+                  const { token, paymentMethodId } = cardForm.getCardFormData();
+
+                  const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      token,
+                      payment_method_id: paymentMethodId,
+                      amount,
+                      user_id: user.id,
+                      item_type: itemType,
+                      item_id: itemId,
+                    }),
+                  });
+
+                  const data = await res.json();
+
+                  if (data.status === 'approved' || data.status === 'pending') {
+                    onSuccess();
+                  } else {
+                    onError(data.message || 'Pagamento recusado');
+                  }
+                } catch (err) {
+                  onError('Erro ao processar');
+                } finally {
+                  if (isMounted.current) setProcessing(false);
+                }
+              },
+            },
+          });
+
+          cardFormInstance.current = cardForm;
+        } catch (err) {
+          if (isMounted.current) {
             setLoading(false);
-            if (user?.email) {
-              const emailField = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
-              if (emailField) emailField.value = user.email;
-            }
-          },
-          onSubmit: async (e: any) => {
-            e.preventDefault();
-            if (!user?.id) return onError('Faça login primeiro');
+            onError('Erro ao iniciar pagamento');
+          }
+        }
+      };
 
-            setProcessing(true);
-            try {
-              const { token, paymentMethodId } = cardForm.getCardFormData();
+      scriptElement.current.onerror = () => {
+        if (isMounted.current) {
+          setLoading(false);
+          onError('Falha ao carregar Mercado Pago');
+        }
+      };
 
-              const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  token,
-                  payment_method_id: paymentMethodId,
-                  amount,
-                  user_id: user.id,
-                  description: `${itemType} - ${itemId}`,
-                }),
-              });
-
-              const data = await res.json();
-
-              if (data.status === 'approved' || data.status === 'pending') {
-                onSuccess();
-              } else {
-                onError(data.message || `Pagamento ${data.status}`);
-              }
-            } catch (err) {
-              onError('Erro ao processar pagamento');
-            } finally {
-              setProcessing(false);
-            }
-          },
-        },
-      });
-
-      cardFormRef.current = cardForm;
+      document.body.appendChild(scriptElement.current);
     };
 
-    document.body.appendChild(script);
+    loadMercadoPago();
 
+    // Cleanup TOTAL ao desmontar (ex: cancelar modal)
     return () => {
-      if (cardFormRef.current?.unmount) {
-        cardFormRef.current.unmount();
+      isMounted.current = false;
+
+      // Remove o form com segurança
+      try {
+        cardFormInstance.current?.unmount?.();
+      } catch (e) {}
+
+      // Remove o script
+      if (scriptElement.current?.parentNode) {
+        scriptElement.current.parentNode.removeChild(scriptElement.current);
       }
-      initialized.current = false;
+
+      mpInstance.current = null;
+      cardFormInstance.current = null;
     };
-  }, [mpPublicKey, amount, user, itemType, itemId, onSuccess, onError]);
+  }, []); // <- executa só uma vez
 
   const pagar = () => {
     const form = document.getElementById('form-checkout');
-    form?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+    if (form && isMounted.current) {
+      form.requestSubmit?.() || form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    }
   };
 
   if (loading) {
     return (
-      <div className="text-center p-10 bg-black/90 rounded-xl">
-        <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-4 border-green-500"></div>
-        <p className="mt-4 text-white text-xl">Carregando pagamento seguro...</p>
+      <div className="text-center p-12 bg-black/90 rounded-2xl">
+        <div className="animate-spin h-12 w-12 border-4 border-green-500 rounded-full border-t-transparent mx-auto"></div>
+        <p className="text-white mt-6 text-lg">Carregando pagamento...</p>
       </div>
     );
   }
 
   return (
-    <div className="max-w-md mx-auto bg-gradient-to-br from-purple-900 to-black p-8 rounded-2xl shadow-2xl">
-      <h2 className="text-3xl font-bold text-white text-center mb-6">
+    <div className="max-w-md mx-auto bg-black/90 p-8 rounded-2xl border border-green-500/30">
+      <h2 className="text-4xl font-bold text-white text-center mb-8">
         R$ {amount.toFixed(2).replace('.', ',')}
       </h2>
 
-      <form id="form-checkout" className="space-y-4">
-        <input id="form-checkout__cardNumber" placeholder="Número do cartão" className="w-full p-4 bg-gray-900 text-white rounded-lg border border-purple-700 focus:border-purple-500 outline-none" />
+      <form id="form-checkout" className="space-y-5">
+        <input id="form-checkout__cardNumber" placeholder="Número do cartão" className="input" />
         <div className="grid grid-cols-2 gap-4">
-          <input id="form-checkout__expirationDate" placeholder="MM/AA" className="p-4 bg-gray-900 text-white rounded-lg border border-purple-700" />
-          <input id="form-checkout__securityCode" placeholder="CVV" className="p-4 bg-gray-900 text-white rounded-lg border border-purple-700" />
+          <input id="form-checkout__expirationDate" placeholder="MM/AA" className="input" />
+          <input id="form-checkout__securityCode" placeholder="CVV" className="input" />
         </div>
-        <input id="form-checkout__cardholderName" placeholder="Nome no cartão" className="w-full p-4 bg-gray-900 text-white rounded-lg border border-purple-700" />
-        <input id="form-checkout__cardholderEmail" placeholder="E-mail" className="w-full p-4 bg-gray-900 text-white rounded-lg border border-purple-700" />
-
-        {/* DIVS VAZIAS OBRIGATÓRIAS */}
+        <input id="form-checkout__cardholderName" placeholder="Nome no cartão" className="input" />
+        <input id="form-checkout__cardholderEmail" placeholder="E-mail" className="input" />
         <div id="form-checkout__issuer"></div>
         <div id="form-checkout__installments"></div>
       </form>
@@ -154,14 +188,17 @@ export default function CheckoutCompleto({
       <button
         onClick={pagar}
         disabled={processing}
-        className="mt-8 w-full bg-gradient-to-r from-green-500 to-emerald-600 text-black font-bold text-xl py-5 rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:opacity-60 transition-all"
+        className="mt-8 w-full bg-gradient-to-r from-green-500 to-emerald-600 text-black font-bold text-xl py-5 rounded-xl hover:scale-105 disabled:opacity-60 transition"
       >
         {processing ? 'Processando...' : 'PAGAR COM CARTÃO'}
       </button>
 
-      <button onClick={onCancel} className="mt-4 w-full text-gray-400 hover:text-white transition">
+      <button onClick={onCancel} className="mt-4 w-full text-gray-400 hover:text-white">
         Cancelar
       </button>
     </div>
   );
 }
+
+// Estilo único
+const input = "w-full p-4 bg-gray-900/80 border border-purple-700 rounded-xl text-white placeholder-gray-500 focus:border-purple-400 outline-none transition";
