@@ -28,15 +28,13 @@ const formatExpiration = (value: string) => {
 
 const formatCpfCnpj = (value: string) => {
   const v = value.replace(/\D/g, '');
-  if (v.length > 14) return v.substring(0, 14); // Limite de caracteres numéricos
+  if (v.length > 14) return v.substring(0, 14); 
   
   if (v.length <= 11) {
-    // CPF Mask: 000.000.000-00
     return v.replace(/(\d{3})(\d)/, '$1.$2')
             .replace(/(\d{3})(\d)/, '$1.$2')
             .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
   } else {
-    // CNPJ Mask: 00.000.000/0000-00
     return v.replace(/^(\d{2})(\d)/, '$1.$2')
             .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
             .replace(/\.(\d{3})(\d)/, '.$1/$2')
@@ -59,10 +57,8 @@ function isValidCNPJ(cnpj: string) {
     if (!cnpj) return false;
     const s = cnpj.replace(/[^\d]+/g, '');
     if (s.length !== 14) return false;
-    // Elimina CNPJs invalidos conhecidos (todos numeros iguais)
     if (/^(\d)\1+$/.test(s)) return false;
 
-    // Valida DVs
     let tamanho = s.length - 2
     let numeros = s.substring(0, tamanho);
     const digitos = s.substring(tamanho);
@@ -475,7 +471,6 @@ export default function CheckoutCompleto({
   };
 
   const validateDoc = () => {
-      // Limpa tudo que não é número
       const cleanDoc = commonFormData.docNumber.replace(/\D/g, '');
       
       if (!cleanDoc) {
@@ -483,13 +478,11 @@ export default function CheckoutCompleto({
           return false;
       }
 
-      // Validação por tamanho (11 = CPF, 14 = CNPJ)
       if (cleanDoc.length !== 11 && cleanDoc.length !== 14) {
           setError('Documento inválido. Digite 11 números para CPF ou 14 para CNPJ.');
           return false;
       }
 
-      // Validação Matemática (evita recusa do gateway)
       let valid = false;
       if (cleanDoc.length === 11) valid = isValidCPF(cleanDoc);
       else if (cleanDoc.length === 14) valid = isValidCNPJ(cleanDoc);
@@ -530,7 +523,7 @@ export default function CheckoutCompleto({
                 user_email: formData.cardholderEmail || user?.email,
                 item_type: itemType,
                 item_id: itemId,
-                docNumber: commonFormData.docNumber.replace(/\D/g, '') // Envia CPF limpo
+                docNumber: commonFormData.docNumber.replace(/\D/g, '')
             }),
         });
 
@@ -569,17 +562,23 @@ export default function CheckoutCompleto({
                 amount: amount,
                 item_type: itemType,
                 item_id: itemId,
-                method: 'pix', // Indica Pix
+                method: 'pix', 
                 docNumber: commonFormData.docNumber.replace(/\D/g, '')
             }),
         });
 
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || 'Erro ao gerar Pix.');
+        if (!res.ok) {
+            // Se falhar a criação do Pix, exibe o erro real (ex: Payer inválido)
+            throw new Error(result.error || result.message || 'Erro ao gerar Pix.');
+        }
         
-        // MP returns point_of_interaction.transaction_data
+        // Verifica se realmente veio o dado do QR Code
         const qrData = result.point_of_interaction?.transaction_data;
-        if (!qrData) throw new Error('Dados do Pix não retornados.');
+        if (!qrData) {
+            console.error("MP Response missing QR Data:", result);
+            throw new Error('O Gateway não retornou o Código Pix. Verifique se o CPF/Email é válido.');
+        }
 
         setPixData({
             qrCode: qrData.qr_code_base64,
@@ -625,7 +624,7 @@ export default function CheckoutCompleto({
               item_type: itemType,
               item_id: itemId,
               installments: Number(installments),
-              docNumber: docNumber.replace(/\D/g, ''), // Envia CPF Limpo
+              docNumber: docNumber.replace(/\D/g, ''),
               creditCard: {
                   holderName: holderName,
                   number: cardNumber.replace(/\s/g, ''),
@@ -686,7 +685,8 @@ export default function CheckoutCompleto({
         if (!res.ok) throw new Error(result.error || 'Erro ao gerar Pix.');
         
         if (!result.qrCode || !result.qrCode.encodedImage) {
-             throw new Error('QR Code não retornado pelo Asaas.');
+             console.error("Asaas missing QR:", result);
+             throw new Error('O Gateway não retornou o QR Code. Tente novamente.');
         }
 
         setPixData({
