@@ -234,7 +234,7 @@ export default function CheckoutCompleto({
               if (!componentMountedRef.current) return;
               console.log('Mercado Pago: Payment Method Received', data);
               setIsIssuerLoading(true);
-              if (data.issuer && data.issuer.name) {
+              if (data && data.issuer && data.issuer.name) {
                   setIssuerOptions([{ value: data.issuer.id, label: data.issuer.name }]);
               } else {
                   setIssuerOptions([]);
@@ -242,7 +242,7 @@ export default function CheckoutCompleto({
               setIsIssuerLoading(false);
 
               // Trigger installments lookup if card number is valid and amount > 0
-              if (data.paymentMethodId && amount > 0) {
+              if (data?.paymentMethodId && amount > 0) {
                   setIsInstallmentsLoading(true);
                   mp.getInstallments({
                       amount: amount.toFixed(2),
@@ -251,7 +251,7 @@ export default function CheckoutCompleto({
                   }).then((instData: any) => {
                       if (!componentMountedRef.current) return;
                       console.log('Mercado Pago: Installments Received (after PM)', instData);
-                      if (instData.payer_costs && instData.payer_costs.length > 0) {
+                      if (instData && instData.payer_costs && instData.payer_costs.length > 0) {
                           setInstallmentsOptions(instData.payer_costs);
                       } else {
                           setInstallmentsOptions([]);
@@ -274,7 +274,7 @@ export default function CheckoutCompleto({
               // It's a fallback/alternative to the logic inside onPaymentMethodReceived.
               console.log('Mercado Pago: Installments Received (direct)', data);
               setIsInstallmentsLoading(true);
-              if (data.payer_costs && data.payer_costs.length > 0) {
+              if (data && data.payer_costs && data.payer_costs.length > 0) {
                   setInstallmentsOptions(data.payer_costs);
               } else {
                   setInstallmentsOptions([]);
@@ -409,7 +409,7 @@ export default function CheckoutCompleto({
   }
 
   return (
-    <div className="max-w-lg mx-auto bg-black/80 backdrop-blur-md p-10 rounded-xl shadow-lg border border-green-500/30">
+    <div className="max-w-sm mx-auto bg-black/80 backdrop-blur-md p-10 rounded-xl shadow-lg border border-green-500/30">
       <h2 className="text-3xl font-bold mb-6 text-center text-white">Checkout - R$ {amount.toFixed(2).replace('.', ',')}</h2>
       <p className="text-sm text-gray-400 text-center mb-6">
         Item: <span className="font-bold">{itemType === 'plan' ? `Plano ${itemId}` : `${itemId} Créditos`}</span>
@@ -485,7 +485,7 @@ export default function CheckoutCompleto({
             </option>
             {installmentsOptions.map((inst: any) => (
                 <option key={inst.installments} value={inst.installments}>
-                    {inst.installments}x de {inst.installment_amount.toFixed(2).replace('.', ',')} ({inst.total_amount.toFixed(2).replace('.', ',')})
+                    {inst.installments}x de {inst.installment_amount?.toFixed(2).replace('.', ',')} ({inst.total_amount?.toFixed(2).replace('.', ',')})
                 </option>
             ))}
           </select>
