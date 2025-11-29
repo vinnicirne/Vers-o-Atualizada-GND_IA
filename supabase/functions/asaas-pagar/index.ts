@@ -71,8 +71,7 @@ serve(async (req) => {
       item_type,
       item_id,
       installments = 1,
-      billingType, // 'PIX' ou 'CREDIT_CARD'
-      docNumber // CPF/CNPJ
+      billingType // 'PIX' ou 'CREDIT_CARD'
     } = reqJson;
 
     if (!amount) {
@@ -95,13 +94,8 @@ serve(async (req) => {
     let asaasCustomerId = userData.asaas_customer_id;
     const referrerId = userData.referred_by;
 
-    // Se docNumber não veio, usa um default para Sandbox (não recomendado em prod)
-    const cpfCnpjToUse = docNumber || "00000000000";
-
     // Garante cliente no Asaas
-    // Lógica atualizada: Sempre tenta buscar/criar ou atualizar se o ID não existir
     if (!asaasCustomerId) {
-      // 1. Tenta criar cliente
       const res = await fetch("https://sandbox.asaas.com/api/v3/customers", {
         method: "POST",
         headers: { "access_token": Deno.env.get("ASAAS_KEY")!, "Content-Type": "application/json" },
@@ -109,31 +103,15 @@ serve(async (req) => {
             name: userFullName, 
             email: userEmail, 
             externalReference: authUser.id,
-            cpfCnpj: cpfCnpjToUse
+            cpfCnpj: "00000000000"
         }),
       });
       const customer = await res.json();
       
       if (!customer.id) {
-          // Se falhar (ex: email já existe no Asaas mas não no nosso banco), tenta buscar por email
-          if (customer.errors?.[0]?.code === 'invalid_customer' || customer.errors?.[0]?.description?.includes('email')) {
-               const searchRes = await fetch(`https://sandbox.asaas.com/api/v3/customers?email=${userEmail}`, {
-                   headers: { "access_token": Deno.env.get("ASAAS_KEY")! }
-               });
-               const searchData = await searchRes.json();
-               if (searchData.data && searchData.data.length > 0) {
-                   asaasCustomerId = searchData.data[0].id;
-               }
-          }
-          
-          if (!asaasCustomerId) {
-             return new Response(JSON.stringify({ error: "Falha ao registrar cliente no Asaas: " + (customer.errors?.[0]?.description || "Erro desconhecido") }), { status: 500, headers: corsHeaders });
-          }
-      } else {
-          asaasCustomerId = customer.id;
+          return new Response(JSON.stringify({ error: "Falha ao criar cliente Asaas." }), { status: 500, headers: corsHeaders });
       }
-      
-      // Salva ID no banco
+      asaasCustomerId = customer.id;
       await supabaseAdmin.from("app_users").update({ asaas_customer_id: asaasCustomerId }).eq("id", authUser.id);
     }
 
@@ -157,7 +135,7 @@ serve(async (req) => {
             paymentPayload.creditCardHolderInfo = creditCardHolderInfo || {
                 name: userFullName,
                 email: userEmail,
-                cpfCnpj: cpfCnpjToUse,
+                cpfCnpj: "00000000000",
                 postalCode: "00000000",
                 addressNumber: "0",
                 phone: "11999999999"
