@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { UserPlan } from '../types/plan.types';
 import { PlanCard } from './PlanCard';
@@ -24,7 +23,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
   // State for the new combined checkout component
   const [showCheckoutCompleto, setShowCheckoutCompleto] = useState(false);
   const [selectedPaymentItem, setSelectedPaymentItem] = useState<{ type: 'plan' | 'credits'; data: any } | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null); // Added 'info' type
 
   // State for dynamic public keys
   const [mpPublicKey, setMpPublicKey] = useState<string | null>(null);
@@ -80,6 +79,14 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
         setToast({ message: "Por favor, faça login para continuar com o pagamento.", type: 'error' });
         return;
     }
+    
+    // Check if amount is valid (greater than 0)
+    const paymentAmount = item.data.price || item.data.amount; // Use price for plan, amount for credits
+    if (paymentAmount <= 0) {
+        setToast({ message: "Este item não possui custo e não requer pagamento.", type: 'info' });
+        return;
+    }
+
     setSelectedPaymentItem(item);
     setShowCheckoutCompleto(true);
     // Any other setup for checkout
@@ -130,7 +137,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
     return (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
             <CheckoutCompleto
-                amount={selectedPaymentItem.data.price}
+                amount={selectedPaymentItem.data.price || selectedPaymentItem.data.amount}
                 itemType={selectedPaymentItem.type}
                 itemId={selectedPaymentItem.data.planId || selectedPaymentItem.data.amount.toString()} // itemId can be planId or credits amount
                 mpPublicKey={mpPublicKey}

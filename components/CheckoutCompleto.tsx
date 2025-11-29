@@ -41,6 +41,13 @@ export default function CheckoutCompleto({
   const [isComponentRendered, setIsComponentRendered] = useState(false);
   const [isMpScriptLoaded, setIsMpScriptLoaded] = useState(false);
 
+  // States for dynamic dropdowns
+  const [issuerOptions, setIssuerOptions] = useState<any[]>([]);
+  const [installmentsOptions, setInstallmentsOptions] = useState<any[]>([]);
+  const [isIssuerLoading, setIsIssuerLoading] = useState(false);
+  const [isInstallmentsLoading, setIsInstallmentsLoading] = useState(false);
+
+
   // Refs for Mercado Pago SDK instance and script element
   const cardFormInstanceRef = useRef<any>(null);
   const mpScriptRef = useRef<HTMLScriptElement | null>(null);
@@ -143,6 +150,9 @@ export default function CheckoutCompleto({
 
   // --- 3. Effect for Mercado Pago Form Initialization ---
   useEffect(() => {
+    // Log the amount to confirm what value is being passed
+    console.log('CheckoutCompleto: Initializing with amount:', amount);
+
     // Conditions for initialization: MP Key exists, script loaded, component rendered, MercadoPago global object available.
     if (!mpPublicKey || !isMpScriptLoaded || !isComponentRendered || !window.MercadoPago) {
       // If prerequisites are not met, ensure the form is unmounted and state is clean.
@@ -160,6 +170,12 @@ export default function CheckoutCompleto({
       }
       setProcessingPayment(false);
       setLoadingSdk(false);
+      
+      // Reset dropdowns
+      setIssuerOptions([]);
+      setInstallmentsOptions([]);
+      setIsIssuerLoading(false);
+      setIsInstallmentsLoading(false);
       return;
     }
     
@@ -172,8 +188,9 @@ export default function CheckoutCompleto({
     if (cardFormInstanceRef.current?.unmount) {
       try {
         cardFormInstanceRef.current.unmount();
+        console.log("Mercado Pago CardForm instance unmounted during cleanup.");
       } catch (e) {
-        console.warn("Error unmounting existing Mercado Pago form before new init:", e);
+        console.warn("Error during Mercado Pago form cleanup (unmount safety):", e);
       }
       cardFormInstanceRef.current = null;
     }
@@ -207,6 +224,62 @@ export default function CheckoutCompleto({
           onFormUnmounted: () => {
               console.log('Mercado Pago Form Unmounted!');
               cardFormInstanceRef.current = null; // Ensure ref is cleared on unmount
+              // Reset dropdowns on unmount
+              setIssuerOptions([]);
+              setInstallmentsOptions([]);
+              setIsIssuerLoading(false);
+              setIsInstallmentsLoading(false);
+          },
+          onPaymentMethodReceived: (data: any) => {
+              if (!componentMountedRef.current) return;
+              console.log('Mercado Pago: Payment Method Received', data);
+              setIsIssuerLoading(true);
+              if (data.issuer && data.issuer.name) {
+                  setIssuerOptions([{ value: data.issuer.id, label: data.issuer.name }]);
+              } else {
+                  setIssuerOptions([]);
+              }
+              setIsIssuerLoading(false);
+
+              // Trigger installments lookup if card number is valid and amount > 0
+              if (data.paymentMethodId && amount > 0) {
+                  setIsInstallmentsLoading(true);
+                  mp.getInstallments({
+                      amount: amount.toFixed(2),
+                      payment_method_id: data.paymentMethodId,
+                      issuer_id: data.issuer?.id,
+                  }).then((instData: any) => {
+                      if (!componentMountedRef.current) return;
+                      console.log('Mercado Pago: Installments Received (after PM)', instData);
+                      if (instData.payer_costs && instData.payer_costs.length > 0) {
+                          setInstallmentsOptions(instData.payer_costs);
+                      } else {
+                          setInstallmentsOptions([]);
+                      }
+                      setIsInstallmentsLoading(false);
+                  }).catch((err: any) => {
+                      if (!componentMountedRef.current) return;
+                      console.error('Error fetching installments after PM:', err);
+                      setInstallmentsOptions([]);
+                      setIsInstallmentsLoading(false);
+                  });
+              } else {
+                  setInstallmentsOptions([]);
+                  setIsInstallmentsLoading(false);
+              }
+          },
+          onInstallmentsReceived: (data: any) => {
+              if (!componentMountedRef.current) return;
+              // This callback can be triggered directly by SDK based on other events too.
+              // It's a fallback/alternative to the logic inside onPaymentMethodReceived.
+              console.log('Mercado Pago: Installments Received (direct)', data);
+              setIsInstallmentsLoading(true);
+              if (data.payer_costs && data.payer_costs.length > 0) {
+                  setInstallmentsOptions(data.payer_costs);
+              } else {
+                  setInstallmentsOptions([]);
+              }
+              setIsInstallmentsLoading(false);
           },
           onSubmit: async (event: any) => {
             event.preventDefault();
@@ -375,13 +448,47 @@ export default function CheckoutCompleto({
         </div>
 
         <div className="form-control">
-          <label htmlFor="form-checkout__issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Banco Emissor</label>
-          <select id="form-checkout__issuer" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"></select>
+          <label htmlFor="form-checkout__issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">
+            Banco Emissor
+            {isIssuerLoading && <i className="fas fa-spinner fa-spin ml-2 text-green-500 text-sm"></i>}
+          </label>
+          <select 
+            id="form-checkout__issuer" 
+            className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"
+            disabled={isIssuerLoading || issuerOptions.length === 0} // Disable if loading or no options
+          >
+            <option value="" disabled selected>
+              {isIssuerLoading 
+                ? 'Carregando bancos...' 
+                : (issuerOptions.length > 0 ? 'Selecione o banco' : 'Digite o nº do cartão primeiro')}
+            </option>
+            {issuerOptions.map((issuer) => (
+                <option key={issuer.value} value={issuer.value}>{issuer.label}</option>
+            ))}
+          </select>
         </div>
 
         <div className="form-control">
-          <label htmlFor="form-checkout__installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Parcelas</label>
-          <select id="form-checkout__installments" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"></select>
+          <label htmlFor="form-checkout__installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">
+            Parcelas
+            {isInstallmentsLoading && <i className="fas fa-spinner fa-spin ml-2 text-green-500 text-sm"></i>}
+          </label>
+          <select 
+            id="form-checkout__installments" 
+            className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"
+            disabled={isInstallmentsLoading || installmentsOptions.length === 0} // Disable if loading or no options
+          >
+            <option value="" disabled selected>
+              {isInstallmentsLoading 
+                ? 'Carregando parcelas...' 
+                : (installmentsOptions.length > 0 ? 'Selecione o número de parcelas' : 'Digite o nº do cartão primeiro')}
+            </option>
+            {installmentsOptions.map((inst: any) => (
+                <option key={inst.installments} value={inst.installments}>
+                    {inst.installments}x de {inst.installment_amount.toFixed(2).replace('.', ',')} ({inst.total_amount.toFixed(2).replace('.', ',')})
+                </option>
+            ))}
+          </select>
         </div>
         <button
             type="submit"
