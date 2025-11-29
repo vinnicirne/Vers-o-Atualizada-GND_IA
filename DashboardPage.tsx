@@ -16,7 +16,7 @@ import { IntegrationsModal } from './components/integrations/IntegrationsModal';
 import { AffiliateInvitePopup } from './components/AffiliateInvitePopup';
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
-import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
+// REMOVIDO: import { handlePlanSubscription, handleCreditPurchase } from './services/paymentService';
 import { api } from './services/api';
 import { logContentGeneration } from './services/loggerService';
 import { ServiceKey, UserPlan } from './types/plan.types';
@@ -557,8 +557,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         <PlansModal 
             currentPlanId={currentPlan.id} 
             onClose={() => setShowPlansModal(false)} 
-            onSelectPlan={() => handlePlanSelection(currentPlan.id)} // Pass currentPlan.id, actual logic is in PlansModal
-            onBuyCredits={() => handleBuyCredits(0, 0)} // Pass dummy values, actual logic in PlansModal
+            onSelectPlan={() => console.log('Plan selection triggered, handled by modal internally')} // No-op
+            onBuyCredits={() => console.log('Buy credits triggered, handled by modal internally')} // No-op
         />
       )}
 

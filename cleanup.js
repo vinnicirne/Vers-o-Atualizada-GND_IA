@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -15,7 +14,9 @@ const filesToDelete = [
   'components/admin/AllNewsViewer.tsx',
   'components/Layout.tsx',
   'components/EmptyState.tsx',
-  'Header.tsx' // Arquivo duplicado na raiz (o correto está em components/Header.tsx)
+  'Header.tsx', // Arquivo duplicado na raiz (o correto está em components/Header.tsx)
+  'services/paymentService.ts', // Removido
+  'components/MercadoPagoCheckout.tsx' // Removido
 ];
 
 console.log('🧹 Iniciando limpeza de arquivos obsoletos (Lixo Digital)...');

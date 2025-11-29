@@ -47,6 +47,7 @@ export interface User {
   affiliate_code?: string;
   referred_by?: string;
   affiliate_balance?: number;
+  asaas_customer_id?: string; // Novo campo para Asaas Customer ID
 }
 
 export interface AffiliateLog {
@@ -91,8 +92,24 @@ export interface Transaction {
   metodo: PaymentMethod;
   status: TransactionStatus;
   data: string;
-  external_id?: string; // Mercado Pago ID
-  metadata?: any; // Dados extras (plano comprado, qtd creditos, etc)
+  external_id?: string; // Mercado Pago ID, Asaas ID
+  metadata?: { // Dados extras
+    item_type?: 'plan' | 'credits';
+    item_id?: string; // ID do plano ou pacote de créditos
+    provider?: string; // Ex: 'mercado_pago', 'asaas'
+    description?: string; // Descrição do item comprado
+    plan_id?: string; // ID do plano, se for compra de plano
+    credits_amount?: number; // Quantidade de créditos, se for compra de créditos
+    // Mercado Pago specific
+    payment_method_id?: string; // e.g., 'visa'
+    issuer_id?: string; // e.g., '24' for Visa
+    installments?: number;
+    // Asaas specific
+    card_token_id?: string;
+    customer_id?: string; // Asaas customer ID
+    // Any other relevant data
+    [key: string]: any;
+  };
   user?: {
     email: string;
   };

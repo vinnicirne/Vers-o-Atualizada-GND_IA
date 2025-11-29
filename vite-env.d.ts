@@ -14,5 +14,7 @@ declare namespace NodeJS {
     VITE_SUPABASE_ANON_KEY: string;
     GEMINI_API_KEY: string;
     API_KEY: string;
+    MP_ACCESS_TOKEN: string; // Adicionado para tipagem
+    ASAAS_KEY: string; // Adicionado para tipagem
   }
 }
