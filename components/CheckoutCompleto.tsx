@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { supabase } from '../services/supabaseClient';
+import { supabase, supabaseUrl } from '../services/supabaseClient';
 
 interface CheckoutCompletoProps {
   amount: number;
@@ -15,6 +16,13 @@ interface CheckoutCompletoProps {
 
 type GatewayType = 'mercadopago' | 'asaas' | null;
 type PaymentMethodType = 'card' | 'pix';
+
+// Declaração global para o objeto MercadoPago SDK
+declare global {
+  interface Window {
+    MercadoPago: any;
+  }
+}
 
 // --- Helpers para CPF/CNPJ (Lógica Refatorada) ---
 function isValidCPF(cpf: string) {
@@ -113,8 +121,9 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
         <div className="space-y-4 animate-fade-in">
             {/* CPF/CNPJ sempre visível */}
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CPF ou CNPJ</label>
+                <label htmlFor="docNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CPF ou CNPJ</label>
                 <input
+                    id="docNumber"
                     type="text"
                     className={inputClass}
                     placeholder="000.000.000-00"
@@ -125,8 +134,9 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
             </div>
 
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Número do Cartão</label>
+                <label htmlFor="cardNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Número do Cartão</label>
                 <input
+                    id="cardNumber"
                     type="text"
                     className={inputClass}
                     placeholder="0000 0000 0000 0000"
@@ -138,8 +148,9 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Validade</label>
+                    <label htmlFor="expirationDate" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Validade</label>
                     <input
+                        id="expirationDate"
                         type="text"
                         className={inputClass}
                         placeholder="MM/AA"
@@ -149,8 +160,9 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
                     />
                 </div>
                 <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CVV</label>
+                    <label htmlFor="cvv" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CVV</label>
                     <input
+                        id="cvv"
                         type="text"
                         className={inputClass}
                         placeholder="123"
@@ -162,8 +174,9 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
             </div>
 
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nome no Cartão</label>
+                <label htmlFor="holderName" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nome no Cartão</label>
                 <input
+                    id="holderName"
                     type="text"
                     className={inputClass}
                     placeholder="Como impresso no cartão"
@@ -173,8 +186,9 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
             </div>
 
             <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Parcelas</label>
+                <label htmlFor="installments" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Parcelas</label>
                 <select
+                    id="installments"
                     className={inputClass}
                     value={formData.installments}
                     onChange={(e) => onChange('installments', e.target.value)}
@@ -221,7 +235,10 @@ export default function CheckoutCompleto({
   const [fatalError, setFatalError] = useState<string | null>(null);
   
   const pollInterval = useRef<any>(null);
-  const cardFormRef = useRef<any>(null); // Ref para MP SDK se necessário (mantido para compatibilidade futura)
+  
+  // Ref para o objeto MercadoPago SDK (e cardForm se aplicável)
+  const mpSDK = useRef<any>(null);
+  const mpCardForm = useRef<any>(null);
 
   useEffect(() => {
     if (mpPublicKey) {
@@ -235,6 +252,39 @@ export default function CheckoutCompleto({
         setLoading(false);
     }
   }, [mpPublicKey, asaasPublicKey]);
+
+  // --- Inicialização do Mercado Pago SDK e CardForm ---
+  useEffect(() => {
+    if (activeGateway === 'mercadopago' && mpPublicKey && window.MercadoPago) {
+      if (!mpSDK.current) {
+        mpSDK.current = new window.MercadoPago(mpPublicKey, {
+          locale: 'pt-BR'
+        });
+      }
+
+      if (!mpCardForm.current) {
+        // Assume que os campos de input já têm IDs ou names que o MP SDK pode usar
+        // IDs comuns para MP SDK: `cardNumber`, `cardholderName`, `cardExpirationMonth`, `cardExpirationYear`, `securityCode`
+        // Para simplificar, vou mapear nossos campos para o que o MP SDK espera.
+        // Nossos inputs são genéricos, então passamos o elemento diretamente se necessário,
+        // ou dependemos do MP SDK ser esperto o suficiente.
+        // O MP SDK v1 não usa um objeto "cardForm" para todos os campos, mas sim um objeto MercadoPago
+        // que tem métodos para tokenização. Vamos usar `mpSDK.current.createCardToken`.
+
+        // Limpeza de qualquer tokenization anterior
+        mpSDK.current.fields = {}; // Reseta os campos que o MP SDK monitora
+      }
+    }
+
+    // Cleanup: Destroi o cardForm se ele existe
+    return () => {
+      // O MP SDK v1 não tem um método `unmount` ou `destroy` explícito para CardForm.
+      // O reset da ref e a re-inicialização são a melhor abordagem.
+      mpCardForm.current = null;
+      // mpSDK.current = null; // Não destrua o SDK global, apenas a instância de form
+    };
+  }, [activeGateway, mpPublicKey]);
+
 
   useEffect(() => {
       setCommonFormData(prev => ({ ...prev, amount }));
@@ -288,7 +338,7 @@ export default function CheckoutCompleto({
         const endpoint = activeGateway === 'mercadopago' ? 'mp-pagar' : 'asaas-pagar';
         const { data: { session } } = await supabase.auth.getSession();
         
-        const res = await fetch(`https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/${endpoint}`, {
+        const res = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
           body: JSON.stringify({ check_status_id: transactionId }),
@@ -324,7 +374,7 @@ export default function CheckoutCompleto({
         docNumber: cleanDoc
       };
 
-      const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
+      const res = await fetch(`${supabaseUrl}/functions/v1/mp-pagar`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify(payload),
@@ -367,7 +417,7 @@ export default function CheckoutCompleto({
           const { data: { session } } = await supabase.auth.getSession();
           const cleanDoc = commonFormData.docNumber.replace(/\D/g, '');
 
-          const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/asaas-pagar', {
+          const res = await fetch(`${supabaseUrl}/functions/v1/asaas-pagar`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
             body: JSON.stringify({
@@ -401,7 +451,7 @@ export default function CheckoutCompleto({
       }
   };
 
-  // --- Pagamento com Cartão (Genérico MP/Asaas via Backend) ---
+  // --- Pagamento com Cartão ---
   const handleCardSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (processing) return;
@@ -420,29 +470,84 @@ export default function CheckoutCompleto({
 
       try {
           const [month, yearRaw] = expirationDate.split('/');
-          const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw;
+          const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw; // Formato YYYY para API
           const cleanDoc = docNumber.replace(/\D/g, '');
 
-          const payload = {
+          let payload: any = {
               amount: Number(formAmount),
               item_type: itemType,
               item_id: itemId,
               installments: Number(installments),
               docNumber: cleanDoc,
-              // Dados de cartão enviados ao backend para tokenização segura (Asaas) ou processamento (MP)
-              creditCard: {
-                  holderName: holderName,
-                  number: cleanCard,
-                  expiryMonth: month,
-                  expiryYear: year,
-                  ccv: cvv
-              }
           };
           
-          const endpoint = activeGateway === 'mercadopago' ? 'mp-pagar' : 'asaas-pagar';
           const { data: { session } } = await supabase.auth.getSession();
-          
-          const res = await fetch(`https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/${endpoint}`, {
+          let endpoint = '';
+
+          if (activeGateway === 'mercadopago') {
+            if (!mpSDK.current) {
+                throw new Error("SDK do Mercado Pago não inicializado.");
+            }
+            
+            // --- TOKENIZAÇÃO MP NO CLIENT-SIDE ---
+            const cardTokenData = {
+                card_number: cleanCard,
+                card_holder_name: holderName,
+                card_expiration_month: month,
+                card_expiration_year: year,
+                security_code: cvv,
+                doc_type: cleanDoc.length === 11 ? 'CPF' : 'CNPJ',
+                doc_number: cleanDoc
+            };
+
+            const mpTokenResponse = await new Promise((resolve, reject) => {
+                mpSDK.current.createCardToken(cardTokenData, (status: number, response: any) => {
+                    if (status === 200 || status === 201) {
+                        resolve(response);
+                    } else {
+                        reject(response.message || `Erro MP SDK: ${status}`);
+                    }
+                });
+            });
+
+            const { id: token, payment_method: { id: payment_method_id }, issuer: { id: issuer_id } } = mpTokenResponse as any;
+            
+            payload = {
+                ...payload,
+                token,
+                payment_method_id,
+                issuer_id,
+                method: 'card' // Indica ao backend que é cartão para MP
+            };
+            endpoint = 'mp-pagar';
+
+          } else if (activeGateway === 'asaas') {
+              // --- ASAAS: CONTINUA ENVIANDO DADOS CRUS (BACKEND TOKENIZA) ---
+              payload = {
+                  ...payload,
+                  billingType: 'CREDIT_CARD',
+                  creditCard: {
+                      holderName: holderName,
+                      number: cleanCard,
+                      expiryMonth: month,
+                      expiryYear: year,
+                      ccv: cvv
+                  },
+                  creditCardHolderInfo: { // Asaas espera informações completas do portador do cartão
+                      name: user?.full_name || holderName,
+                      email: user?.email,
+                      cpfCnpj: cleanDoc,
+                      postalCode: "00000000", // Placeholder, idealmente coletado
+                      addressNumber: "0",     // Placeholder, idealmente coletado
+                      phone: "11999999999"    // Placeholder, idealmente coletado
+                  }
+              };
+              endpoint = 'asaas-pagar';
+          } else {
+              throw new Error("Gateway de pagamento não selecionado ou configurado.");
+          }
+
+          const res = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
               body: JSON.stringify(payload),
@@ -553,8 +658,9 @@ export default function CheckoutCompleto({
               {!pixData ? (
                   <div className="text-center py-4 animate-fade-in">
                       <div className="mb-4 text-left">
-                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">CPF ou CNPJ (Obrigatório para Pix)</label>
+                          <label htmlFor="docNumberPix" className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">CPF ou CNPJ (Obrigatório para Pix)</label>
                           <input
+                            id="docNumberPix"
                             type="text"
                             className="w-full h-12 bg-gray-900 border border-gray-700 rounded-lg px-4 text-white focus:border-green-500 focus:outline-none transition-colors"
                             placeholder="000.000.000-00"

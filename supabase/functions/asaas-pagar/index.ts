@@ -23,6 +23,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.error("[asaas-pagar] Token de autenticação ausente.");
       return new Response(JSON.stringify({ error: "Token ausente" }), { status: 401, headers: corsHeaders });
     }
     const jwt = authHeader.split(" ")[1];
@@ -40,6 +41,7 @@ serve(async (req) => {
 
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !authUser) {
+      console.error("[asaas-pagar] Sessão inválida ou expirada.", authError);
       return new Response(JSON.stringify({ error: "Sessão inválida." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -47,6 +49,7 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
+    console.log("[asaas-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
 
     // --- CHECK FOR SERVER CONFIG ---
     const asaasKey = Deno.env.get("ASAAS_KEY");
@@ -64,12 +67,19 @@ serve(async (req) => {
 
     // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
     if (reqJson.check_status_id) {
-        const { data: tx } = await supabaseAdmin
+        console.log(`[asaas-pagar] Verificando status para ID: ${reqJson.check_status_id}`);
+        const { data: tx, error: txError } = await supabaseAdmin
             .from("transactions")
             .select("status")
             .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
             .single();
         
+        if (txError && txError.code !== 'PGRST116') { // PGRST116 = no rows found
+            console.error(`[asaas-pagar] Erro ao buscar transação para polling: ${txError.message}`);
+            return new Response(JSON.stringify({ error: `Database error during polling: ${txError.message}` }), { status: 500, headers: corsHeaders });
+        }
+
+        console.log(`[asaas-pagar] Status da transação ${reqJson.check_status_id}: ${tx?.status || 'pending'}`);
         return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -89,18 +99,20 @@ serve(async (req) => {
       docNumber // CPF/CNPJ
     } = reqJson;
 
-    if (!amount) {
-        return new Response(JSON.stringify({ error: "Valor inválido." }), { status: 400, headers: corsHeaders });
+    if (!amount || !item_type || !item_id || !billingType) {
+        console.error("[asaas-pagar] Dados do pagamento incompletos:", reqJson);
+        return new Response(JSON.stringify({ error: "Dados do pagamento incompletos." }), { status: 400, headers: corsHeaders });
     }
 
     // Busca dados do usuário
-    const { data: userData } = await supabaseAdmin
+    const { data: userData, error: userDataError } = await supabaseAdmin
       .from("app_users")
       .select("email, full_name, asaas_customer_id, referred_by")
       .eq("id", authUser.id)
       .single();
 
-    if (!userData?.email) {
+    if (userDataError || !userData?.email) {
+      console.error("[asaas-pagar] Usuário não encontrado no banco de dados ou erro:", userDataError);
       return new Response(JSON.stringify({ error: "Usuário não encontrado." }), { status: 404, headers: corsHeaders });
     }
 
@@ -113,10 +125,10 @@ serve(async (req) => {
     const cpfCnpjToUse = docNumber || "00000000000";
 
     // Garante cliente no Asaas
-    // Lógica atualizada: Sempre tenta buscar/criar ou atualizar se o ID não existir
     if (!asaasCustomerId) {
+      console.log(`[asaas-pagar] Cliente Asaas não encontrado para ${authUser.id}. Tentando criar/buscar.`);
       // 1. Tenta criar cliente
-      const res = await fetch(`${asaasApiBaseUrl}/api/v3/customers`, {
+      let customerResponse = await fetch(`${asaasApiBaseUrl}/api/v3/customers`, {
         method: "POST",
         headers: { "access_token": asaasKey, "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -126,29 +138,35 @@ serve(async (req) => {
             cpfCnpj: cpfCnpjToUse
         }),
       });
-      const customer = await res.json();
+      let customer = await customerResponse.json();
+      console.log("[asaas-pagar] Resposta de criação/busca de cliente Asaas:", JSON.stringify(customer));
       
       if (!customer.id) {
           // Se falhar (ex: email já existe no Asaas mas não no nosso banco), tenta buscar por email
-          if (customer.errors?.[0]?.code === 'invalid_customer' || customer.errors?.[0]?.description?.includes('email')) {
+          if (customer.errors?.[0]?.code === 'invalid_customer' || (customer.errors?.[0]?.description && customer.errors[0].description.includes('email'))) {
+               console.log("[asaas-pagar] Erro ao criar cliente (possivelmente email já existe). Tentando buscar por email.");
                const searchRes = await fetch(`${asaasApiBaseUrl}/api/v3/customers?email=${userEmail}`, {
                    headers: { "access_token": asaasKey }
                });
                const searchData = await searchRes.json();
                if (searchData.data && searchData.data.length > 0) {
                    asaasCustomerId = searchData.data[0].id;
+                   console.log(`[asaas-pagar] Cliente Asaas encontrado por email: ${asaasCustomerId}`);
                }
           }
           
           if (!asaasCustomerId) {
+             console.error("[asaas-pagar] Falha final ao registrar cliente no Asaas:", customer.errors?.[0]?.description || JSON.stringify(customer));
              return new Response(JSON.stringify({ error: "Falha ao registrar cliente no Asaas: " + (customer.errors?.[0]?.description || "Erro desconhecido") }), { status: 500, headers: corsHeaders });
           }
       } else {
           asaasCustomerId = customer.id;
+          console.log(`[asaas-pagar] Cliente Asaas criado/confirmado: ${asaasCustomerId}`);
       }
       
       // Salva ID no banco
-      await supabaseAdmin.from("app_users").update({ asaas_customer_id: asaasCustomerId }).eq("id", authUser.id);
+      const { error: updateCustomerError } = await supabaseAdmin.from("app_users").update({ asaas_customer_id: asaasCustomerId }).eq("id", authUser.id);
+      if (updateCustomerError) console.warn(`[asaas-pagar] Erro ao salvar asaas_customer_id no DB: ${updateCustomerError.message}`);
     }
 
     const isPix = billingType === 'PIX';
@@ -158,7 +176,7 @@ serve(async (req) => {
       customer: asaasCustomerId,
       billingType: isPix ? "PIX" : "CREDIT_CARD",
       value: Number(amount),
-      dueDate: new Date(Date.now()).toISOString().slice(0, 10),
+      dueDate: new Date(Date.now()).toISOString().slice(0, 10), // Vencimento hoje
       description: `GDN_IA: ${item_type} (${item_id})`,
       remoteIp: req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1",
     };
@@ -172,9 +190,9 @@ serve(async (req) => {
                 name: userFullName,
                 email: userEmail,
                 cpfCnpj: cpfCnpjToUse,
-                postalCode: "00000000",
-                addressNumber: "0",
-                phone: "11999999999"
+                postalCode: "00000000", // Placeholder, idealmente coletado
+                addressNumber: "0",     // Placeholder, idealmente coletado
+                phone: "11999999999"    // Placeholder, idealmente coletado
             };
         }
         if (Number(installments) > 1) {
@@ -183,6 +201,7 @@ serve(async (req) => {
         }
     }
 
+    console.log("[asaas-pagar] Enviando payload de pagamento para Asaas API:", JSON.stringify(paymentPayload));
     // Cria cobrança
     const paymentRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments`, {
       method: "POST",
@@ -191,22 +210,36 @@ serve(async (req) => {
     });
 
     const paymentData = await paymentRes.json();
+    console.log("[asaas-pagar] Resposta completa do pagamento Asaas:", JSON.stringify(paymentData));
 
     if (!paymentRes.ok || paymentData.errors) {
         const errorMsg = paymentData.errors?.[0]?.description || paymentData.error || "Pagamento recusado.";
+        console.error("[asaas-pagar] Erro na API do Asaas:", errorMsg);
         return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: corsHeaders });
     }
 
-    // Salva transação
-    await supabaseAdmin.from("transactions").insert({
+    // Salva transação no DB
+    const transactionStatus = (paymentData.status === "CONFIRMED" || paymentData.status === "RECEIVED") ? "approved" : "pending";
+    console.log(`[asaas-pagar] Pagamento Asaas ID: ${paymentData.id}, Status Asaas: ${paymentData.status}, Status DB: ${transactionStatus}`);
+
+    const { data: newTx, error: insertTxError } = await supabaseAdmin.from("transactions").insert({
       usuario_id: authUser.id,
       valor: Number(amount),
       metodo: isPix ? "pix" : "card",
-      status: "pending", // Sempre pending no início, mesmo cartão leva uns segundos
+      status: transactionStatus, 
       external_id: paymentData.id,
-      metadata: { provider: "asaas", item_type, item_id },
+      metadata: { provider: "asaas", item_type, item_id, asaas_status: paymentData.status },
       data: new Date().toISOString(),
-    });
+    })
+    .select()
+    .single(); // Para obter o ID da transação inserida
+
+    if (insertTxError) {
+        console.error(`[asaas-pagar] Erro ao inserir transação no DB: ${insertTxError.message}`);
+        return new Response(JSON.stringify({ error: `Failed to save transaction: ${insertTxError.message}` }), { status: 500, headers: corsHeaders });
+    }
+    console.log(`[asaas-pagar] Transação salva no DB com ID: ${newTx.id}, External ID: ${newTx.external_id}`);
+
 
     // Se for PIX, busca o QR Code (2ª chamada necessária no Asaas)
     if (isPix) {
@@ -215,7 +248,13 @@ serve(async (req) => {
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
         const qrData = await qrRes.json();
+        console.log("[asaas-pagar] Resposta do QR Code Pix Asaas:", JSON.stringify(qrData));
         
+        if (!qrRes.ok || qrData.errors) {
+            console.error("[asaas-pagar] Erro ao buscar QR Code Pix:", qrData.errors?.[0]?.description || JSON.stringify(qrData));
+            return new Response(JSON.stringify({ error: "Falha ao gerar QR Code Pix." }), { status: 500, headers: corsHeaders });
+        }
+
         return new Response(JSON.stringify({ 
             success: true, 
             paymentId: paymentData.id, 
@@ -226,10 +265,11 @@ serve(async (req) => {
         });
     }
 
-    // Se for Cartão, verifica status imediato
-    if (paymentData.status === "CONFIRMED" || paymentData.status === "RECEIVED") {
-        await supabaseAdmin.from("transactions").update({ status: 'approved' }).eq('external_id', paymentData.id);
+    // Se for Cartão e status imediato for aprovado, libera benefícios
+    if (transactionStatus === "approved") {
+        console.log(`[asaas-pagar] Pagamento aprovado no Asaas. Iniciando liberação de benefícios para usuário ${authUser.id}.`);
         await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
+        console.log("[asaas-pagar] Liberação de benefícios concluída.");
     }
 
     return new Response(JSON.stringify({ success: true, status: paymentData.status, id: paymentData.id }), {
@@ -238,43 +278,69 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error("Erro interno:", err);
-    return new Response(JSON.stringify({ error: `Erro interno: ${err.message}` }), {
+    console.error("[asaas-pagar] Erro interno no processamento:", err);
+    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
 
-// Helper de Benefícios
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
+    console.log(`[Benefits Helper (asaas-pagar)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}, amount: ${amount}, referrerId: ${referrerId}`);
+
     if (itemType === "plan") {
         await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
+        const { data: config, error: configError } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
+        if (configError) console.warn(`[Benefits Helper (asaas-pagar)] Erro ao buscar config de planos: ${configError.message}`);
+
         if (config?.value) {
           const plan = (config.value as any[]).find((p: any) => p.id === itemId);
           if (plan) {
             await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
+          } else {
+            console.warn(`[Benefits Helper (asaas-pagar)] Plano "${itemId}" não encontrado na configuração de sistema. Créditos não atribuídos.`);
           }
+        } else {
+            console.warn(`[Benefits Helper (asaas-pagar)] Configuração 'all_plans' não encontrada ou vazia.`);
+        }
+    } else if (itemType === "credits") {
+        const { data: current, error: currentCreditsError } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
+        if (currentCreditsError) console.warn(`[Benefits Helper (asaas-pagar)] Erro ao buscar créditos atuais para ${userId}: ${currentCreditsError.message}`);
+
+        const currentCredits = current?.credits === -1 ? -1 : (current?.credits || 0);
+        
+        if (currentCredits !== -1) {
+            const newCredits = currentCredits + Number(itemId); 
+            await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
+        } else {
+            console.log(`[Benefits Helper (asaas-pagar)] Usuário ${userId} tem créditos ilimitados. Nenhuma alteração de saldo.`);
         }
     }
-    if (itemType === "credits") {
-        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        const newCredits = (current?.credits || 0) + Number(itemId);
-        await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
-    }
+
     if (referrerId) {
-        const commission = parseFloat((Number(amount) * 0.2).toFixed(2));
-        const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
-        if (refUser) {
-            const newBalance = (refUser.affiliate_balance || 0) + commission;
-            await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
-            await supabaseAdmin.from("affiliate_logs").insert({
-                affiliate_id: referrerId,
-                source_user_id: userId,
-                amount: commission,
-                description: `Comissão 20% - ${itemType}`
-            });
+        const COMMISSION_RATE = 0.20; // Definido como constante
+        const commission = parseFloat((Number(amount) * COMMISSION_RATE).toFixed(2));
+        if (commission > 0) {
+            const { data: refUser, error: refUserError } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
+            if (refUserError) console.error(`[Benefits Helper (asaas-pagar)] Erro ao buscar afiliado ${referrerId}: ${refUserError.message}`);
+
+            if (refUser) {
+                const newBalance = (refUser.affiliate_balance || 0) + commission;
+                await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
+                
+                await supabaseAdmin.from("affiliate_logs").insert({
+                    affiliate_id: referrerId,
+                    source_user_id: userId,
+                    amount: commission,
+                    description: `Comissão ${COMMISSION_RATE * 100}% - ${itemType === 'plan' ? 'Assinatura Plano' : 'Compra Créditos'} (Via asaas-pagar)`
+                });
+            }
+        } else {
+            console.log(`[Benefits Helper (asaas-pagar)] Comissão calculada foi zero ou negativa (${commission}). Não será processada.`);
         }
+    } else {
+        console.log(`[Benefits Helper (asaas-pagar)] Usuário ${userId} não foi indicado. Nenhuma comissão de afiliado.`);
     }
+    console.log(`[Benefits Helper (asaas-pagar)] Liberação de benefícios concluída.`);
 }

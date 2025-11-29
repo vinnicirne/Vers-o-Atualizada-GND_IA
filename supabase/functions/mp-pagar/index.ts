@@ -23,6 +23,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
+      console.error("[mp-pagar] Token de autenticação ausente.");
       return new Response(JSON.stringify({ error: "Token de autenticação ausente" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -56,6 +57,7 @@ serve(async (req) => {
 
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !authUser) {
+      console.error("[mp-pagar] Sessão inválida ou expirada.", authError);
       return new Response(JSON.stringify({ error: "Sessão inválida ou expirada." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -63,15 +65,23 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
+    console.log("[mp-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
 
     // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
     if (reqJson.check_status_id) {
-        const { data: tx } = await supabaseAdmin
+        console.log(`[mp-pagar] Verificando status para ID: ${reqJson.check_status_id}`);
+        const { data: tx, error: txError } = await supabaseAdmin
             .from("transactions")
             .select("status")
             .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
             .single();
         
+        if (txError && txError.code !== 'PGRST116') { // PGRST116 = no rows found
+             console.error(`[mp-pagar] Erro ao buscar transação para polling: ${txError.message}`);
+             return new Response(JSON.stringify({ error: `Database error during polling: ${txError.message}` }), { status: 500, headers: corsHeaders });
+        }
+        
+        console.log(`[mp-pagar] Status da transação ${reqJson.check_status_id}: ${tx?.status || 'pending'}`);
         return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -87,24 +97,26 @@ serve(async (req) => {
       amount,
       item_type,
       item_id,
-      method,
+      method, // 'pix' ou 'card'
       docNumber
     } = reqJson;
 
-    if (!amount || !item_type || !item_id) {
+    if (!amount || !item_type || !item_id || !method) {
+      console.error("[mp-pagar] Dados do pagamento incompletos:", reqJson);
       return new Response(JSON.stringify({ error: "Dados do pagamento incompletos" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const { data: userData } = await supabaseAdmin
+    const { data: userData, error: userDataError } = await supabaseAdmin
       .from("app_users")
       .select("email, referred_by, full_name")
       .eq("id", authUser.id)
       .single();
 
-    if (!userData?.email) {
+    if (userDataError || !userData?.email) {
+      console.error("[mp-pagar] Usuário não encontrado no banco de dados ou erro:", userDataError);
       return new Response(JSON.stringify({ error: "Usuário não encontrado no banco de dados." }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -124,7 +136,7 @@ serve(async (req) => {
         payer: {
             email: userEmail,
             first_name: firstName,
-            last_name: lastName || 'Silva'
+            last_name: lastName
         }
     };
 
@@ -142,14 +154,17 @@ serve(async (req) => {
     if (isPix) {
         mpPayload.payment_method_id = 'pix';
     } else {
-        if (!token) throw new Error("Token do cartão é obrigatório.");
+        if (!token) {
+            console.error("[mp-pagar] Token do cartão ausente para pagamento com cartão.");
+            throw new Error("Token do cartão é obrigatório.");
+        }
         mpPayload.token = token;
         mpPayload.installments = Number(installments);
         mpPayload.payment_method_id = payment_method_id;
         if (issuer_id) mpPayload.issuer_id = issuer_id;
     }
 
-    console.log("Enviando payload para MP:", JSON.stringify(mpPayload));
+    console.log("[mp-pagar] Enviando payload para MP API:", JSON.stringify(mpPayload));
 
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
@@ -162,10 +177,11 @@ serve(async (req) => {
     });
 
     const payment = await mpResponse.json();
+    console.log("[mp-pagar] Resposta completa do Mercado Pago:", JSON.stringify(payment));
 
     // Tratamento de Erro do MP
     if (!mpResponse.ok) {
-        console.error("MP API Error:", payment);
+        console.error("[mp-pagar] Erro na API do Mercado Pago:", payment);
         
         let errorMessage = payment.message || "Erro desconhecido no Mercado Pago";
         const errorCode = payment.error || "unknown_error";
@@ -186,8 +202,9 @@ serve(async (req) => {
     }
 
     const transactionStatus = payment.status === "approved" ? "approved" : "pending";
+    console.log(`[mp-pagar] Pagamento MP ID: ${payment.id}, Status MP: ${payment.status}, Status DB: ${transactionStatus}`);
 
-    await supabaseAdmin
+    const { data: newTx, error: insertTxError } = await supabaseAdmin
       .from("transactions")
       .insert({
         usuario_id: authUser.id,
@@ -202,12 +219,21 @@ serve(async (req) => {
             mp_id: payment.id
         },
         data: new Date().toISOString(),
-      });
+      })
+      .select()
+      .single(); // Para obter o ID da transação inserida
+
+    if (insertTxError) {
+        console.error(`[mp-pagar] Erro ao inserir transação no DB: ${insertTxError.message}`);
+        return new Response(JSON.stringify({ error: `Failed to save transaction: ${insertTxError.message}` }), { status: 500, headers: corsHeaders });
+    }
+    console.log(`[mp-pagar] Transação salva no DB com ID: ${newTx.id}, External ID: ${newTx.external_id}`);
+
 
     if (isPix) {
         // Valida se o QR Code realmente veio
         if (!payment.point_of_interaction?.transaction_data?.qr_code) {
-             console.error("MP Pix criado mas sem QR Code. Resposta completa:", payment);
+             console.error("[mp-pagar] Pix criado mas sem QR Code. Resposta completa:", payment);
              return new Response(JSON.stringify({ 
                  error: "Pix criado, mas o banco não retornou o QR Code. Tente novamente ou verifique seus dados.",
                  full_response: payment 
@@ -223,8 +249,11 @@ serve(async (req) => {
         });
     }
 
+    // Para pagamentos com cartão, se aprovado imediatamente, já libera os benefícios
     if (transactionStatus === "approved") {
+        console.log(`[mp-pagar] Pagamento aprovado no MP. Iniciando liberação de benefícios para usuário ${authUser.id}.`);
         await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
+        console.log("[mp-pagar] Liberação de benefícios concluída.");
     }
 
     return new Response(JSON.stringify(payment), {
@@ -233,8 +262,8 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error("Erro interno mp-pagar:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("[mp-pagar] Erro interno no processamento:", err);
+    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -242,33 +271,60 @@ serve(async (req) => {
 });
 
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
+    console.log(`[Benefits Helper (mp-pagar)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}, amount: ${amount}, referrerId: ${referrerId}`);
+
     if (itemType === "plan") {
         await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
+        const { data: config, error: configError } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
+        if (configError) console.warn(`[Benefits Helper (mp-pagar)] Erro ao buscar config de planos: ${configError.message}`);
+
         if (config?.value) {
             const plan = (config.value as any[]).find((p: any) => p.id === itemId);
             if (plan) {
                 await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
+            } else {
+                console.warn(`[Benefits Helper (mp-pagar)] Plano "${itemId}" não encontrado na configuração de sistema. Créditos não atribuídos.`);
             }
+        } else {
+            console.warn(`[Benefits Helper (mp-pagar)] Configuração 'all_plans' não encontrada ou vazia.`);
         }
     } else if (itemType === "credits") {
-        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        const newCredits = (current?.credits || 0) + Number(itemId); 
-        await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
+        const { data: current, error: currentCreditsError } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
+        if (currentCreditsError) console.warn(`[Benefits Helper (mp-pagar)] Erro ao buscar créditos atuais para ${userId}: ${currentCreditsError.message}`);
+
+        const currentCredits = current?.credits === -1 ? -1 : (current?.credits || 0);
+        
+        if (currentCredits !== -1) {
+            const newCredits = currentCredits + Number(itemId); 
+            await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
+        } else {
+            console.log(`[Benefits Helper (mp-pagar)] Usuário ${userId} tem créditos ilimitados. Nenhuma alteração de saldo.`);
+        }
     }
 
     if (referrerId) {
-        const commission = parseFloat((Number(amount) * 0.2).toFixed(2));
-        const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
-        if (refUser) {
-            const newBalance = (refUser.affiliate_balance || 0) + commission;
-            await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
-            await supabaseAdmin.from("affiliate_logs").insert({
-                affiliate_id: referrerId,
-                source_user_id: userId,
-                amount: commission,
-                description: `Comissão 20% - ${itemType}`
-            });
+        const COMMISSION_RATE = 0.20; // Definido como constante
+        const commission = parseFloat((Number(amount) * COMMISSION_RATE).toFixed(2));
+        if (commission > 0) {
+            const { data: refUser, error: refUserError } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
+            if (refUserError) console.error(`[Benefits Helper (mp-pagar)] Erro ao buscar afiliado ${referrerId}: ${refUserError.message}`);
+
+            if (refUser) {
+                const newBalance = (refUser.affiliate_balance || 0) + commission;
+                await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
+                
+                await supabaseAdmin.from("affiliate_logs").insert({
+                    affiliate_id: referrerId,
+                    source_user_id: userId,
+                    amount: commission,
+                    description: `Comissão ${COMMISSION_RATE * 100}% - ${itemType === 'plan' ? 'Assinatura Plano' : 'Compra Créditos'} (Via mp-pagar)`
+                });
+            }
+        } else {
+            console.log(`[Benefits Helper (mp-pagar)] Comissão calculada foi zero ou negativa (${commission}). Não será processada.`);
         }
+    } else {
+        console.log(`[Benefits Helper (mp-pagar)] Usuário ${userId} não foi indicado. Nenhuma comissão de afiliado.`);
     }
+    console.log(`[Benefits Helper (mp-pagar)] Liberação de benefícios concluída.`);
 }
