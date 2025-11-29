@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase, supabaseUrl } from '../services/supabaseClient';
+=======
+import React, { useState, useEffect, useRef } from 'react';
+import { useUser } from '../contexts/UserContext';
+import { supabase } from '../services/supabaseClient';
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
 
 interface CheckoutCompletoProps {
   amount: number;
@@ -17,6 +23,7 @@ interface CheckoutCompletoProps {
 type GatewayType = 'mercadopago' | 'asaas' | null;
 type PaymentMethodType = 'card' | 'pix';
 
+<<<<<<< HEAD
 // Declaração global para o objeto MercadoPago SDK
 declare global {
   interface Window {
@@ -24,6 +31,8 @@ declare global {
   }
 }
 
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
 // --- Helpers para CPF/CNPJ (Lógica Refatorada) ---
 function isValidCPF(cpf: string) {
   cpf = cpf.replace(/[^\d]+/g, '');
@@ -121,9 +130,14 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
         <div className="space-y-4 animate-fade-in">
             {/* CPF/CNPJ sempre visível */}
             <div>
+<<<<<<< HEAD
                 <label htmlFor="docNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CPF ou CNPJ</label>
                 <input
                     id="docNumber"
+=======
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CPF ou CNPJ</label>
+                <input
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                     type="text"
                     className={inputClass}
                     placeholder="000.000.000-00"
@@ -134,9 +148,14 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
             </div>
 
             <div>
+<<<<<<< HEAD
                 <label htmlFor="cardNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Número do Cartão</label>
                 <input
                     id="cardNumber"
+=======
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Número do Cartão</label>
+                <input
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                     type="text"
                     className={inputClass}
                     placeholder="0000 0000 0000 0000"
@@ -148,9 +167,14 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
 
             <div className="grid grid-cols-2 gap-4">
                 <div>
+<<<<<<< HEAD
                     <label htmlFor="expirationDate" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Validade</label>
                     <input
                         id="expirationDate"
+=======
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Validade</label>
+                    <input
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                         type="text"
                         className={inputClass}
                         placeholder="MM/AA"
@@ -160,9 +184,14 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
                     />
                 </div>
                 <div>
+<<<<<<< HEAD
                     <label htmlFor="cvv" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CVV</label>
                     <input
                         id="cvv"
+=======
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CVV</label>
+                    <input
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                         type="text"
                         className={inputClass}
                         placeholder="123"
@@ -174,9 +203,14 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
             </div>
 
             <div>
+<<<<<<< HEAD
                 <label htmlFor="holderName" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nome no Cartão</label>
                 <input
                     id="holderName"
+=======
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Nome no Cartão</label>
+                <input
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                     type="text"
                     className={inputClass}
                     placeholder="Como impresso no cartão"
@@ -186,9 +220,14 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
             </div>
 
             <div>
+<<<<<<< HEAD
                 <label htmlFor="installments" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Parcelas</label>
                 <select
                     id="installments"
+=======
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Parcelas</label>
+                <select
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                     className={inputClass}
                     value={formData.installments}
                     onChange={(e) => onChange('installments', e.target.value)}
@@ -235,10 +274,14 @@ export default function CheckoutCompleto({
   const [fatalError, setFatalError] = useState<string | null>(null);
   
   const pollInterval = useRef<any>(null);
+<<<<<<< HEAD
   
   // Ref para o objeto MercadoPago SDK (e cardForm se aplicável)
   const mpSDK = useRef<any>(null);
   const mpCardForm = useRef<any>(null); // Keep this ref for potential future use or to signal SDK readiness
+=======
+  const cardFormRef = useRef<any>(null); // Ref para MP SDK se necessário (mantido para compatibilidade futura)
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
 
   useEffect(() => {
     if (mpPublicKey) {
@@ -253,6 +296,7 @@ export default function CheckoutCompleto({
     }
   }, [mpPublicKey, asaasPublicKey]);
 
+<<<<<<< HEAD
   // --- Inicialização do Mercado Pago SDK e CardForm ---
   useEffect(() => {
     if (activeGateway === 'mercadopago' && mpPublicKey) {
@@ -283,6 +327,8 @@ export default function CheckoutCompleto({
   }, [activeGateway, mpPublicKey]);
 
 
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
   useEffect(() => {
       setCommonFormData(prev => ({ ...prev, amount }));
   }, [amount]);
@@ -335,7 +381,11 @@ export default function CheckoutCompleto({
         const endpoint = activeGateway === 'mercadopago' ? 'mp-pagar' : 'asaas-pagar';
         const { data: { session } } = await supabase.auth.getSession();
         
+<<<<<<< HEAD
         const res = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
+=======
+        const res = await fetch(`https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/${endpoint}`, {
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
           body: JSON.stringify({ check_status_id: transactionId }),
@@ -371,7 +421,11 @@ export default function CheckoutCompleto({
         docNumber: cleanDoc
       };
 
+<<<<<<< HEAD
       const res = await fetch(`${supabaseUrl}/functions/v1/mp-pagar`, {
+=======
+      const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
         body: JSON.stringify(payload),
@@ -385,7 +439,11 @@ export default function CheckoutCompleto({
 
       const qrData = result.point_of_interaction?.transaction_data;
       if (!qrData) {
+<<<<<<< HEAD
           console.error("[MP Response] QR Code data missing:", result);
+=======
+          console.error("MP Response missing QR:", result);
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
           throw new Error('O Gateway não retornou o Código Pix. Tente novamente.');
       }
 
@@ -399,7 +457,10 @@ export default function CheckoutCompleto({
 
     } catch (err: any) {
       setError(err.message);
+<<<<<<< HEAD
       onError(err.message); // Notify parent component of error
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
     } finally {
       setProcessing(false);
     }
@@ -415,7 +476,11 @@ export default function CheckoutCompleto({
           const { data: { session } } = await supabase.auth.getSession();
           const cleanDoc = commonFormData.docNumber.replace(/\D/g, '');
 
+<<<<<<< HEAD
           const res = await fetch(`${supabaseUrl}/functions/v1/asaas-pagar`, {
+=======
+          const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/asaas-pagar', {
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
             body: JSON.stringify({
@@ -431,7 +496,10 @@ export default function CheckoutCompleto({
         if (!res.ok) throw new Error(result.error || 'Erro ao gerar Pix.');
         
         if (!result.qrCode || !result.qrCode.encodedImage) {
+<<<<<<< HEAD
              console.error("[Asaas Response] QR Code data missing:", result);
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
              throw new Error('QR Code não retornado pelo Asaas.');
         }
 
@@ -445,13 +513,20 @@ export default function CheckoutCompleto({
 
       } catch (err: any) {
           setError(err.message);
+<<<<<<< HEAD
           onError(err.message); // Notify parent component of error
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       } finally {
           setProcessing(false);
       }
   };
 
+<<<<<<< HEAD
   // --- Pagamento com Cartão ---
+=======
+  // --- Pagamento com Cartão (Genérico MP/Asaas via Backend) ---
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
   const handleCardSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (processing) return;
@@ -470,16 +545,24 @@ export default function CheckoutCompleto({
 
       try {
           const [month, yearRaw] = expirationDate.split('/');
+<<<<<<< HEAD
           const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw; // Formato YYYY para API
           const cleanDoc = docNumber.replace(/\D/g, '');
           const cardBin = cleanCard.substring(0, 6); // Primeiros 6 dígitos para BIN
 
           let payload: any = {
+=======
+          const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw;
+          const cleanDoc = docNumber.replace(/\D/g, '');
+
+          const payload = {
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
               amount: Number(formAmount),
               item_type: itemType,
               item_id: itemId,
               installments: Number(installments),
               docNumber: cleanDoc,
+<<<<<<< HEAD
           };
           
           const { data: { session } } = await supabase.auth.getSession();
@@ -588,6 +671,22 @@ export default function CheckoutCompleto({
           }
 
           const res = await fetch(`${supabaseUrl}/functions/v1/${endpoint}`, {
+=======
+              // Dados de cartão enviados ao backend para tokenização segura (Asaas) ou processamento (MP)
+              creditCard: {
+                  holderName: holderName,
+                  number: cleanCard,
+                  expiryMonth: month,
+                  expiryYear: year,
+                  ccv: cvv
+              }
+          };
+          
+          const endpoint = activeGateway === 'mercadopago' ? 'mp-pagar' : 'asaas-pagar';
+          const { data: { session } } = await supabase.auth.getSession();
+          
+          const res = await fetch(`https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/${endpoint}`, {
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
               body: JSON.stringify(payload),
@@ -596,12 +695,18 @@ export default function CheckoutCompleto({
           const result = await res.json();
           
           if (!res.ok) {
+<<<<<<< HEAD
               console.error("[Backend Payment Error]", result);
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
               throw new Error(result.error || result.message || 'Erro no processamento do pagamento.');
           }
 
           if (result.success === false && result.status !== 'approved') {
+<<<<<<< HEAD
                console.error("[Backend Payment Failed]", result);
+=======
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                throw new Error(result.error || 'Pagamento não autorizado.');
           }
 
@@ -700,9 +805,14 @@ export default function CheckoutCompleto({
               {!pixData ? (
                   <div className="text-center py-4 animate-fade-in">
                       <div className="mb-4 text-left">
+<<<<<<< HEAD
                           <label htmlFor="docNumberPix" className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">CPF ou CNPJ (Obrigatório para Pix)</label>
                           <input
                             id="docNumberPix"
+=======
+                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block">CPF ou CNPJ (Obrigatório para Pix)</label>
+                          <input
+>>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                             type="text"
                             className="w-full h-12 bg-gray-900 border border-gray-700 rounded-lg px-4 text-white focus:border-green-500 focus:outline-none transition-colors"
                             placeholder="000.000.000-00"
