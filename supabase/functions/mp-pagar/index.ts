@@ -1,3 +1,4 @@
+
 // supabase/functions/mp-pagar/index.ts
 
 declare const Deno: any;
@@ -66,6 +67,8 @@ serve(async (req) => {
 
     const reqJson = await req.json();
     console.log("[mp-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
+    console.log("[mp-pagar] Token do cartão recebido (para depuração):", reqJson.token ? "Presente" : "Ausente", reqJson.token);
+
 
     // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
     if (reqJson.check_status_id) {

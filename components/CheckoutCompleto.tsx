@@ -238,7 +238,7 @@ export default function CheckoutCompleto({
   
   // Ref para o objeto MercadoPago SDK (e cardForm se aplicável)
   const mpSDK = useRef<any>(null);
-  const mpCardForm = useRef<any>(null);
+  const mpCardForm = useRef<any>(null); // Keep this ref for potential future use or to signal SDK readiness
 
   useEffect(() => {
     if (mpPublicKey) {
@@ -255,33 +255,29 @@ export default function CheckoutCompleto({
 
   // --- Inicialização do Mercado Pago SDK e CardForm ---
   useEffect(() => {
-    if (activeGateway === 'mercadopago' && mpPublicKey && window.MercadoPago) {
-      if (!mpSDK.current) {
-        mpSDK.current = new window.MercadoPago(mpPublicKey, {
-          locale: 'pt-BR'
-        });
-      }
+    if (activeGateway === 'mercadopago' && mpPublicKey) {
+        if (!window.MercadoPago) {
+            console.error("[MP SDK] window.MercadoPago não está disponível. Verifique a inclusão do script no index.html.");
+            setFatalError("SDK do Mercado Pago não carregado. Recarregue a página.");
+            return;
+        }
 
-      if (!mpCardForm.current) {
-        // Assume que os campos de input já têm IDs ou names que o MP SDK pode usar
-        // IDs comuns para MP SDK: `cardNumber`, `cardholderName`, `cardExpirationMonth`, `cardExpirationYear`, `securityCode`
-        // Para simplificar, vou mapear nossos campos para o que o MP SDK espera.
-        // Nossos inputs são genéricos, então passamos o elemento diretamente se necessário,
-        // ou dependemos do MP SDK ser esperto o suficiente.
-        // O MP SDK v1 não usa um objeto "cardForm" para todos os campos, mas sim um objeto MercadoPago
-        // que tem métodos para tokenização. Vamos usar `mpSDK.current.createCardToken`.
+        if (!mpSDK.current) {
+            console.log("[MP SDK] Inicializando nova instância do MercadoPago SDK.");
+            mpSDK.current = new window.MercadoPago(mpPublicKey, {
+                locale: 'pt-BR'
+            });
+        }
 
-        // Limpeza de qualquer tokenization anterior
-        mpSDK.current.fields = {}; // Reseta os campos que o MP SDK monitora
-      }
+        // Limpeza de qualquer tokenization anterior ou campos monitorados
+        if (mpSDK.current && mpSDK.current.fields) {
+             mpSDK.current.fields = {}; 
+        }
     }
 
     // Cleanup: Destroi o cardForm se ele existe
     return () => {
-      // O MP SDK v1 não tem um método `unmount` ou `destroy` explícito para CardForm.
-      // O reset da ref e a re-inicialização são a melhor abordagem.
       mpCardForm.current = null;
-      // mpSDK.current = null; // Não destrua o SDK global, apenas a instância de form
     };
   }, [activeGateway, mpPublicKey]);
 
@@ -388,7 +384,7 @@ export default function CheckoutCompleto({
 
       const qrData = result.point_of_interaction?.transaction_data;
       if (!qrData) {
-          console.error("MP Response missing QR:", result);
+          console.error("[MP Response] QR Code data missing:", result);
           throw new Error('O Gateway não retornou o Código Pix. Tente novamente.');
       }
 
@@ -402,6 +398,7 @@ export default function CheckoutCompleto({
 
     } catch (err: any) {
       setError(err.message);
+      onError(err.message); // Notify parent component of error
     } finally {
       setProcessing(false);
     }
@@ -433,6 +430,7 @@ export default function CheckoutCompleto({
         if (!res.ok) throw new Error(result.error || 'Erro ao gerar Pix.');
         
         if (!result.qrCode || !result.qrCode.encodedImage) {
+             console.error("[Asaas Response] QR Code data missing:", result);
              throw new Error('QR Code não retornado pelo Asaas.');
         }
 
@@ -446,6 +444,7 @@ export default function CheckoutCompleto({
 
       } catch (err: any) {
           setError(err.message);
+          onError(err.message); // Notify parent component of error
       } finally {
           setProcessing(false);
       }
@@ -486,7 +485,7 @@ export default function CheckoutCompleto({
 
           if (activeGateway === 'mercadopago') {
             if (!mpSDK.current) {
-                throw new Error("SDK do Mercado Pago não inicializado.");
+                throw new Error("SDK do Mercado Pago não inicializado corretamente. Tente recarregar a página.");
             }
             
             // --- TOKENIZAÇÃO MP NO CLIENT-SIDE ---
@@ -500,18 +499,30 @@ export default function CheckoutCompleto({
                 doc_number: cleanDoc
             };
 
+            console.log("[MP SDK] Dados do cartão para tokenização:", cardTokenData);
+
             const mpTokenResponse = await new Promise((resolve, reject) => {
                 mpSDK.current.createCardToken(cardTokenData, (status: number, response: any) => {
+                    console.log("[MP SDK] createCardToken callback - Status:", status, "Response:", JSON.stringify(response));
                     if (status === 200 || status === 201) {
+                        if (!response || !response.id || !response.payment_method?.id || !response.issuer?.id) {
+                            console.error("[MP SDK] Resposta de tokenização bem-sucedida, mas dados essenciais ausentes:", response);
+                            return reject(new Error("Erro na tokenização: Dados essenciais do cartão ausentes."));
+                        }
                         resolve(response);
                     } else {
-                        reject(response.message || `Erro MP SDK: ${status}`);
+                        reject(new Error(response.message || JSON.stringify(response) || `Erro MP SDK desconhecido: ${status}`));
                     }
                 });
             });
 
             const { id: token, payment_method: { id: payment_method_id }, issuer: { id: issuer_id } } = mpTokenResponse as any;
             
+            // Valida se os valores realmente existem após a desestruturação
+            if (!token || !payment_method_id || !issuer_id) {
+                throw new Error("Erro na tokenização: Campos essenciais (token, payment_method_id, issuer_id) ausentes da resposta do Mercado Pago.");
+            }
+
             payload = {
                 ...payload,
                 token,
@@ -556,10 +567,12 @@ export default function CheckoutCompleto({
           const result = await res.json();
           
           if (!res.ok) {
+              console.error("[Backend Payment Error]", result);
               throw new Error(result.error || result.message || 'Erro no processamento do pagamento.');
           }
 
           if (result.success === false && result.status !== 'approved') {
+               console.error("[Backend Payment Failed]", result);
                throw new Error(result.error || 'Pagamento não autorizado.');
           }
 
