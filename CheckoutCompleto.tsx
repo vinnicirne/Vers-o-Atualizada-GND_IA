@@ -33,7 +33,6 @@ export default function CheckoutCompleto({
   const mpInstanceRef = useRef<any>(null);
   const cardFormRef = useRef<any>(null);
 
-  // Efeito para inicializar o Mercado Pago
   useEffect(() => {
     if (!mpPublicKey) {
       onError('Chave pública do Mercado Pago não configurada');
@@ -45,7 +44,6 @@ export default function CheckoutCompleto({
 
     const initializeMercadoPago = async () => {
       try {
-        // Carrega o SDK se não estiver carregado
         if (!window.MercadoPago) {
           await new Promise((resolve, reject) => {
             const scriptId = 'mercado-pago-sdk';
@@ -53,7 +51,6 @@ export default function CheckoutCompleto({
               resolve(true);
               return;
             }
-
             const script = document.createElement('script');
             script.id = scriptId;
             script.src = 'https://sdk.mercadopago.com/js/v2';
@@ -64,14 +61,11 @@ export default function CheckoutCompleto({
           });
         }
 
-        // Aguarda o SDK ficar disponível
         await new Promise(resolve => setTimeout(resolve, 100));
 
-        // Cria a instância do Mercado Pago
         const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
         mpInstanceRef.current = mp;
 
-        // Inicializa o cardForm
         const cardForm = mp.cardForm({
           amount: amount.toString(),
           autoMount: true,
@@ -234,4 +228,4 @@ export default function CheckoutCompleto({
 
         <div className="grid grid-cols-2 gap-4">
           <select id="form-checkout__issuer" className="input"><option>Banco</option></select>
-          <select id="form-checkout__installments" className="input"><option>Parcelas</option></select>
+          <select id="form-checkout__installments" className="input"><option>Parcelas</option></select
