@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, memo } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase } from '../services/supabaseClient';
 
@@ -14,6 +13,99 @@ interface CheckoutCompletoProps {
   onCancel: () => void;
 }
 
+// --- STATIC INPUTS COMPONENT ---
+// Este componente é memoizado com uma função de comparação que sempre retorna true.
+// Isso impede que o React atualize este trecho do DOM, protegendo os iFrames do Mercado Pago
+// de serem destruídos por re-renderizações do componente pai.
+const StaticMPFormFields = memo(({ userEmail }: { userEmail: string }) => {
+  return (
+    <>
+      <div className="space-y-1">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Número do Cartão</label>
+          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden relative">
+             <input
+              type="text"
+              id="form-checkout__cardNumber"
+              className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
+              placeholder=""
+              />
+          </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Validade</label>
+           <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+              <input
+                  type="text"
+                  id="form-checkout__expirationDate"
+                  className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
+                  placeholder="MM/AA"
+              />
+           </div>
+        </div>
+        <div className="space-y-1">
+           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">CVV</label>
+           <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+              <input
+                  type="text"
+                  id="form-checkout__securityCode"
+                  className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
+                  placeholder="123"
+              />
+           </div>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Nome no Cartão</label>
+          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+              <input
+              type="text"
+              id="form-checkout__cardholderName"
+              className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
+              />
+          </div>
+      </div>
+
+      <div className="space-y-1">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">E-mail</label>
+          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
+              <input
+              type="email"
+              id="form-checkout__cardholderEmail"
+              className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
+              defaultValue={userEmail}
+              />
+          </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-1">
+           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Banco Emissor</label>
+           <select
+              id="form-checkout__issuer"
+              className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer"
+           ></select>
+        </div>
+
+        <div className="space-y-1">
+           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parcelamento</label>
+           <select
+              id="form-checkout__installments"
+              className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer"
+           ></select>
+        </div>
+      </div>
+
+      <div className="hidden">
+          <select id="form-checkout__identificationType"></select>
+          <input type="text" id="form-checkout__identificationNumber" />
+      </div>
+    </>
+  );
+}, () => true); // COMPARAÇÃO ESTÁTICA: Retorna sempre true para evitar re-render
+
 export default function CheckoutCompleto({
   amount,
   itemType,
@@ -25,7 +117,7 @@ export default function CheckoutCompleto({
 }: CheckoutCompletoProps) {
   const { user } = useUser();
   
-  // Refs to keep access to latest props without triggering re-effects
+  // Refs para valores que não devem triggar re-init do MP
   const amountRef = useRef(amount);
   const userRef = useRef(user);
   const itemTypeRef = useRef(itemType);
@@ -52,7 +144,6 @@ export default function CheckoutCompleto({
       mountedRef.current = false;
       if (cardFormRef.current) {
         try {
-          // Attempt to properly unmount the MP instance to clear iframes
           if (typeof cardFormRef.current.unmount === 'function') {
              cardFormRef.current.unmount();
           }
@@ -72,42 +163,22 @@ export default function CheckoutCompleto({
       return;
     }
 
-    const loadMercadoPago = async () => {
-      if ((window as any).MercadoPago) {
-        initializeCardForm();
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.async = true;
-      script.onload = () => {
-        if (mountedRef.current) initializeCardForm();
-      };
-      script.onerror = () => {
-        if (mountedRef.current) {
-          setError('Falha ao carregar sistema de pagamento.');
-          setLoading(false);
-        }
-      };
-      document.body.appendChild(script);
-    };
-
     const initializeCardForm = async () => {
       if (cardFormRef.current) return; // Prevent double init
 
       try {
-        // Essential delay to ensure DOM is fully painted
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Aguarda um pequeno tick para garantir que o DOM (o formulário) foi renderizado pelo React
+        await new Promise(resolve => setTimeout(resolve, 500));
         
         if (!mountedRef.current) return;
 
-        const mp = new (window as any).MercadoPago(mpPublicKey, {
+        // @ts-ignore
+        const mp = new window.MercadoPago(mpPublicKey, {
           locale: 'pt-BR',
         });
 
         const cardForm = mp.cardForm({
-          amount: amountRef.current.toString(), // Use ref for initial config
+          amount: amountRef.current.toString(),
           iframe: true,
           form: {
             id: 'form-checkout',
@@ -127,7 +198,10 @@ export default function CheckoutCompleto({
                 console.warn('MP Mount Error:', err);
                 return;
               }
-              if (mountedRef.current) setLoading(false);
+              if (mountedRef.current) {
+                  console.log('MP Form Mounted Successfully');
+                  setLoading(false);
+              }
             },
             onIssuersReceived: (err: any, issuers: any) => {
                if (err) console.warn('Issuers error', err);
@@ -139,6 +213,7 @@ export default function CheckoutCompleto({
                 if (err) console.warn('Token error', err);
             },
             onSubmit: async (e: any) => {
+              // O SDK do Mercado Pago chama isso automaticamente no submit do form
               e.preventDefault();
               if (processing || !mountedRef.current) return;
 
@@ -170,7 +245,7 @@ export default function CheckoutCompleto({
                     payment_method_id: formData.paymentMethodId,
                     issuer_id: formData.issuerId,
                     installments: Number(formData.installments),
-                    amount: amountRef.current, // Use CURRENT amount from ref
+                    amount: amountRef.current,
                     user_email: formData.cardholderEmail || userRef.current?.email,
                     item_type: itemTypeRef.current,
                     item_id: itemIdRef.current,
@@ -205,15 +280,37 @@ export default function CheckoutCompleto({
       }
     };
 
+    const loadMercadoPago = async () => {
+      // @ts-ignore
+      if (window.MercadoPago) {
+        initializeCardForm();
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.async = true;
+      script.onload = () => {
+        if (mountedRef.current) initializeCardForm();
+      };
+      script.onerror = () => {
+        if (mountedRef.current) {
+          setError('Falha ao carregar sistema de pagamento.');
+          setLoading(false);
+        }
+      };
+      document.body.appendChild(script);
+    };
+
     loadMercadoPago();
-    // Intentionally omit 'amount' to prevent form destruction on slider change
   }, [mpPublicKey]); 
 
-  if (error) {
+  // Se houver erro crítico na inicialização
+  if (error && !loading && !processing) {
     return (
-      <div className="p-6 bg-red-900/30 border border-red-600 rounded-xl text-center">
+      <div className="relative max-w-md mx-auto bg-gray-950 p-6 rounded-2xl border border-red-900 shadow-2xl text-center">
         <i className="fas fa-exclamation-circle text-3xl text-red-400 mb-2"></i>
-        <p className="text-red-200 text-center mb-4">{error}</p>
+        <p className="text-red-200 mb-4">{error}</p>
         <button onClick={onCancel} className="px-6 py-2 bg-red-700 hover:bg-red-600 rounded text-white font-bold transition">
           Fechar
         </button>
@@ -224,7 +321,7 @@ export default function CheckoutCompleto({
   return (
     <div className="relative max-w-md mx-auto bg-gray-950 p-6 rounded-2xl border border-gray-800 shadow-2xl">
       
-      {/* Loading Overlay */}
+      {/* LOADING OVERLAY */}
       {loading && (
         <div className="absolute inset-0 z-50 bg-gray-950/95 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm transition-opacity">
             <i className="fas fa-circle-notch fa-spin text-4xl text-green-500 mb-4"></i>
@@ -252,94 +349,11 @@ export default function CheckoutCompleto({
         <i className="fas fa-times text-lg"></i>
       </button>
 
-      {/* 
-        FORMULÁRIO MERCADO PAGO 
-        Os inputs abaixo são substituídos por iFrames pelo SDK.
-        Mantemos a estrutura estática para evitar que o React desmonte os iFrames.
-      */}
+      {/* FORMULÁRIO MERCADO PAGO */}
       <form id="form-checkout" className="space-y-4">
-        <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Número do Cartão</label>
-            <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden relative">
-               <input
-                type="text"
-                id="form-checkout__cardNumber"
-                className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                placeholder=""
-                />
-            </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Validade</label>
-             <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-                <input
-                    type="text"
-                    id="form-checkout__expirationDate"
-                    className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                    placeholder="MM/AA"
-                />
-             </div>
-          </div>
-          <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">CVV</label>
-             <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-                <input
-                    type="text"
-                    id="form-checkout__securityCode"
-                    className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                    placeholder="123"
-                />
-             </div>
-          </div>
-        </div>
-
-        <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Nome no Cartão</label>
-            <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-                <input
-                type="text"
-                id="form-checkout__cardholderName"
-                className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                />
-            </div>
-        </div>
-
-        <div className="space-y-1">
-            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">E-mail</label>
-            <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden">
-                <input
-                type="email"
-                id="form-checkout__cardholderEmail"
-                className="w-full h-full px-4 bg-transparent text-white placeholder-gray-600 focus:outline-none"
-                defaultValue={userRef.current?.email || ''}
-                />
-            </div>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4">
-          <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Banco Emissor</label>
-             <select
-                id="form-checkout__issuer"
-                className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none"
-             ></select>
-          </div>
-
-          <div className="space-y-1">
-             <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parcelamento</label>
-             <select
-                id="form-checkout__installments"
-                className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none"
-             ></select>
-          </div>
-        </div>
-
-        <div className="hidden">
-            <select id="form-checkout__identificationType"></select>
-            <input type="text" id="form-checkout__identificationNumber" />
-        </div>
+        
+        {/* Componente Estático Memoizado: React NÃO tocará aqui após o mount */}
+        <StaticMPFormFields userEmail={userRef.current?.email || ''} />
 
         <button
           type="submit"
@@ -351,7 +365,7 @@ export default function CheckoutCompleto({
               <i className="fas fa-circle-notch fa-spin"></i> Processando...
             </span>
           ) : (
-            'Confirmar Pagamento'
+            'Pagar Agora'
           )}
         </button>
       </form>
