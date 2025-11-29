@@ -40,9 +40,9 @@ serve(async (req) => {
   }
 
   try {
-    const { creditCardToken, amount, item_type, item_id } = await req.json();
+    const { creditCardToken, creditCard, creditCardHolderInfo, amount, item_type, item_id, installments } = await req.json();
 
-    if (!creditCardToken || !amount) {
+    if ((!creditCardToken && !creditCard) || !amount) {
       return new Response(JSON.stringify({ error: "Faltam dados do cartão ou valor" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -104,21 +104,44 @@ serve(async (req) => {
     const remoteIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
 
     // 3. Process payment with Asaas
+    const paymentPayload: any = {
+        customer: asaasCustomerId,
+        billingType: "CREDIT_CARD",
+        value: Number(amount),
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        remoteIp,
+        description: `Compra GDN_IA - ${item_type} ID: ${item_id}`,
+    };
+
+    if (creditCardToken) {
+        paymentPayload.creditCardToken = creditCardToken;
+    } else if (creditCard) {
+        paymentPayload.creditCard = creditCard;
+        paymentPayload.creditCardHolderInfo = creditCardHolderInfo || {
+            name: userFullName,
+            email: userEmail,
+            cpfCnpj: '00000000000',
+            postalCode: '00000000',
+            addressNumber: '0',
+            phone: '0000000000'
+        };
+    }
+    
+    if (installments && Number(installments) > 1) {
+        paymentPayload.installmentCount = Number(installments);
+        // For Asaas installment billing, 'value' typically refers to the total value if installmentCount is set,
+        // but it's safer to provide installmentValue if needed. However, API typically handles total / count.
+        // Let's ensure 'value' is the total amount (which it is set to above).
+        paymentPayload.installmentValue = Number(amount) / Number(installments);
+    }
+
     const res = await fetch("https://sandbox.asaas.com/api/v3/payments", {
       method: "POST",
       headers: {
         "access_token": Deno.env.get("ASAAS_KEY")!,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: "CREDIT_CARD",
-        value: Number(amount),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30 days due date
-        creditCardToken,
-        remoteIp,
-        description: `Compra GDN_IA - ${item_type} ID: ${item_id}`,
-      }),
+      body: JSON.stringify(paymentPayload),
     });
 
     const data = await res.json();
@@ -132,7 +155,7 @@ serve(async (req) => {
       description: `Pagamento para ${item_type} ID: ${item_id}`,
       plan_id: item_type === 'plan' ? item_id : undefined,
       credits_amount: item_type === 'credits' ? (item_type === 'credits' ? item_id : undefined) : undefined,
-      card_token_id: creditCardToken,
+      card_token_id: creditCardToken || 'raw_card_used',
       customer_id: asaasCustomerId,
       asaas_response: data,
     };
