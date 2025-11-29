@@ -74,7 +74,8 @@ serve(async (req) => {
       amount,
       item_type,
       item_id,
-      method // 'pix' ou 'card'
+      method, // 'pix' ou 'card'
+      docNumber // CPF/CNPJ
     } = reqJson;
 
     if (!amount || !item_type || !item_id) {
@@ -111,6 +112,16 @@ serve(async (req) => {
             last_name: userData.full_name?.split(' ').slice(1).join(' ') || 'GDN'
         }
     };
+
+    // Adiciona identificação se fornecida
+    if (docNumber) {
+        const cleanDoc = docNumber.replace(/\D/g, '');
+        const docType = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
+        mpPayload.payer.identification = {
+            type: docType,
+            number: cleanDoc
+        };
+    }
 
     if (isPix) {
         mpPayload.payment_method_id = 'pix';
