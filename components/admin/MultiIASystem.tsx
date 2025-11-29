@@ -240,7 +240,7 @@ export function MultiIASystem() {
                                         <option value="openai">OpenAI</option>
                                         <option value="claude">Claude</option>
                                     </select>
-                                </td>
+                               </td>
                                 <td className="px-4 py-2"><input type="number" value={model.contexto_maximo} onChange={e => handleModelChange(index, 'contexto_maximo', e.target.value)} className="w-full bg-gray-800 border border-gray-600 rounded p-1 text-sm"/></td>
                                 <td className="px-4 py-2 space-x-4">
                                     <label className="inline-flex items-center text-xs"><input type="checkbox" checked={model.capacidades?.vision ?? false} onChange={e => handleModelChange(index, 'capacidades', { vision: e.target.checked })} className="form-checkbox bg-gray-800 border-gray-600 rounded text-green-500" /> Visão</label>

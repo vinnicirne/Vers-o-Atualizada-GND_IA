@@ -1,3 +1,4 @@
+
 # Documentação Oficial - GND_IA
 
 ## 📘 Documentação do Usuário

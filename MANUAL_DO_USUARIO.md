@@ -1,4 +1,5 @@
 
+
 # 🚀 Guia Oficial do Usuário - GDN_IA
 
 Bem-vindo ao **GDN_IA**! Este é o seu manual completo para dominar nossa suíte de criação inteligente. Aqui você aprenderá a gerar notícias, criar artes, desenvolver landing pages e muito mais, utilizando o poder da Inteligência Artificial.

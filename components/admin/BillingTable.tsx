@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTransactions, getApprovedRevenueInRange } from '../../services/adminService';
 import { Transaction, TransactionStatus, PaymentMethod } from '../../types';
@@ -87,6 +88,7 @@ export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
             approved: 'bg-green-900/50 text-green-300',
             pending: 'bg-yellow-900/50 text-yellow-400',
             failed: 'bg-red-900/50 text-red-400',
+            refunded: 'bg-blue-900/50 text-blue-300', // Added refunded status chip
         };
         return <span className={`px-2 py-1 text-xs font-bold rounded-full capitalize ${styles[status]}`}>{status}</span>;
     };
@@ -130,6 +132,7 @@ export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
                             <option value="approved">Aprovado</option>
                             <option value="pending">Pendente</option>
                             <option value="failed">Falhou</option>
+                            <option value="refunded">Estornado</option>
                         </select>
                     </div>
                      <div>

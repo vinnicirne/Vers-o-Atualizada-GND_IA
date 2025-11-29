@@ -1,4 +1,5 @@
 
+
 # 🏗️ Documentação Técnica do Sistema - GDN_IA
 
 ## 1. Visão Geral

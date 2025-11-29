@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import { createApiKey, listApiKeys, revokeApiKey, generateWordPressPluginZip } from '../../services/developerService';
@@ -22,7 +23,6 @@ export function DocumentationViewer() {
   const [geminiKeyInput, setGeminiKeyInput] = useState('');
 
   // Add state for copied field to handle clipboard feedback
-  // COMMENT: Add state for copiedField to track which field's content was copied
   const [copiedField, setCopiedField] = useState<string | null>(null);
 
   // Carrega a chave do cache local ao montar
@@ -98,7 +98,7 @@ export function DocumentationViewer() {
       setToast({ message: "Download iniciado! Chave salva no navegador.", type: 'success' });
   };
 
-  // COMMENT: Add handleCopy function for clipboard functionality
+  // Add handleCopy function for clipboard functionality
   const handleCopy = (text: string, fieldId: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldId);
@@ -473,7 +473,7 @@ END $$;`;
 
             <h2 className="text-2xl font-bold text-green-400 mt-8 mb-4">❓ Dicas de Uso</h2>
             <p className="text-gray-300 mb-4">
-              <strong>Organização na hora de publicar:</strong> Use os botões de "Copiar" individuais. Copie primeiro o <strong>Título</strong> para o campo de título do seu Blog, depois o <strong>Conteúdo</strong> para o corpo, e por fim use os dados do <strong>SEO Scorecard</strong> (Meta Descrição e Slug) nos campos de plugin de SEO (como Yoast ou Rank Math).
+              <strong>Organização na hora de publicar:</strong> Use os botões de "Copiar" individuais. Copie primeiro o <strong>Título</strong> para o campo de título do seu Blog, depois o **Conteúdo** para o corpo, e por fim use os dados do **SEO Scorecard** (Meta Descrição e Slug) nos campos de plugin de SEO (como Yoast ou Rank Math).
             </p>
           </div>
         )}
@@ -754,11 +754,11 @@ END $$;`;
                 <div className="relative bg-gray-950/50 border border-gray-700 text-green-300 p-4 rounded-md text-xs whitespace-pre-wrap overflow-x-auto max-h-[70vh]">
                     <pre><code className="language-sql">{schemaSql}</code></pre>
                     <button 
-                        onClick={() => navigator.clipboard.writeText(schemaSql)}
+                        onClick={() => handleCopy(schemaSql, 'schema_sql')}
                         className="absolute top-2 right-2 px-2 py-1 text-xs bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
                         title="Copiar SQL"
                     >
-                        <i className="fas fa-copy mr-1"></i> Copiar
+                        <i className={`fas ${copiedField === 'schema_sql' ? 'fa-check' : 'fa-copy'} mr-1`}></i> {copiedField === 'schema_sql' ? 'Copiado!' : 'Copiar'}
                     </button>
                 </div>
                 <p className="text-gray-500 text-sm mt-4">

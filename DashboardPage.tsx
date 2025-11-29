@@ -1,4 +1,5 @@
 
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { Header } from './components/Header';
 import { ContentGenerator } from './components/ContentGenerator';
@@ -145,7 +146,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
     }
 
     // 2. Carrega metadados do app
-    fetch('./metadata.json')
+    fetch('/metadata.json') // Updated to absolute path
       .then(response => response.ok ? response.json() : { version: 'Error' })
       .then(data => setMetadata(data))
       .catch(err => console.error("Failed to load metadata:", err));

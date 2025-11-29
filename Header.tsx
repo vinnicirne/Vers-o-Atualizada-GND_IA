@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { UserRole } from '../types';
 
@@ -8,16 +9,18 @@ interface HeaderProps {
   isAdmin?: boolean;
   onNavigateToAdmin?: () => void;
   onNavigateToDashboard?: () => void;
-  onNavigateToLogin?: () => void; // Novo prop para ir ao login
+  onNavigateToLogin?: () => void;
   onNewUserClick?: () => void;
   onOpenPlans?: () => void; 
   onOpenManual?: () => void; 
   onOpenHistory?: () => void;
   onOpenAffiliates?: () => void;
+  onOpenIntegrations?: () => void; // Novo Prop
   pageTitle?: string;
   userCredits?: number;
   userRole?: UserRole;
   metadata?: { version: string }; 
+  realtimeStatus?: string; // New prop for Realtime Status
 }
 
 export function Header({ 
@@ -32,13 +35,32 @@ export function Header({
     onOpenManual, 
     onOpenHistory, 
     onOpenAffiliates, 
+    onOpenIntegrations,
     pageTitle, 
     userCredits, 
     userRole, 
-    metadata 
+    metadata,
+    realtimeStatus
 }: HeaderProps) {
   const isAdminView = !!onNavigateToDashboard;
   const isLoggedIn = !!userEmail;
+
+  // Helper to determine status color and label
+  const getRealtimeBadge = (status?: string) => {
+      if (status === 'SUBSCRIBED') {
+          return { color: 'bg-green-500', label: 'Online' };
+      }
+      if (status === 'CONNECTING' || status === 'CHANNEL_ERROR') {
+          return { color: 'bg-yellow-500', label: 'Conectando...' };
+      }
+      if (status === 'TIMED_OUT' || status === 'CLOSED') {
+          return { color: 'bg-red-500', label: 'Offline' };
+      }
+      // Default / Initial state
+      return { color: 'bg-gray-500', label: 'Desconectado' };
+  };
+
+  const badge = getRealtimeBadge(realtimeStatus);
 
   if (isAdminView) {
     // New Admin Header Layout
@@ -61,12 +83,12 @@ export function Header({
               <i className="fas fa-server text-blue-400"></i>
               <span>Produção</span>
             </div>
-            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Status do Sistema">
+            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title={`Status do Realtime: ${realtimeStatus}`}>
               <div className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                {realtimeStatus === 'SUBSCRIBED' && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${badge.color} opacity-75`}></span>}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${badge.color}`}></span>
               </div>
-              <span>Online</span>
+              <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-400 font-semibold' : 'text-gray-400'}>{badge.label}</span>
             </div>
           </div>
         </div>
@@ -130,6 +152,16 @@ export function Header({
         </div>
         <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-4">
           
+          {isLoggedIn && onOpenIntegrations && (
+             <button
+                onClick={onOpenIntegrations}
+                className="flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
+                title="Integrações (WordPress)"
+            >
+                <i className="fas fa-plug text-sm"></i>
+            </button>
+          )}
+
           {isLoggedIn && onOpenAffiliates && (
              <button
                 onClick={onOpenAffiliates}

@@ -1,4 +1,5 @@
 
+
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
@@ -65,9 +66,10 @@ export interface Log {
   usuario_id: string;
   acao: string;
   modulo: string;
+  // FIX: Replaced 'jsonb' with 'any' as 'jsonb' is a PostgreSQL type, not a TypeScript type.
+  detalhes?: any;
   data: string;
   user_email?: string;
-  detalhes?: Record<string, any>;
 }
 
 export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security';
@@ -82,7 +84,7 @@ export interface SecuritySettings {
   validationMode: 'strict_allowlist' | 'dns_validation';
 }
 
-export type TransactionStatus = 'pending' | 'approved' | 'failed';
+export type TransactionStatus = 'pending' | 'approved' | 'failed' | 'refunded';
 export type PaymentMethod = 'pix' | 'card';
 
 export interface Transaction {

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { NewsTable } from './NewsTable';
 import { NewsArticle } from '../../types';
