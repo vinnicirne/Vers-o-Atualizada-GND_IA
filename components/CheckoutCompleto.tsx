@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -31,13 +30,13 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
 
-  // Refs para Mercado Pago
+  // Refs para Mercado Pago (usando os novos IDs do usuário)
   const mpCardNumberRef = useRef<HTMLDivElement>(null);
   const mpExpirationDateRef = useRef<HTMLDivElement>(null);
   const mpSecurityCodeRef = useRef<HTMLDivElement>(null);
   const mpCardholderNameRef = useRef<HTMLDivElement>(null);
-  const mpIssuerRef = useRef<HTMLDivElement>(null); // Changed to div for MP SDK injection
-  const mpInstallmentsRef = useRef<HTMLDivElement>(null); // Changed to div for MP SDK injection
+  const mpIssuerRef = useRef<HTMLDivElement>(null); 
+  const mpInstallmentsRef = useRef<HTMLDivElement>(null); 
 
   // Inicializa o gateway preferencial se um deles estiver ativo
   useEffect(() => {
@@ -76,18 +75,14 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
 
     const loadAsaasSdk = () => {
       return new Promise<void>((resolve, reject) => {
+        // No need to load Asaas SDK if we're just showing a placeholder
+        // This will prevent unnecessary network requests if Asaas isn't actively used.
         if (!asaasPublicKey || window.Asaas) {
           resolve();
           return;
         }
-        asaasScript = document.createElement('script');
-        asaasScript.src = "https://js.asaas.com/v1/asaas.js";
-        asaasScript.onload = () => {
-          (window as any).asaasReady = true;
-          resolve();
-        };
-        asaasScript.onerror = () => reject(new Error("Falha ao carregar SDK do Asaas."));
-        document.body.appendChild(asaasScript);
+        // Removed actual Asaas SDK loading script
+        resolve(); // Always resolve as Asaas is not actively integrating
       });
     };
 
@@ -124,25 +119,24 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
       // Check if the form is already mounted to prevent re-mounting
       if (mpCardNumberRef.current?.querySelector('iframe')) return;
 
-
       cardForm = mp.cardForm({
         amount: amount.toFixed(2).toString(),
         autoMount: true,
         form: {
-          id: "form-mp",
-          cardNumber: { id: "mp-card-number" },
-          expirationDate: { id: "mp-expiration-date" },
-          securityCode: { id: "mp-security-code" },
-          cardholderName: { id: "mp-cardholder-name" },
-          issuer: { id: "mp-issuer" },
-          installments: { id: "mp-installments" },
+          id: "form-checkout", // This ID is for the HTML form wrapper
+          cardNumber: { id: "form-checkout__cardNumber" },
+          expirationDate: { id: "form-checkout__expirationDate" },
+          securityCode: { id: "form-checkout__securityCode" },
+          cardholderName: { id: "form-checkout__cardholderName" },
+          issuer: { id: "form-checkout__issuer" },
+          installments: { id: "form-checkout__installments" },
         },
         callbacks: {
-          onReady: () => {
-            console.log("Mercado Pago Form Ready!");
-            setLoadingSdk(false); // SDK está pronto, o formulário pode ser exibido
+          onFormMounted: () => {
+            console.log("Mercado Pago Form Mounted!");
+            setLoadingSdk(false); // Only set to false when MP form is definitely ready
           },
-          onFormSubmitted: async (event: any) => {
+          onSubmit: async (event: any) => {
             event.preventDefault();
             setProcessingPayment(true);
             setPaymentError(null);
@@ -170,7 +164,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
                   issuer_id: issuerId,
                   installments: Number(installments),
                   amount: amount,
-                  user_id: user.id,
+                  user_id: user.id, // For logging in Edge Function
                   item_type: itemType,
                   item_id: itemId,
                 }),
@@ -193,7 +187,6 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
             console.error("Erro do SDK Mercado Pago:", errors);
             const errorMessage = errors[0]?.message || "Erro ao carregar o formulário de pagamento.";
             setPaymentError(errorMessage);
-            // Don't set loadingSdk(false) here, as it might interfere with overall SDK loading state
           }
         },
       });
@@ -223,7 +216,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
     setPaymentError(null);
 
     if (gateway === 'mp') {
-      const mpFormElement = document.getElementById('form-mp');
+      const mpFormElement = document.getElementById('form-checkout');
       if (mpFormElement) {
         // Trigger the form submission which is handled by Mercado Pago's onSubmit callback
         mpFormElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
@@ -232,60 +225,9 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
         setProcessingPayment(false);
       }
     } else if (gateway === 'asaas') {
-      if (!window.Asaas || !asaasPublicKey) {
-        onError("SDK Asaas não carregado ou Public Key ausente.");
-        setProcessingPayment(false);
-        return;
-      }
-
-      // IMPORTANTE: Este é o código do usuário com dados de cartão FIXOS/MOCKADOS.
-      // Para um checkout transparente real com Asaas, o usuário precisaria inserir
-      // esses dados em campos de input e o token seria criado com base neles.
-      try {
-        const asaas = new window.Asaas(asaasPublicKey, { environment: 'sandbox' }); // Assuming sandbox
-        
-        const cardToken = await asaas.createCreditCardToken({
-          holderName: "CLIENTE TESTE GDN",
-          number: "4111111111111111", // Cartão de teste
-          expiryMonth: "12",
-          expiryYear: "2030",
-          ccv: "123"
-        });
-
-        if (!cardToken || !cardToken.creditCardToken) { // Asaas returns token in `creditCardToken` property
-          onError("Falha ao gerar token do cartão Asaas: " + (cardToken?.errors?.[0]?.description || 'Erro desconhecido.'));
-          setProcessingPayment(false);
-          return;
-        }
-
-        const supabaseFunctionUrl = `${supabaseUrl}/functions/v1/asaas_pagar`;
-
-        const res = await fetch(supabaseFunctionUrl, {
-          method: "POST",
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${user.id}`
-          },
-          body: JSON.stringify({
-            amount: amount,
-            user_id: user.id,
-            creditCardToken: cardToken.creditCardToken, // Use the correct property
-            item_type: itemType,
-            item_id: itemId,
-          }),
-        });
-        const result = await res.json();
-        if (result.status === "CONFIRMED" || result.status === "PENDING") {
-          onSuccess();
-        } else {
-          onError(result.errors?.[0]?.description || "Asaas: " + result.status);
-        }
-      } catch (error: any) {
-        console.error("Erro ao chamar Edge Function asaas-pagar:", error);
-        onError(error.message || "Falha na comunicação com o servidor de pagamento Asaas.");
-      } finally {
-        setProcessingPayment(false);
-      }
+      // Simplified Asaas logic as per user's request (Asaas em breve)
+      onError("O gateway Asaas está em desenvolvimento. Por favor, utilize o Mercado Pago.");
+      setProcessingPayment(false);
     }
   };
 
@@ -340,36 +282,36 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
       )}
 
       {gateway === 'mp' && mpPublicKey && (
-        <form id="form-mp" className="space-y-4">
+        <form id="form-checkout" className="space-y-4">
           <div className="mt-4 p-2 text-xs text-yellow-400 bg-yellow-900/20 rounded border border-yellow-700/30 flex items-center gap-2">
             <i className="fas fa-exclamation-triangle"></i>
             <span>Pagamento seguro via Mercado Pago.</span>
           </div>
           <div className="form-control">
-            <label htmlFor="mp-card-number" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Número do Cartão</label>
-            <div id="mp-card-number" ref={mpCardNumberRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+            <label htmlFor="form-checkout__cardNumber" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Número do Cartão</label>
+            <div id="form-checkout__cardNumber" ref={mpCardNumberRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="form-control">
-              <label htmlFor="mp-expiration-date" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Validade</label>
-              <div id="mp-expiration-date" ref={mpExpirationDateRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+              <label htmlFor="form-checkout__expirationDate" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Validade</label>
+              <div id="form-checkout__expirationDate" ref={mpExpirationDateRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
             </div>
             <div className="form-control">
-              <label htmlFor="mp-security-code" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">CVC</label>
-              <div id="mp-security-code" ref={mpSecurityCodeRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+              <label htmlFor="form-checkout__securityCode" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">CVC</label>
+              <div id="form-checkout__securityCode" ref={mpSecurityCodeRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
             </div>
           </div>
           <div className="form-control">
-            <label htmlFor="mp-cardholder-name" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Nome no Cartão</label>
-            <div id="mp-cardholder-name" ref={mpCardholderNameRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+            <label htmlFor="form-checkout__cardholderName" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Nome no Cartão</label>
+            <div id="form-checkout__cardholderName" ref={mpCardholderNameRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
           </div>
           <div className="form-control">
-            <label htmlFor="mp-issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Banco Emissor</label>
-            <div id="mp-issuer" ref={mpIssuerRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></div>
+            <label htmlFor="form-checkout__issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Banco Emissor</label>
+            <div id="form-checkout__issuer" ref={mpIssuerRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></div>
           </div>
           <div className="form-control">
-            <label htmlFor="mp-installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Parcelas</label>
-            <div id="mp-installments" ref={mpInstallmentsRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></div>
+            <label htmlFor="form-checkout__installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Parcelas</label>
+            <div id="form-checkout__installments" ref={mpInstallmentsRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></div>
           </div>
         </form>
       )}
@@ -378,15 +320,12 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
         <div className="space-y-4">
           <div className="mt-4 p-2 text-xs text-yellow-400 bg-yellow-900/20 rounded border border-yellow-700/30 flex items-center gap-2">
             <i className="fas fa-exclamation-triangle"></i>
-            <span>Pagamento seguro via Asaas. (Dados de cartão fixos para testes/demonstração).</span>
+            <span>Pagamento seguro via Asaas. (Em breve).</span>
           </div>
-          {/* Para Asaas, o código fornecido usa dados fixos. Se desejar inputs, precisaria adicionar aqui */}
-          <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 text-sm text-gray-300">
-            <p className="font-bold mb-2">Detalhes de Cartão (Dados Fixos - Apenas para Teste)</p>
-            <p><strong>Titular:</strong> CLIENTE TESTE GDN</p>
-            <p><strong>Número:</strong> •••• •••• •••• 1111</p>
-            <p><strong>Validade:</strong> 12/30</p>
-            <p><strong>CVV:</strong> •••</p>
+          <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 text-sm text-gray-300 text-center py-8">
+            <i className="fas fa-hourglass-half text-4xl text-gray-600 mb-3"></i>
+            <p className="font-bold">O gateway Asaas está em desenvolvimento.</p>
+            <p className="text-sm text-gray-400 mt-1">Por favor, utilize o Mercado Pago no momento.</p>
           </div>
         </div>
       )}
