@@ -365,51 +365,35 @@ export default function CheckoutCompleto({
           const [month, yearRaw] = expirationDate.split('/');
           const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw;
 
-          // 1. Tokenizar no Asaas (Client-Side Direct Fetch)
-          // Nota: Sandbox URL hardcoded pois o backend asaas-pagar também aponta para sandbox.
-          const tokenResponse = await fetch('https://sandbox.asaas.com/api/v3/creditCard/tokenize', {
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/json',
-                  'access_token': asaasPublicKey || ''
+          // Prepare payload for backend (Server-side Tokenization/Payment)
+          const payload = {
+              amount: amount,
+              item_type: itemType,
+              item_id: itemId,
+              installments: Number(asaasFormData.installments),
+              creditCard: {
+                  holderName: holderName,
+                  number: cardNumber.replace(/\s/g, ''),
+                  expiryMonth: month,
+                  expiryYear: year,
+                  ccv: cvv
               },
-              body: JSON.stringify({
-                  customer: user?.id, // ID local apenas para ref, Asaas cria o deles
-                  creditCard: {
-                      holderName,
-                      number: cardNumber.replace(/\s/g, ''),
-                      expiryMonth: month,
-                      expiryYear: year,
-                      ccv: cvv
-                  },
-                  creditCardHolderInfo: {
-                      name: holderName,
-                      email: user?.email,
-                      cpfCnpj: '00000000000', // Asaas Sandbox aceita genérico, em prod precisaria pedir CPF
-                      postalCode: '00000000',
-                      addressNumber: '0',
-                      phone: '0000000000'
-                  }
-              })
-          });
+              creditCardHolderInfo: {
+                  name: holderName,
+                  email: user?.email,
+                  cpfCnpj: '00000000000', // Sending generic for sandbox, backend can enforce real CPF if needed
+                  postalCode: '00000000',
+                  addressNumber: '0',
+                  phone: '0000000000'
+              }
+          };
 
-          const tokenData = await tokenResponse.json();
-          if (!tokenData.creditCardToken) {
-              throw new Error(tokenData.errors?.[0]?.description || 'Falha ao validar cartão no Asaas.');
-          }
-
-          // 2. Enviar para Backend
+          // 2. Enviar para Backend (Proxied request to avoid CORS)
           const { data: { session } } = await supabase.auth.getSession();
           const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/asaas-pagar', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
-              body: JSON.stringify({
-                  creditCardToken: tokenData.creditCardToken,
-                  amount: amount,
-                  installments: Number(asaasFormData.installments), // Enviado mas backend precisa tratar se for parcelado
-                  item_type: itemType,
-                  item_id: itemId,
-              }),
+              body: JSON.stringify(payload),
           });
 
           const result = await res.json();
