@@ -23,10 +23,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-<<<<<<< HEAD
       console.error("[asaas-pagar] Token de autenticação ausente.");
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       return new Response(JSON.stringify({ error: "Token ausente" }), { status: 401, headers: corsHeaders });
     }
     const jwt = authHeader.split(" ")[1];
@@ -44,10 +41,7 @@ serve(async (req) => {
 
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !authUser) {
-<<<<<<< HEAD
       console.error("[asaas-pagar] Sessão inválida ou expirada.", authError);
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       return new Response(JSON.stringify({ error: "Sessão inválida." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -55,7 +49,6 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-<<<<<<< HEAD
     console.log("[asaas-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
 
     // --- CHECK FOR SERVER CONFIG ---
@@ -76,26 +69,17 @@ serve(async (req) => {
     if (reqJson.check_status_id) {
         console.log(`[asaas-pagar] Verificando status para ID: ${reqJson.check_status_id}`);
         const { data: tx, error: txError } = await supabaseAdmin
-=======
-
-    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
-    if (reqJson.check_status_id) {
-        const { data: tx } = await supabaseAdmin
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
             .from("transactions")
             .select("status")
             .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
             .single();
         
-<<<<<<< HEAD
         if (txError && txError.code !== 'PGRST116') { // PGRST116 = no rows found
             console.error(`[asaas-pagar] Erro ao buscar transação para polling: ${txError.message}`);
             return new Response(JSON.stringify({ error: `Database error during polling: ${txError.message}` }), { status: 500, headers: corsHeaders });
         }
 
         console.log(`[asaas-pagar] Status da transação ${reqJson.check_status_id}: ${tx?.status || 'pending'}`);
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
         return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -115,7 +99,6 @@ serve(async (req) => {
       docNumber // CPF/CNPJ
     } = reqJson;
 
-<<<<<<< HEAD
     if (!amount || !item_type || !item_id || !billingType) {
         console.error("[asaas-pagar] Dados do pagamento incompletos:", reqJson);
         return new Response(JSON.stringify({ error: "Dados do pagamento incompletos." }), { status: 400, headers: corsHeaders });
@@ -123,25 +106,13 @@ serve(async (req) => {
 
     // Busca dados do usuário
     const { data: userData, error: userDataError } = await supabaseAdmin
-=======
-    if (!amount) {
-        return new Response(JSON.stringify({ error: "Valor inválido." }), { status: 400, headers: corsHeaders });
-    }
-
-    // Busca dados do usuário
-    const { data: userData } = await supabaseAdmin
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       .from("app_users")
       .select("email, full_name, asaas_customer_id, referred_by")
       .eq("id", authUser.id)
       .single();
 
-<<<<<<< HEAD
     if (userDataError || !userData?.email) {
       console.error("[asaas-pagar] Usuário não encontrado no banco de dados ou erro:", userDataError);
-=======
-    if (!userData?.email) {
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       return new Response(JSON.stringify({ error: "Usuário não encontrado." }), { status: 404, headers: corsHeaders });
     }
 
@@ -154,21 +125,12 @@ serve(async (req) => {
     const cpfCnpjToUse = docNumber || "00000000000";
 
     // Garante cliente no Asaas
-<<<<<<< HEAD
     if (!asaasCustomerId) {
       console.log(`[asaas-pagar] Cliente Asaas não encontrado para ${authUser.id}. Tentando criar/buscar.`);
       // 1. Tenta criar cliente
       let customerResponse = await fetch(`${asaasApiBaseUrl}/api/v3/customers`, {
         method: "POST",
         headers: { "access_token": asaasKey, "Content-Type": "application/json" },
-=======
-    // Lógica atualizada: Sempre tenta buscar/criar ou atualizar se o ID não existir
-    if (!asaasCustomerId) {
-      // 1. Tenta criar cliente
-      const res = await fetch("https://sandbox.asaas.com/api/v3/customers", {
-        method: "POST",
-        headers: { "access_token": Deno.env.get("ASAAS_KEY")!, "Content-Type": "application/json" },
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
         body: JSON.stringify({ 
             name: userFullName, 
             email: userEmail, 
@@ -176,7 +138,6 @@ serve(async (req) => {
             cpfCnpj: cpfCnpjToUse
         }),
       });
-<<<<<<< HEAD
       let customer = await customerResponse.json();
       console.log("[asaas-pagar] Resposta de criação/busca de cliente Asaas:", JSON.stringify(customer));
       
@@ -186,48 +147,26 @@ serve(async (req) => {
                console.log("[asaas-pagar] Erro ao criar cliente (possivelmente email já existe). Tentando buscar por email.");
                const searchRes = await fetch(`${asaasApiBaseUrl}/api/v3/customers?email=${userEmail}`, {
                    headers: { "access_token": asaasKey }
-=======
-      const customer = await res.json();
-      
-      if (!customer.id) {
-          // Se falhar (ex: email já existe no Asaas mas não no nosso banco), tenta buscar por email
-          if (customer.errors?.[0]?.code === 'invalid_customer' || customer.errors?.[0]?.description?.includes('email')) {
-               const searchRes = await fetch(`https://sandbox.asaas.com/api/v3/customers?email=${userEmail}`, {
-                   headers: { "access_token": Deno.env.get("ASAAS_KEY")! }
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                });
                const searchData = await searchRes.json();
                if (searchData.data && searchData.data.length > 0) {
                    asaasCustomerId = searchData.data[0].id;
-<<<<<<< HEAD
                    console.log(`[asaas-pagar] Cliente Asaas encontrado por email: ${asaasCustomerId}`);
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
                }
           }
           
           if (!asaasCustomerId) {
-<<<<<<< HEAD
              console.error("[asaas-pagar] Falha final ao registrar cliente no Asaas:", customer.errors?.[0]?.description || JSON.stringify(customer));
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
              return new Response(JSON.stringify({ error: "Falha ao registrar cliente no Asaas: " + (customer.errors?.[0]?.description || "Erro desconhecido") }), { status: 500, headers: corsHeaders });
           }
       } else {
           asaasCustomerId = customer.id;
-<<<<<<< HEAD
           console.log(`[asaas-pagar] Cliente Asaas criado/confirmado: ${asaasCustomerId}`);
       }
       
       // Salva ID no banco
       const { error: updateCustomerError } = await supabaseAdmin.from("app_users").update({ asaas_customer_id: asaasCustomerId }).eq("id", authUser.id);
       if (updateCustomerError) console.warn(`[asaas-pagar] Erro ao salvar asaas_customer_id no DB: ${updateCustomerError.message}`);
-=======
-      }
-      
-      // Salva ID no banco
-      await supabaseAdmin.from("app_users").update({ asaas_customer_id: asaasCustomerId }).eq("id", authUser.id);
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
     }
 
     const isPix = billingType === 'PIX';
@@ -237,11 +176,7 @@ serve(async (req) => {
       customer: asaasCustomerId,
       billingType: isPix ? "PIX" : "CREDIT_CARD",
       value: Number(amount),
-<<<<<<< HEAD
       dueDate: new Date(Date.now()).toISOString().slice(0, 10), // Vencimento hoje
-=======
-      dueDate: new Date(Date.now()).toISOString().slice(0, 10),
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       description: `GDN_IA: ${item_type} (${item_id})`,
       remoteIp: req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1",
     };
@@ -255,15 +190,9 @@ serve(async (req) => {
                 name: userFullName,
                 email: userEmail,
                 cpfCnpj: cpfCnpjToUse,
-<<<<<<< HEAD
                 postalCode: "00000000", // Placeholder, idealmente coletado
                 addressNumber: "0",     // Placeholder, idealmente coletado
                 phone: "11999999999"    // Placeholder, idealmente coletado
-=======
-                postalCode: "00000000",
-                addressNumber: "0",
-                phone: "11999999999"
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
             };
         }
         if (Number(installments) > 1) {
@@ -272,23 +201,15 @@ serve(async (req) => {
         }
     }
 
-<<<<<<< HEAD
     console.log("[asaas-pagar] Enviando payload de pagamento para Asaas API:", JSON.stringify(paymentPayload));
     // Cria cobrança
     const paymentRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments`, {
       method: "POST",
       headers: { "access_token": asaasKey, "Content-Type": "application/json" },
-=======
-    // Cria cobrança
-    const paymentRes = await fetch("https://sandbox.asaas.com/api/v3/payments", {
-      method: "POST",
-      headers: { "access_token": Deno.env.get("ASAAS_KEY")!, "Content-Type": "application/json" },
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       body: JSON.stringify(paymentPayload),
     });
 
     const paymentData = await paymentRes.json();
-<<<<<<< HEAD
     console.log("[asaas-pagar] Resposta completa do pagamento Asaas:", JSON.stringify(paymentData));
 
     if (!paymentRes.ok || paymentData.errors) {
@@ -334,33 +255,6 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: "Falha ao gerar QR Code Pix." }), { status: 500, headers: corsHeaders });
         }
 
-=======
-
-    if (!paymentRes.ok || paymentData.errors) {
-        const errorMsg = paymentData.errors?.[0]?.description || paymentData.error || "Pagamento recusado.";
-        return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: corsHeaders });
-    }
-
-    // Salva transação
-    await supabaseAdmin.from("transactions").insert({
-      usuario_id: authUser.id,
-      valor: Number(amount),
-      metodo: isPix ? "pix" : "card",
-      status: "pending", // Sempre pending no início, mesmo cartão leva uns segundos
-      external_id: paymentData.id,
-      metadata: { provider: "asaas", item_type, item_id },
-      data: new Date().toISOString(),
-    });
-
-    // Se for PIX, busca o QR Code (2ª chamada necessária no Asaas)
-    if (isPix) {
-        const qrRes = await fetch(`https://sandbox.asaas.com/api/v3/payments/${paymentData.id}/pixQrCode`, {
-            method: "GET",
-            headers: { "access_token": Deno.env.get("ASAAS_KEY")!, "Content-Type": "application/json" }
-        });
-        const qrData = await qrRes.json();
-        
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
         return new Response(JSON.stringify({ 
             success: true, 
             paymentId: paymentData.id, 
@@ -371,18 +265,11 @@ serve(async (req) => {
         });
     }
 
-<<<<<<< HEAD
     // Se for Cartão e status imediato for aprovado, libera benefícios
     if (transactionStatus === "approved") {
         console.log(`[asaas-pagar] Pagamento aprovado no Asaas. Iniciando liberação de benefícios para usuário ${authUser.id}.`);
         await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
         console.log("[asaas-pagar] Liberação de benefícios concluída.");
-=======
-    // Se for Cartão, verifica status imediato
-    if (paymentData.status === "CONFIRMED" || paymentData.status === "RECEIVED") {
-        await supabaseAdmin.from("transactions").update({ status: 'approved' }).eq('external_id', paymentData.id);
-        await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
     }
 
     return new Response(JSON.stringify({ success: true, status: paymentData.status, id: paymentData.id }), {
@@ -391,20 +278,14 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-<<<<<<< HEAD
     console.error("[asaas-pagar] Erro interno no processamento:", err);
     return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
-=======
-    console.error("Erro interno:", err);
-    return new Response(JSON.stringify({ error: `Erro interno: ${err.message}` }), {
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
 
-<<<<<<< HEAD
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
     console.log(`[Benefits Helper (asaas-pagar)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}, amount: ${amount}, referrerId: ${referrerId}`);
 
@@ -413,18 +294,10 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
         const { data: config, error: configError } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
         if (configError) console.warn(`[Benefits Helper (asaas-pagar)] Erro ao buscar config de planos: ${configError.message}`);
 
-=======
-// Helper de Benefícios
-async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
-    if (itemType === "plan") {
-        await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
         if (config?.value) {
           const plan = (config.value as any[]).find((p: any) => p.id === itemId);
           if (plan) {
             await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
-<<<<<<< HEAD
           } else {
             console.warn(`[Benefits Helper (asaas-pagar)] Plano "${itemId}" não encontrado na configuração de sistema. Créditos não atribuídos.`);
           }
@@ -470,28 +343,4 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
         console.log(`[Benefits Helper (asaas-pagar)] Usuário ${userId} não foi indicado. Nenhuma comissão de afiliado.`);
     }
     console.log(`[Benefits Helper (asaas-pagar)] Liberação de benefícios concluída.`);
-=======
-          }
-        }
-    }
-    if (itemType === "credits") {
-        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        const newCredits = (current?.credits || 0) + Number(itemId);
-        await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
-    }
-    if (referrerId) {
-        const commission = parseFloat((Number(amount) * 0.2).toFixed(2));
-        const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
-        if (refUser) {
-            const newBalance = (refUser.affiliate_balance || 0) + commission;
-            await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
-            await supabaseAdmin.from("affiliate_logs").insert({
-                affiliate_id: referrerId,
-                source_user_id: userId,
-                amount: commission,
-                description: `Comissão 20% - ${itemType}`
-            });
-        }
-    }
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
 }

@@ -1,11 +1,6 @@
-<<<<<<< HEAD
 
 // supabase/functions/mp-pagar/index.ts
 
-=======
-// supabase/functions/mp-pagar/index.ts
-
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -29,10 +24,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
-<<<<<<< HEAD
       console.error("[mp-pagar] Token de autenticação ausente.");
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       return new Response(JSON.stringify({ error: "Token de autenticação ausente" }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -66,10 +58,7 @@ serve(async (req) => {
 
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !authUser) {
-<<<<<<< HEAD
       console.error("[mp-pagar] Sessão inválida ou expirada.", authError);
-=======
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
       return new Response(JSON.stringify({ error: "Sessão inválida ou expirada." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -77,7 +66,6 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-<<<<<<< HEAD
     console.log("[mp-pagar] Requisição JSON recebida (para depuração):", JSON.stringify(reqJson));
     console.log("[mp-pagar] Token do cartão recebido (para depuração):", reqJson.token ? "Presente" : "Ausente", reqJson.token);
 
@@ -86,18 +74,11 @@ serve(async (req) => {
     if (reqJson.check_status_id) {
         console.log(`[mp-pagar] Verificando status para ID: ${reqJson.check_status_id}`);
         const { data: tx, error: txError } = await supabaseAdmin
-=======
-
-    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
-    if (reqJson.check_status_id) {
-        const { data: tx } = await supabaseAdmin
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
             .from("transactions")
             .select("status")
             .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
             .single();
         
-<<<<<<< HEAD
         if (txError && txError.code !== 'PGRST116') { // PGRST116 = no rows found
              console.error(`[mp-pagar] Erro ao buscar transação para polling: ${txError.message}`);
              return new Response(JSON.stringify({ error: `Database error during polling: ${txError.message}` }), { status: 500, headers: corsHeaders });
@@ -349,205 +330,4 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
         console.log(`[Benefits Helper (mp-pagar)] Usuário ${userId} não foi indicado. Nenhuma comissão de afiliado.`);
     }
     console.log(`[Benefits Helper (mp-pagar)] Liberação de benefícios concluída.`);
-=======
-        return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
-
-    // --- MODO 2: GERAÇÃO DE PAGAMENTO ---
-    const {
-      token,
-      payment_method_id, 
-      issuer_id,
-      installments = 1,
-      amount,
-      item_type,
-      item_id,
-      method,
-      docNumber
-    } = reqJson;
-
-    if (!amount || !item_type || !item_id) {
-      return new Response(JSON.stringify({ error: "Dados do pagamento incompletos" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const { data: userData } = await supabaseAdmin
-      .from("app_users")
-      .select("email, referred_by, full_name")
-      .eq("id", authUser.id)
-      .single();
-
-    if (!userData?.email) {
-      return new Response(JSON.stringify({ error: "Usuário não encontrado no banco de dados." }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const userEmail = userData.email;
-    const referrerId = userData.referred_by;
-    const isPix = method === 'pix' || payment_method_id === 'pix';
-
-    const firstName = userData.full_name?.split(' ')[0] || 'Cliente';
-    const lastName = userData.full_name?.split(' ').slice(1).join(' ') || 'GDN';
-
-    const mpPayload: any = {
-        transaction_amount: Number(amount),
-        description: `Compra GDN_IA - ${item_type} (${item_id})`,
-        payer: {
-            email: userEmail,
-            first_name: firstName,
-            last_name: lastName || 'Silva'
-        }
-    };
-
-    if (docNumber) {
-        const cleanDoc = docNumber.replace(/\D/g, '');
-        if (cleanDoc.length >= 11) {
-            const docType = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
-            mpPayload.payer.identification = {
-                type: docType,
-                number: cleanDoc
-            };
-        }
-    }
-
-    if (isPix) {
-        mpPayload.payment_method_id = 'pix';
-    } else {
-        if (!token) throw new Error("Token do cartão é obrigatório.");
-        mpPayload.token = token;
-        mpPayload.installments = Number(installments);
-        mpPayload.payment_method_id = payment_method_id;
-        if (issuer_id) mpPayload.issuer_id = issuer_id;
-    }
-
-    console.log("Enviando payload para MP:", JSON.stringify(mpPayload));
-
-    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${mpAccessToken}`,
-        "Content-Type": "application/json",
-        "X-Idempotency-Key": crypto.randomUUID()
-      },
-      body: JSON.stringify(mpPayload),
-    });
-
-    const payment = await mpResponse.json();
-
-    // Tratamento de Erro do MP
-    if (!mpResponse.ok) {
-        console.error("MP API Error:", payment);
-        
-        let errorMessage = payment.message || "Erro desconhecido no Mercado Pago";
-        const errorCode = payment.error || "unknown_error";
-
-        // Tradução de erros comuns de autenticação
-        if (mpResponse.status === 401 || errorCode === 'unauthorized' || errorMessage.includes('invalid access token')) {
-            errorMessage = "Erro de Configuração: Chave de API do Mercado Pago inválida ou expirada.";
-        }
-
-        return new Response(JSON.stringify({ 
-            error: errorMessage,
-            code: errorCode,
-            details: payment.cause 
-        }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
-
-    const transactionStatus = payment.status === "approved" ? "approved" : "pending";
-
-    await supabaseAdmin
-      .from("transactions")
-      .insert({
-        usuario_id: authUser.id,
-        valor: Number(amount),
-        metodo: isPix ? "pix" : "card",
-        status: transactionStatus,
-        external_id: payment.id?.toString(),
-        metadata: {
-            item_type,
-            item_id,
-            provider: "mercado_pago",
-            mp_id: payment.id
-        },
-        data: new Date().toISOString(),
-      });
-
-    if (isPix) {
-        // Valida se o QR Code realmente veio
-        if (!payment.point_of_interaction?.transaction_data?.qr_code) {
-             console.error("MP Pix criado mas sem QR Code. Resposta completa:", payment);
-             return new Response(JSON.stringify({ 
-                 error: "Pix criado, mas o banco não retornou o QR Code. Tente novamente ou verifique seus dados.",
-                 full_response: payment 
-             }), {
-                status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-        }
-        
-        return new Response(JSON.stringify(payment), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
-
-    if (transactionStatus === "approved") {
-        await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
-    }
-
-    return new Response(JSON.stringify(payment), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-
-  } catch (err: any) {
-    console.error("Erro interno mp-pagar:", err);
-    return new Response(JSON.stringify({ error: err.message }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-});
-
-async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
-    if (itemType === "plan") {
-        await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
-        if (config?.value) {
-            const plan = (config.value as any[]).find((p: any) => p.id === itemId);
-            if (plan) {
-                await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
-            }
-        }
-    } else if (itemType === "credits") {
-        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        const newCredits = (current?.credits || 0) + Number(itemId); 
-        await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
-    }
-
-    if (referrerId) {
-        const commission = parseFloat((Number(amount) * 0.2).toFixed(2));
-        const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
-        if (refUser) {
-            const newBalance = (refUser.affiliate_balance || 0) + commission;
-            await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
-            await supabaseAdmin.from("affiliate_logs").insert({
-                affiliate_id: referrerId,
-                source_user_id: userId,
-                amount: commission,
-                description: `Comissão 20% - ${itemType}`
-            });
-        }
-    }
->>>>>>> a01b8ccbfd3d62c90faf00dccf1c2443ed1446aa
 }
