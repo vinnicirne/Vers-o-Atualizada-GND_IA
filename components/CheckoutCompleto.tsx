@@ -13,201 +13,264 @@ interface CheckoutCompletoProps {
   onCancel: () => void;
 }
 
-// --- STATIC INPUTS COMPONENT (MP Payment Form) ---
-const MPPaymentForm = memo(({ userEmail }: { userEmail: string }) => {
-  // Estilo base para os containers
-  const containerClass = "h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden relative flex items-center px-4";
-  // Estilo base para inputs (Nome e Validade)
+type GatewayType = 'mercadopago' | 'asaas' | null;
+
+// Helper para formatar cartão
+const formatCardNumber = (value: string) => {
+  return value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19);
+};
+
+// Helper para formatar validade
+const formatExpiration = (value: string) => {
+  return value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').substring(0, 5);
+};
+
+// --- GENERIC PAYMENT FORM ---
+// Renderiza DIVs para MP (iframes) ou INPUTs controlados para Asaas
+const GenericPaymentForm = memo(({ 
+    gateway, 
+    userEmail, 
+    formData, 
+    onChange 
+}: { 
+    gateway: GatewayType, 
+    userEmail: string,
+    formData: any,
+    onChange: (field: string, value: string) => void
+}) => {
+  const containerClass = "h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden relative flex items-center px-4 transition-colors focus-within:border-green-500";
   const inputClass = "w-full h-full bg-transparent text-white placeholder-gray-500 focus:outline-none text-sm";
 
   return (
     <div className="space-y-4">
-      {/* Número do Cartão (DIV - Iframe Seguro) */}
+      {/* Número do Cartão */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Número do Cartão</label>
-          <div 
-            id="form-checkout__cardNumber" 
-            className={containerClass}
-            style={{ paddingTop: '10px' }} 
-          ></div>
+          <div className={containerClass} id={gateway === 'mercadopago' ? "form-checkout__cardNumber" : undefined}>
+             {gateway === 'asaas' && (
+                 <input 
+                    type="text" 
+                    className={inputClass} 
+                    placeholder="0000 0000 0000 0000"
+                    value={formData.cardNumber}
+                    onChange={(e) => onChange('cardNumber', formatCardNumber(e.target.value))}
+                    maxLength={19}
+                 />
+             )}
+          </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Validade (INPUT - Para permitir digitação direta) */}
+        {/* Validade */}
         <div className="space-y-1">
            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Validade</label>
            <div className={containerClass}>
              <input 
                type="text" 
-               id="form-checkout__expirationDate" 
+               id={gateway === 'mercadopago' ? "form-checkout__expirationDate" : undefined}
                className={inputClass}
                placeholder="MM/AA"
+               value={gateway === 'asaas' ? formData.expirationDate : undefined}
+               onChange={gateway === 'asaas' ? (e) => onChange('expirationDate', formatExpiration(e.target.value)) : undefined}
+               maxLength={5}
              />
            </div>
         </div>
         
-        {/* CVV (DIV - Iframe Seguro) */}
+        {/* CVV */}
         <div className="space-y-1">
            <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">CVV</label>
-           <div 
-             id="form-checkout__securityCode" 
-             className={containerClass}
-             style={{ paddingTop: '10px' }}
-           ></div>
+           <div className={containerClass} id={gateway === 'mercadopago' ? "form-checkout__securityCode" : undefined}>
+              {gateway === 'asaas' && (
+                 <input 
+                    type="text" 
+                    className={inputClass} 
+                    placeholder="123"
+                    value={formData.cvv}
+                    onChange={(e) => onChange('cvv', e.target.value.replace(/\D/g, '').substring(0, 4))}
+                    maxLength={4}
+                 />
+             )}
+           </div>
         </div>
       </div>
 
-      {/* Nome no Cartão (INPUT - Obrigatório ser input para digitar) */}
+      {/* Nome no Cartão */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Nome no Cartão</label>
-          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden px-4 flex items-center">
+          <div className={containerClass}>
               <input
                 type="text"
-                id="form-checkout__cardholderName"
+                id={gateway === 'mercadopago' ? "form-checkout__cardholderName" : undefined}
                 className={inputClass}
                 placeholder="Como impresso no cartão"
+                value={gateway === 'asaas' ? formData.holderName : undefined}
+                onChange={gateway === 'asaas' ? (e) => onChange('holderName', e.target.value.toUpperCase()) : undefined}
               />
           </div>
       </div>
 
-      {/* E-mail (INPUT) */}
+      {/* E-mail */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">E-mail</label>
-          <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg overflow-hidden px-4 flex items-center">
+          <div className={containerClass}>
               <input
                 type="email"
-                id="form-checkout__cardholderEmail"
+                id={gateway === 'mercadopago' ? "form-checkout__cardholderEmail" : undefined}
                 className={inputClass}
                 defaultValue={userEmail}
                 placeholder="exemplo@email.com"
+                // MP pega value automaticamente pelo ID, Asaas precisa de state se quisermos mudar
               />
           </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        {/* Banco Emissor */}
-        <div className="space-y-1">
-           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Banco Emissor</label>
-           <select
-              id="form-checkout__issuer"
-              className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer"
-           ></select>
+        {/* Banco (Apenas MP usa isso via SDK, Asaas detecta auto no backend ou não precisa) */}
+        <div className={`space-y-1 ${gateway === 'asaas' ? 'opacity-50 pointer-events-none' : ''}`}>
+           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Banco</label>
+           {gateway === 'mercadopago' ? (
+               <select
+                  id="form-checkout__issuer"
+                  className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer truncate"
+               ></select>
+           ) : (
+               <div className="h-12 bg-gray-900 border border-gray-700 rounded-lg flex items-center px-4 text-gray-500 text-sm">
+                   Auto-detectar
+               </div>
+           )}
         </div>
 
-        {/* Parcelamento */}
+        {/* Parcelas */}
         <div className="space-y-1">
-           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parcelamento</label>
-           <select
-              id="form-checkout__installments"
-              className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer"
-           ></select>
+           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Parcelas</label>
+           {gateway === 'mercadopago' ? (
+               <select
+                  id="form-checkout__installments"
+                  className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer truncate"
+               ></select>
+           ) : (
+               <select
+                  className="w-full h-12 px-4 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:border-green-500 outline-none appearance-none cursor-pointer truncate"
+                  value={formData.installments}
+                  onChange={(e) => onChange('installments', e.target.value)}
+               >
+                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(n => (
+                       <option key={n} value={n}>{n}x de R$ {(formData.amount / n).toFixed(2).replace('.', ',')}</option>
+                   ))}
+               </select>
+           )}
         </div>
       </div>
 
-      {/* Campos ocultos obrigatórios */}
-      <div className="hidden">
-          <select id="form-checkout__identificationType"></select>
-          <input type="text" id="form-checkout__identificationNumber" />
-      </div>
+      {/* Campos ocultos MP */}
+      {gateway === 'mercadopago' && (
+          <div className="hidden">
+              <select id="form-checkout__identificationType"></select>
+              <input type="text" id="form-checkout__identificationNumber" />
+          </div>
+      )}
     </div>
   );
-}, () => true);
+}, (prev, next) => {
+    // Re-render apenas se gateway mudar ou formData mudar (para inputs controlados)
+    return prev.gateway === next.gateway && 
+           JSON.stringify(prev.formData) === JSON.stringify(next.formData);
+});
 
 export default function CheckoutCompleto({
   amount,
   itemType,
   itemId,
   mpPublicKey,
+  asaasPublicKey,
   onSuccess,
   onError,
   onCancel,
 }: CheckoutCompletoProps) {
   const { user } = useUser();
   
-  // Refs para valores que não devem triggar re-init do MP
-  const amountRef = useRef(amount);
-  const userRef = useRef(user);
-  const itemTypeRef = useRef(itemType);
-  const itemIdRef = useRef(itemId);
-
-  useEffect(() => {
-    amountRef.current = amount;
-    userRef.current = user;
-    itemTypeRef.current = itemType;
-    itemIdRef.current = itemId;
-  }, [amount, user, itemType, itemId]);
+  // Define qual gateway usar: Prioridade MP > Asaas
+  const [activeGateway, setActiveGateway] = useState<GatewayType>(null);
+  
+  // State para formulário manual (Asaas)
+  const [asaasFormData, setAsaasFormData] = useState({
+      cardNumber: '',
+      holderName: '',
+      expirationDate: '',
+      cvv: '',
+      installments: '1',
+      amount: amount
+  });
 
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   const cardFormRef = useRef<any>(null);
   const mountedRef = useRef(true);
 
-  // Cleanup on unmount
+  // 1. Determinar Gateway
   useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-      if (cardFormRef.current) {
-        try {
-          if (typeof cardFormRef.current.unmount === 'function') {
-             cardFormRef.current.unmount();
-          }
-        } catch (e) {
-          console.warn('Error unmounting MP form:', e);
-        }
-        cardFormRef.current = null;
+      if (mpPublicKey) {
+          setActiveGateway('mercadopago');
+      } else if (asaasPublicKey) {
+          setActiveGateway('asaas');
+      } else {
+          setFatalError('Nenhum método de pagamento configurado.');
+          setLoading(false);
       }
-    };
-  }, []);
+  }, [mpPublicKey, asaasPublicKey]);
 
-  // Initialize Mercado Pago
+  // 2. Atualizar valor em formData se prop mudar
   useEffect(() => {
-    if (!mpPublicKey) {
-      setError('Chave do Mercado Pago não configurada.');
-      setLoading(false);
-      return;
+      setAsaasFormData(prev => ({ ...prev, amount }));
+  }, [amount]);
+
+  // 3. Inicialização (MP ou Asaas)
+  useEffect(() => {
+    if (!activeGateway) return;
+
+    // Se for ASAAS, apenas libera o loading, pois usamos inputs nativos
+    if (activeGateway === 'asaas') {
+        setTimeout(() => setLoading(false), 500);
+        return;
     }
 
-    const initializeCardForm = async () => {
-      if (cardFormRef.current) return;
+    // Se for MP, carrega SDK
+    const loadMercadoPago = () => {
+      // @ts-ignore
+      if (window.MercadoPago) {
+        initializeMpCardForm();
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.async = true;
+      script.onload = () => { if (mountedRef.current) initializeMpCardForm(); };
+      script.onerror = () => { if (mountedRef.current) setFatalError('Erro ao carregar Mercado Pago.'); };
+      document.body.appendChild(script);
+    };
 
+    const initializeMpCardForm = async () => {
+      if (cardFormRef.current) return;
       try {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
+        await new Promise(resolve => setTimeout(resolve, 300)); // Espera DOM renderizar
         if (!mountedRef.current) return;
 
         // @ts-ignore
-        const mp = new window.MercadoPago(mpPublicKey, {
-          locale: 'pt-BR',
-        });
-
+        const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
         const cardForm = mp.cardForm({
-          amount: amountRef.current.toString(),
+          amount: amount.toString(),
           iframe: true,
           autoMount: true, 
           form: {
             id: 'form-checkout',
-            cardNumber: { 
-                id: 'form-checkout__cardNumber', 
-                placeholder: '0000 0000 0000 0000',
-                style: { color: '#ffffff', fontSize: '16px' } 
-            },
-            // IMPORTANTE: ExpirationDate e Name são INPUTS agora, sem style de iframe
-            expirationDate: { 
-                id: 'form-checkout__expirationDate', 
-                placeholder: 'MM/AA'
-            },
-            securityCode: { 
-                id: 'form-checkout__securityCode', 
-                placeholder: '123',
-                style: { color: '#ffffff', fontSize: '16px' }
-            },
-            cardholderName: { 
-                id: 'form-checkout__cardholderName', 
-                placeholder: 'Titular do cartão'
-            },
+            cardNumber: { id: 'form-checkout__cardNumber', placeholder: '0000 0000 0000 0000', style: { color: '#ffffff', fontSize: '16px' } },
+            expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
+            securityCode: { id: 'form-checkout__securityCode', placeholder: '123', style: { color: '#ffffff', fontSize: '16px' } },
+            cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Titular do cartão' },
             cardholderEmail: { id: 'form-checkout__cardholderEmail' },
             issuer: { id: 'form-checkout__issuer' },
             installments: { id: 'form-checkout__installments' },
@@ -216,124 +279,160 @@ export default function CheckoutCompleto({
           },
           callbacks: {
             onFormMounted: (err: any) => {
-              if (err) {
-                console.warn('MP Mount Error:', err);
-              }
-              if (mountedRef.current) {
-                  console.log('MP Form Mounted Successfully');
-                  setLoading(false);
-              }
+              if (!err && mountedRef.current) setLoading(false);
             },
-            onIssuersReceived: (err: any, issuers: any) => {
-               if (err) console.warn('Issuers error', err);
-            },
-            onInstallmentsReceived: (err: any, installments: any) => {
-               if (err) console.warn('Installments error', err);
-            },
-            onCardTokenReceived: (err: any, token: any) => {
-                if (err) console.warn('Token error', err);
-            },
-            onSubmit: async (e: any) => {
-              e.preventDefault();
-              if (processing || !mountedRef.current) return;
-
-              setProcessing(true);
-              setError(null);
-
-              try {
-                // 1. Create Token
-                const { token, error: tokenError } = await cardForm.createCardToken();
-
-                if (tokenError || !token) {
-                  console.error("Token Error:", tokenError);
-                  throw new Error('Verifique os dados do cartão.');
-                }
-
-                // 2. Get Form Data
-                const formData = cardForm.getCardFormData();
-                const { data: { session } } = await supabase.auth.getSession();
-
-                // 3. Send to Backend
-                const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${session?.access_token}`,
-                  },
-                  body: JSON.stringify({
-                    token,
-                    payment_method_id: formData.paymentMethodId,
-                    issuer_id: formData.issuerId,
-                    installments: Number(formData.installments),
-                    amount: amountRef.current,
-                    user_email: formData.cardholderEmail || userRef.current?.email,
-                    item_type: itemTypeRef.current,
-                    item_id: itemIdRef.current,
-                  }),
-                });
-
-                const result = await res.json();
-
-                if (!res.ok || !['approved', 'pending', 'in_process'].includes(result.status)) {
-                  throw new Error(result.message || result.error || 'Pagamento não aprovado');
-                }
-
-                onSuccess();
-              } catch (err: any) {
-                console.error('Payment Error:', err);
-                onError(err.message || 'Erro ao processar pagamento.');
-              } finally {
-                if (mountedRef.current) setProcessing(false);
-              }
-            },
+            onSubmit: (e: any) => handleMpSubmit(e, cardForm),
           },
         });
-
         cardFormRef.current = cardForm;
-        
       } catch (err) {
-        console.error('Fatal MP Error:', err);
-        if (mountedRef.current) {
-          setError('Erro ao carregar o formulário. Recarregue a página.');
-          setLoading(false);
-        }
+        console.error(err);
+        setFatalError('Erro ao inicializar formulário MP.');
       }
     };
 
-    const loadMercadoPago = async () => {
-      // @ts-ignore
-      if (window.MercadoPago) {
-        initializeCardForm();
-        return;
+    if (activeGateway === 'mercadopago') {
+        loadMercadoPago();
+    }
+
+    return () => {
+        mountedRef.current = false;
+        if (cardFormRef.current?.unmount) cardFormRef.current.unmount();
+    };
+  }, [activeGateway, mpPublicKey, amount]);
+
+  // --- HANDLERS MP ---
+  const handleMpSubmit = async (e: any, cardForm: any) => {
+      e.preventDefault();
+      if (processing) return;
+      setProcessing(true);
+      setError(null);
+
+      try {
+        const { token, error: tokenError } = await cardForm.createCardToken();
+        if (tokenError || !token) throw new Error('Verifique os dados do cartão.');
+
+        const formData = cardForm.getCardFormData();
+        const { data: { session } } = await supabase.auth.getSession();
+
+        const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+            body: JSON.stringify({
+                token,
+                payment_method_id: formData.paymentMethodId,
+                issuer_id: formData.issuerId,
+                installments: Number(formData.installments),
+                amount: amount,
+                user_email: formData.cardholderEmail || user?.email,
+                item_type: itemType,
+                item_id: itemId,
+            }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.message || 'Erro no pagamento.');
+        if (!['approved', 'pending', 'in_process'].includes(result.status)) throw new Error('Pagamento recusado.');
+        
+        onSuccess();
+      } catch (err: any) {
+        setError(err.message);
+        onError(err.message);
+      } finally {
+        setProcessing(false);
+      }
+  };
+
+  // --- HANDLERS ASAAS ---
+  const handleAsaasChange = (field: string, value: string) => {
+      setAsaasFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleAsaasSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (processing) return;
+      
+      const { cardNumber, holderName, expirationDate, cvv } = asaasFormData;
+      if (cardNumber.length < 16 || holderName.length < 3 || expirationDate.length < 5 || cvv.length < 3) {
+          setError('Preencha todos os campos corretamente.');
+          return;
       }
 
-      const script = document.createElement('script');
-      script.src = 'https://sdk.mercadopago.com/js/v2';
-      script.async = true;
-      script.onload = () => {
-        if (mountedRef.current) initializeCardForm();
-      };
-      script.onerror = () => {
-        if (mountedRef.current) {
-          setError('Falha ao carregar sistema de pagamento.');
-          setLoading(false);
-        }
-      };
-      document.body.appendChild(script);
-    };
+      setProcessing(true);
+      setError(null);
 
-    loadMercadoPago();
-  }, [mpPublicKey]); 
+      try {
+          const [month, yearRaw] = expirationDate.split('/');
+          const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw;
 
-  // Se houver erro crítico na inicialização
-  if (error && !loading && !processing) {
+          // 1. Tokenizar no Asaas (Client-Side Direct Fetch)
+          // Nota: Sandbox URL hardcoded pois o backend asaas-pagar também aponta para sandbox.
+          const tokenResponse = await fetch('https://sandbox.asaas.com/api/v3/creditCard/tokenize', {
+              method: 'POST',
+              headers: {
+                  'Content-Type': 'application/json',
+                  'access_token': asaasPublicKey || ''
+              },
+              body: JSON.stringify({
+                  customer: user?.id, // ID local apenas para ref, Asaas cria o deles
+                  creditCard: {
+                      holderName,
+                      number: cardNumber.replace(/\s/g, ''),
+                      expiryMonth: month,
+                      expiryYear: year,
+                      ccv: cvv
+                  },
+                  creditCardHolderInfo: {
+                      name: holderName,
+                      email: user?.email,
+                      cpfCnpj: '00000000000', // Asaas Sandbox aceita genérico, em prod precisaria pedir CPF
+                      postalCode: '00000000',
+                      addressNumber: '0',
+                      phone: '0000000000'
+                  }
+              })
+          });
+
+          const tokenData = await tokenResponse.json();
+          if (!tokenData.creditCardToken) {
+              throw new Error(tokenData.errors?.[0]?.description || 'Falha ao validar cartão no Asaas.');
+          }
+
+          // 2. Enviar para Backend
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/asaas-pagar', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session?.access_token}` },
+              body: JSON.stringify({
+                  creditCardToken: tokenData.creditCardToken,
+                  amount: amount,
+                  installments: Number(asaasFormData.installments), // Enviado mas backend precisa tratar se for parcelado
+                  item_type: itemType,
+                  item_id: itemId,
+              }),
+          });
+
+          const result = await res.json();
+          if (!res.ok) throw new Error(result.error || 'Erro no pagamento Asaas.');
+          if (result.status !== 'CONFIRMED' && result.status !== 'PENDING') throw new Error(`Status: ${result.status}`);
+
+          onSuccess();
+
+      } catch (err: any) {
+          console.error(err);
+          setError(err.message || 'Erro ao processar pagamento via Asaas.');
+          onError(err.message);
+      } finally {
+          setProcessing(false);
+      }
+  };
+
+  if (fatalError) {
     return (
       <div className="relative max-w-md mx-auto bg-gray-950 p-6 rounded-2xl border border-red-900 shadow-2xl text-center">
-        <i className="fas fa-exclamation-circle text-3xl text-red-400 mb-2"></i>
-        <p className="text-red-200 mb-4">{error}</p>
-        <button onClick={onCancel} className="px-6 py-2 bg-red-700 hover:bg-red-600 rounded text-white font-bold transition">
-          Fechar
-        </button>
+        <i className="fas fa-exclamation-triangle text-3xl text-red-500 mb-2"></i>
+        <p className="text-red-200 mb-4 text-sm">{fatalError}</p>
+        <button onClick={onCancel} className="px-6 py-2 bg-gray-800 hover:bg-gray-700 rounded text-white font-bold transition">Fechar</button>
       </div>
     );
   }
@@ -341,53 +440,63 @@ export default function CheckoutCompleto({
   return (
     <div className="relative max-w-md mx-auto bg-gray-950 p-6 rounded-2xl border border-gray-800 shadow-2xl">
       
-      {/* LOADING OVERLAY */}
       {loading && (
-        <div className="absolute inset-0 z-50 bg-gray-950/95 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm transition-opacity">
+        <div className="absolute inset-0 z-50 bg-gray-950/95 flex flex-col items-center justify-center rounded-2xl backdrop-blur-sm">
             <i className="fas fa-circle-notch fa-spin text-4xl text-green-500 mb-4"></i>
-            <p className="text-gray-400 text-sm font-medium animate-pulse">Conectando ao banco seguro...</p>
+            <p className="text-gray-400 text-sm font-medium animate-pulse">Iniciando pagamento seguro...</p>
         </div>
       )}
 
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <i className="fas fa-lock text-green-500"></i> Pagamento Seguro
+            <i className="fas fa-lock text-green-500"></i> Checkout
           </h3>
-          <p className="text-xs text-gray-500">Processado via Mercado Pago</p>
+          <p className="text-xs text-gray-500">
+              Via {activeGateway === 'mercadopago' ? 'Mercado Pago' : 'Asaas Safe'}
+          </p>
         </div>
         <div className="text-right">
           <p className="text-2xl font-bold text-green-400">R$ {amount.toFixed(2).replace('.', ',')}</p>
         </div>
       </div>
 
-      <button
-        onClick={onCancel}
-        className="absolute top-4 right-4 text-gray-500 hover:text-white transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800"
-        type="button"
-      >
+      <button onClick={onCancel} className="absolute top-4 right-4 text-gray-500 hover:text-white w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800">
         <i className="fas fa-times text-lg"></i>
       </button>
 
-      {/* FORMULÁRIO MERCADO PAGO */}
-      <form id="form-checkout" className="space-y-4">
-        
-        {/* Componente Estático Memoizado com Inputs Corrigidos */}
-        <MPPaymentForm userEmail={userRef.current?.email || ''} />
+      {error && (
+          <div className="mb-4 p-3 bg-red-900/20 border border-red-500/30 rounded-lg flex items-start gap-3">
+              <i className="fas fa-times-circle text-red-500 mt-0.5"></i>
+              <p className="text-xs text-red-200 leading-relaxed">{error}</p>
+          </div>
+      )}
+
+      <form id="form-checkout" className="space-y-4" onSubmit={activeGateway === 'asaas' ? handleAsaasSubmit : undefined}>
+        <GenericPaymentForm 
+            gateway={activeGateway} 
+            userEmail={user?.email || ''} 
+            formData={asaasFormData}
+            onChange={handleAsaasChange}
+        />
 
         <button
           type="submit"
           disabled={processing || loading}
-          className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:bg-gray-800 disabled:text-gray-500 text-black font-bold rounded-xl text-lg transition-all shadow-lg shadow-green-900/20 transform active:scale-[0.98] mt-6"
+          className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:bg-gray-800 disabled:text-gray-500 text-black font-bold rounded-xl text-lg transition-all shadow-lg shadow-green-900/20 transform active:scale-[0.98] mt-6 flex items-center justify-center"
         >
           {processing ? (
             <span className="flex items-center justify-center gap-3">
               <i className="fas fa-circle-notch fa-spin"></i> Processando...
             </span>
           ) : (
-            'Pagar Agora'
+            <> <i className="fas fa-check mr-2"></i> Pagar Agora </>
           )}
         </button>
+        
+        <p className="text-[10px] text-gray-600 text-center mt-2">
+            Ambiente seguro 256-bit SSL. {activeGateway === 'asaas' ? 'Processado por Asaas.' : 'Processado por Mercado Pago.'}
+        </p>
       </form>
     </div>
   );
