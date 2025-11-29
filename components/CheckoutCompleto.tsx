@@ -16,27 +16,78 @@ interface CheckoutCompletoProps {
 type GatewayType = 'mercadopago' | 'asaas' | null;
 type PaymentMethodType = 'card' | 'pix';
 
-// Helper para formatar cartão
+// --- VALIDAÇÕES E HELPERS ---
+
 const formatCardNumber = (value: string) => {
   return value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim().substring(0, 19);
 };
 
-// Helper para formatar validade
 const formatExpiration = (value: string) => {
   return value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').substring(0, 5);
 };
 
-// Helper para formatar CPF/CNPJ
 const formatCpfCnpj = (value: string) => {
   const v = value.replace(/\D/g, '');
+  if (v.length > 14) return v.substring(0, 14); // Limite de caracteres numéricos
+  
   if (v.length <= 11) {
-    // CPF: 000.000.000-00
-    return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    // CPF Mask: 000.000.000-00
+    return v.replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d)/, '$1.$2')
+            .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
   } else {
-    // CNPJ: 00.000.000/0000-00
-    return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, "$1.$2.$3/$4-$5");
+    // CNPJ Mask: 00.000.000/0000-00
+    return v.replace(/^(\d{2})(\d)/, '$1.$2')
+            .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+            .replace(/\.(\d{3})(\d)/, '.$1/$2')
+            .replace(/(\d{4})(\d)/, '$1-$2');
   }
 };
+
+// Validação Matemática de CPF
+function isValidCPF(cpf: string) {
+    if (typeof cpf !== 'string') return false;
+    cpf = cpf.replace(/[^\d]+/g, '');
+    if (cpf.length !== 11 || !!cpf.match(/(\d)\1{10}/)) return false;
+    const cpfDigits = cpf.split('').map(el => +el);
+    const rest = (count: number) => (cpfDigits.slice(0, count-12).reduce((soma, el, index) => (soma + el * (count-index)), 0)*10) % 11 % 10;
+    return rest(10) === cpfDigits[9] && rest(11) === cpfDigits[10];
+}
+
+// Validação Matemática de CNPJ
+function isValidCNPJ(cnpj: string) {
+    if (!cnpj) return false;
+    const s = cnpj.replace(/[^\d]+/g, '');
+    if (s.length !== 14) return false;
+    // Elimina CNPJs invalidos conhecidos (todos numeros iguais)
+    if (/^(\d)\1+$/.test(s)) return false;
+
+    // Valida DVs
+    let tamanho = s.length - 2
+    let numeros = s.substring(0, tamanho);
+    const digitos = s.substring(tamanho);
+    let soma = 0;
+    let pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    let resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado != parseInt(digitos.charAt(0))) return false;
+
+    tamanho = tamanho + 1;
+    numeros = s.substring(0, tamanho);
+    soma = 0;
+    pos = tamanho - 7;
+    for (let i = tamanho; i >= 1; i--) {
+      soma += parseInt(numeros.charAt(tamanho - i)) * pos--;
+      if (pos < 2) pos = 9;
+    }
+    resultado = soma % 11 < 2 ? 0 : 11 - soma % 11;
+    if (resultado != parseInt(digitos.charAt(1))) return false;
+
+    return true;
+}
 
 // --- GENERIC PAYMENT FORM ---
 const GenericPaymentForm = ({ 
@@ -424,10 +475,30 @@ export default function CheckoutCompleto({
   };
 
   const validateDoc = () => {
-      if (!commonFormData.docNumber || commonFormData.docNumber.length < 14) {
-          setError('CPF/CNPJ é obrigatório e deve ser válido.');
+      // Limpa tudo que não é número
+      const cleanDoc = commonFormData.docNumber.replace(/\D/g, '');
+      
+      if (!cleanDoc) {
+          setError('CPF/CNPJ é obrigatório.');
           return false;
       }
+
+      // Validação por tamanho (11 = CPF, 14 = CNPJ)
+      if (cleanDoc.length !== 11 && cleanDoc.length !== 14) {
+          setError('Documento inválido. Digite 11 números para CPF ou 14 para CNPJ.');
+          return false;
+      }
+
+      // Validação Matemática (evita recusa do gateway)
+      let valid = false;
+      if (cleanDoc.length === 11) valid = isValidCPF(cleanDoc);
+      else if (cleanDoc.length === 14) valid = isValidCNPJ(cleanDoc);
+
+      if (!valid) {
+          setError('CPF ou CNPJ inválido. Verifique os números digitados.');
+          return false;
+      }
+
       return true;
   };
 
@@ -533,11 +604,12 @@ export default function CheckoutCompleto({
   const handleAsaasSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (processing) return;
+      if (!validateDoc()) return;
       
       const { cardNumber, holderName, expirationDate, cvv, installments, amount: formAmount, docNumber } = commonFormData;
       
-      if (cardNumber.length < 16 || holderName.length < 3 || expirationDate.length < 5 || cvv.length < 3 || docNumber.length < 14) {
-          setError('Preencha todos os campos corretamente.');
+      if (cardNumber.length < 16 || holderName.length < 3 || expirationDate.length < 5 || cvv.length < 3) {
+          setError('Preencha todos os campos do cartão.');
           return;
       }
 
