@@ -1,5 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
+// Add this line to declare Deno for TypeScript
+declare const Deno: any;
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "*",
@@ -39,7 +42,7 @@ serve(async (req) => {
 
     // Salva no banco (opcional)
     if (user_id && data.id) {
-      await fetch("https://bckujotubhkagcqfivye.supabase.co/rest/v1/payments", {
+      await fetch("https://bckujotuhhkagcqfiyye.supabase.co/rest/v1/payments", {
         method: "POST",
         headers: {
           apikey: Deno.env.get("SUPABASE_ANON_KEY")!,

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -25,7 +26,7 @@ interface CheckoutCompletoProps {
 
 export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey, asaasPublicKey, onSuccess, onError, onCancel }: CheckoutCompletoProps) {
   const { user } = useUser();
-  const [gateway, setGateway] = useState<'mp' | 'asaas'>(mpPublicKey ? 'mp' : 'asaas');
+  const [gateway, setGateway] = useState<'mp' | 'asaas'>(mpPublicKey ? 'mp' : asaasPublicKey ? 'asaas' : 'mp');
   const [loadingSdk, setLoadingSdk] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
@@ -35,8 +36,8 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
   const mpExpirationDateRef = useRef<HTMLDivElement>(null);
   const mpSecurityCodeRef = useRef<HTMLDivElement>(null);
   const mpCardholderNameRef = useRef<HTMLDivElement>(null);
-  const mpIssuerRef = useRef<HTMLSelectElement>(null);
-  const mpInstallmentsRef = useRef<HTMLSelectElement>(null);
+  const mpIssuerRef = useRef<HTMLDivElement>(null); // Changed to div for MP SDK injection
+  const mpInstallmentsRef = useRef<HTMLDivElement>(null); // Changed to div for MP SDK injection
 
   // Inicializa o gateway preferencial se um deles estiver ativo
   useEffect(() => {
@@ -55,7 +56,6 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
     setLoadingSdk(true);
     let mpScript: HTMLScriptElement | null = null;
     let asaasScript: HTMLScriptElement | null = null;
-    let cardForm: any = null; // Para armazenar a instância do cardForm do Mercado Pago
 
     const loadMpSdk = () => {
       return new Promise<void>((resolve, reject) => {
@@ -95,7 +95,8 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
       mpPublicKey ? loadMpSdk() : Promise.resolve(),
       asaasPublicKey ? loadAsaasSdk() : Promise.resolve(),
     ]).then(() => {
-      setLoadingSdk(false);
+      // SDKs loaded, but MP form might still be initializing
+      if (gateway !== 'mp') setLoadingSdk(false);
     }).catch(err => {
       setPaymentError(err.message);
       setLoadingSdk(false);
@@ -108,32 +109,33 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
       if (asaasScript && document.body.contains(asaasScript)) {
         document.body.removeChild(asaasScript);
       }
-      if (cardForm && cardForm.unmount) {
-        cardForm.unmount(); // Destruir instância do form MP
-      }
     };
-  }, [mpPublicKey, asaasPublicKey]);
+  }, [mpPublicKey, asaasPublicKey, gateway]);
 
   // Inicializa o formulário do Mercado Pago quando o SDK está pronto e o gateway é MP
   useEffect(() => {
-    if (!mpPublicKey || gateway !== 'mp' || !window.MercadoPago || loadingSdk) {
-      return;
-    }
+    let cardForm: any = null; // Para armazenar a instância do cardForm do Mercado Pago
 
     const initMpForm = () => {
-      const mp = new window.MercadoPago(mpPublicKey);
+      if (!mpPublicKey || gateway !== 'mp' || !window.MercadoPago) return;
 
-      const cardForm = mp.cardForm({
+      const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
+
+      // Check if the form is already mounted to prevent re-mounting
+      if (mpCardNumberRef.current?.querySelector('iframe')) return;
+
+
+      cardForm = mp.cardForm({
         amount: amount.toFixed(2).toString(),
         autoMount: true,
         form: {
-          id: "form-mp", // Use um ID específico para MP
-          cardNumber: { id: "form-mp__cardNumber" },
-          expirationDate: { id: "form-mp__expirationDate" },
-          securityCode: { id: "form-mp__securityCode" },
-          cardholderName: { id: "form-mp__cardholderName" },
-          issuer: { id: "form-mp__issuer" },
-          installments: { id: "form-mp__installments" },
+          id: "form-mp",
+          cardNumber: { id: "mp-card-number" },
+          expirationDate: { id: "mp-expiration-date" },
+          securityCode: { id: "mp-security-code" },
+          cardholderName: { id: "mp-cardholder-name" },
+          issuer: { id: "mp-issuer" },
+          installments: { id: "mp-installments" },
         },
         callbacks: {
           onReady: () => {
@@ -165,8 +167,8 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
                 body: JSON.stringify({
                   token,
                   payment_method_id: paymentMethodId,
-                  issuer_id: issuerId, // Passa issuerId para a função
-                  installments: Number(installments), // Passa o número de parcelas
+                  issuer_id: issuerId,
+                  installments: Number(installments),
                   amount: amount,
                   user_id: user.id,
                   item_type: itemType,
@@ -191,7 +193,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
             console.error("Erro do SDK Mercado Pago:", errors);
             const errorMessage = errors[0]?.message || "Erro ao carregar o formulário de pagamento.";
             setPaymentError(errorMessage);
-            setLoadingSdk(false);
+            // Don't set loadingSdk(false) here, as it might interfere with overall SDK loading state
           }
         },
       });
@@ -199,7 +201,8 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
     };
 
     let mpFormInstance: any;
-    if (gateway === 'mp' && window.MercadoPago) {
+    // Only try to initialize if conditions are met
+    if (mpPublicKey && gateway === 'mp' && window.MercadoPago) {
       mpFormInstance = initMpForm();
     }
 
@@ -208,8 +211,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
         mpFormInstance.unmount();
       }
     };
-  }, [mpPublicKey, gateway, amount, user, itemType, itemId, onSuccess, onError, loadingSdk]);
-
+  }, [mpPublicKey, gateway, amount, user, itemType, itemId, onSuccess, onError]); // Rerun when these change
 
   const handlePayment = async () => {
     if (!user) {
@@ -221,10 +223,9 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
     setPaymentError(null);
 
     if (gateway === 'mp') {
-      // A submissão do formulário do Mercado Pago já é tratada pelo callback onFormSubmitted
-      // Aciona a submissão programaticamente se o formulário estiver pronto
       const mpFormElement = document.getElementById('form-mp');
       if (mpFormElement) {
+        // Trigger the form submission which is handled by Mercado Pago's onSubmit callback
         mpFormElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
       } else {
         onError("Formulário do Mercado Pago não encontrado ou não inicializado.");
@@ -241,16 +242,18 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
       // Para um checkout transparente real com Asaas, o usuário precisaria inserir
       // esses dados em campos de input e o token seria criado com base neles.
       try {
-        const cardToken = await window.Asaas.createCreditCardToken({
-          holderName: "CLIENTE TESTE",
+        const asaas = new window.Asaas(asaasPublicKey, { environment: 'sandbox' }); // Assuming sandbox
+        
+        const cardToken = await asaas.createCreditCardToken({
+          holderName: "CLIENTE TESTE GDN",
           number: "4111111111111111", // Cartão de teste
           expiryMonth: "12",
           expiryYear: "2030",
           ccv: "123"
         });
 
-        if (!cardToken || !cardToken.id) {
-          onError("Falha ao gerar token do cartão Asaas.");
+        if (!cardToken || !cardToken.creditCardToken) { // Asaas returns token in `creditCardToken` property
+          onError("Falha ao gerar token do cartão Asaas: " + (cardToken?.errors?.[0]?.description || 'Erro desconhecido.'));
           setProcessingPayment(false);
           return;
         }
@@ -266,7 +269,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
           body: JSON.stringify({
             amount: amount,
             user_id: user.id,
-            cardToken: cardToken.id,
+            creditCardToken: cardToken.creditCardToken, // Use the correct property
             item_type: itemType,
             item_id: itemId,
           }),
@@ -343,30 +346,30 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
             <span>Pagamento seguro via Mercado Pago.</span>
           </div>
           <div className="form-control">
-            <label htmlFor="form-mp__cardNumber" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Número do Cartão</label>
-            <div id="form-mp__cardNumber" ref={mpCardNumberRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+            <label htmlFor="mp-card-number" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Número do Cartão</label>
+            <div id="mp-card-number" ref={mpCardNumberRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="form-control">
-              <label htmlFor="form-mp__expirationDate" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Validade</label>
-              <div id="form-mp__expirationDate" ref={mpExpirationDateRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+              <label htmlFor="mp-expiration-date" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Validade</label>
+              <div id="mp-expiration-date" ref={mpExpirationDateRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
             </div>
             <div className="form-control">
-              <label htmlFor="form-mp__securityCode" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">CVC</label>
-              <div id="form-mp__securityCode" ref={mpSecurityCodeRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+              <label htmlFor="mp-security-code" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">CVC</label>
+              <div id="mp-security-code" ref={mpSecurityCodeRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
             </div>
           </div>
           <div className="form-control">
-            <label htmlFor="form-mp__cardholderName" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Nome no Cartão</label>
-            <div id="form-mp__cardholderName" ref={mpCardholderNameRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
+            <label htmlFor="mp-cardholder-name" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Nome no Cartão</label>
+            <div id="mp-cardholder-name" ref={mpCardholderNameRef} className="border-2 border-purple-900/60 p-3 rounded-md bg-black text-gray-200"></div>
           </div>
           <div className="form-control">
-            <label htmlFor="form-mp__issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Banco Emissor</label>
-            <select id="form-mp__issuer" ref={mpIssuerRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></select>
+            <label htmlFor="mp-issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Banco Emissor</label>
+            <div id="mp-issuer" ref={mpIssuerRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></div>
           </div>
           <div className="form-control">
-            <label htmlFor="form-mp__installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Parcelas</label>
-            <select id="form-mp__installments" ref={mpInstallmentsRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></select>
+            <label htmlFor="mp-installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Parcelas</label>
+            <div id="mp-installments" ref={mpInstallmentsRef} className="w-full bg-black border-2 border-purple-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-purple-500 focus:outline-none focus:ring-0"></div>
           </div>
         </form>
       )}
@@ -380,7 +383,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
           {/* Para Asaas, o código fornecido usa dados fixos. Se desejar inputs, precisaria adicionar aqui */}
           <div className="bg-gray-900/50 p-4 rounded-lg border border-gray-800 text-sm text-gray-300">
             <p className="font-bold mb-2">Detalhes de Cartão (Dados Fixos - Apenas para Teste)</p>
-            <p><strong>Titular:</strong> CLIENTE TESTE</p>
+            <p><strong>Titular:</strong> CLIENTE TESTE GDN</p>
             <p><strong>Número:</strong> •••• •••• •••• 1111</p>
             <p><strong>Validade:</strong> 12/30</p>
             <p><strong>CVV:</strong> •••</p>
