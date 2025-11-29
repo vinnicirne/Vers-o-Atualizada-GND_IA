@@ -56,7 +56,7 @@ serve(async (req) => {
         const { data: tx } = await supabaseAdmin
             .from("transactions")
             .select("status")
-            .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`) // Check both internal and external IDs
+            .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
             .single();
         
         return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
@@ -68,14 +68,14 @@ serve(async (req) => {
     // --- MODO 2: GERAÇÃO DE PAGAMENTO ---
     const {
       token,
-      payment_method_id, // Pode ser 'pix' ou id do cartão
+      payment_method_id, 
       issuer_id,
       installments = 1,
       amount,
       item_type,
       item_id,
-      method, // 'pix' ou 'card'
-      docNumber // CPF/CNPJ
+      method,
+      docNumber
     } = reqJson;
 
     if (!amount || !item_type || !item_id) {
@@ -85,13 +85,13 @@ serve(async (req) => {
       });
     }
 
-    const { data: userData, error: userError } = await supabaseAdmin
+    const { data: userData } = await supabaseAdmin
       .from("app_users")
       .select("email, referred_by, full_name")
       .eq("id", authUser.id)
       .single();
 
-    if (userError || !userData?.email) {
+    if (!userData?.email) {
       return new Response(JSON.stringify({ error: "Usuário não encontrado" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -102,31 +102,35 @@ serve(async (req) => {
     const referrerId = userData.referred_by;
     const isPix = method === 'pix' || payment_method_id === 'pix';
 
-    // Monta payload do Mercado Pago
+    // Monta payload do Mercado Pago de forma robusta
+    const firstName = userData.full_name?.split(' ')[0] || 'Cliente';
+    const lastName = userData.full_name?.split(' ').slice(1).join(' ') || 'GDN';
+
     const mpPayload: any = {
         transaction_amount: Number(amount),
         description: `Compra GDN_IA - ${item_type} (${item_id})`,
         payer: {
             email: userEmail,
-            first_name: userData.full_name?.split(' ')[0] || 'Cliente',
-            last_name: userData.full_name?.split(' ').slice(1).join(' ') || 'GDN'
+            first_name: firstName,
+            last_name: lastName || 'Silva' // Fallback se não tiver sobrenome
         }
     };
 
-    // Adiciona identificação se fornecida
+    // Adiciona identificação com validação extra
     if (docNumber) {
         const cleanDoc = docNumber.replace(/\D/g, '');
-        const docType = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
-        mpPayload.payer.identification = {
-            type: docType,
-            number: cleanDoc
-        };
+        if (cleanDoc.length >= 11) {
+            const docType = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
+            mpPayload.payer.identification = {
+                type: docType,
+                number: cleanDoc
+            };
+        }
     }
 
     if (isPix) {
         mpPayload.payment_method_id = 'pix';
     } else {
-        // Cartão de Crédito
         if (!token) throw new Error("Token do cartão é obrigatório.");
         mpPayload.token = token;
         mpPayload.installments = Number(installments);
@@ -134,7 +138,6 @@ serve(async (req) => {
         if (issuer_id) mpPayload.issuer_id = issuer_id;
     }
 
-    // Chamada à API do Mercado Pago
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
       headers: {
@@ -149,7 +152,10 @@ serve(async (req) => {
 
     if (!mpResponse.ok) {
         console.error("MP Error:", payment);
-        return new Response(JSON.stringify({ error: payment.message || "Erro no Mercado Pago" }), {
+        return new Response(JSON.stringify({ 
+            error: payment.message || "Erro no Mercado Pago",
+            details: payment.cause 
+        }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -157,7 +163,6 @@ serve(async (req) => {
 
     const transactionStatus = payment.status === "approved" ? "approved" : "pending";
 
-    // Salva transação no banco (Fundamental para o Webhook/Polling atualizar depois)
     await supabaseAdmin
       .from("transactions")
       .insert({
@@ -175,15 +180,22 @@ serve(async (req) => {
         data: new Date().toISOString(),
       });
 
-    // Se for Pix, retorna os dados do QR Code
     if (isPix) {
+        // Valida se o QR Code realmente veio
+        if (!payment.point_of_interaction?.transaction_data?.qr_code) {
+             console.error("MP Pix criado mas sem QR Code:", payment);
+             return new Response(JSON.stringify({ error: "Pix criado, mas o QR Code não foi gerado pelo banco. Verifique se o CPF é válido." }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+        
         return new Response(JSON.stringify(payment), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     }
 
-    // Se for Cartão e Aprovado, libera benefícios imediatamente
     if (transactionStatus === "approved") {
         await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
     }
@@ -202,7 +214,6 @@ serve(async (req) => {
   }
 });
 
-// Helper para liberar benefícios (duplicado no asaas para segurança)
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
     if (itemType === "plan") {
         await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
@@ -215,7 +226,7 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
         }
     } else if (itemType === "credits") {
         const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        const newCredits = (current?.credits || 0) + Number(itemId); // itemId carries amount for credits
+        const newCredits = (current?.credits || 0) + Number(itemId); 
         await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
     }
 
