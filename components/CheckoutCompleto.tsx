@@ -2,216 +2,164 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { supabaseUrl } from '../services/supabaseClient';
 
-// Declaração global para o objeto MercadoPago SDK
+// Declaração global do SDK
 declare global {
   interface Window {
     MercadoPago: any;
+    mpReady?: boolean;
   }
 }
 
 interface CheckoutCompletoProps {
   amount: number;
   itemType: 'plan' | 'credits';
-  itemId: string; // planId ou um ID para o pacote de créditos (se for créditos, é a quantidade)
+  itemId: string;
   mpPublicKey: string | null;
-  // Add asaasPublicKey to props
-  asaasPublicKey: string | null;
+  asaasPublicKey?: string | null;
   onSuccess: () => void;
   onError: (message: string) => void;
   onCancel: () => void;
 }
 
-export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey, asaasPublicKey, onSuccess, onError, onCancel }: CheckoutCompletoProps) {
+export default function CheckoutCompleto({
+  amount,
+  itemType,
+  itemId,
+  mpPublicKey,
+  asaasPublicKey,
+  onSuccess,
+  onError,
+  onCancel,
+}: CheckoutCompletoProps) {
   const { user } = useUser();
   const [loadingSdk, setLoadingSdk] = useState(true);
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  
-  // Ref to hold the MercadoPago CardForm instance
+
   const cardFormInstanceRef = useRef<any>(null);
   const formMounted = useRef(false);
 
   useEffect(() => {
-    // Garante que o form já existe no DOM antes de carregar o SDK e que o efeito roda apenas uma vez por montagem
-    if (formMounted.current) return;
+    if (formMounted.current || !mpPublicKey) return;
     formMounted.current = true;
-
     setLoadingSdk(true);
-    let mpScript: HTMLScriptElement | null = null;
-    let cleanupMpForm: (() => void) | null = null;
+    setPaymentError(null);
 
-    const loadMpSdk = () => {
-      return new Promise<void>((resolve, reject) => {
-        if (!mpPublicKey) { // No public key, so no MP.
-          reject(new Error("Mercado Pago Public Key não configurada."));
-          return;
-        }
-        if (window.MercadoPago && (window as any).mpReady) {
-          resolve();
-          return;
-        }
-        mpScript = document.createElement('script');
-        mpScript.src = "https://sdk.mercadopago.com/js/v2";
-        mpScript.async = true;
-        mpScript.onload = () => {
-          (window as any).mpReady = true;
-          resolve();
-        };
-        mpScript.onerror = () => reject(new Error("Falha ao carregar SDK do Mercado Pago."));
-        document.body.appendChild(mpScript);
-      });
-    };
+    const script = document.createElement('script');
+    script.src = 'https://sdk.mercadopago.com/js/v2';
+    script.async = true;
 
-    loadMpSdk().then(() => {
-      if (mpPublicKey && window.MercadoPago) {
-        const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
+    script.onload = () => {
+      window.mpReady = true;
 
-        // Unmount any previous form instance before creating a new one
-        if (cardFormInstanceRef.current && typeof cardFormInstanceRef.current.unmount === 'function') {
-            cardFormInstanceRef.current.unmount();
-        }
+      const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
 
-        const newCardForm = mp.cardForm({
-          amount: amount.toFixed(2).toString(),
-          autoMount: true, // Crucial para o SDK injetar UI nos divs de issuer/installments
-          form: {
-            id: "form-checkout", // This ID is for the HTML form wrapper
-            cardNumber: { id: "form-checkout__cardNumber", placeholder: "Número do cartão" },
-            expirationDate: { id: "form-checkout__expirationDate", placeholder: "MM/AA" },
-            securityCode: { id: "form-checkout__securityCode", placeholder: "CVV" },
-            cardholderName: { id: "form-checkout__cardholderName", placeholder: "Titular do cartão" },
-            cardholderEmail: { id: "form-checkout__cardholderEmail", placeholder: "E-mail" },
-            issuer: { id: "form-checkout__issuer" },
-            installments: { id: "form-checkout__installments" },
+      // Limpa instância anterior (importante no React 18 StrictMode)
+      if (cardFormInstanceRef.current?.unmount) {
+        cardFormInstanceRef.current.unmount();
+      }
+
+      const cardForm = mp.cardForm({
+        amount: amount.toFixed(2),
+        autoMount: true,
+        form: {
+          id: 'form-checkout',
+          cardNumber: { id: 'form-checkout__cardNumber', placeholder: 'Número do cartão' },
+          expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
+          securityCode: { id: 'form-checkout__securityCode', placeholder: 'CVV' },
+          cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Titular do cartão' },
+          cardholderEmail: { id: 'form-checkout__cardholderEmail', placeholder: 'E-mail' },
+          issuer: { id: 'form-checkout__issuer' },
+          installments: { id: 'form-checkout__installments' },
+        },
+        callbacks: {
+          onFormMounted: () => {
+            console.log('Mercado Pago Form Montado!');
+            setLoadingSdk(false);
+
+            // Preenche email automaticamente
+            if (user?.email) {
+              const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
+              if (emailInput) emailInput.value = user.email;
+            }
           },
-          callbacks: {
-            onFormMounted: () => {
-              console.log("Mercado Pago Form Mounted!");
-              setLoadingSdk(false);
-              // Set default email if user is logged in
-              if (user?.email) {
-                  const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
-                  if (emailInput) emailInput.value = user.email;
-              }
-            },
-            onSubmit: async (event: any) => {
-              event.preventDefault();
-              setProcessingPayment(true);
-              setPaymentError(null);
+          onSubmit: async (event: any) => {
+            event.preventDefault();
+            if (!user?.id) return onError('Faça login para continuar');
 
-              const { token, paymentMethodId, issuerId, installments, cardholderEmail } = newCardForm.getCardFormData();
+            setProcessingPayment(true);
+            setPaymentError(null);
 
-              if (!user?.id) {
-                onError("Usuário não autenticado. Por favor, faça login.");
-                setProcessingPayment(false);
-                return;
-              }
+            try {
+              const { token, paymentMethodId, issuerId, installment } = cardForm.getCardFormData();
 
-              const supabaseFunctionUrl = `${supabaseUrl}/functions/v1/mp-pagar`;
-
-              try {
-                const res = await fetch(supabaseFunctionUrl, {
-                  method: "POST",
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${user.id}` // Passa o UID do usuário para a Edge Function
-                  },
+              const response = await fetch(
+                'https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar',
+                {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({
                     token,
                     payment_method_id: paymentMethodId,
                     issuer_id: issuerId,
-                    installments: Number(installments),
-                    amount: amount,
-                    user_id: user.id, // For logging in Edge Function
-                    user_email: cardholderEmail || user.email, // Use cardholderEmail from form, fallback to user.email
-                    item_type: item_type,
+                    installments: installment,
+                    amount,
+                    user_id: user.id,
+                    user_email: user.email,
+                    item_type: itemType,
                     item_id: itemId,
                   }),
-                });
-
-                const result = await res.json();
-                if (result.status === "approved" || result.status === "pending") {
-                  onSuccess(); // Sucesso, o pai lida com a atualização do usuário
-                } else {
-                  onError(result.message || "Pagamento: " + (result.status || 'Falha desconhecida'));
                 }
-              } catch (error: any) {
-                console.error("Erro ao chamar Edge Function mp-pagar:", error);
-                onError(error.message || "Falha na comunicação com o servidor de pagamento.");
-              } finally {
-                setProcessingPayment(false);
+              );
+
+              const result = await response.json();
+
+              if (result.status === 'approved' || result.status === 'pending') {
+                onSuccess();
+              } else {
+                onError(result.message || `Pagamento ${result.status || 'recusado'}`);
               }
-            },
-            onError: (errors: any) => {
-              console.error("Erro do SDK Mercado Pago:", errors);
-              const errorMessage = errors[0]?.message || "Erro ao carregar o formulário de pagamento.";
-              setPaymentError(errorMessage);
+            } catch (err: any) {
+              onError(err.message || 'Erro ao processar pagamento');
+            } finally {
+              setProcessingPayment(false);
             }
           },
-        });
-        cardFormInstanceRef.current = newCardForm; // Store the instance
-        cleanupMpForm = () => {
-            if (newCardForm && typeof newCardForm.unmount === 'function') {
-                newCardForm.unmount();
-            }
-        };
-      } else {
-        setLoadingSdk(false);
-        if (!mpPublicKey) {
-            setPaymentError("Gateway de pagamento Mercado Pago não está habilitado ou configurado.");
-        } else {
-            setPaymentError("SDK do Mercado Pago não carregou corretamente.");
-        }
-      }
-    }).catch(err => {
-      setPaymentError(err.message);
+        },
+      });
+
+      cardFormInstanceRef.current = cardForm;
+    };
+
+    script.onerror = () => {
+      setPaymentError('Falha ao carregar SDK do Mercado Pago');
       setLoadingSdk(false);
-    });
+    };
+
+    document.body.appendChild(script);
 
     return () => {
-      if (mpScript && document.body.contains(mpScript)) {
-        document.body.removeChild(mpScript);
+      if (cardFormInstanceRef.current?.unmount) {
+        cardFormInstanceRef.current.unmount();
       }
-      if (cleanupMpForm) {
-        cleanupMpForm();
-      }
-      formMounted.current = false; // Reset ref on unmount
+      if (script.parentNode) script.parentNode.removeChild(script);
+      formMounted.current = false;
     };
-  }, [mpPublicKey, asaasPublicKey, amount, user, itemType, itemId, onSuccess, onError]); // Re-run when these change
+  }, [mpPublicKey, amount, user, itemType, itemId, onSuccess, onError]);
 
   const handlePayment = () => {
-    if (!user) {
-      onError("Por favor, faça login primeiro.");
-      return;
-    }
-    if (!cardFormInstanceRef.current || loadingSdk) {
-        onError("Formulário de pagamento não está pronto. Tente novamente.");
-        return;
-    }
-
-    setProcessingPayment(true);
-    setPaymentError(null);
-
-    // Trigger the form submission which is handled by Mercado Pago's onSubmit callback
-    const mpFormElement = document.getElementById('form-checkout');
-    if (mpFormElement) {
-        mpFormElement.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-    } else {
-        onError("Formulário do Mercado Pago não encontrado ou não inicializado.");
-        setProcessingPayment(false);
-    }
+    const form = document.getElementById('form-checkout');
+    if (form) form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
   };
 
   if (loadingSdk) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center bg-black/80 rounded-lg shadow-xl w-full max-w-md border border-gray-700">
-        <i className="fas fa-spinner fa-spin text-4xl text-green-400 mb-4"></i>
-        <p className="text-lg font-bold text-white">Carregando SDKs de Pagamento...</p>
-        {paymentError && <p className="mt-2 text-red-400 text-sm">{paymentError}</p>}
-        <button onClick={onCancel} className="mt-6 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
-          Fechar
+      <div className="flex flex-col items-center justify-center p-10 bg-black/90 rounded-xl">
+        <i className="fas fa-spinner fa-spin text-5xl text-green-500 mb-4"></i>
+        <p className="text-xl text-white font-bold">Carregando pagamento seguro...</p>
+        <button onClick={onCancel} className="mt-6 px-6 py-3 bg-gray-700 text-white rounded-lg">
+          Cancelar
         </button>
       </div>
     );
@@ -219,11 +167,11 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
 
   if (paymentError) {
     return (
-      <div className="flex flex-col items-center justify-center p-8 text-center text-red-400 bg-black/80 rounded-lg shadow-xl w-full max-w-md border border-red-500/50">
-        <i className="fas fa-exclamation-triangle text-4xl mb-4"></i>
-        <p className="text-lg font-bold">Erro de Pagamento</p>
-        <p className="mt-2 text-sm">{paymentError}</p>
-        <button onClick={onCancel} className="mt-6 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition">
+      <div className="p-10 bg-red-900/30 border border-red-500 rounded-xl text-center">
+        <p className="text-5xl mb-4">Warning</p>
+        <p className="text-red-400 font-bold text-lg">Erro de Pagamento</p>
+        <p className="text-sm mt-2 text-gray-300">{paymentError}</p>
+        <button onClick={onCancel} className="mt-6 px-6 py-3 bg-gray-700 text-white rounded-lg">
           Fechar
         </button>
       </div>
@@ -231,64 +179,72 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
   }
 
   return (
-    <div className="max-w-lg mx-auto bg-black/80 backdrop-blur-md p-10 rounded-xl shadow-lg border border-green-500/30">
-      <h2 className="text-3xl font-bold mb-6 text-center text-white">Checkout - R$ {amount.toFixed(2).replace('.', ',')}</h2>
-      <p className="text-sm text-gray-400 text-center mb-6">
-        Item: <span className="font-bold">{itemType === 'plan' ? `Plano ${itemId}` : `${itemId} Créditos`}</span>
+    <div className="max-w-lg mx-auto bg-black/90 backdrop-blur-lg p-8 rounded-2xl shadow-2xl border border-green-500/30">
+      <h2 className="text-3xl font-bold text-center text-white mb-2">
+        R$ {amount.toFixed(2).replace('.', ',')}
+      </h2>
+      <p className="text-center text-gray-400 text-sm mb-8">
+        {itemType === 'plan' ? `Plano ${itemId}` : `${itemId} créditos`}
       </p>
 
-      {/* Mercado Pago Section */}
-      {mpPublicKey && (
-        <form id="form-checkout" className="space-y-4">
-          <div className="mt-4 p-2 text-xs text-yellow-400 bg-yellow-900/20 rounded border border-yellow-700/30 flex items-center gap-2">
-            <i className="fas fa-exclamation-triangle"></i>
-            <span>Pagamento seguro via Mercado Pago.</span>
-          </div>
-          <div className="form-control">
-            <label htmlFor="form-checkout__cardNumber" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Número do Cartão</label>
-            <input type="text" id="form-checkout__cardNumber" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="Número do cartão" />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="form-control">
-              <label htmlFor="form-checkout__expirationDate" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Validade</label>
-              <input type="text" id="form-checkout__expirationDate" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="MM/AA" />
-            </div>
-            <div className="form-control">
-              <label htmlFor="form-checkout__securityCode" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">CVC</label>
-              <input type="text" id="form-checkout__securityCode" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="CVV" />
-            </div>
-          </div>
-          <div className="form-control">
-            <label htmlFor="form-checkout__cardholderName" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Nome no Cartão</label>
-            <input type="text" id="form-checkout__cardholderName" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="Titular do cartão" />
-          </div>
-          <div className="form-control">
-            <label htmlFor="form-checkout__cardholderEmail" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">E-mail</label>
-            <input type="email" id="form-checkout__cardholderEmail" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0" placeholder="E-mail" />
-          </div>
-          {/* Mercado Pago injetará o SELECT real dentro dessas DIVs */}
-          <div className="form-control">
-            <label htmlFor="form-checkout__issuer" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Banco Emissor</label>
-            <div id="form-checkout__issuer" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"></div>
-          </div>
-          <div className="form-control">
-            <label htmlFor="form-checkout__installments" className="block text-xs uppercase font-bold mb-1 tracking-wider text-purple-400">Parcelas</label>
-            <div id="form-checkout__installments" className="w-full bg-black border-2 border-purple-900/60 p-3 rounded-md text-gray-200 text-sm focus:border-purple-500 focus:outline-none focus:ring-0"></div>
-          </div>
-        </form>
-      )}
+      <form id="form-checkout" className="space-y-5">
+        <input
+          type="text"
+          id="form-checkout__cardNumber"
+          className="w-full bg-gray-900 border border-purple-800 p-4 rounded-lg text-white placeholder-gray-500 focus:border-purple-500 focus:outline-none"
+          placeholder="Número do cartão"
+        />
 
-      <button onClick={handlePayment} className="mt-8 bg-gradient-to-r from-green-500 to-emerald-600 text-black w-full py-5 rounded-lg text-xl font-bold hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-wait transition-all">
+        <div className="grid grid-cols-2 gap-4">
+          <input
+            type="text"
+            id="form-checkout__expirationDate"
+            className="bg-gray-900 border border-purple-800 p-4 rounded-lg text-white placeholder-gray-500"
+            placeholder="MM/AA"
+          />
+          <input
+            type="text"
+            id="form-checkout__securityCode"
+            className="bg-gray-900 border border-purple-800 p-4 rounded-lg text-white placeholder-gray-500"
+            placeholder="CVV"
+          />
+        </div>
+
+        <input
+          type="text"
+          id="form-checkout__cardholderName"
+          className="w-full bg-gray-900 border border-purple-800 p-4 rounded-lg text-white placeholder-gray-500"
+          placeholder="Nome no cartão"
+        />
+
+        <input
+          type="email"
+          id="form-checkout__cardholderEmail"
+          className="w-full bg-gray-900 border border-purple-800 p-4 rounded-lg text-white placeholder-gray-500"
+          placeholder="E-mail"
+        />
+
+        {/* OBRIGATÓRIO: divs vazias para o SDK injetar */}
+        <div id="form-checkout__issuer"></div>
+        <div id="form-checkout__installments"></div>
+      </form>
+
+      <button
+        onClick={handlePayment}
+        disabled={processingPayment}
+        className="mt-8 w-full bg-gradient-to-r from-green-500 to-emerald-600 text-black font-bold text-xl py-5 rounded-xl hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 transition-all"
+      >
         {processingPayment ? (
-          <><i className="fas fa-spinner fa-spin mr-2"></i> Processando...</>
+          <>Processando...</>
         ) : (
-          `PAGAR COM CARTÃO`
+          'PAGAR COM CARTÃO'
         )}
       </button>
-      <button 
-        onClick={onCancel} 
-        className="mt-4 w-full py-3 bg-transparent hover:bg-gray-700 text-gray-400 rounded-lg text-sm transition"
+
+      <button
+        onClick={onCancel}
         disabled={processingPayment}
+        className="mt-4 w-full py-3 text-gray-400 hover:text-white transition"
       >
         Cancelar
       </button>
