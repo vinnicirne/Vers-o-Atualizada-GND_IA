@@ -562,7 +562,8 @@ export default function CheckoutCompleto({
                 amount: amount,
                 item_type: itemType,
                 item_id: itemId,
-                method: 'pix', 
+                method: 'pix', // Indica Pix para o método de controle
+                payment_method_id: 'pix', // Indica Pix para a API do MP
                 docNumber: commonFormData.docNumber.replace(/\D/g, '')
             }),
         });
