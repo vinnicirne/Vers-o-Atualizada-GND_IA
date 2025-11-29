@@ -263,15 +263,16 @@ export default function CheckoutCompleto({
         }
 
         if (!mpSDK.current) {
-            console.log("[MP SDK] Inicializando nova instância do MercadoPago SDK.");
+            console.log("[MP SDK] Inicializando nova instância do MercadoPago SDK (v2).");
             mpSDK.current = new window.MercadoPago(mpPublicKey, {
                 locale: 'pt-BR'
             });
         }
 
         // Limpeza de qualquer tokenization anterior ou campos monitorados
+        // Em v2, geralmente não é necessário limpar `fields` diretamente
         if (mpSDK.current && mpSDK.current.fields) {
-             mpSDK.current.fields = {}; 
+             // mpSDK.current.fields = {}; // Isso pode quebrar o SDK v2, removendo.
         }
     }
 
@@ -471,6 +472,7 @@ export default function CheckoutCompleto({
           const [month, yearRaw] = expirationDate.split('/');
           const year = yearRaw.length === 2 ? `20${yearRaw}` : yearRaw; // Formato YYYY para API
           const cleanDoc = docNumber.replace(/\D/g, '');
+          const cardBin = cleanCard.substring(0, 6); // Primeiros 6 dígitos para BIN
 
           let payload: any = {
               amount: Number(formAmount),
@@ -485,10 +487,11 @@ export default function CheckoutCompleto({
 
           if (activeGateway === 'mercadopago') {
             if (!mpSDK.current) {
+                console.error("[MP SDK] Instância do Mercado Pago não inicializada.");
                 throw new Error("SDK do Mercado Pago não inicializado corretamente. Tente recarregar a página.");
             }
             
-            // --- TOKENIZAÇÃO MP NO CLIENT-SIDE ---
+            // --- TOKENIZAÇÃO MP NO CLIENT-SIDE (SDK v2) ---
             const cardTokenData = {
                 card_number: cleanCard,
                 card_holder_name: holderName,
@@ -499,15 +502,16 @@ export default function CheckoutCompleto({
                 doc_number: cleanDoc
             };
 
-            console.log("[MP SDK] Dados do cartão para tokenização:", cardTokenData);
+            console.log("[MP SDK - Tokenização] Dados do cartão para createCardToken:", cardTokenData);
 
             const mpTokenResponse = await new Promise((resolve, reject) => {
-                mpSDK.current.createCardToken(cardTokenData, (status: number, response: any) => {
-                    console.log("[MP SDK] createCardToken callback - Status:", status, "Response:", JSON.stringify(response));
+                // CORREÇÃO: Usar mpSDK.current.cardToken.create para SDK v2
+                mpSDK.current.cardToken.create(cardTokenData, (status: number, response: any) => {
+                    console.log("[MP SDK - Tokenização] createCardToken callback - Status:", status, "Response:", JSON.stringify(response));
                     if (status === 200 || status === 201) {
-                        if (!response || !response.id || !response.payment_method?.id || !response.issuer?.id) {
-                            console.error("[MP SDK] Resposta de tokenização bem-sucedida, mas dados essenciais ausentes:", response);
-                            return reject(new Error("Erro na tokenização: Dados essenciais do cartão ausentes."));
+                        if (!response || !response.id) { // Apenas 'id' é essencial para o token
+                            console.error("[MP SDK - Tokenização] Resposta de tokenização bem-sucedida, mas ID do token ausente:", response);
+                            return reject(new Error("Erro na tokenização: ID do token do cartão ausente na resposta."));
                         }
                         resolve(response);
                     } else {
@@ -516,12 +520,37 @@ export default function CheckoutCompleto({
                 });
             });
 
-            const { id: token, payment_method: { id: payment_method_id }, issuer: { id: issuer_id } } = mpTokenResponse as any;
+            const { id: token } = mpTokenResponse as any;
             
-            // Valida se os valores realmente existem após a desestruturação
-            if (!token || !payment_method_id || !issuer_id) {
-                throw new Error("Erro na tokenização: Campos essenciais (token, payment_method_id, issuer_id) ausentes da resposta do Mercado Pago.");
+            if (!token) {
+                throw new Error("Erro na tokenização: Token do cartão não foi gerado.");
             }
+
+            // --- OBTER PAYMENT_METHOD_ID E ISSUER_ID (v2) ---
+            console.log("[MP SDK - Get Payment Methods] Buscando método de pagamento para BIN:", cardBin);
+            const paymentMethodsResponse = await mpSDK.current.getPaymentMethods({ bin: cardBin });
+            console.log("[MP SDK - Get Payment Methods] Resposta:", JSON.stringify(paymentMethodsResponse));
+
+            let payment_method_id = null;
+            let issuer_id = null;
+
+            if (paymentMethodsResponse && paymentMethodsResponse.length > 0) {
+                // Pega o primeiro método de pagamento compatível
+                payment_method_id = paymentMethodsResponse[0].id;
+
+                // Tenta obter o issuer_id, se disponível (pode não ser necessário dependendo do gateway)
+                const issuers = await mpSDK.current.getIssuers(payment_method_id, cardBin);
+                if (issuers && issuers.length > 0) {
+                    issuer_id = issuers[0].id;
+                }
+            }
+
+            if (!payment_method_id) {
+                 console.error("[MP SDK - Get Payment Methods] Não foi possível determinar o payment_method_id.", paymentMethodsResponse);
+                 throw new Error("Não foi possível identificar o método de pagamento para este cartão. Tente outro.");
+            }
+            
+            console.log(`[MP SDK] Token: ${token}, Payment Method ID: ${payment_method_id}, Issuer ID: ${issuer_id}`);
 
             payload = {
                 ...payload,

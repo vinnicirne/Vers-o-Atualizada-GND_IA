@@ -66,7 +66,7 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-    console.log("[mp-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
+    console.log("[mp-pagar] Requisição JSON recebida (para depuração):", JSON.stringify(reqJson));
     console.log("[mp-pagar] Token do cartão recebido (para depuração):", reqJson.token ? "Presente" : "Ausente", reqJson.token);
 
 
