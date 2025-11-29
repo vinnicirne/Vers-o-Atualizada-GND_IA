@@ -30,6 +30,19 @@ serve(async (req) => {
     }
     const jwt = authHeader.split(" ")[1];
 
+    // --- CHECK FOR SERVER CONFIG ---
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+        console.error("ERRO CRÍTICO: Variável MP_ACCESS_TOKEN não definida no Supabase.");
+        return new Response(JSON.stringify({ 
+            error: "Erro de Configuração no Servidor: Chave do Mercado Pago não encontrada. Contate o administrador.",
+            code: "server_config_error"
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -43,7 +56,7 @@ serve(async (req) => {
 
     const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
     if (authError || !authUser) {
-      return new Response(JSON.stringify({ error: "invalid access token" }), {
+      return new Response(JSON.stringify({ error: "Sessão inválida ou expirada." }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -92,7 +105,7 @@ serve(async (req) => {
       .single();
 
     if (!userData?.email) {
-      return new Response(JSON.stringify({ error: "Usuário não encontrado" }), {
+      return new Response(JSON.stringify({ error: "Usuário não encontrado no banco de dados." }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -102,7 +115,6 @@ serve(async (req) => {
     const referrerId = userData.referred_by;
     const isPix = method === 'pix' || payment_method_id === 'pix';
 
-    // Monta payload do Mercado Pago de forma robusta
     const firstName = userData.full_name?.split(' ')[0] || 'Cliente';
     const lastName = userData.full_name?.split(' ').slice(1).join(' ') || 'GDN';
 
@@ -112,11 +124,10 @@ serve(async (req) => {
         payer: {
             email: userEmail,
             first_name: firstName,
-            last_name: lastName || 'Silva' // Fallback se não tiver sobrenome
+            last_name: lastName || 'Silva'
         }
     };
 
-    // Adiciona identificação com validação extra
     if (docNumber) {
         const cleanDoc = docNumber.replace(/\D/g, '');
         if (cleanDoc.length >= 11) {
@@ -138,10 +149,12 @@ serve(async (req) => {
         if (issuer_id) mpPayload.issuer_id = issuer_id;
     }
 
+    console.log("Enviando payload para MP:", JSON.stringify(mpPayload));
+
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${Deno.env.get("MP_ACCESS_TOKEN")}`,
+        "Authorization": `Bearer ${mpAccessToken}`,
         "Content-Type": "application/json",
         "X-Idempotency-Key": crypto.randomUUID()
       },
@@ -150,10 +163,21 @@ serve(async (req) => {
 
     const payment = await mpResponse.json();
 
+    // Tratamento de Erro do MP
     if (!mpResponse.ok) {
-        console.error("MP Error:", payment);
+        console.error("MP API Error:", payment);
+        
+        let errorMessage = payment.message || "Erro desconhecido no Mercado Pago";
+        const errorCode = payment.error || "unknown_error";
+
+        // Tradução de erros comuns de autenticação
+        if (mpResponse.status === 401 || errorCode === 'unauthorized' || errorMessage.includes('invalid access token')) {
+            errorMessage = "Erro de Configuração: Chave de API do Mercado Pago inválida ou expirada.";
+        }
+
         return new Response(JSON.stringify({ 
-            error: payment.message || "Erro no Mercado Pago",
+            error: errorMessage,
+            code: errorCode,
             details: payment.cause 
         }), {
             status: 400,
@@ -183,8 +207,11 @@ serve(async (req) => {
     if (isPix) {
         // Valida se o QR Code realmente veio
         if (!payment.point_of_interaction?.transaction_data?.qr_code) {
-             console.error("MP Pix criado mas sem QR Code:", payment);
-             return new Response(JSON.stringify({ error: "Pix criado, mas o QR Code não foi gerado pelo banco. Verifique se o CPF é válido." }), {
+             console.error("MP Pix criado mas sem QR Code. Resposta completa:", payment);
+             return new Response(JSON.stringify({ 
+                 error: "Pix criado, mas o banco não retornou o QR Code. Tente novamente ou verifique seus dados.",
+                 full_response: payment 
+             }), {
                 status: 400,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
