@@ -31,140 +31,248 @@ export default function CheckoutCompleto({
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const cardFormRef = useRef<any>(null);
+  const [sdkLoaded, setSdkLoaded] = useState(false);
 
+  // Carregar SDK do Mercado Pago
   useEffect(() => {
     if (!mpPublicKey) {
-      onError('Chave do Mercado Pago não configurada');
+      onError('Chave pública do Mercado Pago não configurada');
       setLoading(false);
       return;
     }
 
-    // 1. Carrega o SDK só uma vez
-    const scriptId = 'mp-sdk-v2';
+    const scriptId = 'mercado-pago-sdk';
+    
+    // Verifica se o script já existe
     if (document.getElementById(scriptId)) {
-      initWhenReady();
+      setSdkLoaded(true);
       return;
     }
 
+    // Carrega o SDK
     const script = document.createElement('script');
     script.id = scriptId;
     script.src = 'https://sdk.mercadopago.com/js/v2';
     script.async = true;
-
-    script.onload = () => setTimeout(initWhenReady, 200); // ← 200ms é a mágica
+    
+    script.onload = () => {
+      console.log('Mercado Pago SDK carregado com sucesso');
+      setSdkLoaded(true);
+    };
+    
     script.onerror = () => {
-      onError('Erro ao carregar Mercado Pago');
+      console.error('Erro ao carregar Mercado Pago SDK');
+      onError('Erro ao carregar sistema de pagamento');
       setLoading(false);
     };
 
     document.body.appendChild(script);
 
-    // 2. Função que realmente inicializa o CardForm (só roda quando SDK 100% pronto)
-    async function initWhenReady() {
-      if (!window.MercadoPago) return setTimeout(initWhenReady, 100);
+    return () => {
+      // Não remove o script para evitar recarregar múltiplas vezes
+    };
+  }, [mpPublicKey, onError]);
 
+  // Inicializar o formulário de cartão quando o SDK estiver carregado
+  useEffect(() => {
+    if (!sdkLoaded || !mpPublicKey || !window.MercadoPago) {
+      return;
+    }
+
+    const initializeCardForm = async () => {
       try {
-        // ESSA LINHA É OBRIGATÓRIA em 2025
-        window.MercadoPago.setPublishableKey(mpPublicKey);
+        console.log('CheckoutCompleto: Initializing with amount:', amount);
+        
+        // Limpa formulário anterior se existir
+        if (cardFormRef.current) {
+          cardFormRef.current.unmount();
+          cardFormRef.current = null;
+        }
 
-        const mp = new window.MercadoPago(mpPublicKey, { locale: 'pt-BR' });
+        // Inicializa o Mercado Pago
+        const mp = new window.MercadoPago(mpPublicKey, {
+          locale: 'pt-BR'
+        });
 
-        // Limpa caso já exista
-        cardFormRef.current?.unmount?.();
-
+        // Configura o formulário de cartão
         const cardForm = mp.cardForm({
           amount: amount.toString(),
           autoMount: true,
           form: {
             id: 'form-checkout',
-            cardNumber: { id: 'form-checkout__cardNumber', placeholder: 'Número do cartão' },
-            expirationDate: { id: 'form-checkout__expirationDate', placeholder: 'MM/AA' },
-            securityCode: { id: 'form-checkout__securityCode', placeholder: 'CVV' },
-            cardholderName: { id: 'form-checkout__cardholderName', placeholder: 'Titular como no cartão' },
-            cardholderEmail: { id: 'form-checkout__cardholderEmail' },
-            issuer: { id: 'form-checkout__issuer' },
-            installments: { id: 'form-checkout__installments' },
+            cardNumber: {
+              id: 'form-checkout__cardNumber',
+              placeholder: 'Número do cartão',
+            },
+            expirationDate: {
+              id: 'form-checkout__expirationDate',
+              placeholder: 'MM/AA',
+            },
+            securityCode: {
+              id: 'form-checkout__securityCode',
+              placeholder: 'CVV',
+            },
+            cardholderName: {
+              id: 'form-checkout__cardholderName',
+              placeholder: 'Titular como no cartão',
+            },
+            cardholderEmail: {
+              id: 'form-checkout__cardholderEmail',
+            },
+            issuer: {
+              id: 'form-checkout__issuer',
+            },
+            installments: {
+              id: 'form-checkout__installments',
+            },
           },
           callbacks: {
             onFormMounted: (error: any) => {
-              if (error) return console.warn(error);
-              console.log('Formulário montado com sucesso!');
-
-              // Preenche e-mail
+              if (error) {
+                console.error('Erro ao montar formulário:', error);
+                onError('Erro ao configurar formulário de pagamento');
+                return;
+              }
+              
+              console.log('Mercado Pago Form Mounted!');
+              
+              // Preenche e-mail automaticamente
               if (user?.email) {
-                const el = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
-                if (el) el.value = user.email;
+                setTimeout(() => {
+                  const emailInput = document.getElementById('form-checkout__cardholderEmail') as HTMLInputElement;
+                  if (emailInput) {
+                    emailInput.value = user.email;
+                    console.log('E-mail preenchido automaticamente:', user.email);
+                  }
+                }, 100);
               }
             },
-            onSubmit: async (e: Event) => {
-              e.preventDefault();
+
+            onFormUnmounted: (error: any) => {
+              console.log('Mercado Pago Form Unmounted!', error);
+            },
+
+            onInstallmentsReceived: (error: any, installments: any) => {
+              if (error) {
+                console.warn('Mercado Pago: Installments Received (direct)', error);
+                return;
+              }
+              console.log('Mercado Pago: Installments Received (direct)', installments);
+            },
+
+            onSubmit: async (event: Event) => {
+              event.preventDefault();
+              
               if (processing) return;
+              
+              console.log('Iniciando processamento do pagamento...');
               setProcessing(true);
 
               try {
-                // 1. Gera o token (obrigatório antes de tudo)
-                const { token, error: tkError } = await cardForm.createCardToken();
+                // Gera o token do cartão
+                const { token, error: tokenError } = await cardForm.createCardToken();
+                
+                console.log('Token gerado:', token ? 'Sim' : 'Não');
+                console.log('Erro no token:', tokenError);
 
-                if (tkError || !token) {
-                  onError(tkError?.[0]?.message || 'Cartão inválido');
+                if (tokenError || !token) {
+                  const errorMessage = tokenError?.[0]?.message || 'Erro ao processar cartão. Verifique os dados.';
+                  console.error('Erro na geração do token:', errorMessage);
+                  onError(errorMessage);
+                  setProcessing(false);
                   return;
                 }
 
-                // 2. Pega os dados
-                const data = cardForm.getCardFormData();
-
+                // Obtém dados do formulário
+                const formData = cardForm.getCardFormData();
+                console.log('Dados do formulário:', formData);
+                
+                // Obtém session do Supabase
                 const { data: { session } } = await supabase.auth.getSession();
+                
+                if (!session) {
+                  throw new Error('Usuário não autenticado');
+                }
 
-                const res = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
+                // Envia para a função serverless
+                const response = await fetch('https://bckujotuhhkagcqfiyye.supabase.co/functions/v1/mp-pagar', {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    Authorization: `Bearer ${session?.access_token}`,
+                    Authorization: `Bearer ${session.access_token}`,
                   },
                   body: JSON.stringify({
                     token: token,
-                    payment_method_id: data.paymentMethodId,
-                    issuer_id: data.issuerId || null,
-                    installments: Number(data.installments) || 1,
-                    amount,
-                    user_email: data.cardholderEmail || user?.email,
+                    payment_method_id: formData.paymentMethodId,
+                    issuer_id: formData.issuerId || null,
+                    installments: Number(formData.installments) || 1,
+                    amount: amount,
+                    user_email: formData.cardholderEmail || user?.email,
                     item_type: itemType,
                     item_id: itemId,
                   }),
                 });
 
-                const result = await res.json();
+                const result = await response.json();
+                console.log('Resposta do servidor:', result);
 
-                if (!res.ok || !['approved', 'pending', 'in_process'].includes(result.status)) {
-                  throw new Error(result.message || result.error || 'Pagamento recusado');
+                if (!response.ok) {
+                  throw new Error(result.message || result.error || 'Erro no processamento do pagamento');
                 }
 
+                if (!['approved', 'pending', 'in_process'].includes(result.status)) {
+                  throw new Error(result.message || 'Pagamento não aprovado pela operadora');
+                }
+
+                console.log('Pagamento processado com sucesso! Status:', result.status);
                 onSuccess();
-              } catch (err: any) {
-                onError(err.message || 'Erro no pagamento');
+                
+              } catch (error: any) {
+                console.error('Erro no processamento do pagamento:', error);
+                onError(error.message || 'Erro ao processar pagamento. Tente novamente.');
               } finally {
                 setProcessing(false);
               }
             },
+
+            onBinChange: (bin: string) => {
+              console.log('Bin alterado:', bin);
+            },
+
+            onPaymentMethodsReceived: (error: any, paymentMethods: any) => {
+              if (error) {
+                console.warn('Erro ao obter métodos de pagamento:', error);
+                return;
+              }
+              console.log('Métodos de pagamento recebidos:', paymentMethods);
+            }
           },
         });
 
         cardFormRef.current = cardForm;
         setLoading(false);
-      } catch (err) {
-        console.error(err);
-        onError('Erro crítico no Mercado Pago. Recarregue a página.');
+        console.log('Formulário de cartão inicializado com sucesso');
+        
+      } catch (error) {
+        console.error('Erro crítico ao inicializar Mercado Pago:', error);
+        onError('Erro crítico no sistema de pagamento. Recarregue a página.');
         setLoading(false);
       }
-    }
+    };
+
+    initializeCardForm();
 
     // Cleanup
     return () => {
-      cardFormRef.current?.unmount?.();
+      if (cardFormRef.current) {
+        console.log('Executando cleanup do formulário...');
+        cardFormRef.current.unmount();
+        cardFormRef.current = null;
+      }
     };
-  }, [mpPublicKey, amount, user, itemType, itemId]);
+  }, [sdkLoaded, mpPublicKey, amount, user, itemType, itemId, onSuccess, onError, processing]);
 
-  // UI
+  // Estados de loading
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-96">
@@ -175,7 +283,7 @@ export default function CheckoutCompleto({
   }
 
   return (
-    <div className="max-w-md mx-auto bg-gray-900 p-6 rounded-2xl border border-gray-700">
+    <div className="max-w-md mx-auto bg-gray-900 p-6 rounded-2xl border border-gray-700 relative">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -188,31 +296,104 @@ export default function CheckoutCompleto({
         </div>
       </div>
 
-      <button onClick={onCancel} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+      <button 
+        onClick={onCancel} 
+        className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
+        disabled={processing}
+      >
         <i className="fas fa-times text-2xl"></i>
       </button>
 
       <form id="form-checkout" className="space-y-4">
-        <input type="text" id="form-checkout__cardNumber" className="input" placeholder="Número do cartão" />
-        <div className="grid grid-cols-2 gap-4">
-          <input type="text" id="form-checkout__expirationDate" className="input" placeholder="MM/AA" />
-          <input type="text" id="form-checkout__securityCode" className="input" placeholder="CVV" />
+        <div>
+          <input 
+            type="text" 
+            id="form-checkout__cardNumber" 
+            className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors"
+            placeholder="Número do cartão" 
+          />
         </div>
-        <input type="text" id="form-checkout__cardholderName" className="input" placeholder="Nome no cartão" />
-        <input type="email" id="form-checkout__cardholderEmail" className="input bg-gray-800" readOnly />
+        
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <input 
+              type="text" 
+              id="form-checkout__expirationDate" 
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors"
+              placeholder="MM/AA" 
+            />
+          </div>
+          <div>
+            <input 
+              type="text" 
+              id="form-checkout__securityCode" 
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors"
+              placeholder="CVV" 
+            />
+          </div>
+        </div>
+        
+        <div>
+          <input 
+            type="text" 
+            id="form-checkout__cardholderName" 
+            className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors"
+            placeholder="Nome no cartão" 
+          />
+        </div>
+        
+        <div>
+          <input 
+            type="email" 
+            id="form-checkout__cardholderEmail" 
+            className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:border-green-500 transition-colors"
+            readOnly 
+          />
+        </div>
 
         <div className="grid grid-cols-2 gap-4">
-          <select id="form-checkout__issuer" className="input"><option>Banco</option></select>
-          <select id="form-checkout__installments" className="input"><option>Parcelas</option></select>
+          <div>
+            <select 
+              id="form-checkout__issuer" 
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500 transition-colors"
+            >
+              <option value="">Banco emissor</option>
+            </select>
+          </div>
+          <div>
+            <select 
+              id="form-checkout__installments" 
+              className="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-lg text-white focus:outline-none focus:border-green-500 transition-colors"
+            >
+              <option value="">Parcelas</option>
+            </select>
+          </div>
         </div>
 
         <button
           type="submit"
           disabled={processing}
-          className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:opacity-50 text-black font-bold rounded-xl text-lg"
+          className="w-full py-4 bg-green-600 hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-xl text-lg transition-all duration-200 flex items-center justify-center gap-2"
         >
-          {processing ? 'Processando...' : 'Pagar Agora'}
+          {processing ? (
+            <>
+              <i className="fas fa-spinner fa-spin"></i>
+              Processando...
+            </>
+          ) : (
+            <>
+              <i className="fas fa-credit-card"></i>
+              Pagar Agora
+            </>
+          )}
         </button>
+        
+        <div className="text-center">
+          <p className="text-xs text-gray-500">
+            <i className="fas fa-shield-alt mr-1"></i>
+            Pagamento 100% seguro via Mercado Pago
+          </p>
+        </div>
       </form>
     </div>
   );
