@@ -1,211 +1,274 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0"; // Use Supabase client for DB interaction
+// supabase/functions/mp-pagar/index.ts
 
-declare const Deno: any; // Add this line to declare Deno
+declare const Deno: any;
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Extract JWT from Authorization header
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Authorization header missing' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 401,
-    });
-  }
-  const jwt = authHeader.split(' ')[1];
-
-  // Create a Supabase client with the Service Role Key
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, // Use service role key to bypass RLS
-  );
-
-  // Authenticate the user to get their UID
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(jwt);
-
-  if (authError || !authUser) {
-    console.error('Auth Error:', authError?.message);
-    return new Response(JSON.stringify({ error: authError?.message || 'Authentication failed' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 401,
-    });
+  if (req.method !== "POST") {
+    return new Response("Método não permitido", { status: 405, headers: corsHeaders });
   }
 
-  const { token, payment_method_id, issuer_id, installments, amount, item_type, item_id } = await req.json();
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Token de autenticação ausente" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const jwt = authHeader.split(" ")[1];
 
-  // Get user's email from app_users table
-  const { data: userData, error: userError } = await supabase
-    .from('app_users')
-    .select('email, referred_by')
-    .eq('id', authUser.id)
-    .single();
+    // --- CHECK FOR SERVER CONFIG ---
+    const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
+    if (!mpAccessToken) {
+        console.error("ERRO CRÍTICO: Variável MP_ACCESS_TOKEN não definida no Supabase.");
+        return new Response(JSON.stringify({ 
+            error: "Erro de Configuração no Servidor: Chave do Mercado Pago não encontrada. Contate o administrador.",
+            code: "server_config_error"
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
 
-  if (userError || !userData) {
-    console.error('User data fetch error:', userError?.message);
-    return new Response(JSON.stringify({ error: userError?.message || 'Failed to retrieve user email' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
-  }
-  const userEmail = userData.email;
-  const referrerId = userData.referred_by;
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+    );
 
-  // Mercado Pago Payment
-  const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${Deno.env.get("MP_ACCESS_TOKEN")}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      token,
-      payment_method_id,
-      issuer_id: issuer_id,
-      transaction_amount: Number(amount),
-      installments: Number(installments),
-      description: `Compra GDN_IA - ${item_type} ID: ${item_id}`,
-      payer: { email: userEmail }
-    })
-  });
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-  const payment = await mpResponse.json();
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(JSON.stringify({ error: "Sessão inválida ou expirada." }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
-  let transactionStatus = payment.status || 'failed';
-  if (payment.error) {
-      transactionStatus = 'failed';
-      console.error('Mercado Pago Payment Error:', payment.error, payment.message);
-  }
+    const reqJson = await req.json();
 
-  // Prepare metadata for transaction log
-  const transactionMetadata = {
-    item_type: item_type,
-    item_id: item_id,
-    provider: 'mercado_pago',
-    description: `Pagamento para ${item_type} ID: ${item_id}`,
-    plan_id: item_type === 'plan' ? item_id : undefined,
-    credits_amount: item_type === 'credits' ? (item_type === 'credits' ? item_id : undefined) : undefined, // For credits, assume item_id is the quantity
-    payment_method_id: payment_method_id,
-    issuer_id: issuer_id,
-    installments: installments,
-    // Add full Mercado Pago response to metadata for debugging/auditing
-    mp_response: payment,
-  };
-
-  // 1. Save transaction in 'transactions' table
-  const { error: transactionError } = await supabase
-    .from('transactions')
-    .insert({
-      usuario_id: authUser.id,
-      valor: amount,
-      metodo: 'card', // Assuming 'card' for Mercado Pago tokenized payments
-      status: transactionStatus,
-      external_id: payment.id, // Mercado Pago payment ID
-      metadata: transactionMetadata,
-      data: new Date().toISOString(),
-    });
-
-  if (transactionError) {
-    console.error('Supabase transaction log error:', transactionError.message);
-    return new Response(JSON.stringify({ error: transactionError.message }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 500,
-    });
-  }
-
-  // 2. If payment is approved/pending, update user's plan/credits
-  if (transactionStatus === 'approved' || transactionStatus === 'pending') {
-    if (item_type === 'plan') {
-        // Update user's plan in app_users
-        const { error: planUpdateError } = await supabase
-            .from('app_users')
-            .update({ plan: item_id })
-            .eq('id', authUser.id);
-        if (planUpdateError) console.error('Supabase plan update error:', planUpdateError.message);
+    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
+    if (reqJson.check_status_id) {
+        const { data: tx } = await supabaseAdmin
+            .from("transactions")
+            .select("status")
+            .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
+            .single();
         
-        // Fetch plan details to get initial credits for the new plan
-        const { data: planConfig, error: fetchPlanError } = await supabase
-          .from('system_config')
-          .select('value')
-          .eq('key', 'all_plans')
-          .single();
+        return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
 
-        if (!fetchPlanError && planConfig && planConfig.value) {
-            const allPlans = planConfig.value as any[];
-            const selectedPlan = allPlans.find(p => p.id === item_id);
-            if (selectedPlan) {
-                const newCredits = selectedPlan.credits;
-                // Update user_credits with new plan's credits (or -1 for unlimited)
-                await supabase
-                    .from('user_credits')
-                    .upsert({ user_id: authUser.id, credits: newCredits }, { onConflict: 'user_id' });
+    // --- MODO 2: GERAÇÃO DE PAGAMENTO ---
+    const {
+      token,
+      payment_method_id, 
+      issuer_id,
+      installments = 1,
+      amount,
+      item_type,
+      item_id,
+      method,
+      docNumber
+    } = reqJson;
+
+    if (!amount || !item_type || !item_id) {
+      return new Response(JSON.stringify({ error: "Dados do pagamento incompletos" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: userData } = await supabaseAdmin
+      .from("app_users")
+      .select("email, referred_by, full_name")
+      .eq("id", authUser.id)
+      .single();
+
+    if (!userData?.email) {
+      return new Response(JSON.stringify({ error: "Usuário não encontrado no banco de dados." }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const userEmail = userData.email;
+    const referrerId = userData.referred_by;
+    const isPix = method === 'pix' || payment_method_id === 'pix';
+
+    const firstName = userData.full_name?.split(' ')[0] || 'Cliente';
+    const lastName = userData.full_name?.split(' ').slice(1).join(' ') || 'GDN';
+
+    const mpPayload: any = {
+        transaction_amount: Number(amount),
+        description: `Compra GDN_IA - ${item_type} (${item_id})`,
+        payer: {
+            email: userEmail,
+            first_name: firstName,
+            last_name: lastName || 'Silva'
+        }
+    };
+
+    if (docNumber) {
+        const cleanDoc = docNumber.replace(/\D/g, '');
+        if (cleanDoc.length >= 11) {
+            const docType = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
+            mpPayload.payer.identification = {
+                type: docType,
+                number: cleanDoc
+            };
+        }
+    }
+
+    if (isPix) {
+        mpPayload.payment_method_id = 'pix';
+    } else {
+        if (!token) throw new Error("Token do cartão é obrigatório.");
+        mpPayload.token = token;
+        mpPayload.installments = Number(installments);
+        mpPayload.payment_method_id = payment_method_id;
+        if (issuer_id) mpPayload.issuer_id = issuer_id;
+    }
+
+    console.log("Enviando payload para MP:", JSON.stringify(mpPayload));
+
+    const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${mpAccessToken}`,
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": crypto.randomUUID()
+      },
+      body: JSON.stringify(mpPayload),
+    });
+
+    const payment = await mpResponse.json();
+
+    // Tratamento de Erro do MP
+    if (!mpResponse.ok) {
+        console.error("MP API Error:", payment);
+        
+        let errorMessage = payment.message || "Erro desconhecido no Mercado Pago";
+        const errorCode = payment.error || "unknown_error";
+
+        // Tradução de erros comuns de autenticação
+        if (mpResponse.status === 401 || errorCode === 'unauthorized' || errorMessage.includes('invalid access token')) {
+            errorMessage = "Erro de Configuração: Chave de API do Mercado Pago inválida ou expirada.";
+        }
+
+        return new Response(JSON.stringify({ 
+            error: errorMessage,
+            code: errorCode,
+            details: payment.cause 
+        }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
+    const transactionStatus = payment.status === "approved" ? "approved" : "pending";
+
+    await supabaseAdmin
+      .from("transactions")
+      .insert({
+        usuario_id: authUser.id,
+        valor: Number(amount),
+        metodo: isPix ? "pix" : "card",
+        status: transactionStatus,
+        external_id: payment.id?.toString(),
+        metadata: {
+            item_type,
+            item_id,
+            provider: "mercado_pago",
+            mp_id: payment.id
+        },
+        data: new Date().toISOString(),
+      });
+
+    if (isPix) {
+        // Valida se o QR Code realmente veio
+        if (!payment.point_of_interaction?.transaction_data?.qr_code) {
+             console.error("MP Pix criado mas sem QR Code. Resposta completa:", payment);
+             return new Response(JSON.stringify({ 
+                 error: "Pix criado, mas o banco não retornou o QR Code. Tente novamente ou verifique seus dados.",
+                 full_response: payment 
+             }), {
+                status: 400,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
+        
+        return new Response(JSON.stringify(payment), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
+    if (transactionStatus === "approved") {
+        await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
+    }
+
+    return new Response(JSON.stringify(payment), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+
+  } catch (err: any) {
+    console.error("Erro interno mp-pagar:", err);
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
+
+async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
+    if (itemType === "plan") {
+        await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
+        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
+        if (config?.value) {
+            const plan = (config.value as any[]).find((p: any) => p.id === itemId);
+            if (plan) {
+                await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
             }
         }
-    } else if (item_type === 'credits') {
-        // Fetch current credits and add new amount
-        const { data: currentCreditsData, error: creditsFetchError } = await supabase
-            .from('user_credits')
-            .select('credits')
-            .eq('user_id', authUser.id)
-            .single();
-
-        let newCreditsAmount = Number(item_id); // item_id is the credits quantity for 'credits' type
-        if (!creditsFetchError && currentCreditsData) {
-            newCreditsAmount = currentCreditsData.credits + Number(item_id);
-        }
-
-        const { error: creditsUpdateError } = await supabase
-            .from('user_credits')
-            .upsert({ user_id: authUser.id, credits: newCreditsAmount }, { onConflict: 'user_id' });
-        if (creditsUpdateError) console.error('Supabase credits update error:', creditsUpdateError.message);
+    } else if (itemType === "credits") {
+        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
+        const newCredits = (current?.credits || 0) + Number(itemId); 
+        await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
     }
 
-    // 3. Process Affiliate Commission (if referrer exists)
     if (referrerId) {
-        // Fetch referrer's current balance
-        const { data: referrerData, error: referrerFetchError } = await supabase
-            .from('app_users')
-            .select('affiliate_balance')
-            .eq('id', referrerId)
-            .single();
-
-        if (!referrerFetchError && referrerData) {
-            const COMMISSION_RATE = 0.20; // 20% commission
-            const commission = parseFloat((amount * COMMISSION_RATE).toFixed(2));
-            const newBalance = parseFloat(((referrerData.affiliate_balance || 0) + commission).toFixed(2));
-
-            // Update referrer's balance
-            const { error: balanceUpdateError } = await supabase
-                .from('app_users')
-                .update({ affiliate_balance: newBalance })
-                .eq('id', referrerId);
-
-            if (balanceUpdateError) console.error('Affiliate balance update error:', balanceUpdateError.message);
-
-            // Log affiliate transaction
-            const { error: logError } = await supabase
-                .from('affiliate_logs')
-                .insert({
-                    affiliate_id: referrerId,
-                    source_user_id: authUser.id,
-                    amount: commission,
-                    description: `Comissão ref. compra de ${item_type} (${item_id}) por ${userEmail}`
-                });
-            if (logError) console.error('Affiliate log error:', logError.message);
+        const commission = parseFloat((Number(amount) * 0.2).toFixed(2));
+        const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
+        if (refUser) {
+            const newBalance = (refUser.affiliate_balance || 0) + commission;
+            await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
+            await supabaseAdmin.from("affiliate_logs").insert({
+                affiliate_id: referrerId,
+                source_user_id: userId,
+                amount: commission,
+                description: `Comissão 20% - ${itemType}`
+            });
         }
     }
-  }
-
-  return new Response(JSON.stringify(payment), {
-    headers: { ...corsHeaders, "Content-Type": "application/json" }
-  });
-});
+}

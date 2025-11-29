@@ -1,7 +1,9 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+// supabase/functions/asaas-pagar/index.ts
 
 declare const Deno: any;
+
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,246 +12,269 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
-  // Extract JWT from Authorization header
-  const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return new Response(JSON.stringify({ error: 'Authorization header missing' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 401,
-    });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
   }
-  const jwt = authHeader.split(' ')[1];
 
-  // Create a Supabase client with the Service Role Key to bypass RLS for fetching sensitive user data
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-
-  // Authenticate the user to get their UID
-  const { data: { user: authUser }, error: authError } = await supabase.auth.getUser(jwt);
-
-  if (authError || !authUser) {
-    console.error('Auth Error:', authError?.message);
-    return new Response(JSON.stringify({ error: authError?.message || 'Authentication failed' }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-      status: 401,
-    });
+  if (req.method !== "POST") {
+    return new Response("Método não permitido", { status: 405, headers: corsHeaders });
   }
 
   try {
-    const { creditCardToken, amount, item_type, item_id } = await req.json();
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Token ausente" }), { status: 401, headers: corsHeaders });
+    }
+    const jwt = authHeader.split(" ")[1];
 
-    if (!creditCardToken || !amount) {
-      return new Response(JSON.stringify({ error: "Faltam dados do cartão ou valor" }), {
-        status: 400,
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: `Bearer ${jwt}` } } }
+    );
+
+    const supabaseAdmin = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const { data: { user: authUser }, error: authError } = await supabase.auth.getUser();
+    if (authError || !authUser) {
+      return new Response(JSON.stringify({ error: "Sessão inválida." }), {
+        status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 1. Fetch user profile to get email, full_name, asaas_customer_id and referrer_id
-    const { data: userData, error: userProfileError } = await supabase
-      .from('app_users')
-      .select('email, full_name, asaas_customer_id, referred_by')
-      .eq('id', authUser.id)
+    const reqJson = await req.json();
+
+    // --- CHECK FOR SERVER CONFIG ---
+    const asaasKey = Deno.env.get("ASAAS_KEY");
+    if (!asaasKey) {
+        console.error("ERRO CRÍTICO: Variável ASAAS_KEY não definida no Supabase.");
+        return new Response(JSON.stringify({ 
+            error: "Erro de Configuração no Servidor: Chave do Asaas não encontrada. Contate o administrador.",
+            code: "server_config_error"
+        }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+    const asaasApiBaseUrl = Deno.env.get("ASAAS_API_BASE_URL") || "https://api.asaas.com"; // Default para produção
+
+    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
+    if (reqJson.check_status_id) {
+        const { data: tx } = await supabaseAdmin
+            .from("transactions")
+            .select("status")
+            .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
+            .single();
+        
+        return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
+    // --- MODO 2: PAGAMENTO ---
+    const {
+      creditCardToken,
+      creditCard,
+      creditCardHolderInfo,
+      amount,
+      item_type,
+      item_id,
+      installments = 1,
+      billingType, // 'PIX' ou 'CREDIT_CARD'
+      docNumber // CPF/CNPJ
+    } = reqJson;
+
+    if (!amount) {
+        return new Response(JSON.stringify({ error: "Valor inválido." }), { status: 400, headers: corsHeaders });
+    }
+
+    // Busca dados do usuário
+    const { data: userData } = await supabaseAdmin
+      .from("app_users")
+      .select("email, full_name, asaas_customer_id, referred_by")
+      .eq("id", authUser.id)
       .single();
 
-    if (userProfileError || !userData) {
-      console.error('User data fetch error:', userProfileError?.message);
-      return new Response(JSON.stringify({ error: userProfileError?.message || 'Failed to retrieve user profile' }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      });
+    if (!userData?.email) {
+      return new Response(JSON.stringify({ error: "Usuário não encontrado." }), { status: 404, headers: corsHeaders });
     }
 
     const userEmail = userData.email;
-    const userFullName = userData.full_name || userEmail.split('@')[0];
+    const userFullName = userData.full_name || userEmail.split("@")[0];
     let asaasCustomerId = userData.asaas_customer_id;
     const referrerId = userData.referred_by;
 
-    // 2. If asaas_customer_id doesn't exist, create it in Asaas
+    // Se docNumber não veio, usa um default para Sandbox (não recomendado em prod)
+    const cpfCnpjToUse = docNumber || "00000000000";
+
+    // Garante cliente no Asaas
+    // Lógica atualizada: Sempre tenta buscar/criar ou atualizar se o ID não existir
     if (!asaasCustomerId) {
-      const createCustomerRes = await fetch("https://sandbox.asaas.com/api/v3/customers", {
+      // 1. Tenta criar cliente
+      const res = await fetch(`${asaasApiBaseUrl}/api/v3/customers`, {
         method: "POST",
-        headers: {
-          "access_token": Deno.env.get("ASAAS_KEY")!,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: userFullName,
-          email: userEmail,
+        headers: { "access_token": asaasKey, "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            name: userFullName, 
+            email: userEmail, 
+            externalReference: authUser.id,
+            cpfCnpj: cpfCnpjToUse
         }),
       });
-      const customerData = await createCustomerRes.json();
-
-      if (customerData.id) {
-        asaasCustomerId = customerData.id;
-        // Update app_users with the new Asaas Customer ID
-        await supabase
-          .from('app_users')
-          .update({ asaas_customer_id: asaasCustomerId })
-          .eq('id', authUser.id);
+      const customer = await res.json();
+      
+      if (!customer.id) {
+          // Se falhar (ex: email já existe no Asaas mas não no nosso banco), tenta buscar por email
+          if (customer.errors?.[0]?.code === 'invalid_customer' || customer.errors?.[0]?.description?.includes('email')) {
+               const searchRes = await fetch(`${asaasApiBaseUrl}/api/v3/customers?email=${userEmail}`, {
+                   headers: { "access_token": asaasKey }
+               });
+               const searchData = await searchRes.json();
+               if (searchData.data && searchData.data.length > 0) {
+                   asaasCustomerId = searchData.data[0].id;
+               }
+          }
+          
+          if (!asaasCustomerId) {
+             return new Response(JSON.stringify({ error: "Falha ao registrar cliente no Asaas: " + (customer.errors?.[0]?.description || "Erro desconhecido") }), { status: 500, headers: corsHeaders });
+          }
       } else {
-        console.error('Asaas customer creation error:', customerData);
-        return new Response(JSON.stringify({ error: 'Failed to create Asaas customer' }), {
-          status: 500,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+          asaasCustomerId = customer.id;
       }
+      
+      // Salva ID no banco
+      await supabaseAdmin.from("app_users").update({ asaas_customer_id: asaasCustomerId }).eq("id", authUser.id);
     }
 
-    // Get remote IP address
-    const remoteIp = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || "127.0.0.1";
+    const isPix = billingType === 'PIX';
 
-    // 3. Process payment with Asaas
-    const res = await fetch("https://sandbox.asaas.com/api/v3/payments", {
-      method: "POST",
-      headers: {
-        "access_token": Deno.env.get("ASAAS_KEY")!,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        customer: asaasCustomerId,
-        billingType: "CREDIT_CARD",
-        value: Number(amount),
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0], // 30 days due date
-        creditCardToken,
-        remoteIp,
-        description: `Compra GDN_IA - ${item_type} ID: ${item_id}`,
-      }),
-    });
-
-    const data = await res.json();
-    let transactionStatus = data.status || 'failed';
-
-    // Prepare metadata for transaction log
-    const transactionMetadata = {
-      item_type: item_type,
-      item_id: item_id,
-      provider: 'asaas',
-      description: `Pagamento para ${item_type} ID: ${item_id}`,
-      plan_id: item_type === 'plan' ? item_id : undefined,
-      credits_amount: item_type === 'credits' ? (item_type === 'credits' ? item_id : undefined) : undefined,
-      card_token_id: creditCardToken,
-      customer_id: asaasCustomerId,
-      asaas_response: data,
+    // Monta payload Asaas
+    const paymentPayload: any = {
+      customer: asaasCustomerId,
+      billingType: isPix ? "PIX" : "CREDIT_CARD",
+      value: Number(amount),
+      dueDate: new Date(Date.now()).toISOString().slice(0, 10),
+      description: `GDN_IA: ${item_type} (${item_id})`,
+      remoteIp: req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1",
     };
 
-    // 4. Save transaction in 'transactions' table
-    const { error: transactionError } = await supabase
-      .from('transactions') // Changed from 'payments' to 'transactions'
-      .insert({
-        usuario_id: authUser.id,
-        valor: amount,
-        metodo: 'card',
-        status: transactionStatus,
-        external_id: data.id, // Asaas payment ID
-        metadata: transactionMetadata,
-        data: new Date().toISOString(),
-      });
-
-    if (transactionError) {
-      console.error('Supabase transaction log error:', transactionError.message);
-      return new Response(JSON.stringify({ error: transactionError.message }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500,
-      });
-    }
-
-    // 5. If payment is approved/pending, update user's plan/credits
-    if (transactionStatus === 'CONFIRMED' || transactionStatus === 'PENDING') {
-        if (item_type === 'plan') {
-            // Update user's plan in app_users
-            const { error: planUpdateError } = await supabase
-                .from('app_users')
-                .update({ plan: item_id })
-                .eq('id', authUser.id);
-            if (planUpdateError) console.error('Supabase plan update error:', planUpdateError.message);
-            
-            // Fetch plan details to get initial credits for the new plan
-            const { data: planConfig, error: fetchPlanError } = await supabase
-              .from('system_config')
-              .select('value')
-              .eq('key', 'all_plans')
-              .single();
-
-            if (!fetchPlanError && planConfig && planConfig.value) {
-                const allPlans = planConfig.value as any[];
-                const selectedPlan = allPlans.find(p => p.id === item_id);
-                if (selectedPlan) {
-                    const newCredits = selectedPlan.credits;
-                    // Update user_credits with new plan's credits (or -1 for unlimited)
-                    await supabase
-                        .from('user_credits')
-                        .upsert({ user_id: authUser.id, credits: newCredits }, { onConflict: 'user_id' });
-                }
-            }
-        } else if (item_type === 'credits') {
-            // Fetch current credits and add new amount
-            const { data: currentCreditsData, error: creditsFetchError } = await supabase
-                .from('user_credits')
-                .select('credits')
-                .eq('user_id', authUser.id)
-                .single();
-
-            let newCreditsAmount = Number(item_id); // item_id is the credits quantity for 'credits' type
-            if (!creditsFetchError && currentCreditsData) {
-                newCreditsAmount = currentCreditsData.credits + Number(item_id);
-            }
-
-            const { error: creditsUpdateError } = await supabase
-                .from('user_credits')
-                .upsert({ user_id: authUser.id, credits: newCreditsAmount }, { onConflict: 'user_id' });
-            if (creditsUpdateError) console.error('Supabase credits update error:', creditsUpdateError.message);
+    if (!isPix) {
+        if (creditCardToken) {
+            paymentPayload.creditCardToken = creditCardToken;
+        } else {
+            paymentPayload.creditCard = creditCard;
+            paymentPayload.creditCardHolderInfo = creditCardHolderInfo || {
+                name: userFullName,
+                email: userEmail,
+                cpfCnpj: cpfCnpjToUse,
+                postalCode: "00000000",
+                addressNumber: "0",
+                phone: "11999999999"
+            };
         }
-
-        // 6. Process Affiliate Commission (if referrer exists)
-        if (referrerId) {
-            // Fetch referrer's current balance
-            const { data: referrerData, error: referrerFetchError } = await supabase
-                .from('app_users')
-                .select('affiliate_balance')
-                .eq('id', referrerId)
-                .single();
-
-            if (!referrerFetchError && referrerData) {
-                const COMMISSION_RATE = 0.20; // 20% commission
-                const commission = parseFloat((amount * COMMISSION_RATE).toFixed(2));
-                const newBalance = parseFloat(((referrerData.affiliate_balance || 0) + commission).toFixed(2));
-
-                // Update referrer's balance
-                const { error: balanceUpdateError } = await supabase
-                    .from('app_users')
-                    .update({ affiliate_balance: newBalance })
-                    .eq('id', referrerId);
-
-                if (balanceUpdateError) console.error('Affiliate balance update error:', balanceUpdateError.message);
-
-                // Log affiliate transaction
-                const { error: logError } = await supabase
-                    .from('affiliate_logs')
-                    .insert({
-                        affiliate_id: referrerId,
-                        source_user_id: authUser.id,
-                        amount: commission,
-                        description: `Comissão ref. compra de ${item_type} (${item_id}) por ${userEmail}`
-                    });
-                if (logError) console.error('Affiliate log error:', logError.message);
-            }
+        if (Number(installments) > 1) {
+            paymentPayload.installmentCount = Number(installments);
+            paymentPayload.installmentValue = Number((Number(amount) / Number(installments)).toFixed(2));
         }
     }
 
-    return new Response(JSON.stringify(data), {
+    // Cria cobrança
+    const paymentRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments`, {
+      method: "POST",
+      headers: { "access_token": asaasKey, "Content-Type": "application/json" },
+      body: JSON.stringify(paymentPayload),
+    });
+
+    const paymentData = await paymentRes.json();
+
+    if (!paymentRes.ok || paymentData.errors) {
+        const errorMsg = paymentData.errors?.[0]?.description || paymentData.error || "Pagamento recusado.";
+        return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: corsHeaders });
+    }
+
+    // Salva transação
+    await supabaseAdmin.from("transactions").insert({
+      usuario_id: authUser.id,
+      valor: Number(amount),
+      metodo: isPix ? "pix" : "card",
+      status: "pending", // Sempre pending no início, mesmo cartão leva uns segundos
+      external_id: paymentData.id,
+      metadata: { provider: "asaas", item_type, item_id },
+      data: new Date().toISOString(),
+    });
+
+    // Se for PIX, busca o QR Code (2ª chamada necessária no Asaas)
+    if (isPix) {
+        const qrRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments/${paymentData.id}/pixQrCode`, {
+            method: "GET",
+            headers: { "access_token": asaasKey, "Content-Type": "application/json" }
+        });
+        const qrData = await qrRes.json();
+        
+        return new Response(JSON.stringify({ 
+            success: true, 
+            paymentId: paymentData.id, 
+            qrCode: qrData // Contém payload e encodedImage
+        }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
+    // Se for Cartão, verifica status imediato
+    if (paymentData.status === "CONFIRMED" || paymentData.status === "RECEIVED") {
+        await supabaseAdmin.from("transactions").update({ status: 'approved' }).eq('external_id', paymentData.id);
+        await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
+    }
+
+    return new Response(JSON.stringify({ success: true, status: paymentData.status, id: paymentData.id }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (err: any) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    console.error("Erro interno:", err);
+    return new Response(JSON.stringify({ error: `Erro interno: ${err.message}` }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
+
+// Helper de Benefícios
+async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
+    if (itemType === "plan") {
+        await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
+        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
+        if (config?.value) {
+          const plan = (config.value as any[]).find((p: any) => p.id === itemId);
+          if (plan) {
+            await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
+          }
+        }
+    }
+    if (itemType === "credits") {
+        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
+        const newCredits = (current?.credits || 0) + Number(itemId);
+        await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
+    }
+    if (referrerId) {
+        const commission = parseFloat((Number(amount) * 0.2).toFixed(2));
+        const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
+        if (refUser) {
+            const newBalance = (refUser.affiliate_balance || 0) + commission;
+            await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
+            await supabaseAdmin.from("affiliate_logs").insert({
+                affiliate_id: referrerId,
+                source_user_id: userId,
+                amount: commission,
+                description: `Comissão 20% - ${itemType}`
+            });
+        }
+    }
+}

@@ -16,5 +16,6 @@ declare namespace NodeJS {
     API_KEY: string;
     MP_ACCESS_TOKEN: string; // Adicionado para tipagem
     ASAAS_KEY: string; // Adicionado para tipagem
+    ASAAS_API_BASE_URL: string; // Nova variável para a URL base da API do Asaas
   }
 }
