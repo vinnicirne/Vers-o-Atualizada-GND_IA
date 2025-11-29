@@ -26,6 +26,18 @@ const formatExpiration = (value: string) => {
   return value.replace(/\D/g, '').replace(/(\d{2})(\d)/, '$1/$2').substring(0, 5);
 };
 
+// Helper para formatar CPF/CNPJ
+const formatCpfCnpj = (value: string) => {
+  const v = value.replace(/\D/g, '');
+  if (v.length <= 11) {
+    // CPF: 000.000.000-00
+    return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+  } else {
+    // CNPJ: 00.000.000/0000-00
+    return v.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2}).*/, "$1.$2.$3/$4-$5");
+  }
+};
+
 // --- GENERIC PAYMENT FORM ---
 const GenericPaymentForm = ({ 
     gateway, 
@@ -43,6 +55,21 @@ const GenericPaymentForm = ({
 
   return (
     <div className="space-y-4 animate-fade-in">
+      {/* CPF/CNPJ - Campo Comum e Obrigatório */}
+      <div className="space-y-1">
+          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">CPF ou CNPJ</label>
+          <div className={containerClass}>
+              <input
+                type="text"
+                className={inputClass}
+                placeholder="000.000.000-00"
+                value={formData.docNumber}
+                onChange={(e) => onChange('docNumber', formatCpfCnpj(e.target.value))}
+                maxLength={18}
+              />
+          </div>
+      </div>
+
       {/* Número do Cartão */}
       <div className="space-y-1">
           <label className="text-xs font-bold text-gray-500 uppercase tracking-wider ml-1">Número do Cartão</label>
@@ -240,8 +267,9 @@ export default function CheckoutCompleto({
   // Dados do Pix (quando gerado)
   const [pixData, setPixData] = useState<{ qrCode: string, copyPaste: string, id: string } | null>(null);
 
-  // State para formulário manual (Asaas)
-  const [asaasFormData, setAsaasFormData] = useState({
+  // State para formulário (Asaas e CPF compartilhado)
+  const [commonFormData, setCommonFormData] = useState({
+      docNumber: '', // Novo campo CPF/CNPJ
       cardNumber: '',
       holderName: '',
       expirationDate: '',
@@ -274,7 +302,7 @@ export default function CheckoutCompleto({
   // 2. Atualizar valor em formData se prop mudar e garantir valor > 0
   useEffect(() => {
       const safeAmount = amount > 0 ? amount : 0.01;
-      setAsaasFormData(prev => ({ ...prev, amount: safeAmount }));
+      setCommonFormData(prev => ({ ...prev, amount: safeAmount }));
   }, [amount]);
 
   // 3. Inicialização MP (Apenas se for Cartão e MP)
@@ -395,10 +423,20 @@ export default function CheckoutCompleto({
       pollInterval.current = setInterval(checkStatus, 5000);
   };
 
+  const validateDoc = () => {
+      if (!commonFormData.docNumber || commonFormData.docNumber.length < 14) {
+          setError('CPF/CNPJ é obrigatório e deve ser válido.');
+          return false;
+      }
+      return true;
+  };
+
   // --- HANDLERS MP ---
   const handleMpSubmit = async (e: any, cardForm: any) => {
       e.preventDefault();
       if (processing) return;
+      if (!validateDoc()) return;
+
       setProcessing(true);
       setError(null);
 
@@ -421,6 +459,7 @@ export default function CheckoutCompleto({
                 user_email: formData.cardholderEmail || user?.email,
                 item_type: itemType,
                 item_id: itemId,
+                docNumber: commonFormData.docNumber.replace(/\D/g, '') // Envia CPF limpo
             }),
         });
 
@@ -446,6 +485,8 @@ export default function CheckoutCompleto({
   };
 
   const handleMpPixGenerate = async () => {
+      if (!validateDoc()) return;
+      
       setProcessing(true);
       setError(null);
       try {
@@ -457,7 +498,8 @@ export default function CheckoutCompleto({
                 amount: amount,
                 item_type: itemType,
                 item_id: itemId,
-                method: 'pix' // Indica Pix
+                method: 'pix', // Indica Pix
+                docNumber: commonFormData.docNumber.replace(/\D/g, '')
             }),
         });
 
@@ -485,16 +527,16 @@ export default function CheckoutCompleto({
 
   // --- HANDLERS ASAAS ---
   const handleAsaasChange = (field: string, value: string) => {
-      setAsaasFormData(prev => ({ ...prev, [field]: value }));
+      setCommonFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const handleAsaasSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       if (processing) return;
       
-      const { cardNumber, holderName, expirationDate, cvv, installments, amount: formAmount } = asaasFormData;
+      const { cardNumber, holderName, expirationDate, cvv, installments, amount: formAmount, docNumber } = commonFormData;
       
-      if (cardNumber.length < 16 || holderName.length < 3 || expirationDate.length < 5 || cvv.length < 3) {
+      if (cardNumber.length < 16 || holderName.length < 3 || expirationDate.length < 5 || cvv.length < 3 || docNumber.length < 14) {
           setError('Preencha todos os campos corretamente.');
           return;
       }
@@ -511,6 +553,7 @@ export default function CheckoutCompleto({
               item_type: itemType,
               item_id: itemId,
               installments: Number(installments),
+              docNumber: docNumber.replace(/\D/g, ''), // Envia CPF Limpo
               creditCard: {
                   holderName: holderName,
                   number: cardNumber.replace(/\s/g, ''),
@@ -549,6 +592,8 @@ export default function CheckoutCompleto({
   };
 
   const handleAsaasPixGenerate = async () => {
+      if (!validateDoc()) return;
+
       setProcessing(true);
       setError(null);
       try {
@@ -560,7 +605,8 @@ export default function CheckoutCompleto({
                 amount: amount,
                 item_type: itemType,
                 item_id: itemId,
-                billingType: 'PIX' // Indica Pix
+                billingType: 'PIX',
+                docNumber: commonFormData.docNumber.replace(/\D/g, '')
             }),
         });
 
@@ -633,7 +679,7 @@ export default function CheckoutCompleto({
               <i className="fas fa-credit-card mr-2"></i> Cartão
           </button>
           <button 
-            onClick={() => setPaymentMethod('pix')}
+            onClick={() => { setPaymentMethod('pix'); setPixData(null); }}
             className={`flex-1 py-2 text-sm font-bold rounded-md transition-all ${paymentMethod === 'pix' ? 'bg-green-600 text-black shadow' : 'text-gray-500 hover:text-gray-300'}`}
           >
               <i className="fab fa-pix mr-2"></i> Pix
@@ -650,10 +696,12 @@ export default function CheckoutCompleto({
       {/* PAYMENT FORMS */}
       {paymentMethod === 'card' ? (
           <form id="form-checkout" className="space-y-4" onSubmit={activeGateway === 'asaas' ? handleAsaasSubmit : undefined}>
+            
+            {/* Input para CPF sempre visível (no componente GenericPaymentForm agora) */}
             <GenericPaymentForm 
                 gateway={activeGateway} 
                 userEmail={user?.email || ''} 
-                formData={asaasFormData}
+                formData={commonFormData}
                 onChange={handleAsaasChange}
             />
 
@@ -675,6 +723,18 @@ export default function CheckoutCompleto({
           <div className="space-y-6">
               {!pixData ? (
                   <div className="text-center py-4">
+                      <div className="mb-4">
+                          <label className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 block text-left">CPF ou CNPJ (Obrigatório para Pix)</label>
+                          <input
+                            type="text"
+                            className="w-full h-12 bg-gray-900 border border-gray-700 rounded-lg px-4 text-white focus:border-green-500 focus:outline-none"
+                            placeholder="000.000.000-00"
+                            value={commonFormData.docNumber}
+                            onChange={(e) => handleAsaasChange('docNumber', formatCpfCnpj(e.target.value))}
+                            maxLength={18}
+                          />
+                      </div>
+
                       <i className="fab fa-pix text-6xl text-green-500 mb-4 animate-bounce"></i>
                       <p className="text-gray-400 text-sm mb-6">
                           Gere um QR Code para pagamento instantâneo. A liberação dos créditos é automática após o pagamento.
