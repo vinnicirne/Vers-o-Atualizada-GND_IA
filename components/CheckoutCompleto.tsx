@@ -258,7 +258,7 @@ export default function CheckoutCompleto({ amount, itemType, itemId, mpPublicKey
           return;
         }
 
-        const supabaseFunctionUrl = `${supabaseUrl}/functions/v1/asaas-pagar`;
+        const supabaseFunctionUrl = `${supabaseUrl}/functions/v1/asaas_pagar`;
 
         const res = await fetch(supabaseFunctionUrl, {
           method: "POST",
