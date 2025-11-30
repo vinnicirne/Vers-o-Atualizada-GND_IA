@@ -46,7 +46,10 @@ export function usePlans(): UsePlansReturn {
       // Sincroniza custos para garantir que a UI mostre os valores do código
       const syncedPlans = syncPlanCosts(fetchedPlans);
 
-      setAllPlans(syncedPlans.filter(p => p.isActive)); // Filtra apenas planos ativos por padrão na UI
+      // RETORNA TODOS OS PLANOS (ATIVOS E INATIVOS)
+      // O filtro visual deve ser feito no componente de exibição do usuário (PlansModal),
+      // permitindo que o Admin veja planos ocultos/customizados.
+      setAllPlans(syncedPlans); 
     } catch (err: any) {
       console.error("Erro ao buscar planos:", err);
       setError(err.message || 'Falha ao carregar planos.');
@@ -63,7 +66,7 @@ export function usePlans(): UsePlansReturn {
       const syncedPlans = syncPlanCosts(updatedPlans);
 
       await savePlans(syncedPlans, adminId);
-      setAllPlans(syncedPlans.filter(p => p.isActive)); // Atualiza o estado local e filtra
+      setAllPlans(syncedPlans); // Atualiza o estado local com todos os planos
     } catch (err: any) {
       console.error("Erro ao salvar planos:", err);
       setError(err.message || 'Falha ao salvar planos.');

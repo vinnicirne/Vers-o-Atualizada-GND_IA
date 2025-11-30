@@ -160,7 +160,7 @@ export function ManualModal({ onClose }: ManualModalProps) {
             </section>
 
             {/* Seção 4: Afiliados (Novo) */}
-            <section>
+            <section className="border-b border-gray-200 pb-8">
                 <h3 className="text-xl font-bold text-[#263238] mb-4 flex items-center">
                     <span className="bg-gray-200 text-gray-600 w-8 h-8 rounded-full flex items-center justify-center text-sm mr-3">4</span>
                     Programa de Afiliados
@@ -182,6 +182,55 @@ export function ManualModal({ onClose }: ManualModalProps) {
                                 <li>Acompanhe seu saldo e solicite saques pelo painel.</li>
                             </ol>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Seção 5: Integrações (n8n) */}
+            <section>
+                <h3 className="text-xl font-bold text-pink-600 mb-4 flex items-center">
+                    <span className="bg-pink-100 w-8 h-8 rounded-full flex items-center justify-center text-sm mr-3 border border-pink-200 text-pink-700">5</span>
+                    Integrações & Automação (n8n)
+                </h3>
+                <div className="bg-white border border-gray-200 p-6 rounded-xl shadow-sm">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-start gap-4">
+                            <div className="bg-pink-50 p-3 rounded-full border border-pink-200">
+                                <i className="fas fa-bolt text-pink-500 text-xl"></i>
+                            </div>
+                            <div>
+                                <h4 className="font-bold text-pink-600 mb-2">Conecte com o Mundo</h4>
+                                <p className="text-sm text-gray-500 mb-3">
+                                    Envie suas notícias, imagens e áudios gerados diretamente para outros apps (WordPress, Google Sheets, Telegram) usando <strong>Webhooks</strong>.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 text-sm">
+                            <h5 className="font-bold text-gray-700 mb-2">Como Configurar no n8n:</h5>
+                            <ol className="list-decimal pl-5 space-y-1 text-gray-600">
+                                <li>Crie um novo workflow e adicione o nó <strong>Webhook</strong>.</li>
+                                <li>Configure o <strong>HTTP Method</strong> para <code className="bg-gray-200 px-1 rounded text-pink-700">POST</code>.</li>
+                                <li>Copie a <strong>Production URL</strong>.</li>
+                                <li>No GDN_IA, vá em <strong>Integrações</strong> (ícone de tomada), aba n8n, cole a URL e salve.</li>
+                            </ol>
+                        </div>
+
+                        <div className="bg-gray-900 p-4 rounded-lg border border-gray-700 text-xs font-mono text-green-400 overflow-x-auto shadow-inner">
+                            <p className="text-gray-500 mb-1 font-sans font-bold">// Exemplo do JSON que você receberá:</p>
+                            <pre>{`{
+  "title": "Título da Notícia Gerada",
+  "content": "<p>Texto completo da notícia em HTML...</p>",
+  "mode": "news_generator",
+  "generated_at": "2023-10-27T10:00:00.000Z",
+  "audio_base64": "...", // Se houver áudio
+  "image_prompt": "..." // Se for geração de imagem
+}`}</pre>
+                        </div>
+                        
+                        <p className="text-xs text-gray-500 italic mt-2">
+                            Dica: Use isso para automatizar postagens em redes sociais, salvar leads em planilhas ou enviar notificações.
+                        </p>
                     </div>
                 </div>
             </section>

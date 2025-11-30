@@ -153,6 +153,9 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
     );
   }
 
+  // Filter only ACTIVE plans for the user to see
+  const availablePlans = allPlans.filter(plan => plan.isActive);
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -173,14 +176,18 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
           
           {/* Subscription Plans Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            {allPlans.map((plan) => (
-               <PlanCard 
-                 key={plan.id}
-                 plan={plan}
-                 isCurrent={currentPlanId === plan.id}
-                 onSelect={() => handleOpenCheckoutCompleto({ type: 'plan', data: { planId: plan.id, price: plan.price } })}
-               />
-            ))}
+            {availablePlans.length > 0 ? (
+                availablePlans.map((plan) => (
+                <PlanCard 
+                    key={plan.id}
+                    plan={plan}
+                    isCurrent={currentPlanId === plan.id}
+                    onSelect={() => handleOpenCheckoutCompleto({ type: 'plan', data: { planId: plan.id, price: plan.price } })}
+                />
+                ))
+            ) : (
+                <p className="text-center text-gray-500 col-span-4">Nenhum plano público disponível no momento.</p>
+            )}
           </div>
 
           {/* Express Credits Section - Light Design */}

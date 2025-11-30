@@ -149,7 +149,7 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className={inputClasses}
-                placeholder="Ex: Plano Básico, Plano Premium"
+                placeholder="Ex: Plano Básico, Plano Enterprise Cliente X"
                 required
                 disabled={isSaving}
               />
@@ -220,18 +220,31 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
                 {PLAN_COLORS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
               </select>
             </div>
-            <div className="flex items-center pt-8">
-              <label className="flex items-center cursor-pointer">
-                <input
-                    id="isActive"
-                    type="checkbox"
-                    checked={isActive}
-                    onChange={(e) => setIsActive(e.target.checked)}
-                    className="h-5 w-5 bg-white border border-gray-300 rounded text-green-600 focus:ring-green-500 transition duration-200"
-                    disabled={isSaving}
-                />
-                <span className="ml-3 text-sm text-gray-700 font-medium">Plano Ativo (Visível para usuários)</span>
-              </label>
+            
+            <div className="flex items-center pt-8 col-span-1 md:col-span-2">
+                <div className={`p-4 rounded-lg border w-full transition-colors ${isActive ? 'bg-green-50 border-green-200' : 'bg-gray-100 border-gray-300'}`}>
+                    <label className="flex items-start cursor-pointer">
+                        <input
+                            id="isActive"
+                            type="checkbox"
+                            checked={isActive}
+                            onChange={(e) => setIsActive(e.target.checked)}
+                            className="mt-1 h-5 w-5 bg-white border border-gray-300 rounded text-green-600 focus:ring-green-500 transition duration-200"
+                            disabled={isSaving}
+                        />
+                        <div className="ml-3">
+                            <span className="block text-sm font-bold text-gray-800">
+                                {isActive ? 'Plano Público (Visível na Loja)' : 'Plano Customizado / Oculto'}
+                            </span>
+                            <span className="block text-xs text-gray-500 mt-1">
+                                {isActive 
+                                    ? 'Este plano aparecerá para todos os usuários na tela de "Planos".' 
+                                    : 'Este plano NÃO aparecerá na loja. Use para criar planos personalizados para clientes específicos (Enterprise, VIP) e atribua manualmente na aba "Usuários".'
+                                }
+                            </span>
+                        </div>
+                    </label>
+                </div>
             </div>
           </div>
         </div>

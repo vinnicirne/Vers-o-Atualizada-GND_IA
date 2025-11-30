@@ -74,6 +74,12 @@ O sistema utiliza o **Supabase Auth**.
 *   **`news`**: Histórico de conteúdo.
 *   **`transactions`**: Histórico financeiro.
 *   **`affiliate_logs`**: Registro de comissões.
+*   **`system_config`**: Armazena JSONs de configuração (Planos, Pagamentos, IA).
+
+### Planos e Personalização
+Os planos são armazenados em um JSON na tabela `system_config`.
+*   **Planos Customizados (Ocultos):** O sistema suporta planos que não aparecem na loja pública (propriedade `isActive: false`).
+*   **Atribuição Manual:** O administrador pode criar um plano "Enterprise" ou "Especial", desativá-lo para o público, e atribuí-lo manualmente a um usuário específico através da edição de perfil no Admin Dashboard.
 
 ### Sistema de Afiliados
 1.  **Tracking:** Parâmetro URL `?ref=CODE` salvo no `localStorage`.
@@ -93,4 +99,30 @@ Logs centralizados operando em modo *Fire-and-Forget* para performance. Registra
 
 ---
 
-*Documentação técnica atualizada para o sistema GDN_IA v1.0.7.*
+## 6. Integrações e Extensibilidade (N8N)
+
+### Arquitetura de Webhooks
+O sistema possui integração nativa com automações externas (Make/N8N) via **Webhooks POST**.
+
+*   **Configuração:** O usuário insere a URL do Webhook no modal de Integrações.
+*   **Persistência:** A URL é salva em `user_memory` (Chave: `n8n_config`) e sincronizada entre dispositivos.
+*   **Disparo:** Pode ser manual (botão no resultado) ou automático (configurável).
+
+### Payload JSON
+O GDN_IA envia o seguinte payload para a URL configurada:
+
+```json
+{
+  "title": "Título do Conteúdo",
+  "content": "Conteúdo completo (Texto ou HTML)",
+  "mode": "tipo_de_geracao (ex: news_generator)",
+  "generated_at": "ISO 8601 Timestamp",
+  "audio_base64": "String Base64 (se houver áudio)",
+  "image_prompt": "Prompt usado (se for imagem)",
+  "source": "gdn_ia_dashboard"
+}
+```
+
+---
+
+*Documentação técnica atualizada para o sistema GDN_IA v1.0.8.*

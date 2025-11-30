@@ -165,7 +165,7 @@ export function PlansManager() {
                   <th scope="col" className="px-6 py-3 text-center font-semibold">Créditos</th>
                   <th scope="col" className="px-6 py-3 text-right font-semibold">Preço (R$)</th>
                   <th scope="col" className="px-6 py-3 text-center font-semibold">Intervalo</th>
-                  <th scope="col" className="px-6 py-3 text-center font-semibold">Ativo</th>
+                  <th scope="col" className="px-6 py-3 text-center font-semibold">Visibilidade</th>
                   <th scope="col" className="px-6 py-3 text-right font-semibold">Ações</th>
                 </tr>
               </thead>
@@ -178,15 +178,15 @@ export function PlansManager() {
                   </tr>
                 ) : (
                   allPlans.map((plan) => (
-                    <tr key={plan.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <tr key={plan.id} className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${!plan.isActive ? 'bg-gray-50/50' : 'bg-white'}`}>
                       <td className="px-6 py-4 font-mono text-gray-500">{plan.id}</td>
                       <td className="px-6 py-4 font-bold text-[#263238]">{plan.name}</td>
                       <td className="px-6 py-4 text-center font-mono">{plan.credits === -1 ? '∞' : plan.credits}</td>
                       <td className="px-6 py-4 text-right">{plan.price.toFixed(2).replace('.', ',')}</td>
                       <td className="px-6 py-4 text-center capitalize">{plan.interval === 'month' ? 'Mensal' : 'Anual'}</td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${plan.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {plan.isActive ? 'Sim' : 'Não'}
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold border ${plan.isActive ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                          {plan.isActive ? 'Público' : 'Oculto / Custom'}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right space-x-3">

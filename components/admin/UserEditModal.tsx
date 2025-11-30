@@ -119,7 +119,9 @@ export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModal
             >
                 {allPlans.length > 0 ? (
                     allPlans.map(p => (
-                        <option key={p.id} value={p.id}>{p.name} ({p.credits === -1 ? '∞' : p.credits} créditos)</option>
+                        <option key={p.id} value={p.id}>
+                            {p.name} ({p.credits === -1 ? '∞' : p.credits} créditos) {!p.isActive ? ' [PERSONALIZADO]' : ''}
+                        </option>
                     ))
                 ) : (
                     <>
@@ -167,4 +169,4 @@ export function UserEditModal({ user, onSave, onClose, isSaving }: UserEditModal
       </div>
     </div>
   );
-};
+}
