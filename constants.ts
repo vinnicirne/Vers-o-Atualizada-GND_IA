@@ -1,3 +1,4 @@
+
 import { ServiceKey, Plan, ServicePermission, UserPlan } from './types/plan.types'; // Importar os novos tipos de plano e serviço
 
 interface CreatorSuiteModeConfig {
@@ -64,6 +65,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   landingpage_generator: 15,
   institutional_website_generator: 25,
   image_generation: 5,
+  n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -87,6 +89,9 @@ const imageService: ServicePermission = { key: 'image_generation', name: 'Studio
 const landingPageService: ServicePermission = { key: 'landingpage_generator', name: 'Gerador de Landing Page', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
 
 const institutionalSiteService: ServicePermission = { key: 'institutional_website_generator', name: 'Site Institucional', enabled: true, creditsPerUse: TASK_COSTS.institutional_website_generator };
+
+// Serviço N8N (Apenas Standard e Premium)
+const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
 
 
 export const PLANS: Record<UserPlan, Plan> = {
@@ -132,7 +137,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       promptService,
       ...artServices, // Agora contém apenas o Editor Visual
       imageService, // Adicionado ao Standard
-      institutionalSiteService // Disponível no Standard
+      institutionalSiteService, // Disponível no Standard
+      n8nService // Adicionado ao Standard
     ]
   },
   premium: {
@@ -150,7 +156,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       ...artServices,
       imageService, // Adicionado ao Premium
       landingPageService,
-      institutionalSiteService // Disponível no Premium
+      institutionalSiteService, // Disponível no Premium
+      n8nService // Adicionado ao Premium
     ]
   }
 };

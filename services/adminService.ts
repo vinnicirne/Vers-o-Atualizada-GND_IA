@@ -220,6 +220,7 @@ export const updateUser = async (userId: string, updates: any, adminId: string) 
   if (updates.role) profileUpdates.role = updates.role;
   if (updates.status) profileUpdates.status = updates.status;
   if (updates.full_name) profileUpdates.full_name = updates.full_name;
+  if (updates.plan) profileUpdates.plan = updates.plan;
 
   if (Object.keys(profileUpdates).length > 0) {
     await api.update('app_users', profileUpdates, { id: userId });

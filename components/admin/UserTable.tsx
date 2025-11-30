@@ -101,7 +101,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
     setIsEditModalOpen(false);
   };
   
-  const handleSaveUser = async (userId: string, updates: { role: UserRole; credits: number; status: UserStatus; full_name: string }) => {
+  const handleSaveUser = async (userId: string, updates: { role: UserRole; credits: number; status: UserStatus; full_name: string; plan: string }) => {
     if (!adminUser) {
         setError("Sessão de administrador inválida.");
         return;
@@ -172,6 +172,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
                 <tr>
                 <th scope="col" className="px-6 py-3 font-semibold">Usuário</th>
                 <th scope="col" className="px-6 py-3 font-semibold">Role</th>
+                <th scope="col" className="px-6 py-3 text-center font-semibold">Plano</th>
                 <th scope="col" className="px-6 py-3 text-center font-semibold">Créditos</th>
                 <th scope="col" className="px-6 py-3 text-center font-semibold">Status</th>
                 <th scope="col" className="px-6 py-3 text-center font-semibold" title="Data do último login">Último Login</th>
@@ -186,6 +187,9 @@ export function UserTable({ dataVersion }: UserTableProps) {
                         {user.full_name && <div className="text-xs text-gray-500">{user.email}</div>}
                     </td>
                     <td className="px-6 py-4 capitalize">{user.role.replace('_', ' ')}</td>
+                    <td className="px-6 py-4 text-center capitalize">
+                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs border border-gray-200">{user.plan || 'Free'}</span>
+                    </td>
                     <td className="px-6 py-4 text-center font-mono text-gray-700">
                         {user.credits === -1 ? <span className="text-lg text-green-600">∞</span> : user.credits}
                     </td>
@@ -198,7 +202,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
                     <td className="px-6 py-4 text-right space-x-3">
                         <button 
                             onClick={() => handleEditClick(user)}
-                            className="font-medium text-yellow-600 hover:text-yellow-700 hover:underline disabled:opacity-50"
+                            className="font-medium text-yellow-600 hover:text-yellow-800 hover:underline disabled:opacity-50"
                             disabled={isDeleting}
                         >
                             Editar

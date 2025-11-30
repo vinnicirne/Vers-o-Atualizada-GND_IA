@@ -1,15 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { WordPressConfig, AnalyticsConfig } from '../../types';
+import { WordPressConfig, AnalyticsConfig, N8nConfig } from '../../types';
 import { saveWordPressConfig, getWordPressConfig, validateWordPressConnection, clearWordPressConfig } from '../../services/wordpressService';
 import { saveAnalyticsConfig, getAnalyticsConfig, clearAnalyticsConfig } from '../../services/analyticsService';
+import { saveN8nConfig, getN8nConfig, clearN8nConfig, syncN8nConfig } from '../../services/n8nService';
 import { Toast } from '../admin/Toast';
+import { useUser } from '../../contexts/UserContext';
+import { usePlan } from '../../hooks/usePlan'; // Importar hook de planos
 
 interface IntegrationsModalProps {
   onClose: () => void;
 }
 
 export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
+  const { user } = useUser();
+  const { hasAccessToService } = usePlan(); // Verificar acesso
   const [activeTab, setActiveTab] = useState('external');
   
   // WordPress State
@@ -26,29 +31,47 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
       isConnected: false
   });
 
+  // N8n State
+  const [n8nConfig, setN8nConfig] = useState<N8nConfig>({
+      webhookUrl: '',
+      autoSend: false,
+      isConnected: false
+  });
+
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
-  useEffect(() => {
-    // Load WP Config
-    const savedWP = getWordPressConfig();
-    if (savedWP) {
-        setWpConfig(savedWP);
-    }
+  // Verifica permissão para N8N
+  const hasN8nAccess = hasAccessToService('n8n_integration');
 
-    // Load GA Config
+  useEffect(() => {
+    // Load Configs
+    const savedWP = getWordPressConfig();
+    if (savedWP) setWpConfig(savedWP);
+
     const savedGA = getAnalyticsConfig();
-    if (savedGA) {
-        setGaConfig(savedGA);
-    }
+    if (savedGA) setGaConfig(savedGA);
+
+    const loadN8n = async () => {
+        // Tenta carregar do local storage primeiro
+        const savedN8n = getN8nConfig();
+        if (savedN8n) {
+            setN8nConfig(savedN8n);
+        } else if (user) {
+            // Se não tiver local, tenta baixar da nuvem
+            const cloudConfig = await syncN8nConfig(user.id);
+            if (cloudConfig) setN8nConfig(cloudConfig);
+        }
+    };
+    loadN8n();
 
     const handleEsc = (event: KeyboardEvent) => {
         if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
+  }, [onClose, user]);
 
   // --- WP HANDLERS ---
   const handleConnectWP = async (e: React.FormEvent) => {
@@ -57,14 +80,12 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
     setToast(null);
     setConnectionError(null);
 
-    // Normaliza URL (remove barra final se houver)
     let url = wpConfig.siteUrl.trim().replace(/\/$/, '');
     if (!url.startsWith('http')) {
         url = 'https://' + url;
     }
 
     const configToTest = { ...wpConfig, siteUrl: url };
-
     const result = await validateWordPressConnection(configToTest);
 
     if (result.success) {
@@ -75,8 +96,6 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
     } else {
         const errorMsg = result.message || "Falha na conexão.";
         setToast({ message: errorMsg, type: 'error' });
-        
-        // Se for erro de CORS/Fetch, mostra mensagem detalhada na UI
         if (errorMsg.includes('CORS') || errorMsg.includes('Failed to fetch') || errorMsg.includes('Network')) {
             setConnectionError(errorMsg);
         }
@@ -106,7 +125,29 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   };
 
   const handleDisconnectGA = () => {
-      clearAnalyticsConfig(); // Isso vai recarregar a página
+      clearAnalyticsConfig();
+  };
+
+  // --- N8N HANDLERS ---
+  const handleConnectN8n = async (e: React.FormEvent) => {
+      e.preventDefault();
+      if(!n8nConfig.webhookUrl.startsWith('http')) {
+          setToast({ message: "URL inválida.", type: 'error' });
+          return;
+      }
+      const newConfig = { ...n8nConfig, isConnected: true };
+      setN8nConfig(newConfig);
+      
+      // Salva local e nuvem
+      await saveN8nConfig(newConfig, user?.id);
+      
+      setToast({ message: "Webhook n8n salvo e sincronizado!", type: 'success' });
+  };
+
+  const handleDisconnectN8n = async () => {
+      await clearN8nConfig(user?.id);
+      setN8nConfig({ webhookUrl: '', autoSend: false, isConnected: false });
+      setToast({ message: "Integração removida.", type: 'success' });
   };
 
   return (
@@ -148,6 +189,92 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
         <div className="p-8 overflow-y-auto custom-scrollbar flex-grow bg-[#ECEFF1]">
             {activeTab === 'external' && (
                 <div className="grid md:grid-cols-2 gap-6">
+                    
+                    {/* N8N / WEBHOOK CARD */}
+                    <div className={`relative p-6 rounded-xl border bg-white shadow-sm transition-all overflow-hidden ${n8nConfig.isConnected ? 'border-pink-500 ring-1 ring-pink-500/20' : 'border-gray-200'}`}>
+                        
+                        {/* Bloqueio Visual para Planos Incompatíveis */}
+                        {!hasN8nAccess && (
+                            <div className="absolute inset-0 bg-white/70 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center text-center p-6">
+                                <div className="bg-gray-100 p-4 rounded-full mb-3 border border-gray-200">
+                                    <i className="fas fa-lock text-gray-400 text-2xl"></i>
+                                </div>
+                                <h4 className="font-bold text-gray-800 text-base">Recurso Exclusivo</h4>
+                                <p className="text-xs text-gray-500 mt-1 mb-4 max-w-[200px]">
+                                    A integração com n8n/Webhooks está disponível apenas nos planos <strong>Standard</strong> e <strong>Premium</strong>.
+                                </p>
+                                <button disabled className="bg-gray-200 text-gray-400 px-4 py-2 rounded-lg text-xs font-bold cursor-not-allowed">
+                                    Upgrade Necessário
+                                </button>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-[#FF6D5A] rounded flex items-center justify-center text-white font-bold text-lg">n8n</div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-[#263238]">n8n / Webhook</h3>
+                                    <p className="text-xs text-gray-500 max-w-[200px]">Envie o conteúdo gerado (texto, imagem, áudio) para um workflow externo.</p>
+                                </div>
+                            </div>
+                            {n8nConfig.isConnected && <span className="bg-pink-100 text-pink-700 text-xs px-2 py-1 rounded border border-pink-200 font-bold">Ativo</span>}
+                        </div>
+
+                        {!n8nConfig.isConnected ? (
+                            <form onSubmit={handleConnectN8n} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Webhook URL (POST)</label>
+                                    <input 
+                                        type="url" 
+                                        placeholder="https://seu-n8n.com/webhook/..."
+                                        value={n8nConfig.webhookUrl}
+                                        onChange={e => setN8nConfig({...n8nConfig, webhookUrl: e.target.value})}
+                                        className="w-full bg-[#F5F7FA] border border-gray-300 rounded p-3 text-sm text-[#263238] focus:border-pink-500 focus:ring-1 focus:ring-pink-500 focus:outline-none disabled:opacity-50"
+                                        required
+                                        disabled={!hasN8nAccess}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={n8nConfig.autoSend} 
+                                            onChange={e => setN8nConfig({...n8nConfig, autoSend: e.target.checked})}
+                                            className="w-4 h-4 text-pink-600 rounded border-gray-300 focus:ring-pink-500 disabled:opacity-50"
+                                            disabled={!hasN8nAccess}
+                                        />
+                                        <span className="text-sm text-gray-600 font-medium">Envio Automático (Ao Gerar)</span>
+                                    </label>
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    className="w-full bg-[#FF6D5A] hover:bg-[#E05A4A] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2 shadow-lg shadow-pink-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    disabled={!hasN8nAccess}
+                                >
+                                    Salvar Integração
+                                </button>
+                            </form>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="bg-pink-50 border border-pink-100 p-4 rounded text-sm text-gray-600">
+                                    <p className="font-bold text-pink-700 mb-1">Webhook Configurado</p>
+                                    <p className="truncate text-xs text-gray-500 font-mono mb-2">{n8nConfig.webhookUrl}</p>
+                                    <p className="text-xs flex items-center gap-2">
+                                        <i className={`fas fa-circle text-[8px] ${n8nConfig.autoSend ? 'text-green-500' : 'text-gray-400'}`}></i>
+                                        {n8nConfig.autoSend ? 'Envio Automático Ativado' : 'Envio Manual (Botão nos Resultados)'}
+                                    </p>
+                                </div>
+                                <button 
+                                    onClick={handleDisconnectN8n}
+                                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 font-bold py-2 rounded transition disabled:opacity-50"
+                                    disabled={!hasN8nAccess}
+                                >
+                                    Remover / Editar
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
                     {/* WordPress Card */}
                     <div className={`p-6 rounded-xl border bg-white shadow-sm transition-all ${wpConfig.isConnected ? 'border-green-500 ring-1 ring-green-500/20' : 'border-gray-200'}`}>
                         <div className="flex justify-between items-start mb-6">
@@ -202,11 +329,6 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                                         className="w-full bg-[#F5F7FA] border border-gray-300 rounded p-3 text-sm text-[#263238] focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none"
                                         required
                                     />
-                                    <div className="flex flex-col gap-1 mt-2">
-                                        <p className="text-[10px] text-gray-500">
-                                            Para obter: Painel WP → Usuários → Perfil → Application Passwords.
-                                        </p>
-                                    </div>
                                 </div>
                                 <button 
                                     type="submit" 

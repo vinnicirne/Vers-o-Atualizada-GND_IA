@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
+import { getN8nConfig, sendToN8nWebhook } from '../services/n8nService';
 
 interface ResultDisplayProps {
   text: string;
@@ -16,20 +17,32 @@ interface ResultDisplayProps {
 export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProps) {
   const [copiedText, setCopiedText] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
+  
+  // WP State
   const [wpConfigured, setWpConfigured] = useState(false);
   const [postingToWp, setPostingToWp] = useState(false);
   const [wpStatus, setWpStatus] = useState<{success?: boolean; message?: string} | null>(null);
 
+  // N8N State
+  const [n8nConfigured, setN8nConfigured] = useState(false);
+  const [sendingToN8n, setSendingToN8n] = useState(false);
+  const [n8nStatus, setN8nStatus] = useState<{success?: boolean; message?: string} | null>(null);
+
   useEffect(() => {
       const checkConfig = () => {
-          const config = getWordPressConfig();
-          setWpConfigured(config?.isConnected || false);
+          const wp = getWordPressConfig();
+          setWpConfigured(wp?.isConnected || false);
+
+          const n8n = getN8nConfig();
+          setN8nConfigured(n8n?.isConnected || false);
       };
       
       checkConfig();
       window.addEventListener('wordpress-config-updated', checkConfig);
+      window.addEventListener('n8n-config-updated', checkConfig);
       return () => {
           window.removeEventListener('wordpress-config-updated', checkConfig);
+          window.removeEventListener('n8n-config-updated', checkConfig);
       };
   }, []);
 
@@ -67,6 +80,26 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
           setWpStatus({ success: false, message: result.message || 'Erro ao postar.' });
       }
       setPostingToWp(false);
+  };
+
+  const handleSendToN8n = async () => {
+      if (!text) return;
+      setSendingToN8n(true);
+      setN8nStatus(null);
+
+      const result = await sendToN8nWebhook({
+          title,
+          content: text,
+          mode,
+          generated_at: new Date().toISOString()
+      });
+
+      if (result.success) {
+          setN8nStatus({ success: true, message: 'Enviado!' });
+      } else {
+          setN8nStatus({ success: false, message: result.message || 'Falha no envio.' });
+      }
+      setSendingToN8n(false);
   };
 
   const getTitleLabel = () => {
@@ -122,6 +155,28 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
            </div>
            
            <div className="flex gap-2">
+               {/* N8N Button */}
+               {n8nConfigured && (
+                   <button
+                        onClick={handleSendToN8n}
+                        disabled={sendingToN8n}
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
+                            n8nStatus?.success 
+                            ? 'bg-pink-100 text-pink-600 border-pink-200'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-[#FF6D5A] hover:text-white hover:border-[#FF6D5A]'
+                        } disabled:opacity-50`}
+                   >
+                       {sendingToN8n ? (
+                           <><i className="fas fa-spinner fa-spin"></i> Enviando...</>
+                       ) : n8nStatus?.success ? (
+                           <><i className="fas fa-check"></i> Enviado!</>
+                       ) : (
+                           <><i className="fas fa-bolt"></i> Enviar p/ n8n</>
+                       )}
+                   </button>
+               )}
+
+               {/* WP Button */}
                {wpConfigured && title && mode === 'news_generator' && (
                    <button
                         onClick={handlePostToWordPress}
@@ -159,6 +214,12 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
         {wpStatus && !wpStatus.success && (
             <div className="bg-red-50 px-6 py-3 text-xs text-red-600 border-b border-red-100">
                 <i className="fas fa-exclamation-circle mr-1"></i> {wpStatus.message}
+            </div>
+        )}
+        
+        {n8nStatus && !n8nStatus.success && (
+            <div className="bg-red-50 px-6 py-3 text-xs text-red-600 border-b border-red-100">
+                <i className="fas fa-bolt mr-1"></i> n8n: {n8nStatus.message}
             </div>
         )}
 

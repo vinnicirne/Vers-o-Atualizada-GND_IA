@@ -18,13 +18,16 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'canva_structure',
   'copy_generator',
   'image_generation',
-  'institutional_website_generator', // Novo
+  'institutional_website_generator',
+  'n8n_integration', // Novo
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil
 const serviceKeyToNameMap = new Map(
   CREATOR_SUITE_MODES.map(mode => [mode.value, mode.label])
 );
+// Adiciona manualmente serviços que não são modos de criação (não estão na sidebar)
+serviceKeyToNameMap.set('n8n_integration', 'Integração N8N / Webhooks');
 
 // Cores padrão para os planos (pode ser expandido)
 const PLAN_COLORS = [
@@ -248,7 +251,7 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
                     className="h-5 w-5 bg-white border border-gray-300 rounded text-green-600 focus:ring-green-500 transition duration-200"
                     disabled={isSaving}
                   />
-                  <label htmlFor={`service-${service.key}`} className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
+                  <label htmlFor={`service-${service.key}`} className="ml-3 text-sm font-medium text-gray-700 cursor-pointer select-none">
                     {service.name}
                   </label>
                 </div>

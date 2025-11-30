@@ -24,6 +24,7 @@ import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan'; 
 import { SeoScorecard } from './components/SEO/SeoScorecard'; 
 import { SeoHead } from './components/SEO/SeoHead'; 
+import { getN8nConfig, sendToN8nWebhook, syncN8nConfig } from './services/n8nService';
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -41,6 +42,7 @@ const SERVICE_ICONS: Record<ServiceKey, string> = {
     institutional_website_generator: 'fa-building',
     canva_structure: 'fa-vector-square',
     image_generation: 'fa-paint-brush',
+    n8n_integration: 'fa-plug',
 };
 
 // Cores para os ícones (Visual Minimalista Colorido)
@@ -53,6 +55,7 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
     institutional_website_generator: 'text-orange-500 bg-orange-50',
     canva_structure: 'text-cyan-500 bg-cyan-50',
     image_generation: 'text-rose-500 bg-rose-50',
+    n8n_integration: 'text-red-500 bg-red-50',
 };
 
 // Modos permitidos para Visitantes (Free sem login)
@@ -123,7 +126,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showAffiliateInvite, setShowAffiliateInvite] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Inicialização de Dados
   useEffect(() => {
@@ -139,6 +142,15 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       .then(data => setMetadata(data))
       .catch(err => console.error("Failed to load metadata:", err));
   }, []);
+
+  // Sincroniza configurações do n8n ao logar
+  useEffect(() => {
+      if (user) {
+          syncN8nConfig(user.id).then(config => {
+              if(config) console.log("N8n config synced from cloud.");
+          });
+      }
+  }, [user]);
 
   useEffect(() => {
     if (user && !isGuest) {
@@ -269,6 +281,9 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
             }
       }
 
+      let finalTitle = null;
+      let finalContent = processedText;
+
       if (mode === 'image_generation') {
           setGeneratedImagePrompt(text);
           let w = 1024, h = 1024;
@@ -278,6 +293,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           setResultText(prompt); 
       } else {
           const { title, content } = extractTitleAndContent(processedText, mode);
+          finalTitle = title;
+          finalContent = content;
           setResultTitle(title);
           setResultText(content);
       }
@@ -295,7 +312,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
               const shortPrompt = prompt.length > 60 ? prompt.substring(0, 60) + '...' : prompt;
               
               switch(mode) {
-                  case 'news_generator': historyTitle = resultTitle ? `Notícia: ${resultTitle}` : `Notícia: ${shortPrompt}`; break;
+                  case 'news_generator': historyTitle = finalTitle ? `Notícia: ${finalTitle}` : `Notícia: ${shortPrompt}`; break;
                   default: historyTitle = `Geração: ${shortPrompt}`;
               }
 
@@ -312,6 +329,25 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           } catch (historyError: any) {
               console.error("Exceção ao salvar no histórico:", historyError);
           }
+      }
+
+      // --- N8N AUTO SEND ---
+      const n8nConfig = getN8nConfig();
+      if (n8nConfig && n8nConfig.isConnected && n8nConfig.autoSend) {
+          sendToN8nWebhook({
+              title: finalTitle,
+              content: finalContent,
+              mode: mode,
+              generated_at: new Date().toISOString(),
+              audio_base64: audioResult,
+              image_prompt: mode === 'image_generation' ? text : undefined
+          }).then(res => {
+              if(res.success) {
+                  setToast({ message: "Conteúdo enviado automaticamente para n8n!", type: 'success' });
+              } else {
+                  console.warn("Falha no envio automático n8n:", res.message);
+              }
+          });
       }
 
       setShowFeedback(true);
@@ -401,6 +437,21 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                     );
                 })}
             </div>
+
+            {/* Integrações Mobile Button (Visible in Sidebar) */}
+            {user && (
+                <div className="p-3 border-t border-gray-300 bg-gray-200">
+                    <button
+                        onClick={() => { setShowIntegrationsModal(true); setSidebarOpen(false); }}
+                        className="w-full flex items-center p-3 rounded-lg hover:bg-white text-gray-600 transition-colors"
+                    >
+                        <div className="w-8 h-8 rounded-md flex items-center justify-center mr-3 bg-white text-pink-500">
+                            <i className="fas fa-plug text-sm"></i>
+                        </div>
+                        <span className="text-sm font-semibold">Integrações & Webhooks</span>
+                    </button>
+                </div>
+            )}
 
             {/* Mobile Overlay to close sidebar */}
             {isSidebarOpen && (
