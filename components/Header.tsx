@@ -20,6 +20,7 @@ interface HeaderProps {
   userRole?: UserRole;
   metadata?: { version: string }; 
   realtimeStatus?: string; // New prop for Realtime Status
+  onToggleSidebar?: () => void; // For mobile hamburger
 }
 
 export function Header({ 
@@ -39,7 +40,8 @@ export function Header({
     userCredits, 
     userRole, 
     metadata,
-    realtimeStatus
+    realtimeStatus,
+    onToggleSidebar
 }: HeaderProps) {
   const isAdminView = !!onNavigateToDashboard;
   const isLoggedIn = !!userEmail;
@@ -56,7 +58,7 @@ export function Header({
           return { color: 'bg-red-500', label: 'Offline' };
       }
       // Default / Initial state
-      return { color: 'bg-gray-500', label: 'Desconectado' };
+      return { color: 'bg-gray-400', label: 'Desconectado' };
   };
 
   const badge = getRealtimeBadge(realtimeStatus);
@@ -64,22 +66,22 @@ export function Header({
   if (isAdminView) {
     // New Admin Header Layout
     return (
-      <header className="bg-black/80 backdrop-blur-md border-b border-green-500/30 sticky top-0 z-10 text-sm">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 text-sm shadow-sm">
         {/* Top bar for user info and system status */}
-        <div className="container mx-auto px-4 py-2 flex justify-between items-center border-b border-green-900/20">
+        <div className="container mx-auto px-4 py-2 flex justify-between items-center border-b border-gray-100">
           <div className="flex items-center space-x-4">
-            <span className="text-gray-400">Admin:</span>
-            <span className="font-bold text-white">{userEmail}</span>
-            <span className="px-2 py-0.5 bg-green-900/50 text-green-300 text-xs rounded-full capitalize">{userRole?.replace('_', ' ')}</span>
+            <span className="text-gray-500 font-medium">Admin:</span>
+            <span className="font-bold text-[#263238]">{userEmail}</span>
+            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full capitalize font-medium">{userRole?.replace('_', ' ')}</span>
           </div>
           <div className="flex items-center space-x-6">
             {/* Status Badges */}
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Versão do Sistema">
               <i className="fas fa-code-branch"></i>
-              <span className="font-semibold text-gray-400">v{metadata?.version || 'N/A'}</span>
+              <span className="font-semibold text-gray-600">v{metadata?.version || 'N/A'}</span>
             </div>
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Ambiente">
-              <i className="fas fa-server text-blue-400"></i>
+              <i className="fas fa-server text-blue-500"></i>
               <span>Produção</span>
             </div>
             <div className="flex items-center space-x-1.5 text-xs text-gray-500" title={`Status do Realtime: ${realtimeStatus}`}>
@@ -87,7 +89,7 @@ export function Header({
                 {realtimeStatus === 'SUBSCRIBED' && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${badge.color} opacity-75`}></span>}
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${badge.color}`}></span>
               </div>
-              <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-400 font-semibold' : 'text-gray-400'}>{badge.label}</span>
+              <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-600 font-semibold' : 'text-gray-400'}>{badge.label}</span>
             </div>
           </div>
         </div>
@@ -95,16 +97,15 @@ export function Header({
         {/* Bottom bar for title, navigation and quick actions */}
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
           <div>
-             <h1 className="text-xl font-bold tracking-widest">
-                <span className="text-gray-200">GDN_IA</span>
-                <span className="text-green-400/80"> / {pageTitle}</span>
+             <h1 className="text-xl font-bold tracking-tight text-[#263238]">
+                GDN_IA <span className="text-gray-400 font-light">/ {pageTitle}</span>
             </h1>
           </div>
           <div className="flex items-center space-x-3">
             {/* Quick Actions */}
             <button 
               onClick={onNewUserClick}
-              className="bg-green-600/80 text-black px-3 py-1.5 rounded-lg hover:bg-green-500 transition-colors duration-200 text-xs font-semibold border border-green-500/50"
+              className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-bold shadow-sm"
             >
               <i className="fas fa-plus mr-2"></i>
               Novo Usuário
@@ -114,7 +115,7 @@ export function Header({
             {onNavigateToDashboard && (
                  <button
                   onClick={onNavigateToDashboard}
-                  className="bg-gray-700/50 text-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-600 hover:text-white transition-colors duration-200 text-xs font-semibold border border-gray-600"
+                  className="bg-white text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-[#263238] transition-colors duration-200 text-xs font-bold border border-gray-200"
                   title="Voltar para o Dashboard"
                 >
                   <i className="fas fa-arrow-left mr-2"></i>
@@ -125,7 +126,7 @@ export function Header({
             {onLogout && (
                  <button
                     onClick={onLogout}
-                    className="bg-red-600/50 text-white px-3 py-1.5 rounded-lg hover:bg-red-500 transition-colors duration-200 text-xs font-semibold border border-red-500"
+                    className="bg-white text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors duration-200 text-xs font-bold border border-red-200"
                     title="Sair"
                 >
                     <i className="fas fa-sign-out-alt mr-2"></i>
@@ -138,24 +139,42 @@ export function Header({
     );
   }
 
-  // Original Dashboard Header Layout
+  // Original Dashboard Header Layout (Light Version)
   return (
-    <header className="bg-black/80 backdrop-blur-md border-b border-green-500/30 sticky top-0 z-10">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center relative">
-        <div className="text-center flex-grow">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-widest">
-            <span className="text-gray-200">GDN</span>
-            <span className="text-green-400">_IA</span>
-          </h1>
-          <p className="text-center text-green-400/80 mt-1 text-sm md:text-base">{pageTitle || 'Seu Gerador de Notícias Inteligente'}</p>
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm h-16">
+      <div className="container mx-auto px-4 h-full flex justify-between items-center relative">
+        
+        {/* Left: Mobile Toggle & Logo */}
+        <div className="flex items-center gap-4">
+            {onToggleSidebar && (
+                <button 
+                    onClick={onToggleSidebar}
+                    className="md:hidden text-gray-500 hover:text-[#263238] focus:outline-none"
+                >
+                    <i className="fas fa-bars text-xl"></i>
+                </button>
+            )}
+            <div className="text-left">
+                <h1 className="text-2xl font-bold tracking-tight">
+                    <span className="text-[#263238]">GDN</span>
+                    <span className="text-[#F39C12]">_IA</span>
+                </h1>
+            </div>
         </div>
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center space-x-4">
+
+        {/* Center: Title (Desktop Only) */}
+        <div className="hidden md:block absolute left-1/2 top-1/2 -translate-x-1/2 text-center">
+             <p className="text-gray-500 text-sm font-medium">{pageTitle || 'Creator Suite'}</p>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center space-x-3">
           
           {isLoggedIn && onOpenIntegrations && (
              <button
                 onClick={onOpenIntegrations}
-                className="flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
-                title="Integrações (WordPress)"
+                className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
+                title="Integrações"
             >
                 <i className="fas fa-plug text-sm"></i>
             </button>
@@ -164,8 +183,8 @@ export function Header({
           {isLoggedIn && onOpenAffiliates && (
              <button
                 onClick={onOpenAffiliates}
-                className="hidden lg:flex bg-yellow-600/20 text-yellow-400 w-9 h-9 items-center justify-center rounded-full hover:bg-yellow-600 hover:text-black transition-colors duration-200 border border-yellow-600/50"
-                title="Programa de Afiliados (Ganhe Dinheiro)"
+                className="hidden md:flex bg-yellow-50 text-yellow-600 w-9 h-9 items-center justify-center rounded-full hover:bg-yellow-100 hover:text-yellow-700 transition-colors duration-200 border border-yellow-200 shadow-sm"
+                title="Afiliados"
             >
                 <i className="fas fa-handshake text-sm"></i>
             </button>
@@ -174,8 +193,8 @@ export function Header({
           {isLoggedIn && onOpenHistory && (
              <button
                 onClick={onOpenHistory}
-                className="hidden md:flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
-                title="Meu Histórico"
+                className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
+                title="Histórico"
             >
                 <i className="fas fa-history text-sm"></i>
             </button>
@@ -185,8 +204,8 @@ export function Header({
           {onOpenManual && (
             <button
                 onClick={onOpenManual}
-                className="hidden md:flex bg-gray-800 text-gray-300 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-700 hover:text-white transition-colors duration-200 border border-gray-700"
-                title="Manual do Usuário"
+                className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
+                title="Manual"
             >
                 <i className="fas fa-question text-sm"></i>
             </button>
@@ -195,54 +214,30 @@ export function Header({
           {userCredits !== undefined && (
              <div 
                 onClick={onOpenPlans} 
-                className="cursor-pointer hidden md:flex items-center space-x-2 border border-green-700/30 bg-black/30 px-3 py-1 rounded-full text-sm hover:bg-green-900/20 transition"
+                className="cursor-pointer hidden md:flex items-center space-x-2 border border-gray-200 bg-gray-50 px-3 py-1.5 rounded-full text-sm hover:bg-gray-100 transition shadow-sm"
                 title="Gerenciar Plano e Créditos"
              >
-              <i className="fas fa-coins text-yellow-400"></i>
-              <span className="font-bold text-white">
+              <i className="fas fa-coins text-[#F39C12]"></i>
+              <span className="font-bold text-[#263238]">
                 {userCredits === -1 ? '∞' : userCredits}
               </span>
-              <span className="text-gray-400 text-xs hover:text-white">+</span>
+              <span className="text-gray-400 text-xs hover:text-gray-600">+</span>
             </div>
           )}
           
-          {/* Se estiver logado, mostra "Planos". Se não, não mostra botão extra (o login já leva lá) */}
           {isLoggedIn && onOpenPlans && (
             <button
                 onClick={onOpenPlans}
-                className="hidden lg:inline bg-purple-600/80 text-white px-3 py-2 rounded-lg hover:bg-purple-500 transition-colors duration-200 text-sm font-semibold border border-purple-500/50 shadow-lg shadow-purple-500/10"
+                className="hidden lg:inline bg-[#F39C12] text-white px-4 py-2 rounded-lg hover:bg-orange-500 transition-colors duration-200 text-sm font-bold shadow-md shadow-orange-100"
             >
-                <i className="fas fa-crown mr-2 text-yellow-300"></i>
                 Planos
-            </button>
-          )}
-
-          {isAdmin && onNavigateToAdmin && (
-             <button
-              onClick={onNavigateToAdmin}
-              className="bg-green-600/80 text-black px-3 py-2 rounded-lg hover:bg-green-500 transition-colors duration-200 text-sm font-semibold border border-green-500/50"
-              title="Painel Admin"
-            >
-              <i className="fas fa-user-shield"></i>
-               <span className="hidden md:inline ml-2">Admin</span>
-            </button>
-          )}
-
-           {onNavigateToDashboard && (
-             <button
-              onClick={onNavigateToDashboard}
-              className="bg-gray-700/50 text-gray-300 px-3 py-2 rounded-lg hover:bg-gray-600 hover:text-white transition-colors duration-200 text-sm font-semibold border border-gray-600"
-              title="Voltar para o Dashboard"
-            >
-              <i className="fas fa-arrow-left"></i>
-               <span className="hidden md:inline ml-2">Dashboard</span>
             </button>
           )}
 
           {isLoggedIn && onLogout ? (
               <button
                 onClick={onLogout}
-                className="bg-red-600/50 text-white px-3 py-2 rounded-lg hover:bg-red-500 transition-colors duration-200 text-sm font-semibold border border-red-500"
+                className="bg-white text-red-500 px-3 py-2 rounded-lg hover:bg-red-50 transition-colors duration-200 text-sm font-bold border border-red-200"
                 title="Sair"
               >
                 <i className="fas fa-sign-out-alt"></i>
@@ -251,9 +246,8 @@ export function Header({
              onNavigateToLogin && (
                  <button
                     onClick={onNavigateToLogin}
-                    className="bg-green-600 hover:bg-green-500 text-black px-4 py-2 rounded-lg font-bold text-sm transition shadow-lg shadow-green-600/20"
+                    className="bg-[#F39C12] hover:bg-orange-500 text-white px-6 py-2 rounded-lg font-bold text-sm transition shadow-lg shadow-orange-100"
                  >
-                     <i className="fas fa-sign-in-alt mr-2"></i>
                      Entrar
                  </button>
              )
