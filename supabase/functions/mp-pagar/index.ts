@@ -79,7 +79,7 @@ serve(async (req) => {
         // 1. Busca status no DB local
         const { data: tx, error: txError } = await supabaseAdmin
             .from("transactions")
-            .select("status, usuario_id, metadata, valor")
+            .select("status, usuario_id, metadata, valor, id") // Adicionado 'id' para uso posterior
             .eq("external_id", externalId)
             .single();
         
@@ -240,6 +240,10 @@ serve(async (req) => {
 
     const payment = await mpResponse.json();
     console.log("[mp-pagar] Resposta completa do Mercado Pago:", JSON.stringify(payment));
+    console.log(`[mp-pagar] Tipo de Pagamento (isPix): ${isPix}`);
+    console.log(`[mp-pagar] payment.id do Mercado Pago (para Pix): ${payment.id}`);
+    console.log(`[mp-pagar] payment.point_of_interaction?.transaction_data?.id (para Pix): ${payment.point_of_interaction?.transaction_data?.id}`);
+
 
     // Tratamento de Erro do MP
     if (!mpResponse.ok) {
@@ -264,6 +268,17 @@ serve(async (req) => {
     }
 
     const transactionStatus = payment.status === "approved" ? "approved" : "pending";
+    
+    // --- CORREÇÃO AQUI: Prioriza transaction_data.id para Pix ---
+    let externalIdToSave = payment.id?.toString();
+    if (isPix && payment.point_of_interaction?.transaction_data?.id) {
+        externalIdToSave = payment.point_of_interaction.transaction_data.id.toString();
+        console.log(`[mp-pagar] Pix detectado. Usando payment.point_of_interaction.transaction_data.id como external_id: ${externalIdToSave}`);
+    } else {
+        console.log(`[mp-pagar] Usando payment.id como external_id: ${externalIdToSave}`);
+    }
+
+
     console.log(`[mp-pagar] Pagamento MP ID: ${payment.id}, Status MP: ${payment.status}, Status DB: ${transactionStatus}`);
 
     const { data: newTx, error: insertTxError } = await supabaseAdmin
@@ -273,12 +288,12 @@ serve(async (req) => {
         valor: Number(amount),
         metodo: isPix ? "pix" : "card",
         status: transactionStatus,
-        external_id: payment.id?.toString(),
+        external_id: externalIdToSave, // Usa o ID corrigido aqui
         metadata: {
             item_type,
             item_id,
             provider: "mercado_pago",
-            mp_id: payment.id
+            mp_id: payment.id // Mantém o ID original (preference/payment) nos metadados para auditoria
         },
         data: new Date().toISOString(),
       })
@@ -289,7 +304,7 @@ serve(async (req) => {
         console.error(`[mp-pagar] Erro ao inserir transação no DB: ${insertTxError.message}`);
         return new Response(JSON.stringify({ error: `Failed to save transaction: ${insertTxError.message}` }), { status: 500, headers: corsHeaders });
     }
-    console.log(`[mp-pagar] Transação salva no DB com ID: ${newTx.id}, External ID: ${newTx.external_id}`);
+    console.log(`[mp-pagar] Transação salva no DB com ID: ${newTx.id}, external_id SALVO NO DB: ${newTx.external_id}`);
 
 
     if (isPix) {

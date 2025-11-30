@@ -238,6 +238,7 @@ export default function CheckoutCompleto({
   // Ref para o objeto MercadoPago SDK (e cardForm se aplicável)
   const mpSDK = useRef<any>(null);
   const mpCardForm = useRef<any>(null); // Keep this ref for potential future use or to signal SDK readiness
+  const [isMpSdkReady, setIsMpSdkReady] = useState(false); // NOVO: Estado de prontidão do SDK do MP
 
   useEffect(() => {
     if (mpPublicKey) {
@@ -252,7 +253,7 @@ export default function CheckoutCompleto({
     }
   }, [mpPublicKey, asaasPublicKey]);
 
-  // --- Inicialização do Mercado Pago SDK e CardForm ---
+  // --- Inicialização do Mercado Pago SDK e Verificação de Prontidão ---
   useEffect(() => {
     if (activeGateway === 'mercadopago' && mpPublicKey) {
         if (!window.MercadoPago) {
@@ -268,11 +269,24 @@ export default function CheckoutCompleto({
             });
         }
 
+        // NOVO: Polling para verificar se cardToken está pronto
+        const checkSdkReady = setInterval(() => {
+            console.log("[MP SDK] Verificando prontidão...", mpSDK.current?.cardToken);
+            if (mpSDK.current?.cardToken?.create) {
+                console.log("[MP SDK] cardToken.create está disponível. SDK pronto.");
+                setIsMpSdkReady(true);
+                clearInterval(checkSdkReady);
+            }
+        }, 500); // Tenta a cada 500ms
+
         // Limpeza de qualquer tokenization anterior ou campos monitorados
-        // Em v2, geralmente não é necessário limpar `fields` diretamente
         if (mpSDK.current && mpSDK.current.fields) {
              // mpSDK.current.fields = {}; // Isso pode quebrar o SDK v2, removendo.
         }
+        
+        return () => {
+            clearInterval(checkSdkReady); // Limpa o intervalo no unmount
+        };
     }
 
     // Cleanup: Destroi o cardForm se ele existe
@@ -463,7 +477,7 @@ export default function CheckoutCompleto({
   // --- Pagamento com Cartão ---
   const handleCardSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (processing) return;
+      if (processing || !isMpSdkReady) return; // NOVO: Bloqueia se SDK não estiver pronto
       if (!validateDoc()) return;
       
       const { cardNumber, holderName, expirationDate, cvv, installments, amount: formAmount, docNumber } = commonFormData;
@@ -495,9 +509,9 @@ export default function CheckoutCompleto({
           let endpoint = '';
 
           if (activeGateway === 'mercadopago') {
-            if (!mpSDK.current) {
-                console.error("[MP SDK] Instância do Mercado Pago não inicializada.");
-                throw new Error("SDK do Mercado Pago não inicializado corretamente. Tente recarregar a página.");
+            if (!mpSDK.current || !mpSDK.current.cardToken?.create) { // NOVO: Verifica create
+                console.error("[MP SDK] Instância do Mercado Pago ou cardToken não inicializado/pronto.", mpSDK.current); // NOVO: Log da instância
+                throw new Error("SDK do Mercado Pago não inicializado corretamente para tokenização. Tente recarregar a página.");
             }
             
             // --- TOKENIZAÇÃO MP NO CLIENT-SIDE (SDK v2) ---
@@ -694,13 +708,17 @@ export default function CheckoutCompleto({
             <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} />
             <button
               type="submit"
-              disabled={processing}
+              disabled={processing || !isMpSdkReady} // NOVO: Bloqueia se SDK não estiver pronto
               className="w-full mt-6 py-4 bg-green-600 hover:bg-green-500 disabled:bg-gray-800 disabled:text-gray-500 text-black font-bold rounded-xl text-lg transition-all shadow-lg shadow-green-900/20 transform active:scale-[0.98] flex items-center justify-center"
             >
               {processing ? (
                 <span className="flex items-center justify-center gap-3">
                   <i className="fas fa-circle-notch fa-spin"></i> Processando...
                 </span>
+              ) : !isMpSdkReady ? ( // NOVO: Mensagem de espera do SDK
+                 <span className="flex items-center justify-center gap-3">
+                    <i className="fas fa-sync-alt fa-spin"></i> Carregando Pagamento...
+                 </span>
               ) : (
                 <> <i className="fas fa-check mr-2"></i> Pagar Agora </>
               )}
