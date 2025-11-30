@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { getLogs } from '../../services/adminService';
 import { Log } from '../../types';
@@ -82,57 +81,57 @@ export function LogsViewer({ dataVersion = 0 }: LogsViewerProps) {
 
   return (
     <>
-    <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
-        <h2 className="text-2xl font-bold text-green-400">Logs de Auditoria do Sistema</h2>
-        <button onClick={handleExport} className="px-4 py-2 text-sm font-bold text-green-300 bg-green-900/30 rounded-lg hover:bg-green-900/60 transition"><i className="fas fa-file-csv mr-2"></i>Exportar CSV</button>
+        <h2 className="text-2xl font-bold text-[#263238]">Logs de Auditoria</h2>
+        <button onClick={handleExport} className="px-4 py-2 text-sm font-bold text-green-700 bg-green-100 rounded-lg hover:bg-green-200 transition border border-green-200"><i className="fas fa-file-csv mr-2"></i>Exportar CSV</button>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pb-4 border-b border-green-900/20">
-        <input type="text" placeholder="Buscar na ação..." value={filters.searchText} onChange={e => setFilters({...filters, searchText: e.target.value})} className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg p-2.5"/>
-        <select value={filters.module} onChange={e => setFilters({...filters, module: e.target.value})} className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg p-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
+        <input type="text" placeholder="Buscar na ação..." value={filters.searchText} onChange={e => setFilters({...filters, searchText: e.target.value})} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5"/>
+        <select value={filters.module} onChange={e => setFilters({...filters, module: e.target.value})} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
             <option value="all">Todos os Módulos</option>
             {MODULE_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
-        <select value={filters.action} onChange={e => setFilters({...filters, action: e.target.value})} className="w-full bg-gray-800 border border-gray-600 text-white text-sm rounded-lg p-2.5">
+        <select value={filters.action} onChange={e => setFilters({...filters, action: e.target.value})} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
             <option value="all">Todas as Ações</option>
             {ACTION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
         </select>
         <div className="flex justify-end gap-2">
-            <button onClick={handleResetFilters} className="w-full md:w-auto px-4 py-2 text-sm font-bold text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition">Limpar</button>
-            <button onClick={handleApplyFilters} className="w-full md:w-auto px-4 py-2 text-sm font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition">Filtrar</button>
+            <button onClick={handleResetFilters} className="w-full md:w-auto px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition border border-gray-200">Limpar</button>
+            <button onClick={handleApplyFilters} className="w-full md:w-auto px-4 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-500 transition shadow-sm">Filtrar</button>
         </div>
       </div>
 
-      {loading && <div className="text-center p-8"><i className="fas fa-spinner fa-spin text-2xl text-green-400"></i></div>}
-      {error && <div className="text-center p-4 text-red-400 bg-red-900/20 border-red-500/30 rounded-md"><strong>Erro:</strong> {error}</div>}
+      {loading && <div className="text-center p-8 text-gray-500"><i className="fas fa-spinner fa-spin text-2xl text-green-600"></i></div>}
+      {error && <div className="text-center p-4 text-red-600 bg-red-50 border-red-200 rounded-md"><strong>Erro:</strong> {error}</div>}
       
       {!loading && !error && (
         <>
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-300">
-            <thead className="text-xs text-green-300 uppercase bg-black/40">
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm text-left text-gray-600">
+            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
-                    <th scope="col" className="px-4 py-3">Usuário</th>
-                    <th scope="col" className="px-4 py-3">Ação</th>
-                    <th scope="col" className="px-4 py-3">Módulo</th>
-                    <th scope="col" className="px-4 py-3">Data/Hora</th>
-                    <th scope="col" className="px-4 py-3 text-right">Detalhes</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Usuário</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Ação</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Módulo</th>
+                    <th scope="col" className="px-4 py-3 font-semibold">Data/Hora</th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">Detalhes</th>
                 </tr>
             </thead>
             <tbody>
                 {logs.map(log => (
-                <tr key={log.id} className="bg-gray-950/50 border-b border-green-900/20 hover:bg-green-900/10 transition-colors">
+                <tr key={log.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-2">{log.user_email || 'Sistema'}</td>
-                    <td className="px-4 py-2 font-medium">{log.acao}</td>
-                    <td className="px-4 py-2">{log.modulo}</td>
-                    <td className="px-4 py-2">{new Date(log.data).toLocaleString('pt-BR')}</td>
+                    <td className="px-4 py-2 font-medium text-[#263238]">{log.acao}</td>
+                    <td className="px-4 py-2 text-gray-500">{log.modulo}</td>
+                    <td className="px-4 py-2 text-gray-500">{new Date(log.data).toLocaleString('pt-BR')}</td>
                     <td className="px-4 py-2 text-right">
                         {log.detalhes && (
                              <button 
                                 onClick={() => setSelectedLog(log)}
-                                className="font-medium text-blue-400 hover:underline"
+                                className="font-medium text-blue-600 hover:underline hover:text-blue-800"
                             >
                                 Ver Detalhes
                             </button>

@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { getNewsWithAuthors, updateNewsStatus } from '../../services/adminService';
 import { NewsArticle, NewsStatus } from '../../types';
@@ -40,7 +39,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
       });
       setNews(newsList);
       setTotalNews(count);
-    } catch (err: any) { // CORRIGIDO: Adicionado (err: any) e a chave de abertura
+    } catch (err: any) {
       setError(err.message || 'Falha ao carregar notícias.');
     } finally {
       setLoading(false);
@@ -68,9 +67,9 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
 
   const getStatusChip = (status: NewsStatus) => {
     const styles = {
-      pending: 'bg-yellow-900/50 text-yellow-400',
-      approved: 'bg-green-900/50 text-green-300',
-      rejected: 'bg-red-900/50 text-red-400',
+      pending: 'bg-yellow-100 text-yellow-700',
+      approved: 'bg-green-100 text-green-700',
+      rejected: 'bg-red-100 text-red-700',
     };
     return <span className={`px-2 py-1 text-xs font-bold rounded-full capitalize ${styles[status]}`}>{status}</span>;
   };
@@ -88,12 +87,12 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
-        <h2 className="text-2xl font-bold text-green-400 whitespace-nowrap">Histórico de Conteúdo</h2>
+        <h2 className="text-2xl font-bold text-[#263238] whitespace-nowrap">Histórico de Conteúdo</h2>
         {initialStatusFilter === 'all' && ( // Só mostra o filtro de status se não for fixo
             <select
                 value={currentStatusFilter}
                 onChange={(e) => setCurrentStatusFilter(e.target.value as NewsStatus | 'all')}
-                className="bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500"
+                className="bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 block p-2.5"
             >
                 <option value="all">Todos os Status</option>
                 <option value="pending">Pendente</option>
@@ -103,21 +102,21 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
         )}
       </div>
 
-      {loading && <div className="text-center p-4"><i className="fas fa-spinner fa-spin text-green-500 mr-2"></i>Carregando...</div>}
-      {error && <div className="text-center p-4 text-red-400 bg-red-900/20 border-red-500/30 rounded-md"><strong>Erro:</strong> {error}</div>}
+      {loading && <div className="text-center p-4 text-gray-500"><i className="fas fa-spinner fa-spin text-green-600 mr-2"></i>Carregando...</div>}
+      {error && <div className="text-center p-4 text-red-600 bg-red-50 border-red-200 rounded-md"><strong>Erro:</strong> {error}</div>}
       
       {!loading && !error && (
         <>
-        <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-300">
-            <thead className="text-xs text-green-300 uppercase bg-black/40">
+        <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm text-left text-gray-600">
+            <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
-                <th scope="col" className="px-4 py-3">ID</th>
-                <th scope="col" className="px-4 py-3">Título / Prompt</th>
-                <th scope="col" className="px-4 py-3">Tipo</th>
-                <th scope="col" className="px-4 py-3">Autor</th>
-                <th scope="col" className="px-4 py-3 text-center">Status</th>
-                <th scope="col" className="px-4 py-3 text-right">Ações</th>
+                <th scope="col" className="px-4 py-3 font-semibold">ID</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Título / Prompt</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Tipo</th>
+                <th scope="col" className="px-4 py-3 font-semibold">Autor</th>
+                <th scope="col" className="px-4 py-3 text-center font-semibold">Status</th>
+                <th scope="col" className="px-4 py-3 text-right font-semibold">Ações</th>
                 </tr>
             </thead>
             <tbody>
@@ -129,31 +128,31 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
                     </tr>
                 ) : (
                     news.map(article => (
-                    <tr key={article.id} className="bg-gray-950/50 border-b border-green-900/20 hover:bg-green-900/10 transition-colors">
+                    <tr key={article.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
                         <td className="px-4 py-3 font-mono text-gray-500">{article.id}</td>
-                        <td className="px-4 py-3 font-medium text-white max-w-xs truncate">{article.titulo}</td>
-                        <td className="px-4 py-3 text-gray-400">{getTypeName(article.tipo)}</td>
-                        <td className="px-4 py-3 text-gray-400">{article.author?.email || 'Sistema'}</td>
+                        <td className="px-4 py-3 font-medium text-[#263238] max-w-xs truncate">{article.titulo}</td>
+                        <td className="px-4 py-3 text-gray-500">{getTypeName(article.tipo)}</td>
+                        <td className="px-4 py-3 text-gray-500">{article.author?.email || 'Sistema'}</td>
                         <td className="px-4 py-3 text-center">
                             {article.status && getStatusChip(article.status)}
                         </td>
                         <td className="px-4 py-3 text-right space-x-2 whitespace-nowrap">
                             <button 
                                 onClick={() => setViewingArticle(article)}
-                                className="font-medium text-blue-400 hover:underline"
+                                className="font-medium text-blue-600 hover:text-blue-800 hover:underline"
                             >
                                 Ver
                             </button>
                             <button 
                                 onClick={() => onEdit(article)}
-                                className="font-medium text-yellow-400 hover:underline"
+                                className="font-medium text-yellow-600 hover:text-yellow-700 hover:underline"
                             >
                                 Editar
                             </button>
                             {article.status !== 'approved' && (
                                 <button 
                                     onClick={() => handleStatusChange(article.id!, 'approved')}
-                                    className="font-medium text-green-500 hover:underline"
+                                    className="font-medium text-green-600 hover:text-green-800 hover:underline"
                                 >
                                     Aprovar
                                 </button>
@@ -161,7 +160,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
                              {article.status !== 'rejected' && (
                                 <button 
                                     onClick={() => handleStatusChange(article.id!, 'rejected')}
-                                    className="font-medium text-red-500 hover:underline"
+                                    className="font-medium text-red-600 hover:text-red-800 hover:underline"
                                 >
                                     Rejeitar
                                 </button>

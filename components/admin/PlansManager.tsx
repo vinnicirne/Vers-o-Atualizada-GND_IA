@@ -108,15 +108,15 @@ export function PlansManager() {
   if (loading) {
     return (
       <div className="text-center p-8">
-        <i className="fas fa-spinner fa-spin text-2xl text-green-400"></i>
-        <p className="mt-2 text-gray-400">Carregando planos...</p>
+        <i className="fas fa-spinner fa-spin text-2xl text-green-600"></i>
+        <p className="mt-2 text-gray-500">Carregando planos...</p>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center p-4 text-red-400 bg-red-900/20 border-red-500/30 rounded-md">
+      <div className="text-center p-4 text-red-600 bg-red-50 border border-red-200 rounded-md">
         <strong>Erro:</strong> {error}
       </div>
     );
@@ -126,24 +126,24 @@ export function PlansManager() {
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
-        <div className="flex flex-col md:flex-row justify-between items-center mb-4 gap-4">
-          <h2 className="text-2xl font-bold text-green-400">Gerenciamento de Planos</h2>
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+          <h2 className="text-2xl font-bold text-[#263238]">Gerenciamento de Planos</h2>
           <div className="flex gap-3">
             <button
                 onClick={handleSyncCosts}
                 disabled={isSaving}
-                className="px-4 py-2 text-sm font-bold text-yellow-900 bg-yellow-500 rounded-lg hover:bg-yellow-400 transition-all shadow-md shadow-yellow-600/20 disabled:opacity-50"
+                className="px-4 py-2 text-sm font-bold text-yellow-800 bg-yellow-100 rounded-lg hover:bg-yellow-200 transition-all border border-yellow-200 disabled:opacity-50 flex items-center gap-2"
                 title="Forçar atualização dos preços no banco de dados"
             >
-                <i className="fas fa-sync-alt mr-2"></i> Sincronizar Custos (DB)
+                <i className="fas fa-sync-alt"></i> Sincronizar Custos
             </button>
             {!isFormOpen && (
                 <button
                 onClick={handleAddNewPlan}
-                className="px-4 py-2 text-sm font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition-all shadow-md shadow-green-600/20"
+                className="px-4 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center gap-2"
                 >
-                <i className="fas fa-plus mr-2"></i> Adicionar Novo Plano
+                <i className="fas fa-plus"></i> Adicionar Plano
                 </button>
             )}
           </div>
@@ -156,49 +156,49 @@ export function PlansManager() {
             isSaving={isSaving} 
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm text-left text-gray-300">
-              <thead className="text-xs text-green-300 uppercase bg-black/40">
+          <div className="overflow-x-auto rounded-lg border border-gray-200">
+            <table className="w-full text-sm text-left text-gray-600">
+              <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th scope="col" className="px-6 py-3">ID</th>
-                  <th scope="col" className="px-6 py-3">Nome</th>
-                  <th scope="col" className="px-6 py-3 text-center">Créditos</th>
-                  <th scope="col" className="px-6 py-3 text-right">Preço (R$)</th>
-                  <th scope="col" className="px-6 py-3 text-center">Intervalo</th>
-                  <th scope="col" className="px-6 py-3 text-center">Ativo</th>
-                  <th scope="col" className="px-6 py-3 text-right">Ações</th>
+                  <th scope="col" className="px-6 py-3 font-semibold">ID</th>
+                  <th scope="col" className="px-6 py-3 font-semibold">Nome</th>
+                  <th scope="col" className="px-6 py-3 text-center font-semibold">Créditos</th>
+                  <th scope="col" className="px-6 py-3 text-right font-semibold">Preço (R$)</th>
+                  <th scope="col" className="px-6 py-3 text-center font-semibold">Intervalo</th>
+                  <th scope="col" className="px-6 py-3 text-center font-semibold">Ativo</th>
+                  <th scope="col" className="px-6 py-3 text-right font-semibold">Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {allPlans.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-8 text-gray-500">
+                    <td colSpan={7} className="text-center py-12 text-gray-500">
                       Nenhum plano configurado. Adicione um novo plano!
                     </td>
                   </tr>
                 ) : (
                   allPlans.map((plan) => (
-                    <tr key={plan.id} className="bg-gray-950/50 border-b border-green-900/20 hover:bg-green-900/10 transition-colors">
-                      <td className="px-6 py-4 font-mono text-gray-400">{plan.id}</td>
-                      <td className="px-6 py-4 font-semibold text-white">{plan.name}</td>
-                      <td className="px-6 py-4 text-center">{plan.credits === -1 ? '∞' : plan.credits}</td>
+                    <tr key={plan.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 font-mono text-gray-500">{plan.id}</td>
+                      <td className="px-6 py-4 font-bold text-[#263238]">{plan.name}</td>
+                      <td className="px-6 py-4 text-center font-mono">{plan.credits === -1 ? '∞' : plan.credits}</td>
                       <td className="px-6 py-4 text-right">{plan.price.toFixed(2).replace('.', ',')}</td>
                       <td className="px-6 py-4 text-center capitalize">{plan.interval === 'month' ? 'Mensal' : 'Anual'}</td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${plan.isActive ? 'bg-green-900/50 text-green-300' : 'bg-red-900/50 text-red-300'}`}>
+                        <span className={`px-2 py-1 rounded-full text-xs font-bold ${plan.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                           {plan.isActive ? 'Sim' : 'Não'}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right space-x-2">
+                      <td className="px-6 py-4 text-right space-x-3">
                         <button 
                           onClick={() => handleEditPlan(plan)}
-                          className="font-medium text-yellow-400 hover:underline"
+                          className="font-medium text-yellow-600 hover:text-yellow-800 hover:underline"
                         >
                           Editar
                         </button>
                         <button 
                           onClick={() => handleDeletePlan(plan.id)}
-                          className="font-medium text-red-500 hover:underline"
+                          className="font-medium text-red-600 hover:text-red-800 hover:underline"
                           disabled={isSaving}
                         >
                           Excluir
@@ -213,12 +213,12 @@ export function PlansManager() {
         )}
 
         {isFormOpen && (
-            <div className="flex justify-start mt-6 border-t border-green-900/30 pt-6">
+            <div className="flex justify-start mt-6 pt-6 border-t border-gray-100">
                 <button 
                     onClick={handleCloseForm}
-                    className="px-4 py-2 font-bold text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+                    className="px-4 py-2 font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition border border-gray-200 flex items-center gap-2"
                 >
-                    <i className="fas fa-arrow-left mr-2"></i> Voltar para a Lista
+                    <i className="fas fa-arrow-left"></i> Voltar para a Lista
                 </button>
             </div>
         )}

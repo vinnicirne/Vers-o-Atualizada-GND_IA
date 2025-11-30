@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { getTransactions, getApprovedRevenueInRange } from '../../services/adminService';
 import { Transaction, TransactionStatus, PaymentMethod } from '../../types';
@@ -85,18 +84,18 @@ export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
 
     const getStatusChip = (status: TransactionStatus) => {
         const styles = {
-            approved: 'bg-green-900/50 text-green-300',
-            pending: 'bg-yellow-900/50 text-yellow-400',
-            failed: 'bg-red-900/50 text-red-400',
-            refunded: 'bg-blue-900/50 text-blue-300', // Added refunded status chip
+            approved: 'bg-green-100 text-green-700',
+            pending: 'bg-yellow-100 text-yellow-700',
+            failed: 'bg-red-100 text-red-700',
+            refunded: 'bg-blue-100 text-blue-700', // Added refunded status chip
         };
         return <span className={`px-2 py-1 text-xs font-bold rounded-full capitalize ${styles[status]}`}>{status}</span>;
     };
 
     const getMethodChip = (method: PaymentMethod) => {
         const styles = {
-            pix: 'bg-sky-900/50 text-sky-300',
-            card: 'bg-purple-900/50 text-purple-300',
+            pix: 'bg-sky-100 text-sky-700',
+            card: 'bg-purple-100 text-purple-700',
         };
         const icon = method === 'pix' ? 'fa-qrcode' : 'fa-credit-card';
         return <span className={`px-2 py-1 text-xs font-bold rounded-full capitalize ${styles[method]}`}><i className={`fas ${icon} mr-1.5`}></i>{method}</span>;
@@ -109,25 +108,25 @@ export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
             {/* Summary Card */}
-            <div className="bg-black/50 border border-green-900/40 rounded-lg p-6 flex items-center space-x-4 shadow-lg shadow-black/30">
-                <div className="bg-green-900/20 p-4 rounded-full">
-                    <i className="fas fa-wallet text-2xl text-green-400"></i>
+            <div className="bg-white border border-gray-200 rounded-lg p-6 flex items-center space-x-4 shadow-sm">
+                <div className="bg-green-50 p-4 rounded-full border border-green-100">
+                    <i className="fas fa-wallet text-2xl text-green-600"></i>
                 </div>
                 <div>
-                    <p className="text-sm text-gray-400 uppercase tracking-wider">Faturamento Aprovado no Período</p>
-                    <p className="text-3xl font-bold text-gray-100">{formatCurrency(approvedTotal)}</p>
+                    <p className="text-sm text-gray-500 uppercase tracking-wider font-bold">Faturamento Aprovado no Período</p>
+                    <p className="text-3xl font-bold text-[#263238]">{formatCurrency(approvedTotal)}</p>
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
-                <h2 className="text-2xl font-bold text-green-400 mb-4">Relatório de Transações</h2>
+            <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                <h2 className="text-2xl font-bold text-[#263238] mb-4">Relatório de Transações</h2>
                 
                 {/* Filters */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 pb-4 border-b border-green-900/20">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 pb-6 border-b border-gray-100">
                     <div>
-                        <label className="text-xs text-gray-400">Status</label>
-                        <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full mt-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+                        <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">Status</label>
+                        <select name="status" value={filters.status} onChange={handleFilterChange} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
                             <option value="all">Todos</option>
                             <option value="approved">Aprovado</option>
                             <option value="pending">Pendente</option>
@@ -136,52 +135,52 @@ export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
                         </select>
                     </div>
                      <div>
-                        <label className="text-xs text-gray-400">Método</label>
-                        <select name="method" value={filters.method} onChange={handleFilterChange} className="w-full mt-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
+                        <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">Método</label>
+                        <select name="method" value={filters.method} onChange={handleFilterChange} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5">
                             <option value="all">Todos</option>
                             <option value="pix">Pix</option>
                             <option value="card">Cartão</option>
                         </select>
                     </div>
                      <div>
-                        <label className="text-xs text-gray-400">Data Início</label>
-                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="w-full mt-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5"/>
+                        <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">Data Início</label>
+                        <input type="date" name="startDate" value={filters.startDate} onChange={handleFilterChange} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5"/>
                     </div>
                      <div>
-                        <label className="text-xs text-gray-400">Data Fim</label>
-                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="w-full mt-1 bg-gray-800 border border-gray-600 text-white text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5"/>
+                        <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">Data Fim</label>
+                        <input type="date" name="endDate" value={filters.endDate} onChange={handleFilterChange} className="w-full bg-gray-50 border border-gray-300 text-gray-700 text-sm rounded-lg focus:ring-green-500 focus:border-green-500 p-2.5"/>
                     </div>
                     <div className="lg:col-span-4 flex justify-end items-center gap-3">
-                         <button onClick={handleResetFilters} className="px-4 py-2 text-sm font-bold text-gray-300 bg-gray-700 rounded-lg hover:bg-gray-600 transition">Limpar</button>
-                         <button onClick={handleApplyFilters} className="px-4 py-2 text-sm font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition">Aplicar Filtros</button>
+                         <button onClick={handleResetFilters} className="px-4 py-2 text-sm font-bold text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition border border-gray-200">Limpar</button>
+                         <button onClick={handleApplyFilters} className="px-4 py-2 text-sm font-bold text-white bg-green-600 rounded-lg hover:bg-green-500 transition shadow-sm">Aplicar Filtros</button>
                     </div>
                 </div>
 
                 {/* Table */}
-                {loading ? <div className="text-center p-8"> <i className="fas fa-spinner fa-spin text-2xl text-green-400"></i> <p className="mt-2">Carregando transações...</p></div> : (
+                {loading ? <div className="text-center p-8 text-gray-500"> <i className="fas fa-spinner fa-spin text-2xl text-green-600"></i> <p className="mt-2">Carregando transações...</p></div> : (
                     transactions.length > 0 ? (
                         <>
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left text-gray-300">
-                                    <thead className="text-xs text-green-300 uppercase bg-black/40">
+                            <div className="overflow-x-auto rounded-lg border border-gray-200">
+                                <table className="w-full text-sm text-left text-gray-600">
+                                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
                                         <tr>
-                                            <th className="px-4 py-3">ID Transação</th>
-                                            <th className="px-4 py-3">Usuário</th>
-                                            <th className="px-4 py-3 text-right">Valor</th>
-                                            <th className="px-4 py-3 text-center">Método</th>
-                                            <th className="px-4 py-3 text-center">Status</th>
-                                            <th className="px-4 py-3">Data</th>
+                                            <th className="px-4 py-3 font-semibold">ID Transação</th>
+                                            <th className="px-4 py-3 font-semibold">Usuário</th>
+                                            <th className="px-4 py-3 text-right font-semibold">Valor</th>
+                                            <th className="px-4 py-3 text-center font-semibold">Método</th>
+                                            <th className="px-4 py-3 text-center font-semibold">Status</th>
+                                            <th className="px-4 py-3 font-semibold">Data</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {transactions.map(tx => (
-                                            <tr key={tx.id} className="bg-gray-950/50 border-b border-green-900/20 hover:bg-green-900/10 transition-colors">
+                                            <tr key={tx.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
                                                 <td className="px-4 py-3 font-mono text-gray-500">{tx.id}</td>
-                                                <td className="px-4 py-3">{tx.user?.email || 'N/A'}</td>
-                                                <td className="px-4 py-3 text-right font-semibold">{formatCurrency(tx.valor)}</td>
+                                                <td className="px-4 py-3 text-[#263238]">{tx.user?.email || 'N/A'}</td>
+                                                <td className="px-4 py-3 text-right font-bold text-green-600">{formatCurrency(tx.valor)}</td>
                                                 <td className="px-4 py-3 text-center">{getMethodChip(tx.metodo)}</td>
                                                 <td className="px-4 py-3 text-center">{getStatusChip(tx.status)}</td>
-                                                <td className="px-4 py-3">{new Date(tx.data).toLocaleString('pt-BR')}</td>
+                                                <td className="px-4 py-3 text-gray-500">{new Date(tx.data).toLocaleString('pt-BR')}</td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -190,9 +189,9 @@ export function BillingTable({ dataVersion = 0 }: BillingTableProps) {
                             <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                         </>
                     ) : (
-                        <div className="text-center py-12">
-                            <i className="fas fa-search-dollar text-4xl text-gray-600 mb-3"></i>
-                            <h3 className="text-lg font-bold text-gray-400">Nenhuma Transação Encontrada</h3>
+                        <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                            <i className="fas fa-search-dollar text-4xl text-gray-400 mb-3"></i>
+                            <h3 className="text-lg font-bold text-gray-600">Nenhuma Transação Encontrada</h3>
                             <p className="text-sm text-gray-500">Tente ajustar os filtros ou verificar mais tarde.</p>
                         </div>
                     )

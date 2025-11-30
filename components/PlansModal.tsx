@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { UserPlan } from '../types/plan.types';
 import { PlanCard } from './PlanCard';
@@ -112,10 +113,10 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
 
   if (loadingPlans || loadingPaymentSettings) {
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div className="text-center">
-          <i className="fas fa-spinner fa-spin text-4xl text-green-400"></i>
-          <p className="mt-4 text-white text-lg">Carregando planos e configurações...</p>
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="text-center bg-white border border-gray-200 p-6 rounded-lg shadow-xl">
+          <i className="fas fa-spinner fa-spin text-4xl text-[#F39C12]"></i>
+          <p className="mt-4 text-gray-500 text-lg">Carregando planos e configurações...</p>
         </div>
       </div>
     );
@@ -123,11 +124,11 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
 
   if (plansError || paymentSettingsError) {
     return (
-      <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div className="bg-red-900/20 border border-red-500/30 text-red-400 px-6 py-4 rounded-lg text-center">
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="bg-white border border-red-200 text-red-500 px-6 py-4 rounded-lg text-center shadow-xl">
           <p className="font-bold">Erro ao carregar planos ou configurações de pagamento:</p>
           <p className="text-sm">{plansError || paymentSettingsError}</p>
-          <button onClick={onClose} className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded">Fechar</button>
+          <button onClick={onClose} className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-bold">Fechar</button>
         </div>
       </div>
     );
@@ -135,7 +136,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
 
   if (showCheckoutCompleto && selectedPaymentItem) {
     return (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
             <CheckoutCompleto
                 amount={selectedPaymentItem.data.price || selectedPaymentItem.data.amount}
                 itemType={selectedPaymentItem.type}
@@ -153,22 +154,22 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
   }
 
   return (
-    <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="bg-black border border-green-900/50 rounded-2xl shadow-2xl w-full max-w-7xl my-8 flex flex-col max-h-[90vh]">
+      <div className="bg-white border border-gray-200 rounded-2xl shadow-2xl w-full max-w-7xl my-8 flex flex-col max-h-[90vh] overflow-hidden">
         
-        {/* Header */}
-        <div className="p-6 border-b border-green-900/30 flex justify-between items-center sticky top-0 bg-black z-10">
+        {/* Header - Light Theme */}
+        <div className="p-6 bg-white border-b border-gray-200 flex justify-between items-center sticky top-0 z-10">
           <div>
-            <h2 className="text-2xl font-bold text-white">Escolha seu Plano</h2>
-            <p className="text-sm text-gray-400">Cada nível superior desbloqueia novas IAs e recursos exclusivos.</p>
+            <h2 className="text-2xl font-bold text-[#263238]">Escolha seu Plano</h2>
+            <p className="text-sm text-gray-500">Cada nível superior desbloqueia novas IAs e recursos exclusivos.</p>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-white transition">
+          <button onClick={onClose} className="text-gray-400 hover:text-[#263238] transition">
             <i className="fas fa-times text-2xl"></i>
           </button>
         </div>
 
-        <div className="p-6 overflow-y-auto custom-scrollbar">
+        <div className="p-6 overflow-y-auto custom-scrollbar bg-[#ECEFF1]">
           
           {/* Subscription Plans Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
@@ -182,58 +183,68 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
             ))}
           </div>
 
-          {/* Express Credits Section */}
-          <div className="bg-gradient-to-r from-gray-900 to-black border border-green-900/30 rounded-xl p-6 shadow-lg relative overflow-hidden">
-             <div className="absolute top-0 right-0 p-4 opacity-10">
-                 <i className="fas fa-bolt text-9xl text-yellow-500"></i>
-             </div>
-            <div className="flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
-              <div className="flex-1">
-                <h3 className="text-yellow-400 font-bold uppercase tracking-wider mb-2 text-lg">
-                  <i className="fas fa-bolt mr-2"></i>Recarga Expressa
-                </h3>
-                <p className="text-gray-300 text-sm mb-4">
+          {/* Express Credits Section - Light Design */}
+          <div className="bg-white rounded-xl p-8 shadow-md relative overflow-hidden flex flex-col md:flex-row gap-8 items-center border border-gray-200">
+             
+             {/* Left Content */}
+             <div className="flex-1 relative z-10">
+                <div className="flex items-center gap-2 mb-2">
+                    <i className="fas fa-bolt text-[#F39C12]"></i>
+                    <h3 className="text-[#F39C12] font-bold uppercase tracking-wider text-lg">
+                      RECARGA EXPRESSA
+                    </h3>
+                </div>
+                <p className="text-gray-500 text-sm mb-6 leading-relaxed">
                   Precisa de mais gerações agora? Compre créditos avulsos sem mudar seu plano mensal.
                   <br/>
-                  <span className="text-gray-500 text-xs mt-1 block">Pagamento único via Pix ou Cartão (Mercado Pago).</span>
+                  <span className="text-gray-400 text-xs">Pagamento único via Pix ou Cartão (Mercado Pago).</span>
                 </p>
-                <div className="inline-block bg-yellow-900/20 border border-yellow-700/30 rounded-lg px-4 py-2">
-                   <span className="text-gray-400 text-xs uppercase mr-2">Custo atual:</span>
-                   <span className="text-xl font-bold text-yellow-500">R$ {activePlanConfig.expressCreditPrice.toFixed(2).replace('.', ',')}</span>
-                   <span className="text-xs text-yellow-300 ml-1">/crédito</span>
+                
+                <div className="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-md px-4 py-2">
+                   <span className="text-gray-500 text-xs uppercase font-bold">CUSTO ATUAL:</span>
+                   <span className="text-xl font-bold text-[#F39C12]">R$ {activePlanConfig.expressCreditPrice.toFixed(2).replace('.', ',')}</span>
+                   <span className="text-xs text-[#F39C12] opacity-80">/crédito</span>
                 </div>
-              </div>
+             </div>
 
-              <div className="flex-1 w-full max-w-md bg-gray-950/80 p-6 rounded-lg border border-gray-800 backdrop-blur-sm">
-                <div className="flex justify-between mb-2">
-                    <label className="text-xs font-bold text-gray-400 uppercase">Quantidade Desejada</label>
-                    <span className="text-xs font-bold text-white bg-gray-700 px-2 py-0.5 rounded">{expressAmount} créditos</span>
+             {/* Right Interactive Box */}
+             <div className="flex-1 w-full max-w-md bg-[#F8FAFC] p-6 rounded-xl border border-gray-200 relative z-10 shadow-inner">
+                <div className="flex justify-between items-center mb-3">
+                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUANTIDADE DESEJADA</label>
+                    <span className="text-xs font-bold text-[#263238] bg-white border border-gray-300 px-2 py-1 rounded shadow-sm">{expressAmount} créditos</span>
                 </div>
                 
-                <input 
-                    type="range" 
-                    min="5" 
-                    max="100" 
-                    step="5" 
-                    value={expressAmount} 
-                    onChange={handleExpressChange}
-                    className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500 mb-6"
-                />
+                <div className="mb-8">
+                    <input 
+                        type="range" 
+                        min="5" 
+                        max="100" 
+                        step="5" 
+                        value={expressAmount} 
+                        onChange={handleExpressChange}
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#F39C12]"
+                        style={{
+                            background: `linear-gradient(to right, #F39C12 0%, #F39C12 ${(expressAmount - 5) / (100 - 5) * 100}%, #e2e8f0 ${(expressAmount - 5) / (100 - 5) * 100}%, #e2e8f0 100%)`
+                        }}
+                    />
+                </div>
                 
                 <div className="flex justify-between items-end">
                   <div>
-                    <p className="text-xs text-gray-500 mb-1">Total a pagar</p>
-                    <p className="text-3xl font-bold text-white">R$ {calculateExpressTotal().toFixed(2).replace('.', ',')}</p>
+                    <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Total a pagar</p>
+                    <p className="text-3xl font-bold text-[#263238] tracking-tight">R$ {calculateExpressTotal().toFixed(2).replace('.', ',')}</p>
                   </div>
                   <button 
                     onClick={() => handleOpenCheckoutCompleto({ type: 'credits', data: { amount: expressAmount, price: calculateExpressTotal() } })}
-                    className="bg-yellow-600 hover:bg-yellow-500 text-black font-bold px-6 py-3 rounded-lg transition shadow-lg shadow-yellow-600/20 flex items-center"
+                    className="bg-[#D97706] hover:bg-[#F59E0B] text-white font-bold px-6 py-3 rounded-lg transition-all shadow-lg shadow-orange-200 flex items-center gap-2 transform hover:-translate-y-0.5"
                   >
-                    Recarregar Créditos <i className="fas fa-arrow-right ml-2"></i>
+                    Recarregar Créditos <i className="fas fa-arrow-right"></i>
                   </button>
                 </div>
-              </div>
-            </div>
+             </div>
+             
+             {/* Decorative Background Element */}
+             <div className="absolute -top-10 -right-10 w-64 h-64 bg-orange-100/50 rounded-full blur-3xl pointer-events-none"></div>
           </div>
 
         </div>

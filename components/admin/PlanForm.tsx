@@ -113,17 +113,18 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
     }
   };
 
-  const inputClasses = "w-full bg-black border-2 border-green-900/60 text-gray-200 p-3 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-0 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed";
-  const labelClasses = "block text-xs uppercase font-bold mb-2 tracking-wider text-green-400";
-  const sectionTitleClasses = "text-xl font-bold text-green-400 mb-4 border-b border-green-900/30 pb-2";
+  // Light theme styles
+  const inputClasses = "w-full bg-white border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 transition duration-300 disabled:opacity-50 disabled:bg-gray-50";
+  const labelClasses = "block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500";
+  const sectionTitleClasses = "text-xl font-bold text-[#263238] mb-4 border-b border-gray-200 pb-2";
 
   return (
-    <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
-      <form onSubmit={handleSubmit} className="space-y-6">
+    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+      <form onSubmit={handleSubmit} className="space-y-8">
         {/* Detalhes Básicos do Plano */}
         <div>
           <h2 className={sectionTitleClasses}>Detalhes do Plano</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label htmlFor="planId" className={labelClasses}>ID do Plano (Único)</label>
               <input
@@ -217,15 +218,17 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
               </select>
             </div>
             <div className="flex items-center pt-8">
-              <input
-                id="isActive"
-                type="checkbox"
-                checked={isActive}
-                onChange={(e) => setIsActive(e.target.checked)}
-                className="h-5 w-5 bg-black border-2 border-green-900/60 rounded text-green-500 focus:ring-green-500 focus:ring-offset-black transition duration-200"
-                disabled={isSaving}
-              />
-              <label htmlFor="isActive" className="ml-3 text-sm text-gray-300">Plano Ativo</label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                    id="isActive"
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-5 w-5 bg-white border border-gray-300 rounded text-green-600 focus:ring-green-500 transition duration-200"
+                    disabled={isSaving}
+                />
+                <span className="ml-3 text-sm text-gray-700 font-medium">Plano Ativo (Visível para usuários)</span>
+              </label>
             </div>
           </div>
         </div>
@@ -235,22 +238,22 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
           <h2 className={sectionTitleClasses}>Permissões de Serviço</h2>
           <div className="space-y-4">
             {services.map(service => (
-              <div key={service.key} className="flex items-center justify-between bg-gray-950/50 p-3 rounded-md border border-green-900/10">
+              <div key={service.key} className="flex items-center justify-between bg-white p-4 rounded-md border border-gray-200 shadow-sm transition hover:border-gray-300">
                 <div className="flex items-center flex-grow mr-4">
                   <input
                     id={`service-${service.key}`}
                     type="checkbox"
                     checked={service.enabled}
                     onChange={(e) => handleServiceChange(service.key, 'enabled', e.target.checked)}
-                    className="h-5 w-5 bg-black border-2 border-green-900/60 rounded text-green-500 focus:ring-green-500 focus:ring-offset-black transition duration-200"
+                    className="h-5 w-5 bg-white border border-gray-300 rounded text-green-600 focus:ring-green-500 transition duration-200"
                     disabled={isSaving}
                   />
-                  <label htmlFor={`service-${service.key}`} className="ml-3 text-sm text-gray-300">
+                  <label htmlFor={`service-${service.key}`} className="ml-3 text-sm font-medium text-gray-700 cursor-pointer">
                     {service.name}
                   </label>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <label htmlFor={`cost-${service.key}`} className="text-xs text-gray-400 whitespace-nowrap">
+                <div className="flex items-center space-x-3">
+                  <label htmlFor={`cost-${service.key}`} className="text-xs font-bold text-gray-500 whitespace-nowrap uppercase">
                     Custo (Créditos):
                   </label>
                   <input
@@ -258,7 +261,7 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
                     type="number"
                     value={service.creditsPerUse ?? 1} // Garante que sempre exiba um valor
                     onChange={(e) => handleServiceChange(service.key, 'creditsPerUse', parseInt(e.target.value, 10) || 0)}
-                    className="w-20 bg-black border-2 border-green-900/60 text-gray-200 p-2 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-20 bg-gray-50 border border-gray-300 text-gray-700 p-2 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 disabled:opacity-50"
                     min="0"
                     disabled={isSaving}
                   />
@@ -269,19 +272,19 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
         </div>
 
         {/* Botão Salvar */}
-        <div className="flex justify-end pt-6 border-t border-green-900/30">
+        <div className="flex justify-end pt-6 border-t border-gray-200">
           <button
             type="submit"
-            className="px-8 py-3 font-bold text-black bg-green-600 rounded-lg hover:bg-green-500 transition-all shadow-lg shadow-green-600/20 disabled:opacity-50 disabled:cursor-wait flex items-center"
+            className="px-8 py-3 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
             disabled={isSaving}
           >
             {isSaving ? (
               <>
-                <i className="fas fa-spinner fa-spin mr-2"></i> Salvando...
+                <i className="fas fa-spinner fa-spin"></i> Salvando...
               </>
             ) : (
               <>
-                <i className="fas fa-save mr-2"></i> Salvar Plano
+                <i className="fas fa-save"></i> Salvar Plano
               </>
             )}
           </button>

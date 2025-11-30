@@ -12,20 +12,15 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
   const isMostPopular = plan.name.toLowerCase().includes('premium'); 
   const isFree = plan.price === 0;
 
-  const getColorClass = (color: string) => {
-    // Keep text subtle
-    return 'text-[#263238]';
-  };
-
   const buttonClasses = `
     w-full py-3 rounded-lg font-bold text-sm transition-all flex justify-center items-center shadow-md
     ${isCurrent
-      ? 'bg-gray-200 text-gray-500 cursor-default'
+      ? 'bg-gray-100 text-gray-500 cursor-default border border-gray-200'
       : isFree
-        ? 'bg-gray-200 text-gray-600 cursor-default'
+        ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer border border-gray-300'
         : isMostPopular
           ? 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-purple-200'
-          : 'bg-[#F39C12] hover:bg-orange-500 text-white shadow-orange-200'
+          : 'bg-[#F39C12] hover:bg-orange-500 text-white shadow-orange-100'
     }
   `;
 
@@ -33,7 +28,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
     <div
       className={`
         relative bg-white border rounded-xl p-6 flex flex-col transition-all duration-300 shadow-sm
-        ${isCurrent ? 'border-green-500 shadow-md ring-1 ring-green-500 transform scale-105 z-10' : 'border-gray-200 hover:border-gray-300 hover:shadow-lg'}
+        ${isCurrent ? 'border-green-500 shadow-lg ring-1 ring-green-500/50 transform scale-105 z-10' : 'border-gray-200 hover:border-gray-300 hover:shadow-xl'}
         ${isMostPopular && !isCurrent ? 'shadow-md border-purple-200' : ''}
       `}
     >
@@ -43,7 +38,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
         </div>
       )}
       {isMostPopular && !isCurrent && (
-        <div className="absolute top-2 right-2 bg-yellow-400 text-white text-xs font-bold px-3 py-1 rounded-full rotate-3 shadow-sm">
+        <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-3 py-1 rounded-full rotate-3 shadow-sm border border-yellow-500/20">
           <i className="fas fa-star mr-1"></i>MAIS POPULAR!
         </div>
       )}
@@ -60,7 +55,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
 
       <div className="flex-grow">
         <ul className="space-y-3 mb-6">
-          <li className="flex items-center text-base text-gray-800 bg-[#F5F7FA] border border-gray-100 p-3 rounded-md justify-center font-medium">
+          <li className="flex items-center text-base text-gray-600 bg-[#ECEFF1] border border-gray-200 p-3 rounded-md justify-center font-medium">
             <i className="fas fa-coins text-[#F39C12] mr-3"></i>
             {plan.credits === -1 ? 'Créditos Ilimitados' : `${plan.credits} créditos/mês`}
           </li>
@@ -69,7 +64,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
             Acesso a Ferramentas:
           </li>
           {plan.services.map((service: ServicePermission, idx: number) => (
-            <li key={idx} className={`flex items-center text-sm ${service.enabled ? 'text-gray-700' : 'text-gray-400 line-through decoration-gray-300'} transition-colors`}>
+            <li key={idx} className={`flex items-center text-sm ${service.enabled ? 'text-gray-600' : 'text-gray-400 line-through decoration-gray-300'} transition-colors`}>
               {service.enabled ? (
                 <i className="fas fa-check-circle text-green-500 mr-2 text-xs"></i>
               ) : (
@@ -83,7 +78,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
 
       <button
         onClick={() => onSelect && onSelect(plan.id)}
-        disabled={isCurrent || isFree}
+        disabled={isCurrent}
         className={buttonClasses}
       >
         {isCurrent

@@ -130,9 +130,9 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
             <div className="flex justify-end mb-4">
                 <button 
                     onClick={handleDownloadSitemap}
-                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 px-4 py-2 rounded-lg text-sm border border-gray-600 flex items-center gap-2"
+                    className="bg-white hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm border border-gray-200 shadow-sm flex items-center gap-2 transition-colors"
                 >
-                    <i className="fas fa-sitemap text-orange-400"></i> Download Sitemap.xml
+                    <i className="fas fa-sitemap text-[#F39C12]"></i> Download Sitemap.xml
                 </button>
             </div>
             <MetricsCards dataVersion={dataVersion} />
@@ -170,7 +170,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-gray-300">
+    <div className="min-h-screen bg-[#ECEFF1] text-[#263238]">
       <Header
         userEmail={user.email}
         onLogout={handleLogout}
@@ -182,10 +182,12 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         metadata={metadata} 
         realtimeStatus={realtimeStatus} 
       />
-      <div className="container mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
+      <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)]">
         <Sidebar currentView={currentView} setCurrentView={setCurrentView} />
-        <main className="flex-grow">
-          {renderContent()}
+        <main className="flex-grow p-4 md:p-8 overflow-y-auto">
+          <div className="max-w-7xl mx-auto">
+            {renderContent()}
+          </div>
         </main>
       </div>
       

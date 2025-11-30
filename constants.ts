@@ -9,7 +9,7 @@ interface CreatorSuiteModeConfig {
 export const GUEST_ID = '00000000-0000-0000-0000-000000000000';
 
 export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
-  // --- OPÇÕES FREE (VISITANTES/BÁSICAS) ---
+  // --- OPÇÕES FREE / BÁSICAS (PRIMEIRA FILEIRA) ---
   {
     value: 'news_generator',
     label: 'GDN Notícias',
@@ -25,11 +25,6 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Gerador de Prompts',
     placeholder: 'Descreva a tarefa para a qual você precisa de um prompt. Ex: "um prompt para criar um carrossel de 5 posts no Instagram sobre produtividade".',
   },
-  {
-    value: 'text_to_speech',
-    label: 'Texto para Voz',
-    placeholder: 'Insira o texto que você deseja transformar em áudio.',
-  },
   // --- OPÇÕES PREMIUM / AVANÇADAS ---
   {
     value: 'institutional_website_generator',
@@ -37,19 +32,24 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     placeholder: 'Nome da Empresa, Ramo de Atuação e Diferenciais. Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".',
   },
   {
-    value: 'landingpage_generator',
-    label: 'Gerador de Landing Page',
-    placeholder: 'Descreva o produto ou serviço e o público-alvo. Ex: "Página de vendas para um e-book de receitas veganas para iniciantes".',
-  },
-  {
     value: 'image_generation',
     label: 'Studio de Arte IA',
     placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
   },
   {
+    value: 'landingpage_generator',
+    label: 'Gerador de Landing Page',
+    placeholder: 'Descreva o produto ou serviço e o público-alvo. Ex: "Página de vendas para um e-book de receitas veganas para iniciantes".',
+  },
+  {
     value: 'canva_structure',
     label: 'Editor Visual (Social Media)',
     placeholder: 'Descreva o post. Ex: "Post para Instagram sobre Promoção de Verão, fundo amarelo vibrante, texto grande em preto".',
+  },
+  {
+    value: 'text_to_speech',
+    label: 'Texto para Voz',
+    placeholder: 'Insira o texto que você deseja transformar em áudio.',
   },
 ];
 

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, Tooltip, Legend, Bar } from 'recharts';
 import { useTokenUsage } from '../../hooks/useTokenUsage';
@@ -12,18 +13,18 @@ export function TokenUsageChart() {
   
   if (error) {
     return (
-        <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-red-900/30">
-            <h3 className="text-xl font-bold text-red-400 mb-4">Erro ao Carregar Gráfico</h3>
-             <div className="bg-black/40 h-64 flex items-center justify-center rounded-md">
-                <p className="text-red-400/80">{error}</p>
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-red-200">
+            <h3 className="text-xl font-bold text-red-600 mb-4">Erro ao Carregar Gráfico</h3>
+             <div className="bg-red-50 h-64 flex items-center justify-center rounded-md">
+                <p className="text-red-500">{error}</p>
             </div>
         </div>
     );
   }
 
   return (
-    <div className="bg-black/30 p-6 rounded-lg shadow-lg border border-green-900/30">
-      <h3 className="text-xl font-bold text-green-400 mb-4">Uso da Plataforma (Últimos 7 Dias)</h3>
+    <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+      <h3 className="text-xl font-bold text-[#263238] mb-4">Uso da Plataforma (Últimos 7 Dias)</h3>
       <div className="h-72 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart
@@ -35,16 +36,18 @@ export function TokenUsageChart() {
               bottom: 5,
             }}
           >
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(34, 197, 94, 0.1)" />
-            <XAxis dataKey="date" stroke="#9ca3af" tick={{ fontSize: 12 }} />
-            <YAxis stroke="#9ca3af" tick={{ fontSize: 12 }} allowDecimals={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <XAxis dataKey="date" stroke="#6B7280" tick={{ fontSize: 12 }} />
+            <YAxis stroke="#6B7280" tick={{ fontSize: 12 }} allowDecimals={false} />
             <Tooltip
                 contentStyle={{ 
-                    backgroundColor: 'rgba(0,0,0,0.8)', 
-                    borderColor: 'rgba(34, 197, 94, 0.5)',
+                    backgroundColor: '#FFFFFF', 
+                    borderColor: '#E5E7EB',
                     borderRadius: '0.5rem',
+                    color: '#1F2937',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                 }}
-                labelStyle={{ color: '#ffffff' }}
+                labelStyle={{ color: '#6B7280', fontWeight: 'bold' }}
                 itemStyle={{ fontWeight: 'bold' }}
             />
             <Legend wrapperStyle={{ fontSize: '14px', paddingTop: '20px' }}/>

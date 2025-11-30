@@ -64,75 +64,78 @@ export function Header({
   const badge = getRealtimeBadge(realtimeStatus);
 
   if (isAdminView) {
-    // New Admin Header Layout
+    // New Admin Header Layout (Light Theme)
     return (
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 text-sm shadow-sm">
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-10 text-sm shadow-sm h-16">
         {/* Top bar for user info and system status */}
-        <div className="container mx-auto px-4 py-2 flex justify-between items-center border-b border-gray-100">
-          <div className="flex items-center space-x-4">
-            <span className="text-gray-500 font-medium">Admin:</span>
-            <span className="font-bold text-[#263238]">{userEmail}</span>
-            <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full capitalize font-medium">{userRole?.replace('_', ' ')}</span>
-          </div>
-          <div className="flex items-center space-x-6">
-            {/* Status Badges */}
-            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Versão do Sistema">
-              <i className="fas fa-code-branch"></i>
-              <span className="font-semibold text-gray-600">v{metadata?.version || 'N/A'}</span>
-            </div>
-            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title="Ambiente">
-              <i className="fas fa-server text-blue-500"></i>
-              <span>Produção</span>
-            </div>
-            <div className="flex items-center space-x-1.5 text-xs text-gray-500" title={`Status do Realtime: ${realtimeStatus}`}>
-              <div className="relative flex h-2 w-2">
-                {realtimeStatus === 'SUBSCRIBED' && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${badge.color} opacity-75`}></span>}
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${badge.color}`}></span>
-              </div>
-              <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-600 font-semibold' : 'text-gray-400'}>{badge.label}</span>
-            </div>
-          </div>
-        </div>
-        
-        {/* Bottom bar for title, navigation and quick actions */}
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div>
+        <div className="container mx-auto px-4 h-full flex justify-between items-center">
+          
+          {/* Left Side */}
+          <div className="flex items-center gap-4">
              <h1 className="text-xl font-bold tracking-tight text-[#263238]">
-                GDN_IA <span className="text-gray-400 font-light">/ {pageTitle}</span>
+                GDN_IA <span className="text-gray-400 font-light mx-2">/</span> <span className="text-green-700">{pageTitle}</span>
             </h1>
           </div>
-          <div className="flex items-center space-x-3">
-            {/* Quick Actions */}
-            <button 
-              onClick={onNewUserClick}
-              className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-bold shadow-sm"
-            >
-              <i className="fas fa-plus mr-2"></i>
-              Novo Usuário
-            </button>
 
-            {/* Navigation */}
-            {onNavigateToDashboard && (
-                 <button
-                  onClick={onNavigateToDashboard}
-                  className="bg-white text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-[#263238] transition-colors duration-200 text-xs font-bold border border-gray-200"
-                  title="Voltar para o Dashboard"
-                >
-                  <i className="fas fa-arrow-left mr-2"></i>
-                  Dashboard
-                </button>
-            )}
+          {/* Right Side */}
+          <div className="flex items-center space-x-4">
+            
+            {/* User Info */}
+            <div className="hidden md:flex items-center space-x-3 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                <div className="flex flex-col text-right leading-tight">
+                    <span className="font-bold text-[#263238] text-xs">{userEmail}</span>
+                    <span className="text-[10px] text-gray-500 uppercase font-semibold">{userRole?.replace('_', ' ')}</span>
+                </div>
+                <div className="h-8 w-8 bg-[#263238] text-white rounded-full flex items-center justify-center font-bold text-xs">
+                    {userEmail?.charAt(0).toUpperCase()}
+                </div>
+            </div>
 
-            {onLogout && (
-                 <button
-                    onClick={onLogout}
-                    className="bg-white text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors duration-200 text-xs font-bold border border-red-200"
-                    title="Sair"
-                >
-                    <i className="fas fa-sign-out-alt mr-2"></i>
-                    Sair
-                </button>
-            )}
+            {/* Status Badges */}
+            <div className="hidden lg:flex items-center space-x-4 border-l border-gray-200 pl-4">
+                <div className="flex items-center space-x-1.5 text-xs text-gray-500" title={`Status do Realtime: ${realtimeStatus}`}>
+                    <div className="relative flex h-2 w-2">
+                        {realtimeStatus === 'SUBSCRIBED' && <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${badge.color} opacity-75`}></span>}
+                        <span className={`relative inline-flex rounded-full h-2 w-2 ${badge.color}`}></span>
+                    </div>
+                    <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-600 font-semibold' : 'text-gray-400'}>{badge.label}</span>
+                </div>
+                <span className="text-xs text-gray-400 font-mono">v{metadata?.version || 'N/A'}</span>
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center space-x-2 border-l border-gray-200 pl-4">
+                {onNewUserClick && (
+                    <button 
+                    onClick={onNewUserClick}
+                    className="bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700 transition-colors duration-200 text-xs font-bold shadow-sm flex items-center gap-2"
+                    >
+                    <i className="fas fa-plus"></i>
+                    <span className="hidden sm:inline">Novo Usuário</span>
+                    </button>
+                )}
+
+                {onNavigateToDashboard && (
+                    <button
+                    onClick={onNavigateToDashboard}
+                    className="bg-white text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-50 hover:text-[#263238] transition-colors duration-200 text-xs font-bold border border-gray-200"
+                    title="Voltar para o Dashboard"
+                    >
+                    <i className="fas fa-arrow-left mr-2"></i>
+                    App
+                    </button>
+                )}
+
+                {onLogout && (
+                    <button
+                        onClick={onLogout}
+                        className="bg-white text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50 hover:text-red-700 transition-colors duration-200 text-xs font-bold border border-red-200"
+                        title="Sair"
+                    >
+                        <i className="fas fa-sign-out-alt"></i>
+                    </button>
+                )}
+            </div>
           </div>
         </div>
       </header>
@@ -231,6 +234,17 @@ export function Header({
                 className="hidden lg:inline bg-[#F39C12] text-white px-4 py-2 rounded-lg hover:bg-orange-500 transition-colors duration-200 text-sm font-bold shadow-md shadow-orange-100"
             >
                 Planos
+            </button>
+          )}
+
+          {isAdmin && onNavigateToAdmin && (
+             <button
+              onClick={onNavigateToAdmin}
+              className="bg-[#263238] text-white px-3 py-2 rounded-lg hover:bg-gray-800 transition-colors duration-200 text-sm font-bold shadow-md flex items-center gap-2 border border-gray-600"
+              title="Painel Administrativo"
+            >
+              <i className="fas fa-user-shield"></i>
+               <span>Admin</span>
             </button>
           )}
 
