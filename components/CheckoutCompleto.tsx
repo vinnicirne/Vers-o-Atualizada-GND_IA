@@ -341,14 +341,24 @@ export default function CheckoutCompleto({
         });
         
         const data = await res.json();
+        console.log(`[CheckoutCompleto] Polling para ${transactionId} retornou:`, data.status);
+
+        // Mercado Pago retorna 'approved', Asaas pode retornar 'CONFIRMED', 'RECEIVED'
         if (res.ok && ['approved', 'CONFIRMED', 'RECEIVED'].includes(data.status)) {
           clearInterval(pollInterval.current);
           onSuccess();
+        } else if (!res.ok) {
+            // Se o polling retornar erro do servidor, loga e interrompe
+            console.error(`[CheckoutCompleto] Polling recebeu erro do servidor: ${data.error || res.statusText}`);
+            setError(`Erro ao verificar pagamento: ${data.error || res.statusText}`);
+            clearInterval(pollInterval.current);
+            // Optionally, call onError or show specific UI
         }
       } catch (e) {
-        console.error("Polling error:", e);
+        console.error("[CheckoutCompleto] Polling error:", e);
+        // Não para o polling em erro de rede, apenas tenta novamente
       }
-    }, 5000);
+    }, 5000); // Poll a cada 5 segundos
   };
 
   // --- Geração de Pix (MP) ---
@@ -504,17 +514,18 @@ export default function CheckoutCompleto({
             console.log("[MP SDK - Tokenização] Dados do cartão para createCardToken:", cardTokenData);
 
             const mpTokenResponse = await new Promise((resolve, reject) => {
-                // CORREÇÃO: Usar mpSDK.current.cardToken.create para SDK v2
                 mpSDK.current.cardToken.create(cardTokenData, (status: number, response: any) => {
                     console.log("[MP SDK - Tokenização] createCardToken callback - Status:", status, "Response:", JSON.stringify(response));
                     if (status === 200 || status === 201) {
-                        if (!response || !response.id) { // Apenas 'id' é essencial para o token
+                        if (!response || !response.id) { 
                             console.error("[MP SDK - Tokenização] Resposta de tokenização bem-sucedida, mas ID do token ausente:", response);
                             return reject(new Error("Erro na tokenização: ID do token do cartão ausente na resposta."));
                         }
                         resolve(response);
                     } else {
-                        reject(new Error(response.message || JSON.stringify(response) || `Erro MP SDK desconhecido: ${status}`));
+                        // Se for erro, tenta extrair mensagem ou stringify
+                        const errorMessage = response.message || JSON.stringify(response) || `Erro MP SDK desconhecido: ${status}`;
+                        reject(new Error(errorMessage));
                     }
                 });
             });
@@ -533,11 +544,12 @@ export default function CheckoutCompleto({
             let payment_method_id = null;
             let issuer_id = null;
 
-            if (paymentMethodsResponse && paymentMethodsResponse.length > 0) {
+            if (paymentMethodsResponse && paymentMethodsResponse.results && paymentMethodsResponse.results.length > 0) {
                 // Pega o primeiro método de pagamento compatível
-                payment_method_id = paymentMethodsResponse[0].id;
+                payment_method_id = paymentMethodsResponse.results[0].id;
 
                 // Tenta obter o issuer_id, se disponível (pode não ser necessário dependendo do gateway)
+                // MP SDK v2 getIssuers é um método Promise-based, não callback-based
                 const issuers = await mpSDK.current.getIssuers(payment_method_id, cardBin);
                 if (issuers && issuers.length > 0) {
                     issuer_id = issuers[0].id;

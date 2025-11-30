@@ -40,7 +40,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
       });
       setNews(newsList);
       setTotalNews(count);
-    } catch (err: any) {
+    } catch (err: any) { // CORRIGIDO: Adicionado (err: any) e a chave de abertura
       setError(err.message || 'Falha ao carregar notícias.');
     } finally {
       setLoading(false);

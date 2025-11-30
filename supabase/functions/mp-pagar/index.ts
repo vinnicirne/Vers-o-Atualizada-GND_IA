@@ -70,25 +70,84 @@ serve(async (req) => {
     console.log("[mp-pagar] Token do cartão recebido (para depuração):", reqJson.token ? "Presente" : "Ausente", reqJson.token);
 
 
-    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
+    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING COM FALLBACK) ---
     if (reqJson.check_status_id) {
-        console.log(`[mp-pagar] Verificando status para ID: ${reqJson.check_status_id}`);
+        const externalId = reqJson.check_status_id;
+        console.log(`[mp-pagar] Verificando status para ID: ${externalId}`);
+        let currentDbStatus = 'pending';
+
+        // 1. Busca status no DB local
         const { data: tx, error: txError } = await supabaseAdmin
             .from("transactions")
-            .select("status")
-            .or(`external_id.eq.${reqJson.check_status_id},id.eq.${reqJson.check_status_id}`)
+            .select("status, usuario_id, metadata, valor")
+            .eq("external_id", externalId)
             .single();
         
         if (txError && txError.code !== 'PGRST116') { // PGRST116 = no rows found
              console.error(`[mp-pagar] Erro ao buscar transação para polling: ${txError.message}`);
              return new Response(JSON.stringify({ error: `Database error during polling: ${txError.message}` }), { status: 500, headers: corsHeaders });
         }
-        
-        console.log(`[mp-pagar] Status da transação ${reqJson.check_status_id}: ${tx?.status || 'pending'}`);
-        return new Response(JSON.stringify({ status: tx?.status || 'pending' }), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+        if (tx) {
+            currentDbStatus = tx.status;
+            console.log(`[mp-pagar] Status da transação ${externalId} no DB: ${currentDbStatus}`);
+
+            // Se já aprovada, retorna
+            if (currentDbStatus === 'approved') {
+                return new Response(JSON.stringify({ status: 'approved' }), { status: 200, headers: corsHeaders });
+            }
+        } else {
+            console.warn(`[mp-pagar] Transação ${externalId} NÃO encontrada no DB para polling.`)
+        }
+
+        // 2. Se não estiver aprovada (ou não encontrada), consulta a API do Mercado Pago diretamente
+        console.log(`[mp-pagar] Transação ainda pendente no DB ou não encontrada. Consultando API do Mercado Pago para ${externalId}...`);
+        const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${externalId}`, {
+            headers: { "Authorization": `Bearer ${mpAccessToken}` }
         });
+        const paymentInfo = await mpRes.json();
+        console.log(`[mp-pagar] Resposta da API do MP para ${externalId}: ${JSON.stringify(paymentInfo)}`);
+
+        if (mpRes.ok && paymentInfo.status === 'approved') {
+            console.log(`[mp-pagar] API do MP confirmou pagamento ${externalId} como "approved". Atualizando DB e liberando benefícios.`);
+            
+            // 3. Atualiza DB e libera benefícios (se encontrado no DB)
+            if (tx) {
+                const { error: updateError } = await supabaseAdmin
+                    .from("transactions")
+                    .update({ status: 'approved', metadata: { ...tx.metadata, mp_status_polled: paymentInfo.status } })
+                    .eq("id", tx.id);
+                
+                if (updateError) {
+                    console.error(`[mp-pagar] Erro ao atualizar status DB no fallback polling: ${updateError.message}`);
+                    return new Response(JSON.stringify({ error: `DB update error in fallback polling: ${updateError.message}` }), { status: 500, headers: corsHeaders });
+                }
+
+                // Libera benefícios
+                const { data: userData, error: userError } = await supabaseAdmin
+                    .from("app_users")
+                    .select("referred_by")
+                    .eq("id", tx.usuario_id)
+                    .single();
+                if (userError) console.warn(`[mp-pagar] Erro ao buscar dados do usuário ${tx.usuario_id} (referido) para benefícios no polling: ${userError.message}`);
+                
+                await releaseBenefits(
+                    supabaseAdmin,
+                    tx.usuario_id,
+                    tx.metadata?.item_type,
+                    tx.metadata?.item_id,
+                    Number(tx.valor), // Usar tx.valor, pois é o valor da transação no DB
+                    userData?.referred_by
+                );
+            } else {
+                console.warn(`[mp-pagar] Pagamento ${externalId} aprovado pelo MP, mas transação NÃO ENCONTRADA no DB. Benefícios NÃO liberados via polling.`);
+            }
+
+            return new Response(JSON.stringify({ status: 'approved' }), { status: 200, headers: corsHeaders });
+        } else {
+            console.log(`[mp-pagar] Pagamento ${externalId} ainda não aprovado pelo MP ou erro na API. Status MP: ${paymentInfo.status || 'N/A'}`);
+            return new Response(JSON.stringify({ status: paymentInfo.status || 'pending' }), { status: 200, headers: corsHeaders });
+        }
     }
 
     // --- MODO 2: GERAÇÃO DE PAGAMENTO ---

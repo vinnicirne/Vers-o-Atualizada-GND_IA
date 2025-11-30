@@ -447,7 +447,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         `}
                      >
                         {!isLocked && (
-                            <div className="absolute top-2 left-2 bg-black/60 text-xs text-gray-400 px-2 py-0.5 rounded border border-gray-700 backdrop-blur-sm group-hover:bg-black/80 transition-colors flex items-center">
+                            <div className="absolute top-2 left-2 bg-black/60 text-xs text-gray-400 px-2 py-0.5 rounded border border-gray-800 backdrop-blur-sm group-hover:bg-black/80 transition-colors flex items-center">
                                 <i className="fas fa-coins text-yellow-500 mr-1 text-[10px]"></i>
                                 {cost}
                             </div>
