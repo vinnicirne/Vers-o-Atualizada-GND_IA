@@ -70,7 +70,7 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups';
 
 export interface AllowedDomain {
   id: string;
@@ -206,6 +206,29 @@ export interface N8nConfig {
   webhookUrl: string;
   autoSend: boolean; // Se true, envia automaticamente após gerar
   isConnected: boolean;
+}
+
+// --- POPUP SYSTEM ---
+export interface Popup {
+  id: string;
+  title: string;
+  content: string;
+  type: 'text' | 'image' | 'video';
+  media_url?: string;
+  style: {
+    background_color: string;
+    text_color: string;
+    button_color: string;
+    button_text_color: string;
+  };
+  trigger_settings: {
+    delay: number; // segundos
+    frequency: 'once' | 'always' | 'daily';
+    button_link?: string; // Link do botão de ação
+    button_text?: string; // Texto do botão
+  };
+  is_active: boolean;
+  created_at?: string;
 }
 
 // --- DEVELOPER API ---

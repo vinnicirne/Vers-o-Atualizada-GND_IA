@@ -14,6 +14,7 @@ import { CreateUserModal } from '../../components/admin/CreateUserModal';
 import { PlansManager } from '../../components/admin/PlansManager'; 
 import { SecurityManager } from '../../components/admin/SecurityManager'; 
 import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; 
+import { PopupManager } from '../../components/admin/PopupManager'; // Importar PopupManager
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -147,6 +148,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
+      case 'popups': 
+        return <PopupManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
       case 'security': 

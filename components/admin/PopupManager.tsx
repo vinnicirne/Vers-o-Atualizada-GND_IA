@@ -1,0 +1,317 @@
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { getPopups, createPopup, updatePopup, deletePopup } from '../../services/adminService';
+import { Popup } from '../../types';
+import { Toast } from './Toast';
+import { useUser } from '../../contexts/UserContext';
+
+const DEFAULT_POPUP: Omit<Popup, 'id' | 'created_at'> = {
+    title: '',
+    content: '',
+    type: 'text',
+    media_url: '',
+    style: {
+        background_color: '#ffffff',
+        text_color: '#263238',
+        button_color: '#10B981',
+        button_text_color: '#ffffff'
+    },
+    trigger_settings: {
+        delay: 5,
+        frequency: 'once',
+        button_text: 'Fechar',
+        button_link: ''
+    },
+    is_active: true
+};
+
+export function PopupManager() {
+    const { user: adminUser } = useUser();
+    const [popups, setPopups] = useState<Popup[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [editingPopup, setEditingPopup] = useState<Popup | null>(null);
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [formData, setFormData] = useState(DEFAULT_POPUP);
+    const [saving, setSaving] = useState(false);
+
+    const fetchPopups = useCallback(async () => {
+        setLoading(true);
+        try {
+            const data = await getPopups();
+            setPopups(data);
+        } catch (error: any) {
+            setToast({ message: "Erro ao carregar popups. Execute o SQL na aba Updates.", type: 'error' });
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchPopups();
+    }, [fetchPopups]);
+
+    const handleCreateNew = () => {
+        setEditingPopup(null);
+        setFormData(DEFAULT_POPUP);
+        setIsFormOpen(true);
+    };
+
+    const handleEdit = (popup: Popup) => {
+        setEditingPopup(popup);
+        setFormData({
+            title: popup.title,
+            content: popup.content,
+            type: popup.type,
+            media_url: popup.media_url,
+            style: popup.style,
+            trigger_settings: popup.trigger_settings,
+            is_active: popup.is_active
+        });
+        setIsFormOpen(true);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!window.confirm("Tem certeza que deseja excluir este popup?")) return;
+        if (!adminUser) return;
+
+        try {
+            await deletePopup(id, adminUser.id);
+            setToast({ message: "Popup excluído com sucesso!", type: 'success' });
+            fetchPopups();
+        } catch (error: any) {
+            setToast({ message: "Erro ao excluir popup.", type: 'error' });
+        }
+    };
+
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!adminUser) return;
+
+        // Basic Validation
+        if (!formData.title) {
+            setToast({ message: "Título é obrigatório.", type: 'error' });
+            return;
+        }
+        if ((formData.type === 'image' || formData.type === 'video') && !formData.media_url) {
+            setToast({ message: "URL da mídia é obrigatória para Imagem/Vídeo.", type: 'error' });
+            return;
+        }
+
+        setSaving(true);
+        try {
+            if (editingPopup) {
+                await updatePopup(editingPopup.id, formData, adminUser.id);
+                setToast({ message: "Popup atualizado com sucesso!", type: 'success' });
+            } else {
+                await createPopup(formData, adminUser.id);
+                setToast({ message: "Popup criado com sucesso!", type: 'success' });
+            }
+            setIsFormOpen(false);
+            fetchPopups();
+        } catch (error: any) {
+            setToast({ message: `Erro ao salvar: ${error.message}`, type: 'error' });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const handleChange = (field: string, value: any) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleNestedChange = (parent: 'style' | 'trigger_settings', field: string, value: any) => {
+        setFormData(prev => ({
+            ...prev,
+            [parent]: { ...prev[parent], [field]: value }
+        }));
+    };
+
+    return (
+        <div className="space-y-6">
+            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
+            {!isFormOpen ? (
+                // LIST VIEW
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-center mb-6">
+                        <div>
+                            <h2 className="text-2xl font-bold text-[#263238]">Gerenciador de Popups</h2>
+                            <p className="text-sm text-gray-500">Crie avisos, promoções ou mensagens de boas-vindas.</p>
+                        </div>
+                        <button
+                            onClick={handleCreateNew}
+                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-bold flex items-center gap-2"
+                        >
+                            <i className="fas fa-plus"></i> Novo Popup
+                        </button>
+                    </div>
+
+                    {loading ? (
+                        <div className="text-center py-12"><i className="fas fa-spinner fa-spin text-2xl text-green-600"></i></div>
+                    ) : popups.length === 0 ? (
+                        <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-gray-500">
+                            Nenhum popup configurado.
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {popups.map(popup => (
+                                <div key={popup.id} className={`border rounded-xl p-4 transition ${popup.is_active ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-70'}`}>
+                                    <div className="flex justify-between items-start mb-3">
+                                        <span className={`text-xs font-bold px-2 py-1 rounded capitalize ${popup.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                                            {popup.is_active ? 'Ativo' : 'Inativo'}
+                                        </span>
+                                        <div className="flex gap-2">
+                                            <button onClick={() => handleEdit(popup)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><i className="fas fa-edit"></i></button>
+                                            <button onClick={() => handleDelete(popup.id)} className="text-red-600 hover:bg-red-50 p-1 rounded"><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                    <h3 className="font-bold text-gray-800 mb-1 truncate">{popup.title}</h3>
+                                    <p className="text-xs text-gray-500 mb-3 flex items-center gap-2">
+                                        <i className={`fas ${popup.type === 'video' ? 'fa-video' : popup.type === 'image' ? 'fa-image' : 'fa-align-left'}`}></i>
+                                        {popup.type.toUpperCase()} • {popup.trigger_settings.frequency === 'once' ? 'Uma vez' : popup.trigger_settings.frequency === 'always' ? 'Sempre' : 'Diário'}
+                                    </p>
+                                    <div className="text-xs text-gray-400 truncate">
+                                        Delay: {popup.trigger_settings.delay}s
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                // FORM VIEW
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 max-w-4xl mx-auto">
+                    <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                        <h2 className="text-xl font-bold text-[#263238]">{editingPopup ? 'Editar Popup' : 'Novo Popup'}</h2>
+                        <button onClick={() => setIsFormOpen(false)} className="text-gray-500 hover:text-gray-700"><i className="fas fa-times text-xl"></i></button>
+                    </div>
+
+                    <form onSubmit={handleSave} className="space-y-6">
+                        
+                        {/* Conteúdo */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider">Conteúdo</h3>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Título</label>
+                                    <input type="text" value={formData.title} onChange={e => handleChange('title', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm focus:ring-green-500 focus:border-green-500" required />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Tipo de Mídia</label>
+                                    <select value={formData.type} onChange={e => handleChange('type', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm focus:ring-green-500 focus:border-green-500">
+                                        <option value="text">Apenas Texto</option>
+                                        <option value="image">Imagem</option>
+                                        <option value="video">Vídeo (YouTube/MP4)</option>
+                                    </select>
+                                </div>
+                                {(formData.type === 'image' || formData.type === 'video') && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">URL da Mídia</label>
+                                        <input type="text" value={formData.media_url} onChange={e => handleChange('media_url', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm focus:ring-green-500 focus:border-green-500" placeholder="https://..." />
+                                    </div>
+                                )}
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Texto / Descrição</label>
+                                    <textarea value={formData.content} onChange={e => handleChange('content', e.target.value)} rows={4} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm focus:ring-green-500 focus:border-green-500" />
+                                </div>
+                            </div>
+
+                            {/* Configuração Visual e Gatilhos */}
+                            <div className="space-y-6">
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Aparência</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Fundo</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="color" value={formData.style.background_color} onChange={e => handleNestedChange('style', 'background_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                <input type="text" value={formData.style.background_color} onChange={e => handleNestedChange('style', 'background_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Texto</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="color" value={formData.style.text_color} onChange={e => handleNestedChange('style', 'text_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                <input type="text" value={formData.style.text_color} onChange={e => handleNestedChange('style', 'text_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Botão</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="color" value={formData.style.button_color} onChange={e => handleNestedChange('style', 'button_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                <input type="text" value={formData.style.button_color} onChange={e => handleNestedChange('style', 'button_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs text-gray-500 mb-1">Texto Botão</label>
+                                            <div className="flex items-center gap-2">
+                                                <input type="color" value={formData.style.button_text_color} onChange={e => handleNestedChange('style', 'button_text_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                <input type="text" value={formData.style.button_text_color} onChange={e => handleNestedChange('style', 'button_text_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Comportamento</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Delay (segundos)</label>
+                                            <input type="number" value={formData.trigger_settings.delay} onChange={e => handleNestedChange('trigger_settings', 'delay', parseInt(e.target.value))} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Frequência</label>
+                                            <select value={formData.trigger_settings.frequency} onChange={e => handleNestedChange('trigger_settings', 'frequency', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm">
+                                                <option value="once">Apenas uma vez (Cookie)</option>
+                                                <option value="daily">Uma vez por dia</option>
+                                                <option value="always">Sempre que atualizar</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Ação (Botão)</h3>
+                                    <div className="grid grid-cols-1 gap-4">
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Texto do Botão</label>
+                                            <input type="text" value={formData.trigger_settings.button_text} onChange={e => handleNestedChange('trigger_settings', 'button_text', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-gray-500 mb-1">Link de Destino (Opcional)</label>
+                                            <input type="text" value={formData.trigger_settings.button_link} onChange={e => handleNestedChange('trigger_settings', 'button_link', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm" placeholder="Deixe vazio para apenas fechar" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer Actions */}
+                        <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+                            <label className="flex items-center cursor-pointer">
+                                <div className="relative">
+                                    <input type="checkbox" className="sr-only" checked={formData.is_active} onChange={e => handleChange('is_active', e.target.checked)} />
+                                    <div className={`block w-10 h-6 rounded-full ${formData.is_active ? 'bg-green-500' : 'bg-gray-300'}`}></div>
+                                    <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition ${formData.is_active ? 'transform translate-x-4' : ''}`}></div>
+                                </div>
+                                <div className="ml-3 text-sm font-medium text-gray-700">
+                                    {formData.is_active ? 'Ativo (Publicado)' : 'Rascunho (Inativo)'}
+                                </div>
+                            </label>
+
+                            <div className="flex gap-3">
+                                <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 font-bold transition">
+                                    Cancelar
+                                </button>
+                                <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow transition disabled:opacity-50">
+                                    {saving ? 'Salvando...' : 'Salvar Popup'}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+}

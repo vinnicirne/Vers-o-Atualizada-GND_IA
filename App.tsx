@@ -13,6 +13,7 @@ const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
 
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; // Import GA4 init
+import { PopupRenderer } from './components/PopupRenderer'; // Import Popup Renderer
 
 // Componente de Loading Simples
 const SimpleLoader = () => (
@@ -189,6 +190,9 @@ function AppContent() {
   // ROTEAMENTO PRINCIPAL
   return (
     <Suspense fallback={<SimpleLoader />}>
+        {/* Sistema Global de Popups */}
+        <PopupRenderer />
+
         {currentPage === 'login' && (
             <div className="relative">
                 {/* Botão para voltar ao modo visitante */}

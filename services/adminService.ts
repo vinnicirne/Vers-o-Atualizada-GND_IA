@@ -1,7 +1,7 @@
 
 import { api } from './api';
 import { logger } from './loggerService';
-import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog } from '../types';
+import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup } from '../types';
 import { GUEST_ID } from '../constants';
 
 // Helper for client-side pagination since API might return all data
@@ -173,6 +173,51 @@ const setConfig = async <T>(key: string, value: T, adminId: string) => {
     } else {
         await api.insert('system_config', { key, value, updated_by: adminId, updated_at: new Date().toISOString() });
     }
+};
+
+// --- POPUPS SYSTEM ---
+
+export const getPopups = async (onlyActive = false): Promise<Popup[]> => {
+    const filters = onlyActive ? { is_active: true } : {};
+    const { data, error } = await api.select('system_popups', filters);
+    
+    if (error) {
+        // Conversão segura do erro para string
+        const errorMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
+        
+        // Se a tabela não existir (ainda não foi criada via SQL), retorna array vazio para não quebrar a UI
+        // Tratamento para diversos formatos de erro do PostgREST/Supabase
+        if(
+            errorMsg.includes('does not exist') || 
+            errorMsg.includes('404') || 
+            errorMsg.includes('Could not find the table') ||
+            errorMsg.includes('relation "public.system_popups" does not exist')
+        ) {
+            console.warn("Tabela system_popups não encontrada. Retornando lista vazia.");
+            return [];
+        }
+        throw new Error(errorMsg);
+    }
+    
+    return data || [];
+};
+
+export const createPopup = async (popup: Omit<Popup, 'id' | 'created_at'>, adminId: string) => {
+    const { error } = await api.insert('system_popups', popup);
+    if (error) throw new Error(error);
+    logger.info(adminId, 'Sistema', 'create_popup', { title: popup.title });
+};
+
+export const updatePopup = async (id: string, updates: Partial<Popup>, adminId: string) => {
+    const { error } = await api.update('system_popups', updates, { id });
+    if (error) throw new Error(error);
+    logger.info(adminId, 'Sistema', 'update_popup', { id, updates });
+};
+
+export const deletePopup = async (id: string, adminId: string) => {
+    const { error } = await api.delete('system_popups', { id });
+    if (error) throw new Error(error);
+    logger.warn(adminId, 'Sistema', 'delete_popup', { id });
 };
 
 // --- USERS ---
