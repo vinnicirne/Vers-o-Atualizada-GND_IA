@@ -166,14 +166,58 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Dados incompletos." }), { status: 400, headers: corsHeaders });
     }
 
-    // 1. Busca Usuário
+    // 1. Busca Usuário e Plano Atual
     const { data: userData } = await supabaseAdmin
       .from("app_users")
-      .select("email, referred_by, full_name, mercadopago_customer_id")
+      .select("email, referred_by, full_name, mercadopago_customer_id, plan")
       .eq("id", authUser.id)
       .single();
 
     if (!userData) return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
+
+    // === VALIDAÇÃO DE SEGURANÇA DE PREÇO (Server-Side Price Validation) ===
+    console.log("[mp-pagar] Validando preço para evitar manipulação...");
+    
+    // Busca planos e configs do banco
+    const { data: configRows } = await supabaseAdmin
+        .from("system_config")
+        .select("key, value")
+        .in("key", ["all_plans"]);
+    
+    const allPlans = configRows?.find((r: any) => r.key === "all_plans")?.value || [];
+    let expectedPrice = 0;
+    let isValidPrice = false;
+
+    if (item_type === "plan") {
+        const targetPlan = allPlans.find((p: any) => p.id === item_id);
+        if (targetPlan) {
+            expectedPrice = targetPlan.price;
+            // Permite pequena margem de erro float (0.10)
+            if (Math.abs(expectedPrice - Number(amount)) < 0.1) isValidPrice = true;
+        } else {
+            console.error(`[mp-pagar] Plano ${item_id} não encontrado no banco.`);
+        }
+    } else if (item_type === "credits") {
+        // Para créditos, o item_id é a quantidade
+        const quantity = Number(item_id);
+        // O preço do crédito depende do plano ATUAL do usuário
+        const userPlanId = userData.plan || 'free';
+        const userPlanConfig = allPlans.find((p: any) => p.id === userPlanId) || allPlans.find((p: any) => p.id === 'free');
+        
+        if (userPlanConfig && quantity > 0) {
+            const unitPrice = userPlanConfig.expressCreditPrice || 1.0;
+            expectedPrice = quantity * unitPrice;
+            if (Math.abs(expectedPrice - Number(amount)) < 0.1) isValidPrice = true;
+        }
+    }
+
+    if (!isValidPrice) {
+        console.error(`[mp-pagar] ALERTA DE SEGURANÇA: Preço inválido. Esperado: ${expectedPrice}, Recebido: ${amount}. Bloqueando.`);
+        return new Response(JSON.stringify({ 
+            error: "Erro de validação de valor. O preço enviado não corresponde ao preço atual do item. Atualize a página e tente novamente." 
+        }), { status: 400, headers: corsHeaders });
+    }
+    // === FIM VALIDAÇÃO ===
 
     const userEmail = userData.email;
     const referrerId = userData.referred_by;
@@ -222,9 +266,6 @@ serve(async (req) => {
     // --- FLUXO DE ASSINATURA (PLANOS) ---
     if (item_type === 'plan') {
         console.log(`[mp-pagar] Iniciando fluxo de assinatura (Preapproval) para plano ${item_id}`);
-        
-        // Para assinar com cartão transparente, precisamos associar o cartão ao cliente ou usar card_token_id no preapproval
-        // A API de Preapproval aceita `card_token_id`.
         
         const preapprovalPayload = {
             payer_email: userEmail,
@@ -306,8 +347,6 @@ serve(async (req) => {
     }
 
     // --- FLUXO DE PAGAMENTO ÚNICO (CRÉDITOS / PIX) ---
-    // (Existing Logic for /v1/payments)
-    
     const mpPayload: any = {
         transaction_amount: Number(amount),
         description: `Compra GDN_IA - ${item_type} (${item_id})`,
