@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
@@ -187,7 +186,7 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
                             wpStatus?.success 
                             ? 'bg-green-100 text-green-600 border-green-200'
-                            : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                            : 'bg-white text-gray-600 border-gray-300 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                         } disabled:opacity-50`}
                    >
                        {postingToWp ? (
