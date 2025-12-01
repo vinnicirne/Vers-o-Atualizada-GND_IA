@@ -403,9 +403,17 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
 
       <div className="flex flex-1 overflow-hidden relative">
         
+        {/* SIDEBAR OVERLAY (Mobile) */}
+        {isSidebarOpen && (
+            <div 
+                className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
+                onClick={() => setSidebarOpen(false)}
+            ></div>
+        )}
+
         {/* SIDEBAR */}
         <aside className={`
-            fixed md:relative z-30 w-64 h-full bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none
+            fixed top-0 bottom-0 left-0 z-50 w-64 h-full bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out shadow-2xl md:shadow-none md:relative
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
             {/* ... (Mobile Header) ... */}
@@ -416,7 +424,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                 </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
                 {CREATOR_SUITE_MODES.map((svc) => {
                     const isSelected = currentMode === svc.value;
                     const isLocked = (isGuest && !GUEST_ALLOWED_MODES.includes(svc.value)) || (!isGuest && !hasAccessToService(svc.value));
@@ -454,72 +462,72 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
 
             {/* Menu Extra (Mobile Only) */}
             {user && (
-                <div className="p-3 border-t border-gray-200 bg-gray-50 space-y-2 md:hidden">
+                <div className="p-3 border-t border-gray-200 bg-white space-y-2 md:hidden">
                     <div className="px-2 py-1">
-                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Minha Conta</span>
+                        <span className="text-[10px] font-extrabold text-gray-900 uppercase tracking-widest">Minha Conta</span>
                     </div>
                     
                     <button
                         onClick={() => { setShowPlansModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
                     >
                         <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-[#F39C12] border border-gray-200 group-hover:border-[#F39C12]">
                             <i className="fas fa-coins text-xs"></i>
                         </div>
                         <div className="flex flex-col items-start">
-                            <span className="text-sm font-semibold">Planos & Créditos</span>
-                            <span className="text-[10px] text-gray-500">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
+                            <span className="text-sm font-bold">Planos & Créditos</span>
+                            <span className="text-[10px] text-gray-500 font-medium">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
                         </div>
                     </button>
 
                     <button
                         onClick={() => { setShowAffiliateModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
                     >
                         <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-yellow-600 border border-gray-200 group-hover:border-yellow-600">
                             <i className="fas fa-handshake text-xs"></i>
                         </div>
-                        <span className="text-sm font-semibold">Afiliados</span>
+                        <span className="text-sm font-bold">Afiliados</span>
                     </button>
 
                     <button
                         onClick={() => { setShowHistoryModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
                     >
                         <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-gray-600 border border-gray-200 group-hover:border-gray-600">
                             <i className="fas fa-history text-xs"></i>
                         </div>
-                        <span className="text-sm font-semibold">Meu Histórico</span>
+                        <span className="text-sm font-bold">Meu Histórico</span>
                     </button>
 
                     <button
                         onClick={() => { setShowIntegrationsModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
                     >
                         <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-pink-600 border border-gray-200 group-hover:border-pink-600">
                             <i className="fas fa-plug text-xs"></i>
                         </div>
-                        <span className="text-sm font-semibold">Integrações</span>
+                        <span className="text-sm font-bold">Integrações</span>
                     </button>
 
                     <button
                         onClick={() => { setShowManualModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
                     >
                         <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-blue-600 border border-gray-200 group-hover:border-blue-600">
                             <i className="fas fa-book text-xs"></i>
                         </div>
-                        <span className="text-sm font-semibold">Ajuda / Manual</span>
+                        <span className="text-sm font-bold">Ajuda / Manual</span>
                     </button>
 
                     <button
                         onClick={() => { if(onNavigate) onNavigate('feedback'); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
                     >
                         <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-green-600 border border-gray-300 group-hover:border-green-600">
                             <i className="fas fa-comment-dots text-xs"></i>
                         </div>
-                        <span className="text-sm font-semibold">Mural do Cliente</span>
+                        <span className="text-sm font-bold">Mural do Cliente</span>
                     </button>
                 </div>
             )}
@@ -534,13 +542,6 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         <i className="fas fa-comment-dots"></i> Deixe seu Depoimento
                     </button>
                 </div>
-            )}
-
-            {isSidebarOpen && (
-                <div 
-                    className="fixed inset-0 bg-black/50 z-[-1] md:hidden"
-                    onClick={() => setSidebarOpen(false)}
-                ></div>
             )}
         </aside>
 

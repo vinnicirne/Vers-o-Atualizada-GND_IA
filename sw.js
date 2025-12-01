@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'gdn-ia-v1';
+const CACHE_NAME = 'gdn-ia-v2';
 const urlsToCache = [
   '/',
   '/index.html',

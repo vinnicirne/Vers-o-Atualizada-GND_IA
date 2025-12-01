@@ -47,6 +47,27 @@ const AFFILIATE_TEMPLATE: Omit<Popup, 'id' | 'created_at'> = {
     is_active: true
 };
 
+const FEEDBACK_TEMPLATE: Omit<Popup, 'id' | 'created_at'> = {
+    title: 'Sua opinião vale muito!',
+    content: 'Estamos construindo o GDN_IA com a ajuda da comunidade. Conte o que você está achando e ajude a priorizar as próximas features no nosso Mural do Cliente.',
+    type: 'image',
+    media_url: 'https://cdn-icons-png.flaticon.com/512/1484/1484560.png', // Ícone de Estrela/Feedback
+    style: {
+        background_color: '#ffffff',
+        text_color: '#263238',
+        button_color: '#7C3AED', // Purple 600
+        button_text_color: '#ffffff',
+        theme: 'default'
+    },
+    trigger_settings: {
+        delay: 15, // Espera um pouco mais
+        frequency: 'once',
+        button_text: 'Avaliar Agora',
+        button_link: '/?page=feedback' // Redireciona para página de feedback
+    },
+    is_active: true
+};
+
 export function PopupManager() {
     const { user: adminUser } = useUser();
     const [popups, setPopups] = useState<Popup[]>([]);
@@ -79,11 +100,11 @@ export function PopupManager() {
         setIsFormOpen(true);
     };
 
-    const handleLoadTemplate = () => {
+    const handleLoadTemplate = (template: typeof DEFAULT_POPUP, name: string) => {
         setEditingPopup(null);
-        setFormData(AFFILIATE_TEMPLATE);
+        setFormData(template);
         setIsFormOpen(true);
-        setToast({ message: "Template 'Afiliados Gold' carregado! Salve para ativar.", type: 'success' });
+        setToast({ message: `Template '${name}' carregado! Salve para ativar.`, type: 'success' });
     };
 
     const handleEdit = (popup: Popup) => {
@@ -170,12 +191,18 @@ export function PopupManager() {
                             <h2 className="text-2xl font-bold text-[#263238]">Gerenciador de Popups</h2>
                             <p className="text-sm text-gray-500">Crie avisos, promoções ou mensagens de boas-vindas.</p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                             <button
-                                onClick={handleLoadTemplate}
-                                className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-4 py-2 rounded-lg hover:bg-yellow-100 transition font-bold flex items-center gap-2 text-sm"
+                                onClick={() => handleLoadTemplate(AFFILIATE_TEMPLATE, 'Afiliados Gold')}
+                                className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-2 rounded-lg hover:bg-yellow-100 transition font-bold flex items-center gap-2 text-xs"
                             >
-                                <i className="fas fa-magic"></i> Carregar Template: Afiliados
+                                <i className="fas fa-hand-holding-dollar"></i> Template Afiliados
+                            </button>
+                            <button
+                                onClick={() => handleLoadTemplate(FEEDBACK_TEMPLATE, 'Convite Feedback')}
+                                className="bg-purple-50 text-purple-700 border border-purple-200 px-3 py-2 rounded-lg hover:bg-purple-100 transition font-bold flex items-center gap-2 text-xs"
+                            >
+                                <i className="fas fa-star"></i> Template Feedback
                             </button>
                             <button
                                 onClick={handleCreateNew}
@@ -343,7 +370,7 @@ export function PopupManager() {
                                         </div>
                                         <div>
                                             <label className="block text-xs font-bold text-gray-500 mb-1">Link de Destino (Opcional)</label>
-                                            <input type="text" value={formData.trigger_settings.button_link} onChange={e => handleNestedChange('trigger_settings', 'button_link', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm" placeholder="Deixe vazio para apenas fechar" />
+                                            <input type="text" value={formData.trigger_settings.button_link} onChange={e => handleNestedChange('trigger_settings', 'button_link', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm" placeholder="/?page=feedback ou https://..." />
                                         </div>
                                     </div>
                                 </div>

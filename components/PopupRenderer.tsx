@@ -73,20 +73,28 @@ export function PopupRenderer() {
         
         handleClose();
         
+        const link = activePopup.trigger_settings.button_link;
+
         // Check for specific internal action hooks
-        if (activePopup.trigger_settings.button_link === '/?open_affiliate=true') {
+        if (link === '/?open_affiliate=true') {
             if (user) {
                 setShowAffiliateModal(true);
             } else {
-                // If not logged in, redirect to login with query param to open modal later?
-                // For now, just let standard behavior handle it or ignore
                 window.location.href = '/?page=login'; 
             }
             return;
         }
         
-        if (activePopup.trigger_settings.button_link) {
-            window.open(activePopup.trigger_settings.button_link, '_blank');
+        if (link) {
+            // Handle Internal Routing (SPA style or reload with query params)
+            if (link.startsWith('/')) {
+                // If it's a query param route (like /?page=feedback), setting location.href works fine
+                // as App.tsx reads URLSearchParams on load/popstate.
+                window.location.href = link;
+            } else {
+                // External Link
+                window.open(link, '_blank');
+            }
         }
     };
 
