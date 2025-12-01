@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { UserRole } from '../types';
+import { NotificationBell } from './NotificationBell'; // Import
 
 interface HeaderProps {
   userEmail?: string;
@@ -91,6 +92,9 @@ export function Header({
                 </div>
             </div>
 
+            {/* Notification Bell */}
+            <NotificationBell />
+
             {/* Status Badges */}
             <div className="hidden lg:flex items-center space-x-4 border-l border-gray-200 pl-4">
                 <div className="flex items-center space-x-1.5 text-xs text-gray-500" title={`Status do Realtime: ${realtimeStatus}`}>
@@ -173,45 +177,51 @@ export function Header({
         {/* Right: Actions */}
         <div className="flex items-center space-x-3">
           
-          {isLoggedIn && onOpenIntegrations && (
-             <button
-                onClick={onOpenIntegrations}
-                className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
-                title="Integrações"
-            >
-                <i className="fas fa-plug text-sm"></i>
-            </button>
-          )}
+          {isLoggedIn && (
+              <>
+                {onOpenIntegrations && (
+                    <button
+                        onClick={onOpenIntegrations}
+                        className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
+                        title="Integrações"
+                    >
+                        <i className="fas fa-plug text-sm"></i>
+                    </button>
+                )}
 
-          {isLoggedIn && onOpenAffiliates && (
-             <button
-                onClick={onOpenAffiliates}
-                className="hidden md:flex bg-yellow-50 text-yellow-600 w-9 h-9 items-center justify-center rounded-full hover:bg-yellow-100 hover:text-yellow-700 transition-colors duration-200 border border-yellow-200 shadow-sm"
-                title="Afiliados"
-            >
-                <i className="fas fa-handshake text-sm"></i>
-            </button>
-          )}
+                {onOpenAffiliates && (
+                    <button
+                        onClick={onOpenAffiliates}
+                        className="hidden md:flex bg-yellow-50 text-yellow-600 w-9 h-9 items-center justify-center rounded-full hover:bg-yellow-100 hover:text-yellow-700 transition-colors duration-200 border border-yellow-200 shadow-sm"
+                        title="Afiliados"
+                    >
+                        <i className="fas fa-handshake text-sm"></i>
+                    </button>
+                )}
 
-          {isLoggedIn && onOpenHistory && (
-             <button
-                onClick={onOpenHistory}
-                className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
-                title="Histórico"
-            >
-                <i className="fas fa-history text-sm"></i>
-            </button>
-          )}
+                {onOpenHistory && (
+                    <button
+                        onClick={onOpenHistory}
+                        className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
+                        title="Histórico"
+                    >
+                        <i className="fas fa-history text-sm"></i>
+                    </button>
+                )}
 
-          {/* Botão de Ajuda */}
-          {onOpenManual && (
-            <button
-                onClick={onOpenManual}
-                className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
-                title="Manual"
-            >
-                <i className="fas fa-question text-sm"></i>
-            </button>
+                {onOpenManual && (
+                    <button
+                        onClick={onOpenManual}
+                        className="hidden md:flex bg-gray-100 text-gray-600 w-9 h-9 items-center justify-center rounded-full hover:bg-gray-200 hover:text-[#263238] transition-colors duration-200 border border-gray-200 shadow-sm"
+                        title="Manual"
+                    >
+                        <i className="fas fa-question text-sm"></i>
+                    </button>
+                )}
+
+                {/* NOTIFICATIONS */}
+                <NotificationBell />
+              </>
           )}
 
           {userCredits !== undefined && (

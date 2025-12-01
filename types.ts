@@ -262,3 +262,15 @@ export interface ApiKey {
   last_used_at?: string;
   status: 'active' | 'revoked';
 }
+
+// --- NOTIFICATION SYSTEM ---
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: boolean;
+  action_link?: string;
+  created_at: string;
+}

@@ -72,7 +72,6 @@ export interface Log {
   user_email?: string;
 }
 
-// Update AdminView to include 'feedbacks'
 export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks';
 
 export interface AllowedDomain {
@@ -186,7 +185,6 @@ export interface FeedbackData {
   comment: string;
 }
 
-// Nova interface para Feedbacks do Sistema (Depoimentos)
 export interface SystemFeedback {
   id: string;
   user_id: string;
@@ -250,4 +248,16 @@ export interface ApiKey {
   created_at: string;
   last_used_at?: string;
   status: 'active' | 'revoked';
+}
+
+// Notification System
+export interface AppNotification {
+  id: string;
+  user_id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  is_read: boolean;
+  action_link?: string;
+  created_at: string;
 }
