@@ -12,7 +12,7 @@ const paginate = (items: any[], page: number, limit: number) => {
   return items.slice(from, to);
 };
 
-// --- DOMAIN BLACKLIST ---
+// --- DOMAIN BLACKLIST (for quick client-side checks and as a baseline for backend) ---
 const DOMAIN_BLACKLIST = [
     'teste.com',
     'teste.com.br',
@@ -39,51 +39,35 @@ export const sendSystemNotification = async (
     adminId?: string
 ) => {
     try {
-        if (targetUserId === 'all') {
-            // Envio em Massa (Broadcast)
-            // 1. Busca todos os IDs de usuários ativos
-            const { data: users, error: usersError } = await api.select('app_users', { status: 'active' });
-            
-            if (usersError || !users) throw new Error("Erro ao buscar lista de usuários para envio em massa.");
-
-            if (users.length === 0) return { success: true, count: 0 };
-
-            // 2. Prepara o payload em lote
-            const notifications = users.map((u: any) => ({
-                user_id: u.id,
-                title,
-                message,
-                type,
-                action_link: actionLink || null,
-                is_read: false,
-                created_at: new Date().toISOString()
-            }));
-
-            // 3. Insere em lote (Supabase suporta insert de array)
-            // Nota: Se a lista for muito grande (>1000), ideal seria quebrar em chunks, mas para MVP está ok.
-            const { error } = await api.insert('notifications', notifications);
-            if (error) throw new Error(error);
-
-            logger.info(adminId || 'system', 'Sistema', 'send_broadcast_notification', { title, count: users.length });
-            return { success: true, count: users.length };
-
-        } else {
-            // Envio Individual
-            const { error } = await api.insert('notifications', {
-                user_id: targetUserId,
-                title,
-                message,
-                type,
-                action_link: actionLink || null,
-                is_read: false
-            });
-
-            if (error) throw new Error(error);
-            logger.info(adminId || 'system', 'Sistema', 'send_user_notification', { title, targetUserId });
-            return { success: true, count: 1 };
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error("Sessão inválida. Faça login novamente.");
         }
+
+        const payload = {
+            title,
+            message,
+            type,
+            targetUserId,
+            actionLink: actionLink || null,
+            adminId: adminId || 'system'
+        };
+
+        const { data, error } = await supabase.functions.invoke('broadcast-notification', {
+            body: payload,
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        if (error) throw new Error(error.message);
+        if (data.error) throw new Error(data.error);
+
+        logger.info(adminId || 'system', 'Sistema', `send_${targetUserId === 'all' ? 'broadcast' : 'user'}_notification`, { title, count: data.count || (targetUserId !== 'all' ? 1 : 0) });
+        return { success: true, count: data.count };
+        
     } catch (e: any) {
-        console.error("Erro ao enviar notificação:", e);
+        console.error("Erro ao enviar notificação (via proxy):", e);
         throw e;
     }
 };
@@ -361,7 +345,29 @@ export interface CreateUserPayload {
 }
 
 export const createUser = async (payload: CreateUserPayload, adminId: string) => {
-  throw new Error("Criação de usuário via Admin requer API direta, não suportada pelo proxy atual.");
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) {
+            throw new Error("Sessão inválida. Faça login novamente.");
+        }
+
+        const { data, error } = await supabase.functions.invoke('admin-user-create', {
+            body: payload,
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`
+            }
+        });
+
+        if (error) throw new Error(error.message);
+        if (data.error) throw new Error(data.error);
+
+        logger.info(adminId, 'Usuários', 'create_user_admin_proxy', { new_user_email: payload.email });
+        return data.user;
+
+    } catch (e: any) {
+        console.error("Erro ao criar usuário (via proxy):", e);
+        throw e;
+    }
 };
 
 // --- NEWS ---
@@ -516,7 +522,7 @@ export const getPaymentSettings = async (): Promise<PaymentSettings> => {
         packages: []
     };
     const saved = await getConfig<Partial<PaymentSettings>>('payment_settings', defaults);
-    return { ...defaults, ...saved, gateways: { ...defaults.gateways, ...(saved.gateways || {}) } };
+    return { ...defaults, ...saved, gateways: { ...defaults.gateways, ...(saved.gateways || {}) } } as PaymentSettings;
 };
 
 export const saveGatewaySettings = async (gateways: any, adminId: string) => {
@@ -595,20 +601,35 @@ export const updateSecuritySettings = async (settings: SecuritySettings, adminId
 
 export const isDomainAllowed = async (email: string): Promise<boolean> => {
   const domain = email.split('@')[1]?.toLowerCase();
-  if (!domain || DOMAIN_BLACKLIST.includes(domain)) return false;
-  
-  try {
-      const { data } = await api.select('allowed_domains', { domain });
-      if (data && data.length > 0) return true;
+  if (!domain || DOMAIN_BLACKLIST.includes(domain)) return false; // First, client-side blacklist check
 
-      const settings = await getSecuritySettings();
-      if (settings.validationMode === 'strict_allowlist') return false;
-      if (settings.validationMode === 'dns_validation') {
-          // Mock DNS check for frontend only environment
-          return true; 
+  try {
+      const { data: { session } } = await supabase.auth.getSession();
+      // Even if not logged in, we send a JWT. For anon users, it will be the anon key's JWT.
+      const jwt = session?.access_token || supabase.auth.session()?.access_token; // Fallback for anon access
+      
+      const { data, error } = await supabase.functions.invoke('check-domain-access', {
+          body: {
+              domain,
+          },
+          headers: {
+              'Authorization': `Bearer ${jwt}`
+          }
+      });
+
+      if (error) {
+          console.error("Erro na Edge Function check-domain-access:", error);
+          // Em caso de erro na Edge Function, falha seguro (não permite o cadastro)
+          return false;
       }
-      return false;
+      if (data.error) {
+          console.error("Erro retornado pela Edge Function check-domain-access:", data.error);
+          return false;
+      }
+
+      return data.allowed;
   } catch (e) {
-      return false;
+      console.error("Exceção ao chamar check-domain-access:", e);
+      return false; // Falha seguro
   }
 };

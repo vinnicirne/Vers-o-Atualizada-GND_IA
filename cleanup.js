@@ -1,3 +1,4 @@
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -6,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const filesToDelete = [
-  'services/gemini.ts',
+  'services/gemini.ts', // REMOVED FOR SECURITY & CLEANUP
   'services/authService.ts',
   'components/auth/Login.tsx',
   'AdminDashboardPage.tsx',

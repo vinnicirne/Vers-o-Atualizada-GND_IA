@@ -2,7 +2,7 @@
 import { api } from './api';
 import { ApiKey } from '../types';
 import JSZip from 'jszip';
-import { supabaseUrl, supabaseAnonKey } from './supabaseClient';
+import { supabaseUrl } from './supabaseClient'; // Only supabaseUrl is needed for client-side plugin
 
 // Helper simples para gerar UUID v4 sem dependência externa
 function generateUUID() {
@@ -17,6 +17,8 @@ function generateUUID() {
 
 // Helper para fragmentar strings longas em pedaços menores para o PHP
 // Isso evita bloqueios de WAF (ModSecurity/Wordfence) que impedem upload de arquivos contendo strings longas de alta entropia.
+// NOTA: Como não estamos mais injetando a chave GEMINI_API_KEY diretamente aqui,
+// este helper é menos crítico para a segurança, mas ainda útil para a SUPABASE_ANON_KEY no plugin.
 function splitForPhp(str: string, chunkSize: number = 15): string {
     if (!str) return "''";
     const chunks = str.match(new RegExp(`.{1,${chunkSize}}`, 'g')) || [];
@@ -76,7 +78,7 @@ export const revokeApiKey = async (keyId: string) => {
   if (error) throw new Error(typeof error === 'object' ? error.message : error);
 };
 
-export const generateWordPressPluginZip = async (userGeminiKey?: string) => {
+export const generateWordPressPluginZip = async () => { // Removed userGeminiKey parameter
     const zip = new JSZip();
     const pluginFolder = zip.folder("gdn-poster-pro");
     const templatesFolder = pluginFolder?.folder("templates");
@@ -84,20 +86,25 @@ export const generateWordPressPluginZip = async (userGeminiKey?: string) => {
     const cssFolder = assetsFolder?.folder("css");
     const jsFolder = assetsFolder?.folder("js");
 
-    // Injeção de credenciais no PHP
-    // SEGURANÇA: NUNCA usar process.env.API_KEY aqui, pois vazaria a chave mestra do sistema para o plugin do usuário.
-    const GEMINI_KEY = userGeminiKey || '';
-
-    // Fragmentação das chaves para bypass de WAF
-    const phpSupabaseKey = splitForPhp(supabaseAnonKey);
-    const phpGeminiKey = splitForPhp(GEMINI_KEY);
-
+    // NOTA DE SEGURANÇA:
+    // A GEMINI_KEY do usuário NÃO É MAIS INJETADA DIRETAMENTE NO PLUGIN.
+    // O plugin agora chama uma Edge Function do Supabase (wp-gemini-proxy) para gerar conteúdo.
+    // Esta Edge Function usa a GEMINI_API_KEY do SERVIDOR, nunca do cliente.
+    
+    // A SUPABASE_ANON_KEY também não será mais hardcoded.
+    // O usuário deverá configurar a Supabase URL e ANON KEY no painel de admin do WP.
+    // Isso é mais seguro e flexível.
+    const phpSupabaseUrlPlaceholder = 'get_option(\'gdn_supabase_url\', \'\')';
+    const phpSupabaseAnonKeyPlaceholder = 'get_option(\'gdn_supabase_anon_key\', \'\')';
+    // Nova placeholder para a URL do proxy Gemini
+    const phpWpGeminiProxyUrlPlaceholder = 'get_option(\'gdn_supabase_gemini_proxy_url\', \'\')';
+    
     // 1. MAIN PLUGIN FILE (PHP)
     const mainFileContent = `<?php
 /*
 Plugin Name: GDN_IA - Poster Pro
-Description: Sistema de geração de notícias com IA. Versão 1.5.5 com correções de segurança SSL.
-Version: 1.5.5
+Description: Sistema de geração de notícias com IA. Versão 1.5.7 com correções de segurança SSL e AI Proxy.
+Version: 1.5.7
 Author: GDN_IA Team
 */
 
@@ -108,8 +115,8 @@ if (!defined('ABSPATH')) {
 class NoticiasPosterGDN {
     
     private $supabase_url;
-    private $supabase_key;
-    private $gemini_key;
+    private $supabase_key; // Renomeado para anon_key
+    private $wp_gemini_proxy_url; // Nova URL da Edge Function
     
     private $token_key = 'gdn_access_token';
     private $uid_key = 'gdn_user_id';
@@ -117,13 +124,16 @@ class NoticiasPosterGDN {
     
     public function __construct() {
         // Configuração do SISTEMA
-        $this->supabase_url = '${supabaseUrl}';
-        $this->supabase_key = ${phpSupabaseKey};
-        $this->gemini_key = ${phpGeminiKey};
+        $this->supabase_url = ${phpSupabaseUrlPlaceholder};
+        $this->supabase_key = ${phpSupabaseAnonKeyPlaceholder}; // Anonymous key para auth e RLS
+        $this->wp_gemini_proxy_url = ${phpWpGeminiProxyUrlPlaceholder}; // URL da Edge Function (agora configurável)
         
         add_action('admin_menu', array($this, 'adicionar_menu_poster'));
         add_action('admin_init', array($this, 'restringir_acesso_poster'));
         
+        // Adiciona configurações do plugin
+        add_action('admin_init', array($this, 'register_gdn_settings'));
+
         add_action('wp_ajax_gdn_login', array($this, 'ajax_login'));
         add_action('wp_ajax_gdn_check_credits', array($this, 'ajax_check_credits'));
         add_action('wp_ajax_gdn_generate', array($this, 'ajax_generate'));
@@ -134,13 +144,64 @@ class NoticiasPosterGDN {
         add_filter('pre_get_posts', array($this, 'filtrar_posts_por_autor'));
         add_action('admin_enqueue_scripts', array($this, 'enqueue_assets'));
     }
-    
-    public function enqueue_assets($hook) {
-        if ($hook !== 'toplevel_page_gdn-poster') return;
-        wp_enqueue_script('jquery');
-        wp_enqueue_style('gdn-css', plugin_dir_url(__FILE__) . 'assets/css/poster-admin.css', array(), '1.5.3');
-        wp_enqueue_script('gdn-js', plugin_dir_url(__FILE__) . 'assets/js/poster-admin.js', array('jquery'), '1.5.3', true);
-        wp_localize_script('gdn-js', 'gdn_ajax', array('ajax_url' => admin_url('admin-ajax.php')));
+
+    public function register_gdn_settings() {
+        register_setting('gdn_options_group', 'gdn_supabase_url');
+        register_setting('gdn_options_group', 'gdn_supabase_anon_key');
+        register_setting('gdn_options_group', 'gdn_supabase_gemini_proxy_url'); // Novo campo para a URL do proxy Gemini
+        
+        add_settings_section(
+            'gdn_general_settings_section',
+            'Configurações Gerais GDN_IA',
+            array($this, 'gdn_general_settings_section_callback'),
+            'gdn-poster'
+        );
+
+        add_settings_field(
+            'gdn_supabase_url_field',
+            'URL do Supabase',
+            array($this, 'gdn_supabase_url_callback'),
+            'gdn-poster',
+            'gdn_general_settings_section'
+        );
+
+        add_settings_field(
+            'gdn_supabase_anon_key_field',
+            'Supabase Anon Key',
+            array($this, 'gdn_supabase_anon_key_callback'),
+            'gdn-poster',
+            'gdn_general_settings_section'
+        );
+
+        add_settings_field(
+            'gdn_supabase_gemini_proxy_url_field', // Novo campo
+            'URL do Proxy Gemini',
+            array($this, 'gdn_supabase_gemini_proxy_url_callback'),
+            'gdn-poster',
+            'gdn_general_settings_section'
+        );
+    }
+
+    public function gdn_general_settings_section_callback() {
+        echo '<p>Configure as credenciais do seu projeto Supabase para que o plugin possa se autenticar e usar a IA.</p>';
+    }
+
+    public function gdn_supabase_url_callback() {
+        $setting = get_option('gdn_supabase_url');
+        echo "<input type='url' name='gdn_supabase_url' value='" . esc_attr($setting) . "' class='regular-text' placeholder='https://your-project-id.supabase.co'>";
+        echo "<p class='description'>A URL do seu projeto Supabase (ex: https://abcde.supabase.co).</p>";
+    }
+
+    public function gdn_supabase_anon_key_callback() {
+        $setting = get_option('gdn_supabase_anon_key');
+        echo "<input type='text' name='gdn_supabase_anon_key' value='" . esc_attr($setting) . "' class='regular-text' placeholder='eyJhbGciOiJIUzI1NiI...'>";
+        echo "<p class='description'>Sua chave pública (anon key) do Supabase. Esta chave é segura para ser exposta no cliente. NUNCA use a Service Role Key aqui.</p>";
+    }
+
+    public function gdn_supabase_gemini_proxy_url_callback() { // Novo callback
+        $setting = get_option('gdn_supabase_gemini_proxy_url', '${supabaseUrl}/functions/v1/wp-gemini-proxy'); // Default para a URL do proxy atual
+        echo "<input type='url' name='gdn_supabase_gemini_proxy_url' value='" . esc_attr($setting) . "' class='regular-text' placeholder='https://your-project-id.supabase.co/functions/v1/wp-gemini-proxy'>";
+        echo "<p class='description'>A URL da Edge Function que proxy a API Gemini. Geralmente: <code>SUAPRASE_URL/functions/v1/wp-gemini-proxy</code></p>";
     }
     
     public function adicionar_menu_poster() {
@@ -153,6 +214,38 @@ class NoticiasPosterGDN {
             'dashicons-superhero',
             30
         );
+        // Adiciona sub-menu de configurações
+        add_submenu_page(
+            'gdn-poster',
+            'Configurações GDN_IA',
+            'Configurações',
+            'manage_options',
+            'gdn-poster-settings',
+            array($this, 'gdn_settings_page_content')
+        );
+    }
+
+    public function gdn_settings_page_content() {
+        ?>
+        <div class="wrap">
+            <h1>Configurações GDN_IA</h1>
+            <form method="post" action="options.php">
+                <?php
+                settings_fields('gdn_options_group');
+                do_settings_sections('gdn-poster');
+                submit_button();
+                ?>
+            </form>
+        </div>
+        <?php
+    }
+    
+    public function enqueue_assets($hook) {
+        if ($hook !== 'toplevel_page_gdn-poster') return;
+        wp_enqueue_script('jquery');
+        wp_enqueue_style('gdn-css', plugin_dir_url(__FILE__) . 'assets/css/poster-admin.css', array(), '1.5.7');
+        wp_enqueue_script('gdn-js', plugin_dir_url(__FILE__) . 'assets/js/poster-admin.js', array('jquery'), '1.5.7', true);
+        wp_localize_script('gdn-js', 'gdn_ajax', array('ajax_url' => admin_url('admin-ajax.php')));
     }
     
     public function restringir_acesso_poster() {
@@ -173,6 +266,10 @@ class NoticiasPosterGDN {
     }
     
     private function supabase_request($endpoint, $method = 'GET', $body = null, $token = null) {
+        if (empty($this->supabase_url) || empty($this->supabase_key)) {
+            return array('error' => 'URL ou Anon Key do Supabase não configuradas no plugin. Acesse Configurações > GDN Poster > Configurações para definir.');
+        }
+
         $url = $this->supabase_url . $endpoint;
         $headers = array(
             'apikey' => $this->supabase_key,
@@ -264,61 +361,60 @@ class NoticiasPosterGDN {
     public function ajax_generate() {
         $token = get_user_meta(get_current_user_id(), $this->token_key, true);
         $uid = get_user_meta(get_current_user_id(), $this->uid_key, true);
-        if (!$token) wp_send_json_error('Sessão expirada. Faça login novamente.');
         
-        if (empty($this->gemini_key) || strlen($this->gemini_key) < 10) {
-            wp_send_json_error('Erro Crítico: Chave de API do Google Gemini não configurada neste plugin. Gere uma nova chave no painel do GDN_IA.');
+        if (empty($this->wp_gemini_proxy_url)) { // Verifica se a URL do proxy Gemini está configurada
+            wp_send_json_error('URL do Proxy Gemini não configurada no plugin. Acesse Configurações para definir.');
         }
 
-        $credit_data = $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}&select=credits", 'GET', null, $token);
-        $current_credits = isset($credit_data[0]['credits']) ? intval($credit_data[0]['credits']) : 0;
+        if (!$token) wp_send_json_error('Sessão expirada. Faça login novamente.');
         
-        if ($current_credits < 1 && $current_credits !== -1) {
-            wp_send_json_error('Saldo insuficiente.');
-        }
+        // NO LONGER DIRECTLY CALLING GEMINI API FROM PHP
+        // Instead, proxying to a Supabase Edge Function that handles the API Key securely.
         
         $theme = sanitize_text_field($_POST['theme']);
         
-        $system_instruction_text = 
-            "Atue como um jornalista esportivo e investigativo sênior. " .
-            "REGRAS ESTRUTURAIS:\\n" .
-            "1. Siga ESTRITAMENTE este formato de resposta (4 partes separadas por quebra de linha):\\n" .
-            "   Linha 1: [TÍTULO] (Um título impactante)\\n" .
-            "   Linha 2: [KEYWORD] (Apenas a palavra-chave foco)\\n" .
-            "   Linha 3: [META] (Uma meta descrição de 150 caracteres)\\n" .
-            "   Linha 4 em diante: [CONTEÚDO] (O texto completo em HTML).\\n" .
-            "2. HTML REGRAS: Use <h2>, <h3>, <p>, <ul><li>, <blockquote>.\\n" .
-            "3. NÃO use Markdown, apenas HTML puro.";
-
-        $user_prompt_text = "Escreva uma matéria aprofundada sobre: '{$theme}'";
-        
-        $gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $this->gemini_key;
-        
-        $payload = array(
-            'systemInstruction' => array('parts' => array(array('text' => $system_instruction_text))),
-            'contents' => array(array('role' => 'user', 'parts' => array(array('text' => $user_prompt_text))))
+        $proxy_payload = array(
+            'prompt' => $theme,
+            'mode' => 'news_generator', // Specify the mode for the Edge Function
+            'userId' => $uid,
+            // No need to pass generateAudio or other options as WP plugin only does news
         );
-        
-        $response = wp_remote_post($gemini_url, array(
-            'body' => json_encode($payload),
-            'headers' => array('Content-Type' => 'application/json'),
+
+        $response = wp_remote_post($this->wp_gemini_proxy_url, array(
+            'body' => json_encode($proxy_payload),
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $token // Pass user's JWT to Edge Function for auth and RLS
+            ),
             'timeout' => 90,
-            'sslverify' => true // Segurança ativada
+            'sslverify' => true
         ));
         
         if (is_wp_error($response)) {
-            wp_send_json_error('Erro de conexão com Google Gemini: ' . $response->get_error_message());
+            wp_send_json_error('Erro de conexão com o serviço de IA: ' . $response->get_error_message());
         }
         
         $body_raw = wp_remote_retrieve_body($response);
-        $gemini_body = json_decode($body_raw, true);
-        
-        $text = $gemini_body['candidates'][0]['content']['parts'][0]['text'] ?? null;
-        
-        if (!$text) {
-            wp_send_json_error('A IA respondeu mas não gerou texto.');
+        $ai_response = json_decode($body_raw, true);
+
+        if (isset($ai_response['error'])) {
+            wp_send_json_error('Erro na geração de IA: ' . $ai_response['error']);
         }
         
+        $text = $ai_response['text'] ?? null;
+        $sources = $ai_response['sources'] ?? []; // Extract sources if provided by Edge Function
+        
+        if (!$text) {
+            wp_send_json_error('O serviço de IA não gerou texto.');
+        }
+        
+        // Parse the text which should be already in a predictable format from the Edge Function
+        // The Edge Function simplifies output, so we don't need complex parsing here.
+        // Assuming the Edge Function returns plain text in a structure like:
+        // TITLE: ...
+        // KEYWORD: ...
+        // META: ...
+        // CONTENT: ...
         $lines = explode("\\n", $text);
         $lines = array_values(array_filter($lines, function($line) { return trim($line) !== ''; }));
         
@@ -327,6 +423,7 @@ class NoticiasPosterGDN {
         $meta_desc = "";
         $content = "";
 
+        // Attempt to parse based on expected format from Edge Function
         if (count($lines) >= 4) {
             $title = trim(preg_replace('/^(Linha 1:|\[TÍTULO\]|Título:)/i', '', $lines[0]));
             $keyword = trim(preg_replace('/^(Linha 2:|\[KEYWORD\]|Keyword:)/i', '', $lines[1]));
@@ -337,6 +434,7 @@ class NoticiasPosterGDN {
             }
             $content = implode("\\n", $content_lines);
         } else {
+            // Fallback parsing if format is not strict (shouldn't happen with proper Edge Function output)
             $title = $lines[0] ?? $theme;
             $content = implode("\\n", array_slice($lines, 1));
             $keyword = $theme;
@@ -357,9 +455,8 @@ class NoticiasPosterGDN {
         update_post_meta($post_id, '_gdn_generated', 'true');
         $this->aplicar_seo_avancado($post_id, $title, $meta_desc, $keyword);
         
-        if ($current_credits !== -1) {
-            $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}", 'PATCH', array('credits' => $current_credits - 1), $token);
-        }
+        // Credit deduction is now handled by the wp-gemini-proxy Edge Function
+        // Remove: if ($current_credits !== -1) { $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}", 'PATCH', array('credits' => $current_credits - 1), $token); }
         
         wp_send_json_success(array('post_id' => $post_id, 'message' => 'Notícia gerada com sucesso!'));
     }
@@ -410,11 +507,27 @@ function gdn_get_user_posts() {
 <div class="wrap gdn-wrap">
     <div class="gdn-header">
         <h1><span class="dashicons dashicons-superhero"></span> GDN_IA Poster Pro</h1>
-        <p>Sistema v1.5.5</p>
+        <p>Sistema v1.5.7</p>
     </div>
     
     <?php
     $token = get_user_meta(get_current_user_id(), 'gdn_access_token', true);
+    $supabase_url_configured = get_option('gdn_supabase_url');
+    $supabase_anon_key_configured = get_option('gdn_supabase_anon_key');
+    $supabase_gemini_proxy_url_configured = get_option('gdn_supabase_gemini_proxy_url');
+    
+    if (empty($supabase_url_configured) || empty($supabase_anon_key_configured) || empty($supabase_gemini_proxy_url_configured)) {
+        ?>
+        <div class="gdn-card error-card">
+            <h2>Configuração Necessária</h2>
+            <p>Por favor, acesse o menu <a href="<?php echo admin_url('admin.php?page=gdn-poster-settings'); ?>">GDN Poster > Configurações</a> para inserir as credenciais do Supabase e a URL do Proxy Gemini.</p>
+            <p>Sem estas credenciais, o plugin não conseguirá se comunicar com a plataforma GDN_IA.</p>
+            <p class="description">Você pode encontrar sua URL e Anon Key do Supabase no painel do seu projeto Supabase, em Configurações do Projeto > API.</p>
+            <p class="description">A Supabase Anon Key é segura para ser exposta no cliente. NUNCA use a Service Role Key aqui.</p>
+            <p class="description">A URL do Proxy Gemini é a URL da sua Edge Function <code>wp-gemini-proxy</code>.</p>
+        </div>
+        <?php
+    } else {
     ?>
     
     <div id="gdn-app" data-logged="<?php echo $token ? 'true' : 'false'; ?>">
@@ -487,6 +600,7 @@ function gdn_get_user_posts() {
             </div>
         </div>
     </div>
+    <?php } // Fim do else de configuração ?>
 </div>
 `;
 
@@ -508,12 +622,26 @@ function gdn_get_user_posts() {
 .status-pill.draft { background: #f0f0f1; color: #50575e; }
 .status-pill.publish { background: #edfaef; color: #008a20; }
 #loading-bar { margin-top: 20px; padding: 20px; background: #f0f6fc; color: #1d2327; border-radius: 4px; }
+.error-card { border-color: #d63638; border-left: 4px solid #d63638; background-color: #ffecec; color: #d63638; padding: 20px; text-align: left; }
+.error-card h2 { color: #d63638; margin-top: 0; }
+.error-card a { color: #007cba; text-decoration: underline; }
 `;
 
     // 4. JS FILE
     const jsContent = `
 jQuery(document).ready(function($) {
     function refreshCredits() {
+        // Verifica se a URL e a Anon Key do Supabase estão configuradas no plugin antes de fazer a requisição
+        const supabaseUrl = $('#gdn_supabase_url').val() || ''; // Assume que gdn_ajax.supabase_url não existe mais
+        const supabaseAnonKey = $('#gdn_supabase_anon_key').val() || ''; // Assume que gdn_ajax.supabase_key não existe mais
+        const supabaseGeminiProxyUrl = $('#gdn_supabase_gemini_proxy_url').val() || '';
+
+        if (!supabaseUrl || !supabaseAnonKey || !supabaseGeminiProxyUrl) {
+            $('#credits-display').text('Não configurado');
+            $('#user-email-display').text('Não configurado');
+            return;
+        }
+
         $.post(gdn_ajax.ajax_url, { action: 'gdn_check_credits' }, function(res) {
             if(res.success) {
                 const credits = res.data.credits === -1 ? 'Ilimitado' : res.data.credits;
@@ -570,7 +698,19 @@ jQuery(document).ready(function($) {
                 alert('Sucesso! ' + res.data.message);
                 location.reload();
             } else {
-                alert('Erro: ' + JSON.stringify(res.data));
+                // Ensure error message is readable
+                const errorData = res.data;
+                let errorMessage = 'Erro desconhecido na geração.';
+                if (typeof errorData === 'string') {
+                    errorMessage = errorData;
+                } else if (errorData && errorData.message) {
+                    errorMessage = errorData.message;
+                } else if (errorData && errorData.error) { // From Edge Function
+                    errorMessage = errorData.error;
+                } else if (errorData) {
+                    errorMessage = JSON.stringify(errorData);
+                }
+                alert('Erro: ' + errorMessage);
                 $('#btn-generate').prop('disabled', false);
                 $('#loading-bar').slideUp();
             }
@@ -600,7 +740,7 @@ jQuery(document).ready(function($) {
     const url = window.URL.createObjectURL(content);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', "gdn-poster-pro-v1.5.5.zip");
+    link.setAttribute('download', "gdn-poster-pro-v1.5.7.zip");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

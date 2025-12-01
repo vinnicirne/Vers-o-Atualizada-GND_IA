@@ -1,12 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { WordPressConfig, AnalyticsConfig, N8nConfig } from '../../types';
 import { saveWordPressConfig, getWordPressConfig, validateWordPressConnection, clearWordPressConfig } from '../../services/wordpressService';
 import { saveAnalyticsConfig, getAnalyticsConfig, clearAnalyticsConfig } from '../../services/analyticsService';
 import { saveN8nConfig, getN8nConfig, clearN8nConfig, syncN8nConfig, validateN8nWebhook } from '../../services/n8nService';
 import { Toast } from '../admin/Toast';
 import { useUser } from '../../contexts/UserContext';
-import { usePlan } from '../../hooks/usePlan'; // Importar hook de planos
+import { usePlan } from '../hooks/usePlan'; // Importar hook de planos
+import { supabase } from '../../services/supabaseClient'; // Import supabase for session
 
 interface IntegrationsModalProps {
   onClose: () => void;
@@ -21,7 +22,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   const [wpConfig, setWpConfig] = useState<WordPressConfig>({
     siteUrl: '',
     username: '',
-    applicationPassword: '',
+    applicationPassword: '', // Temporarily holds password for validation
     isConnected: false
   });
   
@@ -47,25 +48,35 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   const hasN8nAccess = hasAccessToService('n8n_integration');
 
   useEffect(() => {
-    // Load Configs
-    const savedWP = getWordPressConfig();
-    if (savedWP) setWpConfig(savedWP);
-
-    const savedGA = getAnalyticsConfig();
-    if (savedGA) setGaConfig(savedGA);
-
-    const loadN8n = async () => {
-        // Tenta carregar do local storage primeiro
-        const savedN8n = getN8nConfig();
-        if (savedN8n) {
-            setN8nConfig(savedN8n);
-        } else if (user) {
-            // Se não tiver local, tenta baixar da nuvem
-            const cloudConfig = await syncN8nConfig(user.id);
-            if (cloudConfig) setN8nConfig(cloudConfig);
+    const loadConfigs = async () => {
+        if (!user) return;
+        
+        // Load WP Config from DB
+        try {
+            const savedWP = await getWordPressConfig(user.id);
+            if (savedWP) setWpConfig(savedWP);
+        } catch (e) {
+            console.error("Erro ao carregar WP config do DB:", e);
         }
+
+        const savedGA = getAnalyticsConfig();
+        if (savedGA) setGaConfig(savedGA);
+
+        const loadN8n = async () => {
+            // Tenta carregar do local storage primeiro
+            const savedN8n = getN8nConfig();
+            if (savedN8n) {
+                setN8nConfig(savedN8n);
+            } else if (user) {
+                // Se não tiver local, tenta baixar da nuvem
+                const cloudConfig = await syncN8nConfig(user.id);
+                if (cloudConfig) setN8nConfig(cloudConfig);
+            }
+        };
+        loadN8n();
     };
-    loadN8n();
+
+    loadConfigs();
 
     const handleEsc = (event: KeyboardEvent) => {
         if (event.key === 'Escape') onClose();
@@ -77,22 +88,25 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   // --- WP HANDLERS ---
   const handleConnectWP = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!user) {
+        setToast({ message: "Faça login para configurar o WordPress.", type: 'error' });
+        return;
+    }
     setLoading(true);
     setToast(null);
     setConnectionError(null);
 
-    let url = wpConfig.siteUrl.trim().replace(/\/$/, '');
-    if (!url.startsWith('http')) {
-        url = 'https://' + url;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+        setToast({ message: "Sessão inválida. Faça login novamente.", type: 'error' });
+        setLoading(false);
+        return;
     }
 
-    const configToTest = { ...wpConfig, siteUrl: url };
-    const result = await validateWordPressConnection(configToTest);
+    const result = await validateWordPressConnection(wpConfig, user.id, session.access_token);
 
     if (result.success) {
-        const finalConfig = { ...configToTest, isConnected: true };
-        setWpConfig(finalConfig);
-        saveWordPressConfig(finalConfig);
+        setWpConfig(prev => ({ ...prev, isConnected: true, applicationPassword: '' })); // Clear password from state
         setToast({ message: "WordPress conectado com sucesso!", type: 'success' });
     } else {
         const errorMsg = result.message || "Falha na conexão.";
@@ -104,8 +118,9 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
     setLoading(false);
   };
 
-  const handleDisconnectWP = () => {
-      clearWordPressConfig();
+  const handleDisconnectWP = async () => {
+      if (!user) return;
+      await clearWordPressConfig(user.id);
       setWpConfig({ siteUrl: '', username: '', applicationPassword: '', isConnected: false });
       setToast({ message: "WordPress desconectado.", type: 'success' });
       setConnectionError(null);

@@ -1,8 +1,10 @@
+
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
 import { getN8nConfig, sendToN8nWebhook } from '../services/n8nService';
 import { useUser } from '../contexts/UserContext';
+import { supabase } from '../services/supabaseClient';
 
 interface ResultDisplayProps {
   text: string;
@@ -30,8 +32,13 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
   const [n8nStatus, setN8nStatus] = useState<{success?: boolean; message?: string} | null>(null);
 
   useEffect(() => {
-      const checkConfig = () => {
-          const wp = getWordPressConfig();
+      const checkConfig = async () => {
+          if (!user) {
+              setWpConfigured(false);
+              setN8nConfigured(false);
+              return;
+          }
+          const wp = await getWordPressConfig(user.id);
           setWpConfigured(wp?.isConnected || false);
 
           const n8n = getN8nConfig();
@@ -39,13 +46,14 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       };
       
       checkConfig();
+      // Listen for custom events to re-check config after updates in modal
       window.addEventListener('wordpress-config-updated', checkConfig);
       window.addEventListener('n8n-config-updated', checkConfig);
       return () => {
           window.removeEventListener('wordpress-config-updated', checkConfig);
           window.removeEventListener('n8n-config-updated', checkConfig);
       };
-  }, []);
+  }, [user]);
 
   const handleCopyText = async () => {
     try {
@@ -69,11 +77,18 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
   };
 
   const handlePostToWordPress = async () => {
-      if (!title || !text) return;
+      if (!title || !text || !user) return;
       setPostingToWp(true);
       setWpStatus(null);
       
-      const result = await postToWordPress(title, text);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+          setWpStatus({ success: false, message: 'Sessão inválida. Faça login novamente.' });
+          setPostingToWp(false);
+          return;
+      }
+
+      const result = await postToWordPress(title, text, 'draft', user.id, session.access_token);
       
       if (result.success) {
           setWpStatus({ success: true, message: 'Postado com sucesso!' });

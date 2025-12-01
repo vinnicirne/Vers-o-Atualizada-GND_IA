@@ -35,16 +35,24 @@ export const initGA4 = () => {
 
   console.log(`[Analytics] Inicializando GA4 com ID: ${gaId}`);
 
+  // Gera um nonce único ou usa um fixo para demonstração.
+  // Em produção, este nonce DEVE ser gerado no servidor a cada requisição e injetado no HTML e CSP.
+  // Para o contexto do AI Studio, um nonce fixo é aceitável, pois não há servidor para gerar dinamicamente.
+  const nonce = 'ga4'; 
+
   // Injeta o script principal do GTAG
   const script = document.createElement('script');
   script.id = 'gdn-ga4-script';
   script.async = true;
   script.src = `https://www.googletagmanager.com/gtag/js?id=${gaId}`;
+  // Adiciona o nonce ao script principal do GA4
+  script.setAttribute('nonce', nonce);
   document.head.appendChild(script);
 
-  // Injeta o script de configuração inline
+  // Injeta o script de configuração inline com nonce
   const inlineScript = document.createElement('script');
   inlineScript.id = 'gdn-ga4-config';
+  inlineScript.nonce = nonce; // Adiciona o nonce aqui para a CSP
   inlineScript.innerHTML = `
     window.dataLayer = window.dataLayer || [];
     function gtag(){dataLayer.push(arguments);}

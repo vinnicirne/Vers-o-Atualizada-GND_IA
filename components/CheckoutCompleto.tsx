@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase, supabaseUrl } from '../services/supabaseClient';
@@ -114,11 +115,22 @@ const PixDisplay = ({ qrCodeBase64, copyPasteCode, onCopy }: { qrCodeBase64: str
 );
 
 // --- Formulário de Inputs (Reutilizado para manter estilo) ---
-const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (field: string, value: string) => void }) => {
+const GenericPaymentForm = ({ formData, onChange, gateway }: { formData: any, onChange: (field: string, value: string) => void, gateway: GatewayType }) => {
     const inputClass = "w-full h-12 bg-gray-900 border border-gray-700 rounded-lg px-4 text-white focus:border-green-500 focus:outline-none text-sm transition-colors";
     
     return (
         <div className="space-y-4 animate-fade-in">
+            {/* Aviso para ASAAS sobre tokenização */}
+            {gateway === 'asaas' && (
+                <div className="bg-yellow-900/20 border border-yellow-500/30 p-3 rounded-lg flex items-start gap-3">
+                    <i className="fas fa-exclamation-triangle text-yellow-400 mt-0.5"></i>
+                    <p className="text-xs text-yellow-200 leading-relaxed font-bold">
+                        Atenção: Os dados do seu cartão serão enviados para o servidor para tokenização.
+                        Recomendamos o uso de um SDK de tokenização no cliente para maior segurança, se disponível para Asaas.
+                    </p>
+                </div>
+            )}
+            
             {/* CPF/CNPJ sempre visível */}
             <div>
                 <label htmlFor="docNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CPF ou CNPJ</label>
@@ -640,7 +652,8 @@ export default function CheckoutCompleto({
                       postalCode: "00000000", // Placeholder
                       addressNumber: "0",     // Placeholder
                       phone: "11999999999"    // Placeholder
-                  }
+                  },
+                  asaasPublicKey: asaasPublicKey // Passa a chave pública do Asaas para a Edge Function
               };
               endpoint = 'asaas-pagar';
           } else {
@@ -761,7 +774,7 @@ export default function CheckoutCompleto({
       {/* RENDER FORMS */}
       {paymentMethod === 'card' ? (
           <form onSubmit={handleCardSubmit} autoComplete="off">
-            <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} />
+            <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} gateway={activeGateway} />
             <button
               type="submit"
               disabled={isSubmitDisabled}

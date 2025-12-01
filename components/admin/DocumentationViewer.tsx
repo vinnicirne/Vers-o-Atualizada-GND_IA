@@ -81,14 +81,16 @@ export function DocumentationViewer() {
   };
 
   const handleDownloadPlugin = () => {
-      if (!geminiKeyInput && !confirm("ATENÇÃO: Você não inseriu uma Chave Gemini. O plugin pode falhar com erro 'API Key not valid'. Deseja continuar mesmo assim?")) {
+      if (!confirm("ATENÇÃO: Você precisará configurar a URL do Supabase, a Anon Key e a URL do Proxy Gemini no painel do WordPress após a instalação do plugin. Deseja continuar?")) {
           return;
       }
       
-      localStorage.setItem('gdn_gemini_key_cache', geminiKeyInput);
-      
-      generateWordPressPluginZip(geminiKeyInput);
-      setToast({ message: "Download iniciado! Chave salva no navegador.", type: 'success' });
+      // A GEMINI_KEY não é mais injetada, e a SUPABASE_ANON_KEY também não.
+      // O usuário vai preencher no painel do WP.
+      // O frontend continua com a função, mas ela não recebe mais a geminiKeyInput.
+      generateWordPressPluginZip(); // Chamada sem o userGeminiKey
+
+      setToast({ message: "Download iniciado! Configure o plugin no seu WordPress.", type: 'success' });
   };
 
   const handleCopy = (text: string, fieldId: string) => {
@@ -100,16 +102,22 @@ export function DocumentationViewer() {
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`;
 
   const schemaSql = `
--- === 🚨 CORREÇÃO URGENTE: PERMISSÃO NOTIFICAÇÕES (RLS) ===
--- Execute este bloco se estiver recebendo erro ao enviar Push Notifications.
+-- ==========================================================
+-- === 🚨 CONFIGURAÇÃO DE SEGURANÇA E FUNCIONALIDADES 🚨 ===
+-- ===             Execute este script COMPLETO           ===
+-- ==========================================================
+
+-- === CORREÇÃO URGENTE: PERMISSÃO NOTIFICAÇÕES (RLS) ===
+-- Garante que o sistema de notificações funcione e que admins possam enviar.
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Remove políticas antigas e restritivas
+-- Remove políticas antigas e restritivas (se existirem)
 DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can create notifications" ON public.notifications; -- Nova política para garantir criação de admin
 
 -- 1. Leitura: Usuário vê as suas, Admin vê todas
 CREATE POLICY "Users can view own notifications" ON public.notifications
@@ -119,6 +127,7 @@ FOR SELECT USING (
 );
 
 -- 2. Inserção: Apenas Admins podem criar notificações (para qualquer um)
+-- Esta política permite que a Edge Function 'broadcast-notification' insira.
 CREATE POLICY "Admins can insert notifications" ON public.notifications
 FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
@@ -133,6 +142,7 @@ FOR UPDATE USING (
 
 
 -- === ATUALIZAÇÃO CADASTRO (NOME E TELEFONE) ===
+-- (Já deve estar no seu banco, mas incluído para integridade)
 
 -- 1. ADICIONAR COLUNA TELEFONE
 ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS phone text;
@@ -163,7 +173,67 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 
--- === ATUALIZAÇÕES ANTERIORES (Para integridade) ===
+-- === NOVA TABELA: INTEGRAÇÕES DO USUÁRIO (ex: WordPress, para guardar senhas de forma segura no DB) ===
+CREATE TABLE IF NOT EXISTS public.user_integrations (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id uuid REFERENCES public.app_users(id) NOT NULL,
+  integration_type text NOT NULL, -- 'wordpress', 'n8n_webhook'
+  config_data jsonb NOT NULL,     -- armazena { siteUrl, username, applicationPassword (CRIPTOGRAFADA) } para WP
+  created_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT unique_user_integration_type UNIQUE (user_id, integration_type)
+);
+
+-- RLS para user_integrations:
+ALTER TABLE public.user_integrations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage own integrations" ON public.user_integrations
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Admins can manage all integrations" ON public.user_integrations
+FOR ALL
+USING (EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+
+-- ATUALIZAR TRIGGER de updated_at
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE TRIGGER update_user_integrations_updated_at
+BEFORE UPDATE ON public.user_integrations
+FOR EACH ROW
+EXECUTE FUNCTION update_updated_at_column();
+
+-- === Tabela e RLS CRÍTICO: Allowed Domains (Libera o Cadastro de Usuários) ===
+-- Sem esta RLS, o frontend não conseguirá validar domínios de e-mail no cadastro.
+
+CREATE TABLE IF NOT EXISTS public.allowed_domains (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  domain text NOT NULL UNIQUE,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+ALTER TABLE public.allowed_domains ENABLE ROW LEVEL SECURITY;
+
+-- Permite que usuários anon e autenticados leiam esta lista para validação de cadastro
+CREATE POLICY "Allow anon and auth to read allowed_domains" ON public.allowed_domains
+FOR SELECT
+USING (true);
+
+-- Permite que admins insiram/atualizem/deletem domínios
+CREATE POLICY "Admins can manage allowed_domains" ON public.allowed_domains
+FOR ALL
+USING (EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin')));
+
+
+-- === ATUALIZAÇÕES ANTERIORES (Para garantir a integridade do esquema) ===
+-- (Já devem estar no seu banco, mas re-executar garante que não faltou nada)
 
 -- NOTIFICAÇÕES E REALTIME
 CREATE TABLE IF NOT EXISTS public.notifications (
@@ -204,7 +274,7 @@ DROP POLICY IF EXISTS "Anyone can read approved feedbacks" ON public.system_feed
 CREATE POLICY "Anyone can read approved feedbacks" ON public.system_feedbacks FOR SELECT USING (status = 'approved');
 
 DROP POLICY IF EXISTS "Users can create feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Users can create feedbacks" ON public.system_feedbacks FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can create feedbacks" ON public.system_feedbacks FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Admins manage all feedbacks" ON public.system_feedbacks;
 CREATE POLICY "Admins manage all feedbacks" ON public.system_feedbacks FOR ALL USING (
@@ -299,6 +369,25 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
                         ))}
                     </div>
                 </div>
+                
+                {/* Info sobre as Chaves de Ambiente do WordPress */}
+                <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
+                    <h3 className="text-xl font-bold text-[#263238] mb-2"><i className="fas fa-lock text-blue-500 mr-2"></i> Variáveis de Ambiente Necessárias para WP</h3>
+                    <p className="text-sm text-gray-600 mb-4">
+                        Para que o plugin WordPress e as Edge Functions de integração funcionem corretamente,
+                        você precisa configurar as seguintes variáveis de ambiente no seu projeto Supabase:
+                    </p>
+                    <ul className="list-disc list-inside space-y-2 text-sm text-gray-700">
+                        <li>
+                            <code className="bg-gray-100 px-1 py-0.5 rounded text-blue-700 font-mono font-bold">WORDPRESS_ENCRYPTION_KEY</code>:
+                            <span className="text-gray-500 ml-2">Chave de 32 caracteres (AES-256) para criptografar as senhas de aplicativo do WordPress. **CRÍTICO.**</span>
+                            <p className="text-xs text-gray-500 mt-1">Ex: <code className="bg-gray-100 px-1 py-0.5 rounded text-gray-600 font-mono">umachavealeatoriacom32bytesexatos</code></p>
+                        </li>
+                    </ul>
+                    <p className="text-xs text-gray-500 mt-4">
+                        Sem esta chave, as Edge Functions não conseguirão armazenar ou recuperar credenciais WordPress de forma segura.
+                    </p>
+                </div>
             </div>
         )}
 
@@ -307,7 +396,7 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Para corrigir o erro de envio de Notificações, copie o SQL abaixo e execute no editor SQL do Supabase.
+                    Para corrigir o erro de envio de Notificações, **e permitir o cadastro de usuários (RLS de allowed_domains)**, copie o SQL abaixo e execute no editor SQL do Supabase.
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>
