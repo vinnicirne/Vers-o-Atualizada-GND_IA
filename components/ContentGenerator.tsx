@@ -12,7 +12,7 @@ interface ContentGeneratorProps {
     prompt: string, 
     mode: ServiceKey, 
     generateAudio: boolean,
-    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
+    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string; platform?: string }
   ) => void;
   isLoading: boolean;
   isGuest?: boolean;
@@ -27,6 +27,7 @@ const THEMES = [
   { value: 'corporate', label: 'Corporativo' },
   { value: 'playful', label: 'Divertido / Vibrante' },
   { value: 'dark', label: 'Dark Mode / Cyberpunk' },
+  { value: 'nature', label: 'Natureza / Orgânico' },
 ];
 
 const IMAGE_STYLES = [
@@ -36,8 +37,16 @@ const IMAGE_STYLES = [
     { value: 'oil_painting', label: 'Pintura a Óleo' },
     { value: '3d_render', label: 'Render 3D (Pixar Style)' },
     { value: 'cinematic', label: 'Cinematográfico' },
-    { value: 'pixel_art', label: 'Pixel Art' },
-    { value: 'logo', label: 'Logo / Vetor Minimalista' },
+    { value: 'vector', label: 'Vetor / Flat Design' },
+];
+
+const SOCIAL_PLATFORMS = [
+    { value: 'instagram_feed', label: 'Instagram Feed (Quadrado 1:1)' },
+    { value: 'instagram_story', label: 'Instagram Stories / Reels (9:16)' },
+    { value: 'facebook_post', label: 'Facebook Post (Paisagem)' },
+    { value: 'linkedin_post', label: 'LinkedIn Post (Corporativo)' },
+    { value: 'twitter_post', label: 'X (Twitter) Post' },
+    { value: 'youtube_thumbnail', label: 'YouTube Thumbnail' },
 ];
 
 const ASPECT_RATIOS = [
@@ -58,6 +67,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
   const [primaryColor, setPrimaryColor] = useState('#10B981'); 
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [imageStyle, setImageStyle] = useState('photorealistic');
+  const [platform, setPlatform] = useState('instagram_feed');
 
   const isModeLocked = (modeValue: ServiceKey) => {
       if (isGuest) {
@@ -81,6 +91,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
         options = { theme, primaryColor };
     } else if (mode === 'image_generation') {
         options = { aspectRatio, imageStyle };
+    } else if (mode === 'social_media_poster') {
+        options = { platform, theme };
     }
 
     onGenerate(prompt, mode, generateAudio, options);
@@ -158,10 +170,32 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
             </div>
           </div>
         )}
+
+        {/* Opções Extras para Social Media Poster */}
+        {mode === 'social_media_poster' && !isModeLocked('social_media_poster') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+            <div>
+              <label htmlFor="platform" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
+                Plataforma de Destino
+              </label>
+              <select id="platform" value={platform} onChange={e => setPlatform(e.target.value)} className={selectClasses} disabled={isLoading}>
+                {SOCIAL_PLATFORMS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="theme" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
+                Tema / Vibe
+              </label>
+              <select id="theme" value={theme} onChange={e => setTheme(e.target.value)} className={selectClasses} disabled={isLoading}>
+                {THEMES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
         
         <div>
           <label htmlFor="prompt" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
-            {mode === 'image_generation' ? 'Descreva sua Imagem' : (mode === 'institutional_website_generator' ? 'Dados da Empresa' : 'Seu Pedido')}
+            {mode === 'image_generation' || mode === 'social_media_poster' ? 'Descreva sua Imagem / Post' : (mode === 'institutional_website_generator' ? 'Dados da Empresa' : 'Seu Pedido')}
           </label>
           <textarea
             id="prompt"
@@ -216,8 +250,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                  </>
               ) : (
                  <>
-                    <i className={`fas ${mode === 'image_generation' ? 'fa-paint-brush' : 'fa-wand-magic-sparkles'} mr-2`}></i>
-                    {mode === 'image_generation' ? 'Criar Arte' : 'Gerar Conteúdo'}
+                    <i className={`fas ${mode === 'image_generation' || mode === 'social_media_poster' ? 'fa-paint-brush' : 'fa-wand-magic-sparkles'} mr-2`}></i>
+                    {mode === 'image_generation' || mode === 'social_media_poster' ? 'Criar Arte' : 'Gerar Conteúdo'}
                  </>
               )}
             </>

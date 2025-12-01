@@ -7,8 +7,9 @@ export type ServiceKey =
   | 'canva_structure'
   | 'copy_generator'
   | 'image_generation'
+  | 'social_media_poster' // Nova ferramenta
   | 'institutional_website_generator'
-  | 'n8n_integration'; // Novo modo adicionado
+  | 'n8n_integration';
 
 export interface ServicePermission {
   key: ServiceKey;

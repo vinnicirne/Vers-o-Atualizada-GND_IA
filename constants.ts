@@ -28,6 +28,11 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
   },
   // --- OPÇÕES PREMIUM / AVANÇADAS ---
   {
+    value: 'social_media_poster',
+    label: 'Criador de Posts Sociais',
+    placeholder: 'Descreva o post. Ex: "Promoção de Black Friday para loja de sapatos, fundo preto e dourado, foto do produto".',
+  },
+  {
     value: 'institutional_website_generator',
     label: 'Site Institucional',
     placeholder: 'Nome da Empresa, Ramo de Atuação e Diferenciais. Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".',
@@ -65,6 +70,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   landingpage_generator: 15,
   institutional_website_generator: 25,
   image_generation: 5,
+  social_media_poster: 5, // Custo similar à geração de imagem
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
 };
 
@@ -85,6 +91,9 @@ const artServices: ServicePermission[] = [
 
 // Adicionando a nova feature de imagem
 const imageService: ServicePermission = { key: 'image_generation', name: 'Studio de Arte IA', enabled: true, creditsPerUse: TASK_COSTS.image_generation };
+
+// Nova feature de Social Media Poster
+const socialPosterService: ServicePermission = { key: 'social_media_poster', name: 'Criador de Posts Sociais', enabled: true, creditsPerUse: TASK_COSTS.social_media_poster };
 
 const landingPageService: ServicePermission = { key: 'landingpage_generator', name: 'Gerador de Landing Page', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
 
@@ -136,9 +145,10 @@ export const PLANS: Record<UserPlan, Plan> = {
       ...commonServices,
       promptService,
       ...artServices, // Agora contém apenas o Editor Visual
-      imageService, // Adicionado ao Standard
-      institutionalSiteService, // Disponível no Standard
-      n8nService // Adicionado ao Standard
+      imageService, 
+      socialPosterService, // Adicionado ao Standard
+      institutionalSiteService, 
+      n8nService 
     ]
   },
   premium: {
@@ -154,10 +164,11 @@ export const PLANS: Record<UserPlan, Plan> = {
       ...commonServices,
       promptService,
       ...artServices,
-      imageService, // Adicionado ao Premium
+      imageService,
+      socialPosterService, // Adicionado ao Premium
       landingPageService,
-      institutionalSiteService, // Disponível no Premium
-      n8nService // Adicionado ao Premium
+      institutionalSiteService, 
+      n8nService 
     ]
   }
 };

@@ -1,5 +1,4 @@
 
-
 import { GoogleGenAI, Modality } from "@google/genai";
 import { ServiceKey } from '../types/plan.types';
 import { Source } from '../types'; // Import Source type
@@ -67,21 +66,31 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 7. **Editor Visual (Social Media)**:
    ATENÇÃO: MODO DE GERAÇÃO DE CÓDIGO ESTRITO. PROIBIDO RETORNAR TEXTO EXPLICATIVO.
    Você é um motor de renderização de templates.
-   
    Sua tarefa: Gerar APENAS o código HTML de uma <div> container representando um post de rede social, usando Tailwind CSS para estilização.
+   REGRAS: NÃO inclua tags <html>, <head> ou <body>. Apenas a DIV container principal com style="width: 1080px; height: 1080px;".
+
+8. **Criador de Posts Sociais (Social Media Poster)**:
+   Você é um **Estrategista de Autoridade, Líder de Pensamento (Thought Leader) e Copywriter Sênior**.
+   Sua missão é criar conteúdo que posicione o usuário como uma REFERÊNCIA no mercado.
    
-   TEMPLATE OBRIGATÓRIO (Preencha o conteúdo dentro da div):
-   <div style="width: 1080px; height: 1080px; position: relative; overflow: hidden; background-color: #ffffff;" class="flex flex-col relative shadow-2xl">
-      <!-- COLOQUE AQUI O DESIGN: Imagens de fundo, textos posicionados, badges, etc -->
-      <!-- Use imagens de placeholder: <img src="https://placehold.co/1080x1080" /> -->
-      <!-- Use classes Tailwind para tipografia, cores e layout -->
-   </div>
+   **DIRETRIZES DE AUTORIDADE (COPY):**
+   - **Tom de Voz:** Visionário, Confiante, Assertivo, Sofisticado. Evite linguagem genérica ou "vendedor barato".
+   - **Estrutura:**
+     1. **Hook (Gancho):** Comece com uma afirmação ousada, uma pergunta desafiadora ou uma verdade inconveniente.
+     2. **Desenvolvimento:** Use "Power Words" (Revolução, Inovação, Estratégia, Essencial, Liderança, Domínio). Fale sobre o futuro, tendências e transformação.
+     3. **CTA (Chamada):** Convide para a ação com autoridade (ex: "Invista no futuro", "Lidere seu setor").
+   - **Estilo:** Inspire respeito e admiração. O texto deve parecer escrito por um CEO ou Especialista de Topo.
    
-   REGRAS:
-   1. NÃO inclua tags <html>, <head> ou <body>. Apenas a DIV container principal.
-   2. O tamanho DEVE ser fixo via style="width: 1080px; height: 1080px;".
-   3. NÃO escreva nada antes ou depois do código HTML.
-   4. O design deve ser profissional, colorido e visualmente rico.
+   **DIRETRIZES VISUAIS (IMAGE_PROMPT):**
+   - O prompt da imagem deve refletir "High-End", "Editorial", "Cinematic", "Premium Quality". Evite estéticas amadoras.
+   
+   **Formato de Saída OBRIGATÓRIO (use estas tags exatas):**
+   
+   [IMAGE_PROMPT]
+   (Seu prompt técnico e sofisticado em inglês aqui...)
+   
+   [COPY]
+   (Sua legenda poderosa em português aqui...)
 `;
 
 export const generateCreativeContent = async (
@@ -89,7 +98,7 @@ export const generateCreativeContent = async (
     mode: ServiceKey,
     userId?: string,
     generateAudio?: boolean,
-    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
+    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string; platform?: string }
 ): Promise<{ text: string, audioBase64: string | null, sources?: Source[] }> => {
   if (!process.env.API_KEY) {
     throw new Error("API_KEY environment variable not set");
@@ -118,12 +127,21 @@ export const generateCreativeContent = async (
   // Customização do Prompt para Imagens
   if (mode === 'image_generation' && options) {
       fullPrompt += `
-      
       CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
       - Estilo Artístico Solicitado: ${options.imageStyle || 'Photorealistic'}
       - Proporção (apenas para seu conhecimento de composição): ${options.aspectRatio || '1:1'}
-      
       Instrução Final: Crie o prompt em inglês perfeito para gerar esta imagem nesse estilo.
+      `;
+  }
+
+  // Customização para Social Media Poster (Supercharged Authority)
+  if (mode === 'social_media_poster' && options) {
+      fullPrompt += `
+      CONTEXTO PARA POSTER DE AUTORIDADE:
+      - Plataforma: ${options.platform || 'Instagram'}
+      - Tema Visual: ${options.theme || 'Modern'}
+      - Objetivo: Criar um post que transmita LIDERANÇA DE MERCADO e AUTORIDADE INCONTESTÁVEL.
+      - Instrução Extra: O texto deve ser magnético. Use palavras fortes. Não seja morno.
       `;
   }
 
@@ -182,9 +200,8 @@ export const generateCreativeContent = async (
       }
   }
 
-  // Se for geração de imagem, o 'text' agora contém o prompt em inglês.
-  // O frontend vai usar esse texto para chamar a API de imagem.
-
+  // Se for geração de imagem ou poster, o 'text' agora contém o prompt em inglês (ou estrutura dual).
+  
   let audioBase64: string | null = null;
   
   if (generateAudio && mode === 'news_generator') {

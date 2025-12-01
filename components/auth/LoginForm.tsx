@@ -121,11 +121,25 @@ const linkUserToAffiliate = async (newUserId: string, referralCode: string) => {
     }
 };
 
+// Helper de máscara de telefone
+const maskPhone = (value: string) => {
+  return value
+    .replace(/\D/g, '') // Remove tudo o que não é dígito
+    .replace(/^(\d{2})(\d)/, '($1) $2') // Coloca parênteses em volta dos dois primeiros dígitos
+    .replace(/(\d)(\d{4})$/, '$1-$2') // Coloca hífen entre o quarto e o quinto dígitos
+    .substring(0, 15); // Limita tamanho
+};
+
 export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
+  
+  // Form Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+  
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
   const [referralCode, setReferralCode] = useState<string | null>(null);
@@ -146,12 +160,27 @@ export function LoginForm() {
     }
   }, [isSignUp]);
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      setPhone(maskPhone(e.target.value));
+  };
+
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setMessage(null);
 
     if (isSignUp) {
+        if (!fullName.trim()) {
+            setMessage({ type: 'error', text: 'Por favor, informe seu nome completo.' });
+            setIsLoading(false);
+            return;
+        }
+        if (!phone.trim() || phone.length < 14) {
+            setMessage({ type: 'error', text: 'Por favor, informe um telefone válido.' });
+            setIsLoading(false);
+            return;
+        }
+
         const allowed = await isDomainAllowed(email);
         if (!allowed) {
             setMessage({ type: 'error', text: 'Cadastro não permitido para este domínio de e-mail. Entre em contato com o administrador.' });
@@ -164,6 +193,8 @@ export function LoginForm() {
             password,
             options: {
                 data: {
+                    full_name: fullName, // Envia nome para o metadata
+                    phone: phone,        // Envia telefone para o metadata
                     referral_code: referralCode 
                 }
             }
@@ -178,6 +209,8 @@ export function LoginForm() {
 
             setEmail('');
             setPassword('');
+            setFullName('');
+            setPhone('');
             setMessage({ type: 'success', text: 'Conta criada! Por favor, verifique seu email para confirmar.' });
             setIsSignUp(false);
             localStorage.removeItem('gdn_referral'); 
@@ -241,6 +274,28 @@ export function LoginForm() {
         </div>
         <div className="px-8 pb-8 pt-0">
           <form onSubmit={handleAuth} className="space-y-5">
+            
+            {/* Campos Adicionais de Cadastro */}
+            {isSignUp && (
+                <>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Nome Completo</label>
+                        <input type="text" required value={fullName} onChange={e => setFullName(e.target.value)}
+                            className={`w-full bg-[#F5F7FA] border border-gray-200 text-[#263238] p-3 text-sm rounded-lg ${theme.focusBorderColor} focus:outline-none focus:ring-2 focus:ring-opacity-20 transition duration-200`}
+                            placeholder="Seu nome"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Telefone (WhatsApp)</label>
+                        <input type="tel" required value={phone} onChange={handlePhoneChange}
+                            className={`w-full bg-[#F5F7FA] border border-gray-200 text-[#263238] p-3 text-sm rounded-lg ${theme.focusBorderColor} focus:outline-none focus:ring-2 focus:ring-opacity-20 transition duration-200`}
+                            placeholder="(11) 99999-9999"
+                            maxLength={15}
+                        />
+                    </div>
+                </>
+            )}
+
             <div>
               <label className="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wide">Email</label>
               <input type="email" required value={email} onChange={e => setEmail(e.target.value)}
@@ -255,11 +310,13 @@ export function LoginForm() {
                 placeholder="••••••••"
               />
             </div>
+            
             {isSignUp && referralCode && (
                 <div className="text-xs text-orange-600 bg-orange-50 p-3 rounded-lg border border-orange-100 text-center font-medium">
                     <i className="fas fa-gift mr-1"></i> Você foi indicado! Código: <strong>{referralCode}</strong>
                 </div>
             )}
+            
             <button type="submit" disabled={isLoading}
               className={`w-full font-bold py-3.5 text-sm uppercase tracking-wide rounded-lg transition-all duration-200 shadow-md transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-wait ${theme.buttonBg}`}
             >

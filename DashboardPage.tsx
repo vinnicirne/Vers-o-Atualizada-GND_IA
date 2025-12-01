@@ -43,6 +43,7 @@ const SERVICE_ICONS: Record<ServiceKey, string> = {
     institutional_website_generator: 'fa-building',
     canva_structure: 'fa-vector-square',
     image_generation: 'fa-paint-brush',
+    social_media_poster: 'fa-share-alt', // Novo Ícone
     n8n_integration: 'fa-plug',
 };
 
@@ -56,6 +57,7 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
     institutional_website_generator: 'text-orange-500 bg-orange-50',
     canva_structure: 'text-cyan-500 bg-cyan-50',
     image_generation: 'text-rose-500 bg-rose-50',
+    social_media_poster: 'text-indigo-500 bg-indigo-50', // Nova Cor
     n8n_integration: 'text-red-500 bg-red-50',
 };
 
@@ -63,7 +65,8 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
 const GUEST_ALLOWED_MODES: ServiceKey[] = ['news_generator', 'copy_generator', 'prompt_generator'];
 
 const extractTitleAndContent = (text: string, mode: ServiceKey) => {
-    if (['landingpage_generator', 'institutional_website_generator', 'canva_structure', 'image_generation'].includes(mode)) {
+    // Adicionei social_media_poster na lista de exclusão de título, pois é tratado como imagem/copy
+    if (['landingpage_generator', 'institutional_website_generator', 'canva_structure', 'image_generation', 'social_media_poster'].includes(mode)) {
         return { title: null, content: text };
     }
 
@@ -188,7 +191,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
     prompt: string, 
     mode: ServiceKey, 
     generateAudio: boolean,
-    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string }
+    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string; platform?: string }
   ) => {
     if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
         setShowFeatureLockModal(true);
@@ -267,7 +270,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       let processedText = text;
       const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
       
-      if (!isAdmin && (isGuest || currentPlan.id !== 'premium') && mode !== 'image_generation' && mode !== 'landingpage_generator' && mode !== 'institutional_website_generator' && mode !== 'canva_structure') {
+      if (!isAdmin && (isGuest || currentPlan.id !== 'premium') && mode !== 'image_generation' && mode !== 'social_media_poster' && mode !== 'landingpage_generator' && mode !== 'institutional_website_generator' && mode !== 'canva_structure') {
           processedText += "\n\nGerado por GDN_IA";
       }
 
@@ -288,6 +291,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       let finalTitle = null;
       let finalContent = processedText;
 
+      // Handle Image and Social Poster modes
       if (mode === 'image_generation') {
           setGeneratedImagePrompt(text);
           let w = 1024, h = 1024;
@@ -295,6 +299,28 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           if (options?.aspectRatio === '9:16') { w = 720; h = 1280; }
           setImageDimensions({ width: w, height: h });
           setResultText(prompt); 
+      } else if (mode === 'social_media_poster') {
+          // Parse Dual Output: [IMAGE_PROMPT] ... [COPY] ...
+          const parts = text.split('[COPY]');
+          let imgPrompt = text;
+          let copyText = "";
+
+          if (parts.length > 1) {
+              imgPrompt = parts[0].replace('[IMAGE_PROMPT]', '').trim();
+              copyText = parts[1].trim();
+          }
+
+          setGeneratedImagePrompt(imgPrompt);
+          setResultText(copyText); // Show the copy in text box
+          setResultTitle(`Post para ${options?.platform || 'Social Media'}`);
+
+          // Dimensões automáticas
+          let w = 1080, h = 1080;
+          const p = options?.platform || 'instagram_feed';
+          if (p.includes('story') || p.includes('reels')) { w = 720; h = 1280; } // 9:16
+          else if (p.includes('youtube') || p.includes('facebook') || p.includes('linkedin') || p.includes('twitter')) { w = 1280; h = 720; } // 16:9 (ou próximo)
+          
+          setImageDimensions({ width: w, height: h });
       } else {
           const { title, content } = extractTitleAndContent(processedText, mode);
           finalTitle = title;
@@ -317,10 +343,11 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
               
               switch(mode) {
                   case 'news_generator': historyTitle = finalTitle ? `Notícia: ${finalTitle}` : `Notícia: ${shortPrompt}`; break;
+                  case 'social_media_poster': historyTitle = `Post: ${shortPrompt}`; break;
                   default: historyTitle = `Geração: ${shortPrompt}`;
               }
 
-              const contentToSave = mode === 'image_generation' ? `PROMPT: ${text}` : processedText;
+              const contentToSave = (mode === 'image_generation') ? `PROMPT: ${text}` : processedText;
 
               await api.insert('news', {
                   titulo: historyTitle,
@@ -344,7 +371,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
               mode: mode,
               generated_at: new Date().toISOString(),
               audio_base64: audioResult,
-              image_prompt: mode === 'image_generation' ? text : undefined,
+              image_prompt: (mode === 'image_generation' || mode === 'social_media_poster') ? generatedImagePrompt : undefined,
               userId: user?.id
           }).then(res => {
               if(res.success) {
@@ -557,7 +584,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                             <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-500">10x Mais Rápido.</span>
                         </h1>
                         <p className="text-lg text-gray-500 mb-6 max-w-2xl mx-auto">
-                            Plataforma completa de IA para criadores. Experimente nossas ferramentas abaixo sem compromisso.
+                            Plataforma completa para criadores. Experimente nossas ferramentas abaixo sem compromisso.
                         </p>
                     </div>
                 )}
@@ -619,7 +646,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         />
                         )}
 
-                        {currentMode === 'image_generation' && generatedImagePrompt && (
+                        {/* RENDERIZAÇÃO DE IMAGENS E POSTERS */}
+                        {(currentMode === 'image_generation' || currentMode === 'social_media_poster') && generatedImagePrompt && (
                         <ImageStudio 
                             prompt={resultText || ''} 
                             originalPrompt={generatedImagePrompt} 
@@ -629,7 +657,10 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         )}
 
                         {/* RESULT DISPLAY & SEO WIDGET */}
-                        {currentMode !== 'landingpage_generator' && currentMode !== 'institutional_website_generator' && currentMode !== 'image_generation' && currentMode !== 'canva_structure' && resultText && (
+                        {currentMode !== 'landingpage_generator' && 
+                         currentMode !== 'institutional_website_generator' && 
+                         currentMode !== 'image_generation' && 
+                         currentMode !== 'canva_structure' && resultText && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
                             <div className="lg:col-span-2">
                                 <ResultDisplay 
@@ -640,12 +671,15 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                                 />
                             </div>
                             
-                            <div className="lg:col-span-1">
-                                <SeoScorecard 
-                                        title={resultTitle || "Sem Título"} 
-                                        content={resultText} 
-                                />
-                            </div>
+                            {/* SEO Scorecard não faz sentido para copy curto de post, mas ok para noticias e artigos */}
+                            {currentMode === 'news_generator' && (
+                                <div className="lg:col-span-1">
+                                    <SeoScorecard 
+                                            title={resultTitle || "Sem Título"} 
+                                            content={resultText} 
+                                    />
+                                </div>
+                            )}
                         </div>
                         )}
 

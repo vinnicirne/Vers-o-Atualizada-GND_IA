@@ -100,45 +100,61 @@ export function DocumentationViewer() {
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`;
 
   const schemaSql = `
--- === ATUALIZAÇÃO DO SISTEMA (NOTIFICAÇÕES EM TEMPO REAL) ===
+-- === ATUALIZAÇÃO CADASTRO (NOME E TELEFONE) ===
 
--- 1. TABELA DE NOTIFICAÇÕES
+-- 1. ADICIONAR COLUNA TELEFONE
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS phone text;
+
+-- 2. ATUALIZAR TRIGGER DE NOVO USUÁRIO
+-- Esta função pega os metadados (nome/telefone) enviados pelo formulário de cadastro
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.app_users (id, email, full_name, phone, role, credits, status, plan)
+  VALUES (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name', -- Pega o nome do metadata
+    new.raw_user_meta_data->>'phone',     -- Pega o telefone do metadata
+    'user',
+    3, -- Créditos iniciais (Free)
+    'active',
+    'free'
+  );
+  
+  -- Inicializa tabela de créditos
+  INSERT INTO public.user_credits (user_id, credits)
+  VALUES (new.id, 3);
+
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- === ATUALIZAÇÕES ANTERIORES (Para integridade) ===
+
+-- NOTIFICAÇÕES E REALTIME
 CREATE TABLE IF NOT EXISTS public.notifications (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id uuid REFERENCES public.app_users(id) NOT NULL,
     title text NOT NULL,
     message text NOT NULL,
-    type text DEFAULT 'info', -- 'info', 'success', 'warning', 'error'
+    type text DEFAULT 'info',
     is_read boolean DEFAULT false,
     action_link text,
     created_at timestamp with time zone DEFAULT now()
 );
-
--- Habilita RLS
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
--- Garante permissões de acesso
 GRANT ALL ON public.notifications TO authenticated;
 GRANT ALL ON public.notifications TO service_role;
-
--- Políticas de Segurança
 DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
-CREATE POLICY "Users manage own notifications" ON public.notifications 
-    FOR ALL 
-    USING (auth.uid() = user_id);
+CREATE POLICY "Users manage own notifications" ON public.notifications FOR ALL USING (auth.uid() = user_id);
 
--- 2. HABILITAR REALTIME
--- Isso permite que o frontend escute mudanças na tabela em tempo real
 begin;
   drop publication if exists supabase_realtime;
   create publication supabase_realtime;
 commit;
 alter publication supabase_realtime add table public.notifications;
--- Adicione outras tabelas que precisem de realtime aqui, se necessário:
--- alter publication supabase_realtime add table public.app_users;
-
-
--- === CORREÇÕES ANTERIORES (Para garantir integridade) ===
 
 -- TABELA DE FEEDBACKS
 CREATE TABLE IF NOT EXISTS public.system_feedbacks (
@@ -177,8 +193,6 @@ ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS mercadopago_customer_id te
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS external_id text;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
 `;
-
-  const n8nWorkflowJson = JSON.stringify({ /* ... kept as is ... */ }, null, 2);
 
   return (
     <div className="space-y-6">
@@ -230,17 +244,14 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
                     <p className="text-gray-600 text-sm mb-4">
                         Aprenda a configurar um fluxo N8N <strong>isolado e seguro</strong> onde cada usuário tem seu próprio contexto.
                     </p>
-                    {/* ... (Kept existing content structure) ... */}
                 </div>
             </div>
         )}
 
         {activeTab === 'api' && (
             <div className="space-y-6">
-                {/* ... (Kept existing API key content) ... */}
                 <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
                     <h2 className="text-xl font-bold text-[#263238] mb-4">Gerenciamento de API Keys</h2>
-                    {/* ... */}
                     <div className="space-y-2">
                         {apiKeys.map(key => (
                             <div key={key.id} className="flex items-center justify-between bg-white border border-gray-200 p-3 rounded hover:shadow-sm transition">
@@ -266,7 +277,7 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Para habilitar as <strong>Notificações em Tempo Real</strong>, execute o SQL abaixo no editor do Supabase.
+                    Para habilitar o salvamento de <strong>Nome e Telefone</strong> no cadastro, execute o SQL abaixo no editor do Supabase.
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>
