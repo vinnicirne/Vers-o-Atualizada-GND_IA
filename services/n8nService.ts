@@ -1,6 +1,7 @@
 
 import { N8nConfig } from '../types';
 import { api } from './api';
+import { supabase } from './supabaseClient'; // Import necessário para invocar function
 
 const STORAGE_KEY = 'gdn_n8n_config';
 const DB_KEY = 'n8n_config';
@@ -65,28 +66,116 @@ export const clearN8nConfig = async (userId?: string) => {
 };
 
 /**
- * Constrói URL dinâmica e segura para o usuário
+ * Função utilitária para chamar o N8N via Proxy Seguro (Edge Function)
+ * Substitui o fetch direto para evitar CORS e expor tokens.
  */
-const buildSecureUrl = (baseUrl: string, userId?: string): string => {
-    let finalUrl = baseUrl.trim();
-    // Se temos um ID de usuário, garantimos que a URL termine com /user/ID para isolamento
-    if (userId) {
-        // Verifica se a URL já tem o ID (evita duplicação)
-        if (!finalUrl.includes(userId)) {
-            // Remove trailing slash
-            finalUrl = finalUrl.replace(/\/$/, '');
-            // Se a URL configurada for a base "webhook/gdn", anexa "/user/ID"
-            // Se o usuário colou a URL completa sem ID, anexa.
-            if (!finalUrl.includes('/user/')) {
-                finalUrl = `${finalUrl}/user/${userId}`;
-            } else if (finalUrl.endsWith('/user') || finalUrl.endsWith('/user/')) {
-                finalUrl = `${finalUrl.replace(/\/$/, '')}/${userId}`;
-            }
-        }
-    }
-    return finalUrl;
+export const callN8N = async (prompt: string, context: Record<string, any> = {}) => {
+  try {
+      // Chama a Edge Function 'n8n-proxy'
+      // O Supabase injeta automaticamente o Authorization Bearer do usuário logado
+      const { data, error } = await supabase.functions.invoke('n8n-proxy', {
+          body: {
+              prompt,
+              task: context.task || 'generation',
+              metadata: context // Passa outros dados como metadata
+          }
+      });
+
+      if (error) {
+          console.error("Erro na Edge Function n8n-proxy:", error);
+          throw new Error(error.message || "Falha na comunicação com o servidor de automação.");
+      }
+
+      // Verifica se o N8N retornou erro lógico (mas HTTP 200 do proxy)
+      if (data && data.status === 'error') {
+          throw new Error(data.message || "Erro no processamento do fluxo N8N.");
+      }
+
+      return data;
+
+  } catch (error: any) {
+      console.error("Falha na integração N8N (Proxy):", error);
+      // Retorna objeto de erro seguro para não quebrar a UI
+      return { status: 'error', message: error.message };
+  }
 };
 
+interface N8nPayload {
+  title?: string | null;
+  content: string;
+  mode: string;
+  generated_at: string;
+  credits_cost?: number;
+  audio_base64?: string | null;
+  image_prompt?: string;
+  source?: string;
+  userId?: string; 
+}
+
+/**
+ * Envia resultado gerado para o N8N.
+ * Tenta usar a config do usuário se existir (Integração Customizada).
+ * Se não, pode ser configurado para usar o Proxy do Sistema (Opcional).
+ */
+export const sendToN8nWebhook = async (
+  payload: N8nPayload
+): Promise<{ success: boolean; message?: string }> => {
+  const userConfig = getN8nConfig();
+  
+  // CENÁRIO 1: Usuário trouxe o próprio Webhook (Configuração Manual)
+  // Fazemos a requisição direta (Client-side) pois é o webhook DELE.
+  if (userConfig && userConfig.isConnected && userConfig.webhookUrl) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); 
+
+        // Constrói URL Segura (Append /user/ID) se necessário, para manter padrão
+        let finalUrl = userConfig.webhookUrl.trim().replace(/\/$/, '');
+        if (payload.userId && !finalUrl.includes('/user/')) {
+             finalUrl = `${finalUrl}/user/${payload.userId}`;
+        }
+
+        const response = await fetch(finalUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Source': 'GDN_IA_CLIENT'
+          },
+          body: JSON.stringify({
+              ...payload,
+              source: 'gdn_ia_dashboard_custom'
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          return { success: true };
+        } else {
+          return { success: false, message: `Erro ${response.status}: ${response.statusText}` };
+        }
+      } catch (error: any) {
+        console.error("Erro ao enviar para n8n customizado:", error);
+        return { success: false, message: error.message };
+      }
+  }
+
+  // CENÁRIO 2: Uso do Proxy do Sistema (Se quisermos enviar tudo para um N8N central)
+  // Descomente abaixo se desejar que TODOS os usuarios enviem dados para o SEU N8N
+  /*
+  try {
+      await callN8N("Log de Geração Automática", { ...payload, task: 'auto_log' });
+      return { success: true };
+  } catch (e: any) {
+      return { success: false, message: e.message };
+  }
+  */
+
+  return { success: false, message: 'N8n não configurado.' };
+};
+
+// Mantido para compatibilidade com o modal de teste de conexão manual
 export const validateN8nWebhook = async (url: string, userId?: string): Promise<{ success: boolean; message?: string }> => {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return { success: false, message: 'URL inválida. Deve começar com http:// ou https://' };
@@ -96,10 +185,12 @@ export const validateN8nWebhook = async (url: string, userId?: string): Promise<
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-        // Usa URL segura se possível, senão usa a fornecida
-        const targetUrl = buildSecureUrl(url, userId);
+        let finalUrl = url.trim().replace(/\/$/, '');
+        if (userId && !finalUrl.includes('/user/')) {
+             finalUrl = `${finalUrl}/user/${userId}`;
+        }
 
-        const response = await fetch(targetUrl, {
+        const response = await fetch(finalUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-Source': 'GDN_IA_TEST' },
             body: JSON.stringify({
@@ -127,111 +218,4 @@ export const validateN8nWebhook = async (url: string, userId?: string): Promise<
         
         return { success: false, message: msg };
     }
-};
-
-export const callN8N = async (prompt: string, context: Record<string, any> = {}) => {
-  const config = getN8nConfig();
-  if (!config || !config.webhookUrl) {
-      throw new Error("Webhook N8N não configurado.");
-  }
-
-  try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000);
-
-      // Secure dynamic URL construction
-      const targetUrl = buildSecureUrl(config.webhookUrl, context.userId);
-
-      const response = await fetch(targetUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ 
-              prompt, 
-              ...context,
-              source: 'gdn_ia_generation',
-              timestamp: new Date().toISOString()
-          }),
-          signal: controller.signal
-      });
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-          throw new Error(`Erro HTTP N8N: ${response.status} ${response.statusText}`);
-      }
-
-      const text = await response.text();
-      try {
-          return JSON.parse(text);
-      } catch {
-          return { output: text };
-      }
-  } catch (error: any) {
-      if (error.name === 'AbortError') throw new Error("Timeout: N8N demorou muito.");
-      // Ensure we don't crash, return formatted error
-      return { status: 'error', message: error.message };
-  }
-};
-
-interface N8nPayload {
-  title?: string | null;
-  content: string;
-  mode: string;
-  generated_at: string;
-  credits_cost?: number;
-  audio_base64?: string | null;
-  image_prompt?: string;
-  source?: string;
-  userId?: string; // Optional user ID for path construction
-}
-
-export const sendToN8nWebhook = async (
-  payload: N8nPayload
-): Promise<{ success: boolean; message?: string }> => {
-  const config = getN8nConfig();
-  
-  if (!config || !config.isConnected || !config.webhookUrl) {
-    return { success: false, message: 'N8n não configurado.' };
-  }
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); 
-
-    // Secure dynamic URL construction
-    // We try to find userId in payload or localStorage as fallback
-    let currentUserId = payload.userId;
-    if (!currentUserId) {
-        // Fallback: try to grab from payload metadata or other context if available
-        // Ideally payload.userId is passed by the caller
-    }
-    const targetUrl = buildSecureUrl(config.webhookUrl, currentUserId);
-
-    const response = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Source': 'GDN_IA'
-      },
-      body: JSON.stringify({
-          ...payload,
-          source: 'gdn_ia_dashboard'
-      }),
-      signal: controller.signal
-    });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      return { success: true };
-    } else {
-      return { success: false, message: `Erro ${response.status}: ${response.statusText}` };
-    }
-  } catch (error: any) {
-    console.error("Erro ao enviar para n8n:", error);
-    let msg = error.message || 'Erro de conexão.';
-    if (error.name === 'AbortError') msg = 'Timeout no envio.';
-    else if (msg.includes('Failed to fetch')) msg = 'Falha de entrega (CORS/Rede).';
-    
-    return { success: false, message: msg };
-  }
 };
