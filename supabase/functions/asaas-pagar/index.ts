@@ -64,7 +64,15 @@ serve(async (req) => {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
     }
+    
+    // --- URL CONSTRUCTION LOGIC (FIX 404) ---
     const asaasApiBaseUrl = Deno.env.get("ASAAS_API_BASE_URL") || "https://api.asaas.com"; // Default para produção
+    const cleanBaseUrl = asaasApiBaseUrl.replace(/\/$/, "");
+    const isProduction = cleanBaseUrl.includes("api.asaas.com");
+    // Produção usa /v3/..., Sandbox/Outros usam /api/v3/...
+    const pathPrefix = isProduction ? "/v3" : "/api/v3";
+
+    const getUrl = (path: string) => `${cleanBaseUrl}${pathPrefix}${path}`;
 
     // --- MODO 1: CANCELAMENTO DE ASSINATURA ---
     if (reqJson.action === 'cancel_subscription') {
@@ -76,7 +84,7 @@ serve(async (req) => {
         console.log(`[asaas-pagar] Cancelando assinatura ${subscription_id} para usuário ${authUser.id}`);
 
         // Deleta no Asaas
-        const cancelRes = await fetch(`${asaasApiBaseUrl}/api/v3/subscriptions/${subscription_id}`, {
+        const cancelRes = await fetch(getUrl(`/subscriptions/${subscription_id}`), {
             method: "DELETE",
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
@@ -168,7 +176,10 @@ serve(async (req) => {
     if (!asaasCustomerId) {
       console.log(`[asaas-pagar] Cliente Asaas não encontrado para ${authUser.id}. Tentando criar/buscar.`);
       // 1. Tenta criar cliente
-      let customerResponse = await fetch(`${asaasApiBaseUrl}/api/v3/customers`, {
+      const customerUrl = getUrl("/customers");
+      console.log(`[asaas-pagar] Creating customer at: ${customerUrl}`);
+      
+      let customerResponse = await fetch(customerUrl, {
         method: "POST",
         headers: { "access_token": asaasKey, "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -194,7 +205,7 @@ serve(async (req) => {
           // Se falhar (ex: email já existe no Asaas mas não no nosso banco), tenta buscar por email
           if (customer.errors?.[0]?.code === 'invalid_customer' || (customer.errors?.[0]?.description && customer.errors[0].description.includes('email'))) {
                console.log("[asaas-pagar] Erro ao criar cliente (possivelmente email já existe). Tentando buscar por email.");
-               const searchRes = await fetch(`${asaasApiBaseUrl}/api/v3/customers?email=${userEmail}`, {
+               const searchRes = await fetch(`${getUrl("/customers")}?email=${userEmail}`, {
                    headers: { "access_token": asaasKey }
                });
                
@@ -265,7 +276,8 @@ serve(async (req) => {
     console.log(`[asaas-pagar] Enviando payload para Asaas (${isSubscription ? 'ASSINATURA' : 'PAGAMENTO ÚNICO'}):`, JSON.stringify(paymentPayload));
     
     // Escolhe endpoint correto
-    const endpoint = isSubscription ? `${asaasApiBaseUrl}/api/v3/subscriptions` : `${asaasApiBaseUrl}/api/v3/payments`;
+    const endpoint = isSubscription ? getUrl("/subscriptions") : getUrl("/payments");
+    console.log(`[asaas-pagar] Posting to: ${endpoint}`);
 
     // Cria cobrança/assinatura
     const paymentRes = await fetch(endpoint, {
@@ -279,9 +291,9 @@ serve(async (req) => {
     try {
         paymentData = JSON.parse(paymentText);
     } catch (e) {
-        console.error(`[asaas-pagar] Erro de parse JSON Asaas (Status ${paymentRes.status}):`, paymentText);
+        console.error(`[asaas-pagar] Erro de parse JSON Asaas (Status ${paymentRes.status}). Resposta Raw:`, paymentText);
         return new Response(JSON.stringify({ 
-            error: "Erro de comunicação com gateway de pagamento (Resposta inválida). Tente novamente." 
+            error: "Erro de comunicação com gateway de pagamento (Resposta inválida ou HTML de erro). Verifique a URL da API." 
         }), { status: 502, headers: corsHeaders });
     }
 
@@ -334,7 +346,7 @@ serve(async (req) => {
         
         if (isSubscription) {
             // Busca o primeiro pagamento gerado pela assinatura
-            const subPaymentsRes = await fetch(`${asaasApiBaseUrl}/api/v3/subscriptions/${entityId}/payments`, {
+            const subPaymentsRes = await fetch(getUrl(`/subscriptions/${entityId}/payments`), {
                 headers: { "access_token": asaasKey }
             });
             let subPayments;
@@ -349,7 +361,7 @@ serve(async (req) => {
             }
         }
 
-        const qrRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments/${pixPaymentId}/pixQrCode`, {
+        const qrRes = await fetch(getUrl(`/payments/${pixPaymentId}/pixQrCode`), {
             method: "GET",
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });

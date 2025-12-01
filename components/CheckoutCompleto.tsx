@@ -463,6 +463,10 @@ export default function CheckoutCompleto({
         try {
             result = JSON.parse(resText);
         } catch (e) {
+            console.error("[Asaas Pix] Parse error:", resText);
+            if (resText.trim().startsWith('<')) {
+                throw new Error("Erro de configuração da API Asaas (404/500 HTML). Contate o suporte.");
+            }
             throw new Error(`Erro de comunicação com o servidor de pagamento Asaas (${res.status}). O servidor retornou uma resposta inválida.`);
         }
 
@@ -638,7 +642,7 @@ export default function CheckoutCompleto({
               console.error("[Checkout] JSON Parse Error. Raw response:", resText);
               // Handle HTML errors (usually starting with <)
               if (resText.trim().startsWith('<')) {
-                  throw new Error(`Erro de comunicação com o servidor (${res.status}). O serviço de pagamento pode estar temporariamente indisponível.`);
+                  throw new Error(`Erro de configuração da API (${res.status}). A URL do endpoint de pagamento pode estar incorreta no backend.`);
               }
               throw new Error(`Erro inesperado na resposta do pagamento (${res.status}).`);
           }
