@@ -86,10 +86,10 @@ serve(async (req) => {
             body: JSON.stringify({ status: "cancelled" })
         });
 
-        // Safe JSON Parse
+        const cancelText = await cancelRes.text();
         let cancelData;
         try {
-            cancelData = await cancelRes.json();
+            cancelData = JSON.parse(cancelText);
         } catch (e) {
             console.error("Erro ao parsear resposta de cancelamento MP:", e);
             cancelData = { message: "Erro de comunicação com MP" };
@@ -130,11 +130,12 @@ serve(async (req) => {
             headers: { "Authorization": `Bearer ${mpAccessToken}` }
         });
         
+        const mpText = await mpRes.text();
         let paymentInfo;
         try {
-            paymentInfo = await mpRes.json();
+            paymentInfo = JSON.parse(mpText);
         } catch(e) {
-            console.error("Polling parse error MP");
+            console.error("Polling parse error MP:", mpText);
             return new Response(JSON.stringify({ error: "API Error" }), { status: 500, headers: corsHeaders });
         }
 
@@ -246,12 +247,12 @@ serve(async (req) => {
             body: JSON.stringify(preapprovalPayload)
         });
 
+        const subText = await subRes.text();
         let subData;
         try {
-            subData = await subRes.json();
+            subData = JSON.parse(subText);
         } catch (e) {
-            const text = await subRes.text();
-            console.error("Erro parse JSON Preapproval MP:", text);
+            console.error("Erro parse JSON Preapproval MP:", subText);
             return new Response(JSON.stringify({ error: "Erro de comunicação com MP (Preapproval)" }), { status: 502, headers: corsHeaders });
         }
 
@@ -339,12 +340,12 @@ serve(async (req) => {
       body: JSON.stringify(mpPayload),
     });
 
+    const mpText = await mpResponse.text();
     let payment;
     try {
-        payment = await mpResponse.json();
+        payment = JSON.parse(mpText);
     } catch (e) {
-        const text = await mpResponse.text();
-        console.error("Erro parse JSON Payment MP:", text);
+        console.error("Erro parse JSON Payment MP:", mpText);
         return new Response(JSON.stringify({ error: "Erro de comunicação com MP (Payment)" }), { status: 502, headers: corsHeaders });
     }
 

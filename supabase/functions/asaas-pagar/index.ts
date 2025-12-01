@@ -81,12 +81,12 @@ serve(async (req) => {
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
 
-        // Safe JSON Parse
+        const cancelText = await cancelRes.text();
         let cancelData;
         try {
-            cancelData = await cancelRes.json();
+            cancelData = JSON.parse(cancelText);
         } catch (e) {
-            console.error("Erro ao parsear resposta de cancelamento:", e);
+            console.error("Erro ao parsear resposta de cancelamento:", cancelText);
             cancelData = { deleted: false };
         }
         
@@ -179,12 +179,13 @@ serve(async (req) => {
         }),
       });
       
+      const customerText = await customerResponse.text();
       let customer;
       try {
-          customer = await customerResponse.json();
+          customer = JSON.parse(customerText);
       } catch (e) {
-          console.error("Falha ao parsear resposta de criação de cliente Asaas");
-          return new Response(JSON.stringify({ error: "Erro de comunicação com Asaas ao criar cliente." }), { status: 502, headers: corsHeaders });
+          console.error("Falha ao parsear resposta de criação de cliente Asaas:", customerText);
+          return new Response(JSON.stringify({ error: "Erro de comunicação com Asaas ao criar cliente (HTML Response)." }), { status: 502, headers: corsHeaders });
       }
 
       console.log("[asaas-pagar] Resposta de criação/busca de cliente Asaas:", JSON.stringify(customer));
@@ -273,12 +274,12 @@ serve(async (req) => {
       body: JSON.stringify(paymentPayload),
     });
 
+    const paymentText = await paymentRes.text();
     let paymentData;
     try {
-        paymentData = await paymentRes.json();
+        paymentData = JSON.parse(paymentText);
     } catch (e) {
-        const text = await paymentRes.text();
-        console.error(`[asaas-pagar] Erro de parse JSON Asaas (Status ${paymentRes.status}):`, text);
+        console.error(`[asaas-pagar] Erro de parse JSON Asaas (Status ${paymentRes.status}):`, paymentText);
         return new Response(JSON.stringify({ 
             error: "Erro de comunicação com gateway de pagamento (Resposta inválida). Tente novamente." 
         }), { status: 502, headers: corsHeaders });
@@ -353,11 +354,12 @@ serve(async (req) => {
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
         
+        const qrText = await qrRes.text();
         let qrData;
         try {
-            qrData = await qrRes.json();
+            qrData = JSON.parse(qrText);
         } catch(e) {
-            console.error("Erro parse QR Code Asaas");
+            console.error("Erro parse QR Code Asaas:", qrText);
             return new Response(JSON.stringify({ error: "Erro ao gerar QR Code (Parse Error)" }), { status: 502, headers: corsHeaders });
         }
         

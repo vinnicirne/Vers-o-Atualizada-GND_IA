@@ -348,9 +348,10 @@ export default function CheckoutCompleto({
         });
         
         // SAFE JSON PARSE for Polling
+        const resText = await res.text();
         let data;
         try {
-            data = await res.json();
+            data = JSON.parse(resText);
         } catch (e) {
             console.warn(`[CheckoutCompleto] Polling parse error (likely 502/503 from edge function)`);
             return; // Skip this poll cycle
@@ -365,9 +366,7 @@ export default function CheckoutCompleto({
         } else if (!res.ok) {
             // Se o polling retornar erro do servidor, loga e interrompe
             console.error(`[CheckoutCompleto] Polling recebeu erro do servidor: ${data.error || res.statusText}`);
-            // setError(`Erro ao verificar pagamento: ${data.error || res.statusText}`);
             clearInterval(pollInterval.current);
-            // Optionally, call onError or show specific UI
         }
       } catch (e) {
         console.error("[CheckoutCompleto] Polling error:", e);
@@ -402,11 +401,12 @@ export default function CheckoutCompleto({
       });
 
       // SAFE JSON PARSE
+      const resText = await res.text();
       let result;
       try {
-          result = await res.json();
+          result = JSON.parse(resText);
       } catch (e) {
-          throw new Error(`Erro de comunicação com o servidor de pagamento (${res.status}).`);
+          throw new Error(`Erro de comunicação com o servidor de pagamento (${res.status}). O servidor retornou uma resposta inválida.`);
       }
       
       if (!res.ok) {
@@ -458,11 +458,12 @@ export default function CheckoutCompleto({
         });
 
         // SAFE JSON PARSE
+        const resText = await res.text();
         let result;
         try {
-            result = await res.json();
+            result = JSON.parse(resText);
         } catch (e) {
-            throw new Error(`Erro de comunicação com o servidor de pagamento Asaas (${res.status}).`);
+            throw new Error(`Erro de comunicação com o servidor de pagamento Asaas (${res.status}). O servidor retornou uma resposta inválida.`);
         }
 
         if (!res.ok) throw new Error(result.error || 'Erro ao gerar Pix.');
@@ -628,16 +629,18 @@ export default function CheckoutCompleto({
               body: JSON.stringify(payload),
           });
 
-          // SAFE JSON PARSE
+          // SAFE JSON PARSE - ROBUST
+          const resText = await res.text();
           let result;
           try {
-              result = await res.json();
+              result = JSON.parse(resText);
           } catch (e) {
-              console.error("[Checkout] JSON Parse Error:", e);
-              // Tenta ler o texto para debug
-              // const text = await res.text();
-              // console.error("Raw response:", text);
-              throw new Error(`Erro de comunicação com o gateway (${res.status}). Tente novamente mais tarde.`);
+              console.error("[Checkout] JSON Parse Error. Raw response:", resText);
+              // Handle HTML errors (usually starting with <)
+              if (resText.trim().startsWith('<')) {
+                  throw new Error(`Erro de comunicação com o servidor (${res.status}). O serviço de pagamento pode estar temporariamente indisponível.`);
+              }
+              throw new Error(`Erro inesperado na resposta do pagamento (${res.status}).`);
           }
           
           if (!res.ok) {
