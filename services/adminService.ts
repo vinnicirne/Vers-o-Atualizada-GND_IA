@@ -27,6 +27,66 @@ const DOMAIN_BLACKLIST = [
     'throwawaymail.com'
 ];
 
+// --- NOTIFICATIONS SYSTEM (ADMIN) ---
+
+export const sendSystemNotification = async (
+    title: string,
+    message: string,
+    type: 'info' | 'success' | 'warning' | 'error',
+    targetUserId: string | 'all',
+    actionLink?: string,
+    adminId?: string
+) => {
+    try {
+        if (targetUserId === 'all') {
+            // Envio em Massa (Broadcast)
+            // 1. Busca todos os IDs de usuários ativos
+            const { data: users, error: usersError } = await api.select('app_users', { status: 'active' });
+            
+            if (usersError || !users) throw new Error("Erro ao buscar lista de usuários para envio em massa.");
+
+            if (users.length === 0) return { success: true, count: 0 };
+
+            // 2. Prepara o payload em lote
+            const notifications = users.map((u: any) => ({
+                user_id: u.id,
+                title,
+                message,
+                type,
+                action_link: actionLink || null,
+                is_read: false,
+                created_at: new Date().toISOString()
+            }));
+
+            // 3. Insere em lote (Supabase suporta insert de array)
+            // Nota: Se a lista for muito grande (>1000), ideal seria quebrar em chunks, mas para MVP está ok.
+            const { error } = await api.insert('notifications', notifications);
+            if (error) throw new Error(error);
+
+            logger.info(adminId || 'system', 'Sistema', 'send_broadcast_notification', { title, count: users.length });
+            return { success: true, count: users.length };
+
+        } else {
+            // Envio Individual
+            const { error } = await api.insert('notifications', {
+                user_id: targetUserId,
+                title,
+                message,
+                type,
+                action_link: actionLink || null,
+                is_read: false
+            });
+
+            if (error) throw new Error(error);
+            logger.info(adminId || 'system', 'Sistema', 'send_user_notification', { title, targetUserId });
+            return { success: true, count: 1 };
+        }
+    } catch (e: any) {
+        console.error("Erro ao enviar notificação:", e);
+        throw e;
+    }
+};
+
 // --- AFFILIATE SYSTEM ---
 
 export const generateAffiliateCode = async (userId: string, fullName: string): Promise<string> => {
@@ -186,7 +246,6 @@ export const getPopups = async (onlyActive = false): Promise<Popup[]> => {
         const errorMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
         
         // Se a tabela não existir (ainda não foi criada via SQL), retorna array vazio para não quebrar a UI
-        // Tratamento para diversos formatos de erro do PostgREST/Supabase
         if(
             errorMsg.includes('does not exist') || 
             errorMsg.includes('404') || 
@@ -291,6 +350,7 @@ export const deleteUser = async (userId: string, adminId: string) => {
         { table: 'ai_logs', key: 'usuario_id' },  
         { table: 'transactions', key: 'usuario_id' },
         { table: 'affiliate_logs', key: 'affiliate_id' },
+        { table: 'notifications', key: 'user_id' }, // Added notifications
     ];
 
     for (const dep of dependencies) {

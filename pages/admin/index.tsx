@@ -15,7 +15,8 @@ import { PlansManager } from '../../components/admin/PlansManager';
 import { SecurityManager } from '../../components/admin/SecurityManager'; 
 import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; 
 import { PopupManager } from '../../components/admin/PopupManager'; 
-import { FeedbackManager } from '../../components/admin/FeedbackManager'; // Import FeedbackManager
+import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
+import { NotificationManager } from '../../components/admin/NotificationManager'; // NOVO IMPORT
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -62,7 +63,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) // Listen to feedbacks
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -150,6 +151,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PopupManager />;
       case 'feedbacks':
         return <FeedbackManager />;
+      case 'notifications_push': // RENDERIZAÇÃO DO NOVO COMPONENTE
+        return <NotificationManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
       case 'security': 
