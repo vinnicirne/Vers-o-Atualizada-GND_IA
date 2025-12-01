@@ -15,7 +15,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
   const buttonClasses = `
     w-full py-3 rounded-lg font-bold text-sm transition-all flex justify-center items-center shadow-md
     ${isCurrent
-      ? 'bg-gray-100 text-gray-500 cursor-default border border-gray-200'
+      ? 'bg-green-50 text-green-700 cursor-default border border-green-200'
       : isFree
         ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer border border-gray-300'
         : isMostPopular
@@ -33,8 +33,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
       `}
     >
       {isCurrent && (
-        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
-          SEU PLANO ATUAL
+        <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-green-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm flex items-center gap-1">
+          <i className="fas fa-check-circle"></i> SEU PLANO ATUAL
         </div>
       )}
       {isMostPopular && !isCurrent && (
@@ -82,7 +82,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
         className={buttonClasses}
       >
         {isCurrent
-          ? 'Plano Ativo'
+          ? <><i className="fas fa-check mr-2"></i> Assinado</>
           : isFree
             ? 'Começar Grátis'
             : <>Assinar Agora <i className="fas fa-arrow-right ml-2"></i></>

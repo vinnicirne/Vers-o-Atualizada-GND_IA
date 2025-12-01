@@ -85,14 +85,13 @@ export const generateWordPressPluginZip = async (userGeminiKey?: string) => {
     const jsFolder = assetsFolder?.folder("js");
 
     // Injeção de credenciais no PHP
-    // Garante que a chave passada manualmente tenha prioridade
     const GEMINI_KEY = userGeminiKey || process.env.API_KEY || '';
 
     // Fragmentação das chaves para bypass de WAF
     const phpSupabaseKey = splitForPhp(supabaseAnonKey);
     const phpGeminiKey = splitForPhp(GEMINI_KEY);
 
-    // 1. MAIN PLUGIN FILE (PHP) - Versão 1.5.3 (Correções Robustas de Erro)
+    // 1. MAIN PLUGIN FILE (PHP)
     const mainFileContent = `<?php
 /*
 Plugin Name: GDN_IA - Poster Pro
@@ -116,7 +115,7 @@ class NoticiasPosterGDN {
     private $email_key = 'gdn_user_email';
     
     public function __construct() {
-        // Configuração do SISTEMA (Credenciais da Aplicação)
+        // Configuração do SISTEMA
         $this->supabase_url = '${supabaseUrl}';
         $this->supabase_key = ${phpSupabaseKey};
         $this->gemini_key = ${phpGeminiKey};
@@ -124,7 +123,6 @@ class NoticiasPosterGDN {
         add_action('admin_menu', array($this, 'adicionar_menu_poster'));
         add_action('admin_init', array($this, 'restringir_acesso_poster'));
         
-        // AJAX Actions
         add_action('wp_ajax_gdn_login', array($this, 'ajax_login'));
         add_action('wp_ajax_gdn_check_credits', array($this, 'ajax_check_credits'));
         add_action('wp_ajax_gdn_generate', array($this, 'ajax_generate'));
@@ -167,14 +165,11 @@ class NoticiasPosterGDN {
     }
     
     public function filtrar_posts_por_autor($query) {
-        // Separação de Dados: Usuário só vê posts que ELE criou neste plugin/página
         if (is_admin() && isset($_GET['page']) && $_GET['page'] === 'gdn-poster' && $query->is_main_query()) {
             $query->set('author', get_current_user_id());
         }
         return $query;
     }
-    
-    // --- MÉTODOS AUXILIARES API ---
     
     private function supabase_request($endpoint, $method = 'GET', $body = null, $token = null) {
         $url = $this->supabase_url . $endpoint;
@@ -191,7 +186,7 @@ class NoticiasPosterGDN {
             'method' => $method,
             'headers' => $headers,
             'timeout' => 20,
-            'sslverify' => false // CRÍTICO: Garante funcionamento em hospedagens com SSL/CA Bundle desatualizado
+            'sslverify' => false
         );
         
         if ($body) {
@@ -209,59 +204,43 @@ class NoticiasPosterGDN {
         $data = json_decode($body_response, true);
         
         if ($code >= 400) {
-            // Se falhar o decode do JSON, retorna o corpo cru (pode ser erro HTML do servidor)
             if (json_last_error() !== JSON_ERROR_NONE) {
                 return array('error' => 'Erro HTTP ' . $code . ': ' . substr($body_response, 0, 100));
             }
-            return $data; // Retorna o objeto de erro completo do Supabase
+            return $data;
         }
         
         return $data;
     }
     
-    // --- AJAX HANDLERS ---
-    
     public function ajax_login() {
         $email = sanitize_email($_POST['email']);
         $password = $_POST['password'];
         
-        // Auth via Supabase GoTrue
         $response = $this->supabase_request('/auth/v1/token?grant_type=password', 'POST', array(
             'email' => $email,
             'password' => $password
         ));
         
-        // Tratamento robusto de erros do Supabase/GoTrue
         if (isset($response['error']) || isset($response['error_description']) || isset($response['msg'])) {
             $msg = 'Erro desconhecido';
+            if (isset($response['error_description'])) $msg = $response['error_description'];
+            elseif (isset($response['msg'])) $msg = $response['msg'];
+            elseif (isset($response['error']) && is_string($response['error'])) $msg = $response['error'];
             
-            if (isset($response['error_description'])) {
-                $msg = $response['error_description'];
-            } elseif (isset($response['msg'])) {
-                $msg = $response['msg'];
-            } elseif (isset($response['error']) && is_string($response['error'])) {
-                $msg = $response['error'];
-            } elseif (isset($response['message'])) {
-                $msg = $response['message'];
-            }
-            
-            // Tradução amigável
             if (strpos($msg, 'Invalid login credentials') !== false) {
                 $msg = 'E-mail ou senha incorretos.';
             }
-            
             wp_send_json_error($msg);
         }
         
         if (isset($response['access_token'])) {
-            // Armazena dados do USUÁRIO no WordPress User Meta
             update_user_meta(get_current_user_id(), $this->token_key, $response['access_token']);
             update_user_meta(get_current_user_id(), $this->uid_key, $response['user']['id']);
             update_user_meta(get_current_user_id(), $this->email_key, $response['user']['email']);
-            
             wp_send_json_success('Login realizado!');
         } else {
-            wp_send_json_error('Resposta inválida do servidor de autenticação.');
+            wp_send_json_error('Resposta inválida do servidor.');
         }
     }
     
@@ -272,17 +251,13 @@ class NoticiasPosterGDN {
         
         if (!$token || !$uid) wp_send_json_error('Não logado.');
         
-        // Consulta tabela user_credits via REST
         $data = $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}&select=credits", 'GET', null, $token);
         
         if (isset($data['error'])) wp_send_json_error('Erro ao verificar créditos.');
         
         $credits = (is_array($data) && count($data) > 0) ? $data[0]['credits'] : 0;
         
-        wp_send_json_success(array(
-            'credits' => $credits,
-            'email' => $email // Retorna identidade do usuário
-        ));
+        wp_send_json_success(array('credits' => $credits, 'email' => $email));
     }
     
     public function ajax_generate() {
@@ -291,79 +266,58 @@ class NoticiasPosterGDN {
         if (!$token) wp_send_json_error('Sessão expirada. Faça login novamente.');
         
         if (empty($this->gemini_key) || strlen($this->gemini_key) < 10) {
-            wp_send_json_error('Erro Crítico: Chave de API do Google Gemini não configurada no plugin.');
+            wp_send_json_error('Erro Crítico: Chave de API do Google Gemini não configurada.');
         }
 
-        // 1. Verificar Créditos do Usuário
         $credit_data = $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}&select=credits", 'GET', null, $token);
         $current_credits = isset($credit_data[0]['credits']) ? intval($credit_data[0]['credits']) : 0;
         
         if ($current_credits < 1 && $current_credits !== -1) {
-            wp_send_json_error('Saldo insuficiente. Recarregue no painel GDN_IA.');
+            wp_send_json_error('Saldo insuficiente.');
         }
         
         $theme = sanitize_text_field($_POST['theme']);
         
-        // 2. Separação de SYSTEM INSTRUCTION (Regras) vs USER PROMPT (Conteúdo)
-        // Isso impede que o tema do usuário sobrescreva o comportamento do jornalista
-        
         $system_instruction_text = 
-            "Atue como um jornalista esportivo e investigativo sênior, apaixonado e detalhista. " .
+            "Atue como um jornalista esportivo e investigativo sênior. " .
             "REGRAS ESTRUTURAIS:\\n" .
             "1. Siga ESTRITAMENTE este formato de resposta (4 partes separadas por quebra de linha):\\n" .
-            "   Linha 1: [TÍTULO] (Um título impactante, emocional e com a palavra-chave principal)\\n" .
-            "   Linha 2: [KEYWORD] (Apenas a palavra-chave foco para SEO. Ex: Final da Libertadores)\\n" .
-            "   Linha 3: [META] (Uma meta descrição de 150 caracteres altamente clicável)\\n" .
+            "   Linha 1: [TÍTULO] (Um título impactante)\\n" .
+            "   Linha 2: [KEYWORD] (Apenas a palavra-chave foco)\\n" .
+            "   Linha 3: [META] (Uma meta descrição de 150 caracteres)\\n" .
             "   Linha 4 em diante: [CONTEÚDO] (O texto completo em HTML).\\n" .
-            "2. HTML REGRAS: Use <h2> para subtítulos, <h3>, <p>, <ul><li> para listas, <blockquote> para citações.\\n" .
-            "3. EMOÇÃO: Descreva a atmosfera, o sentimento da torcida, a tensão. Use adjetivos fortes.\\n" .
-            "4. SEO: Repita a [KEYWORD] no primeiro parágrafo e em pelo menos um H2.\\n" .
-            "5. Tamanho: Mínimo 800 palavras.\\n" .
-            "6. NÃO use Markdown (nada de ** ou ##), apenas HTML puro.";
+            "2. HTML REGRAS: Use <h2>, <h3>, <p>, <ul><li>, <blockquote>.\\n" .
+            "3. NÃO use Markdown, apenas HTML puro.";
 
         $user_prompt_text = "Escreva uma matéria aprofundada sobre: '{$theme}'";
         
         $gemini_url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" . $this->gemini_key;
         
         $payload = array(
-            'systemInstruction' => array(
-                'parts' => array(array('text' => $system_instruction_text))
-            ),
-            'contents' => array(
-                array(
-                    'role' => 'user',
-                    'parts' => array(array('text' => $user_prompt_text))
-                )
-            )
+            'systemInstruction' => array('parts' => array(array('text' => $system_instruction_text))),
+            'contents' => array(array('role' => 'user', 'parts' => array(array('text' => $user_prompt_text))))
         );
         
         $response = wp_remote_post($gemini_url, array(
             'body' => json_encode($payload),
             'headers' => array('Content-Type' => 'application/json'),
             'timeout' => 90,
-            'sslverify' => false // Gemini Google API geralmente é confiável, mas hospedagens baratas podem falhar sem isso
+            'sslverify' => false
         ));
         
         if (is_wp_error($response)) {
             wp_send_json_error('Erro de conexão com Google Gemini: ' . $response->get_error_message());
         }
         
-        $code = wp_remote_retrieve_response_code($response);
         $body_raw = wp_remote_retrieve_body($response);
         $gemini_body = json_decode($body_raw, true);
         
-        if ($code !== 200) {
-            $error_details = $gemini_body['error']['message'] ?? 'Erro desconhecido';
-            wp_send_json_error("Erro da IA ($code): " . $error_details);
-        }
-
         $text = $gemini_body['candidates'][0]['content']['parts'][0]['text'] ?? null;
         
         if (!$text) {
-            wp_send_json_error('A IA respondeu mas não gerou texto. Verifique se o tema viola políticas de segurança.');
+            wp_send_json_error('A IA respondeu mas não gerou texto.');
         }
         
-        // 3. Processamento do Retorno
         $lines = explode("\\n", $text);
         $lines = array_values(array_filter($lines, function($line) { return trim($line) !== ''; }));
         
@@ -376,7 +330,6 @@ class NoticiasPosterGDN {
             $title = trim(preg_replace('/^(Linha 1:|\[TÍTULO\]|Título:)/i', '', $lines[0]));
             $keyword = trim(preg_replace('/^(Linha 2:|\[KEYWORD\]|Keyword:)/i', '', $lines[1]));
             $meta_desc = trim(preg_replace('/^(Linha 3:|\[META\]|Meta:)/i', '', $lines[2]));
-            
             $content_lines = array_slice($lines, 3);
             if (!empty($content_lines) && preg_match('/^(Linha 4:|\[CONTEÚDO\]|Conteúdo:)/i', $content_lines[0])) {
                 $content_lines[0] = preg_replace('/^(Linha 4:|\[CONTEÚDO\]|Conteúdo:)/i', '', $content_lines[0]);
@@ -391,7 +344,6 @@ class NoticiasPosterGDN {
         
         $title = str_replace(array('*', '#', '<h1>', '</h1>'), '', $title);
         
-        // 4. Salvar no WP com separação de dados
         $post_id = wp_insert_post(array(
             'post_title' => $title,
             'post_content' => $content,
@@ -401,14 +353,9 @@ class NoticiasPosterGDN {
         
         if (!$post_id) wp_send_json_error('Erro ao salvar no WordPress.');
         
-        // Marca que foi gerado pelo Sistema (separação de origem)
         update_post_meta($post_id, '_gdn_generated', 'true');
-        update_post_meta($post_id, '_gdn_generator_version', '1.5.3');
-        
-        // 5. Aplicar SEO
         $this->aplicar_seo_avancado($post_id, $title, $meta_desc, $keyword);
         
-        // 6. Descontar Crédito do Usuário
         if ($current_credits !== -1) {
             $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}", 'PATCH', array('credits' => $current_credits - 1), $token);
         }
@@ -457,12 +404,12 @@ function gdn_get_user_posts() {
 }
 `;
 
-    // 2. TEMPLATE FILE (Interface com Identidade)
+    // 2. TEMPLATE FILE
     const templateContent = `
 <div class="wrap gdn-wrap">
     <div class="gdn-header">
         <h1><span class="dashicons dashicons-superhero"></span> GDN_IA Poster Pro</h1>
-        <p>Sistema v1.5.3 | Correções de Login & SSL</p>
+        <p>Sistema v1.5.3</p>
     </div>
     
     <?php
@@ -470,54 +417,38 @@ function gdn_get_user_posts() {
     ?>
     
     <div id="gdn-app" data-logged="<?php echo $token ? 'true' : 'false'; ?>">
-        
-        <!-- LOGIN SCREEN -->
         <div id="view-login" style="display: <?php echo $token ? 'none' : 'block'; ?>;">
             <div class="gdn-card login-card">
                 <h2>Conectar Usuário</h2>
                 <form id="form-login">
                     <label>E-mail da Conta GDN</label>
                     <input type="email" id="gdn-email" required placeholder="seu@email.com">
-                    
                     <label>Senha</label>
                     <input type="password" id="gdn-pass" required placeholder="••••••••">
-                    
                     <button type="submit" class="button button-primary button-hero">Autenticar Usuário</button>
                 </form>
                 <p class="gdn-footer-text">Conecta sua conta de créditos GDN ao WordPress.</p>
             </div>
         </div>
         
-        <!-- DASHBOARD SCREEN -->
         <div id="view-dashboard" style="display: <?php echo $token ? 'block' : 'none'; ?>;">
-            
-            <!-- STATUS BAR (IDENTIDADE) -->
             <div class="gdn-status-bar">
                 <div class="status-item user-info">
                     <span class="dashicons dashicons-admin-users"></span>
-                    <div>
-                        <span class="label">Usuário Conectado:</span>
-                        <span id="user-email-display" class="value">...</span>
-                    </div>
+                    <div><span class="label">Usuário:</span><span id="user-email-display" class="value">...</span></div>
                 </div>
                 <div class="status-item credits-info">
                     <span class="dashicons dashicons-tickets-alt"></span>
-                    <div>
-                        <span class="label">Saldo Disponível:</span>
-                        <span id="credits-display" class="value">...</span>
-                    </div>
+                    <div><span class="label">Saldo:</span><span id="credits-display" class="value">...</span></div>
                 </div>
-                <button id="btn-logout" class="button button-link" style="color:#d63638;">Trocar Usuário</button>
+                <button id="btn-logout" class="button button-link" style="color:#d63638;">Sair</button>
             </div>
             
-            <!-- GENERATOR -->
             <div class="gdn-card generator-card">
                 <h2><span class="dashicons dashicons-edit"></span> Gerar Nova Notícia</h2>
                 <div class="gdn-input-group">
-                    <input type="text" id="gdn-theme" placeholder="Digite o tema (ex: Lançamento do novo iPhone)" class="large-text">
-                    <button id="btn-generate" class="button button-primary button-hero">
-                        Gerar (1 Crédito)
-                    </button>
+                    <input type="text" id="gdn-theme" placeholder="Digite o tema..." class="large-text">
+                    <button id="btn-generate" class="button button-primary button-hero">Gerar (1 Crédito)</button>
                 </div>
                 <div id="loading-bar" style="display:none;">
                     <div class="spinner is-active" style="float:none; margin: 0 auto 10px;"></div>
@@ -525,9 +456,8 @@ function gdn_get_user_posts() {
                 </div>
             </div>
             
-            <!-- HISTORY -->
             <div class="gdn-card">
-                <h3>Histórico (WordPress)</h3>
+                <h3>Histórico</h3>
                 <div id="gdn-post-list">
                     <?php 
                     $posts = gdn_get_user_posts(); 
@@ -537,12 +467,8 @@ function gdn_get_user_posts() {
                             ?>
                             <div class="gdn-post-row" id="post-<?php echo $post->ID; ?>">
                                 <div class="post-info">
-                                    <strong>
-                                        <?php if($is_ai) echo '<span class="dashicons dashicons-superhero" title="Gerado por IA" style="font-size:14px;color:#2271b1;"></span> '; ?>
-                                        <?php echo esc_html($post->post_title); ?>
-                                    </strong>
+                                    <strong><?php echo esc_html($post->post_title); ?></strong>
                                     <span class="status-pill <?php echo $post->post_status; ?>"><?php echo ucfirst($post->post_status); ?></span>
-                                    <span class="post-date"><?php echo get_the_date('d/m H:i', $post); ?></span>
                                 </div>
                                 <div class="post-actions">
                                     <a href="<?php echo get_edit_post_link($post->ID); ?>" class="button" target="_blank">Editar</a>
@@ -554,11 +480,10 @@ function gdn_get_user_posts() {
                             </div>
                         <?php endforeach;
                     else: ?>
-                        <p style="text-align:center; color:#888;">Nenhuma notícia encontrada para este usuário WP.</p>
+                        <p style="text-align:center; color:#888;">Nenhuma notícia encontrada.</p>
                     <?php endif; ?>
                 </div>
             </div>
-            
         </div>
     </div>
 </div>
@@ -566,59 +491,35 @@ function gdn_get_user_posts() {
 
     // 3. CSS FILE
     const cssContent = `
-.gdn-wrap { max-width: 900px; margin: 20px auto; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif; }
+.gdn-wrap { max-width: 900px; margin: 20px auto; font-family: sans-serif; }
 .gdn-header { margin-bottom: 30px; text-align: center; }
 .gdn-card { background: #fff; border: 1px solid #ccd0d4; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 25px; }
-
 .login-card { max-width: 400px; margin: 0 auto; text-align: center; }
 .login-card input { width: 100%; margin-bottom: 15px; padding: 10px; font-size: 16px; border: 1px solid #ddd; border-radius: 4px; }
-.login-card label { display: block; text-align: left; font-weight: 600; margin-bottom: 5px; color: #444; }
-
 .gdn-status-bar { display: flex; justify-content: space-between; align-items: center; background: #fff; padding: 15px 20px; border-radius: 8px; border: 1px solid #ccd0d4; margin-bottom: 20px; }
 .status-item { display: flex; align-items: center; gap: 12px; }
-.status-item .dashicons { font-size: 24px; color: #2271b1; height: 24px; width: 24px; }
-.status-item div { display: flex; flex-direction: column; }
-.status-item .label { font-size: 10px; text-transform: uppercase; color: #666; font-weight: bold; }
-.status-item .value { font-size: 14px; font-weight: 600; color: #222; }
-
 .generator-card { text-align: center; border-top: 4px solid #2271b1; }
 .gdn-input-group { display: flex; gap: 10px; margin-top: 20px; }
 .gdn-input-group input { flex-grow: 1; padding: 12px; font-size: 16px; border: 2px solid #ddd; border-radius: 4px; }
-.gdn-input-group input:focus { border-color: #2271b1; outline: none; }
-
 .button-hero { padding: 10px 25px !important; height: auto !important; font-size: 16px !important; }
-
-.gdn-post-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; transition: background 0.2s; }
-.gdn-post-row:hover { background: #f9f9f9; }
-.gdn-post-row:last-child { border-bottom: none; }
-.post-info { display: flex; flex-direction: column; gap: 4px; }
-.post-actions { display: flex; gap: 8px; }
-
-.status-pill { font-size: 10px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: bold; display: inline-block; width: fit-content; }
-.status-pill.draft { background: #f0f0f1; color: #50575e; border: 1px solid #dcdcde; }
-.status-pill.publish { background: #edfaef; color: #008a20; border: 1px solid #c3e6cb; }
-
-.button-link-delete { color: #a00; border: none; background: none; cursor: pointer; text-decoration: underline; }
-.button-link-delete:hover { color: #dc3232; }
-
+.gdn-post-row { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #eee; }
+.status-pill { font-size: 10px; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+.status-pill.draft { background: #f0f0f1; color: #50575e; }
+.status-pill.publish { background: #edfaef; color: #008a20; }
 #loading-bar { margin-top: 20px; padding: 20px; background: #f0f6fc; color: #1d2327; border-radius: 4px; }
 `;
 
-    // 4. JS FILE (Melhoria no Tratamento de Erro - Stringify)
+    // 4. JS FILE
     const jsContent = `
 jQuery(document).ready(function($) {
-    
     function refreshCredits() {
         $.post(gdn_ajax.ajax_url, { action: 'gdn_check_credits' }, function(res) {
             if(res.success) {
                 const credits = res.data.credits === -1 ? 'Ilimitado' : res.data.credits;
                 $('#credits-display').html(credits);
-                if(res.data.email) {
-                    $('#user-email-display').text(res.data.email);
-                }
+                if(res.data.email) $('#user-email-display').text(res.data.email);
             } else {
                 $('#credits-display').text('Erro');
-                // Se der erro de sessão, faz logout visual
                 if(res.data && typeof res.data === 'string' && res.data.includes('Não logado')) {
                     $('#gdn-app').data('logged', false);
                     $('#view-dashboard').hide();
@@ -628,9 +529,7 @@ jQuery(document).ready(function($) {
         });
     }
 
-    if($('#gdn-app').data('logged')) {
-        refreshCredits();
-    }
+    if($('#gdn-app').data('logged')) refreshCredits();
 
     $('#form-login').on('submit', function(e) {
         e.preventDefault();
@@ -642,32 +541,16 @@ jQuery(document).ready(function($) {
             email: $('#gdn-email').val(),
             password: $('#gdn-pass').val()
         }, function(res) {
-            if(res.success) {
-                location.reload();
-            } else {
-                // Tenta extrair a mensagem de erro se vier em formato complexo
-                let errorMsg = res.data;
-                if(typeof res.data === 'object' && res.data !== null) {
-                    errorMsg = res.data.message || res.data.msg || JSON.stringify(res.data);
-                }
-                alert('Erro ao entrar: ' + errorMsg);
+            if(res.success) location.reload();
+            else {
+                alert('Erro: ' + (res.data.message || JSON.stringify(res.data)));
                 btn.prop('disabled', false).text('Autenticar Usuário');
             }
-        }).fail(function(xhr) {
-            // Error handling for failed requests (e.g. 500 error)
-            let errorMsg = 'Erro de conexão com o servidor.';
-            if (xhr.responseJSON && xhr.responseJSON.data) {
-                 errorMsg = xhr.responseJSON.data;
-            } else if (xhr.responseText) {
-                 errorMsg = xhr.responseText.substring(0, 100);
-            }
-            alert(errorMsg);
-            btn.prop('disabled', false).text('Autenticar Usuário');
         });
     });
 
     $('#btn-logout').click(function() {
-        if(!confirm('Deseja desconectar este usuário?')) return;
+        if(!confirm('Deseja desconectar?')) return;
         $.post(gdn_ajax.ajax_url, { action: 'gdn_logout' }, function() { location.reload(); });
     });
 
@@ -686,23 +569,16 @@ jQuery(document).ready(function($) {
                 alert('Sucesso! ' + res.data.message);
                 location.reload();
             } else {
-                let errorMsg = res.data;
-                if(typeof res.data === 'object') errorMsg = JSON.stringify(res.data);
-                
-                alert('Erro na geração: ' + errorMsg);
+                alert('Erro: ' + JSON.stringify(res.data));
                 $('#btn-generate').prop('disabled', false);
                 $('#loading-bar').slideUp();
             }
-        }).fail(function() {
-             alert('Erro de conexão ao tentar gerar. Verifique se o plugin tem permissão.');
-             $('#btn-generate').prop('disabled', false);
-             $('#loading-bar').slideUp();
         });
     });
 
     $('.btn-publish').click(function() {
         const id = $(this).data('id');
-        if(!confirm('Publicar este post no site?')) return;
+        if(!confirm('Publicar?')) return;
         $.post(gdn_ajax.ajax_url, { action: 'gdn_publish', id: id }, function() { location.reload(); });
     });
 

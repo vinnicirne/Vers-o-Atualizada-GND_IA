@@ -7,6 +7,7 @@ import { useUser } from '../contexts/UserContext';
 import { Toast } from './admin/Toast';
 import { getPaymentSettings } from '../services/adminService'; // For fetching public keys
 import CheckoutCompleto from './CheckoutCompleto'; // Import the new combined checkout component
+import { cancelSubscription } from '../services/userService'; // New service
 
 interface PlansModalProps {
   currentPlanId: UserPlan;
@@ -31,6 +32,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
   const [asaasPublicKey, setAsaasPublicKey] = useState<string | null>(null);
   const [loadingPaymentSettings, setLoadingPaymentSettings] = useState(true);
   const [paymentSettingsError, setPaymentSettingsError] = useState<string | null>(null);
+  const [canceling, setCanceling] = useState(false);
 
   // Fetch payment settings (public keys)
   useEffect(() => {
@@ -110,6 +112,29 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
     setSelectedPaymentItem(null);
   };
 
+  const handleCancelSubscription = async () => {
+      if (!window.confirm("Tem certeza que deseja cancelar sua assinatura recorrente? Você perderá o acesso aos benefícios no final do ciclo.")) {
+          return;
+      }
+      
+      if (!user?.subscription_id) return;
+
+      setCanceling(true);
+      try {
+          const result = await cancelSubscription(user.subscription_id);
+          if (result.success) {
+              setToast({ message: "Assinatura cancelada com sucesso.", type: 'success' });
+              await refresh();
+          } else {
+              setToast({ message: result.message || "Erro ao cancelar.", type: 'error' });
+          }
+      } catch (e: any) {
+          setToast({ message: e.message, type: 'error' });
+      } finally {
+          setCanceling(false);
+      }
+  };
+
 
   if (loadingPlans || loadingPaymentSettings) {
     return (
@@ -156,6 +181,8 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
   // Filter only ACTIVE plans for the user to see
   const availablePlans = allPlans.filter(plan => plan.isActive);
 
+  const hasActiveSubscription = user?.subscription_id && user?.subscription_status === 'ACTIVE';
+
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -174,6 +201,28 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
 
         <div className="p-6 overflow-y-auto custom-scrollbar bg-[#ECEFF1]">
           
+          {/* Subscription Status Bar (If active) */}
+          {hasActiveSubscription && (
+              <div className="mb-8 bg-green-50 border border-green-200 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
+                  <div className="flex items-center gap-3">
+                      <div className="bg-green-100 p-2 rounded-full">
+                          <i className="fas fa-check-circle text-green-600 text-xl"></i>
+                      </div>
+                      <div>
+                          <h3 className="text-green-800 font-bold">Assinatura Ativa</h3>
+                          <p className="text-sm text-green-600">Seu plano renova automaticamente todo mês.</p>
+                      </div>
+                  </div>
+                  <button 
+                    onClick={handleCancelSubscription}
+                    disabled={canceling}
+                    className="text-red-500 hover:text-red-700 text-sm font-bold border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition"
+                  >
+                      {canceling ? <i className="fas fa-spinner fa-spin"></i> : 'Cancelar Assinatura'}
+                  </button>
+              </div>
+          )}
+
           {/* Subscription Plans Section */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
             {availablePlans.length > 0 ? (
@@ -204,7 +253,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
                 <p className="text-gray-500 text-sm mb-6 leading-relaxed">
                   Precisa de mais gerações agora? Compre créditos avulsos sem mudar seu plano mensal.
                   <br/>
-                  <span className="text-gray-400 text-xs">Pagamento único via Pix ou Cartão (Mercado Pago).</span>
+                  <span className="text-gray-400 text-xs">Pagamento único via Pix ou Cartão.</span>
                 </p>
                 
                 <div className="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-md px-4 py-2">

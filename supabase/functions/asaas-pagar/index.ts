@@ -1,3 +1,4 @@
+
 // supabase/functions/asaas-pagar/index.ts
 
 declare const Deno: any;
@@ -65,7 +66,39 @@ serve(async (req) => {
     }
     const asaasApiBaseUrl = Deno.env.get("ASAAS_API_BASE_URL") || "https://api.asaas.com"; // Default para produção
 
-    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING) ---
+    // --- MODO 1: CANCELAMENTO DE ASSINATURA ---
+    if (reqJson.action === 'cancel_subscription') {
+        const { subscription_id } = reqJson;
+        if (!subscription_id) {
+            return new Response(JSON.stringify({ error: "ID da assinatura obrigatório." }), { status: 400, headers: corsHeaders });
+        }
+
+        console.log(`[asaas-pagar] Cancelando assinatura ${subscription_id} para usuário ${authUser.id}`);
+
+        // Deleta no Asaas
+        const cancelRes = await fetch(`${asaasApiBaseUrl}/api/v3/subscriptions/${subscription_id}`, {
+            method: "DELETE",
+            headers: { "access_token": asaasKey, "Content-Type": "application/json" }
+        });
+
+        const cancelData = await cancelRes.json();
+        
+        // Asaas retorna { deleted: true, id: ... } em sucesso
+        if (!cancelRes.ok && !cancelData.deleted) {
+             const errorMsg = cancelData.errors?.[0]?.description || "Falha ao cancelar no Asaas.";
+             return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: corsHeaders });
+        }
+
+        // Atualiza banco
+        await supabaseAdmin.from("app_users").update({ 
+            subscription_status: 'CANCELED',
+            plan: 'free' // Degrada para free ou mantém até o fim do ciclo? Simplificando: degrada
+        }).eq("id", authUser.id);
+
+        return new Response(JSON.stringify({ success: true, message: "Assinatura cancelada com sucesso." }), { status: 200, headers: corsHeaders });
+    }
+
+    // --- MODO 2: VERIFICAÇÃO DE STATUS (POLLING) ---
     if (reqJson.check_status_id) {
         console.log(`[asaas-pagar] Verificando status para ID: ${reqJson.check_status_id}`);
         const { data: tx, error: txError } = await supabaseAdmin
@@ -86,7 +119,7 @@ serve(async (req) => {
         });
     }
 
-    // --- MODO 2: PAGAMENTO ---
+    // --- MODO 3: PAGAMENTO (ASSINATURA OU AVULSO) ---
     const {
       creditCardToken,
       creditCard,
@@ -170,16 +203,27 @@ serve(async (req) => {
     }
 
     const isPix = billingType === 'PIX';
+    const isSubscription = item_type === 'plan'; // Planos viram assinaturas, créditos viram pagamentos únicos
 
-    // Monta payload Asaas
-    const paymentPayload: any = {
+    // --- CONSTRUÇÃO DO PAYLOAD ---
+    let paymentPayload: any = {
       customer: asaasCustomerId,
       billingType: isPix ? "PIX" : "CREDIT_CARD",
       value: Number(amount),
-      dueDate: new Date(Date.now()).toISOString().slice(0, 10), // Vencimento hoje
       description: `GDN_IA: ${item_type} (${item_id})`,
       remoteIp: req.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1",
     };
+
+    if (isSubscription) {
+        paymentPayload.cycle = "MONTHLY"; // Assinatura mensal
+        paymentPayload.nextDueDate = new Date(Date.now()).toISOString().slice(0, 10); // Cobra hoje
+    } else {
+        paymentPayload.dueDate = new Date(Date.now()).toISOString().slice(0, 10); // Vencimento hoje
+        if (!isPix && Number(installments) > 1) {
+            paymentPayload.installmentCount = Number(installments);
+            paymentPayload.installmentValue = Number((Number(amount) / Number(installments)).toFixed(2));
+        }
+    }
 
     if (!isPix) {
         if (creditCardToken) {
@@ -190,27 +234,27 @@ serve(async (req) => {
                 name: userFullName,
                 email: userEmail,
                 cpfCnpj: cpfCnpjToUse,
-                postalCode: "00000000", // Placeholder, idealmente coletado
-                addressNumber: "0",     // Placeholder, idealmente coletado
-                phone: "11999999999"    // Placeholder, idealmente coletado
+                postalCode: "00000000",
+                addressNumber: "0",
+                phone: "11999999999"
             };
-        }
-        if (Number(installments) > 1) {
-            paymentPayload.installmentCount = Number(installments);
-            paymentPayload.installmentValue = Number((Number(amount) / Number(installments)).toFixed(2));
         }
     }
 
-    console.log("[asaas-pagar] Enviando payload de pagamento para Asaas API:", JSON.stringify(paymentPayload));
-    // Cria cobrança
-    const paymentRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments`, {
+    console.log(`[asaas-pagar] Enviando payload para Asaas (${isSubscription ? 'ASSINATURA' : 'PAGAMENTO ÚNICO'}):`, JSON.stringify(paymentPayload));
+    
+    // Escolhe endpoint correto
+    const endpoint = isSubscription ? `${asaasApiBaseUrl}/api/v3/subscriptions` : `${asaasApiBaseUrl}/api/v3/payments`;
+
+    // Cria cobrança/assinatura
+    const paymentRes = await fetch(endpoint, {
       method: "POST",
       headers: { "access_token": asaasKey, "Content-Type": "application/json" },
       body: JSON.stringify(paymentPayload),
     });
 
     const paymentData = await paymentRes.json();
-    console.log("[asaas-pagar] Resposta completa do pagamento Asaas:", JSON.stringify(paymentData));
+    console.log("[asaas-pagar] Resposta completa do Asaas:", JSON.stringify(paymentData));
 
     if (!paymentRes.ok || paymentData.errors) {
         const errorMsg = paymentData.errors?.[0]?.description || paymentData.error || "Pagamento recusado.";
@@ -218,47 +262,72 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: corsHeaders });
     }
 
-    // Salva transação no DB
-    const transactionStatus = (paymentData.status === "CONFIRMED" || paymentData.status === "RECEIVED") ? "approved" : "pending";
-    console.log(`[asaas-pagar] Pagamento Asaas ID: ${paymentData.id}, Status Asaas: ${paymentData.status}, Status DB: ${transactionStatus}`);
+    // --- TRATAMENTO PÓS-CRIAÇÃO ---
+    // Em assinaturas, paymentData.id é o ID da Assinatura.
+    // Em pagamentos, é o ID do Pagamento.
+    
+    const entityId = paymentData.id;
+    const status = paymentData.status; // ACTIVE (Sub) ou PENDING/CONFIRMED (Pay)
 
+    // Se for assinatura, salva o ID no usuário imediatamente
+    if (isSubscription) {
+        await supabaseAdmin.from("app_users").update({ 
+            subscription_id: entityId,
+            subscription_status: status 
+        }).eq("id", authUser.id);
+    }
+
+    // Salva transação no DB (para histórico e webhook)
+    const transactionStatus = (status === "CONFIRMED" || status === "RECEIVED" || status === "ACTIVE") ? "approved" : "pending";
+    
     const { data: newTx, error: insertTxError } = await supabaseAdmin.from("transactions").insert({
       usuario_id: authUser.id,
       valor: Number(amount),
       metodo: isPix ? "pix" : "card",
       status: transactionStatus, 
-      external_id: paymentData.id,
-      metadata: { provider: "asaas", item_type, item_id, asaas_status: paymentData.status },
+      external_id: entityId,
+      metadata: { provider: "asaas", item_type, item_id, asaas_status: status, is_subscription: isSubscription },
       data: new Date().toISOString(),
     })
     .select()
-    .single(); // Para obter o ID da transação inserida
+    .single();
 
     if (insertTxError) {
         console.error(`[asaas-pagar] Erro ao inserir transação no DB: ${insertTxError.message}`);
-        return new Response(JSON.stringify({ error: `Failed to save transaction: ${insertTxError.message}` }), { status: 500, headers: corsHeaders });
     }
-    console.log(`[asaas-pagar] Transação salva no DB com ID: ${newTx.id}, External ID: ${newTx.external_id}`);
-
 
     // Se for PIX, busca o QR Code (2ª chamada necessária no Asaas)
     if (isPix) {
-        const qrRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments/${paymentData.id}/pixQrCode`, {
+        // Para assinaturas Pix, precisamos pegar o pagamento pendente gerado pela assinatura
+        let pixPaymentId = entityId;
+        
+        if (isSubscription) {
+            // Busca o primeiro pagamento gerado pela assinatura
+            const subPaymentsRes = await fetch(`${asaasApiBaseUrl}/api/v3/subscriptions/${entityId}/payments`, {
+                headers: { "access_token": asaasKey }
+            });
+            const subPayments = await subPaymentsRes.json();
+            if (subPayments.data && subPayments.data.length > 0) {
+                pixPaymentId = subPayments.data[0].id; // Pega o pagamento da primeira cobrança
+                // Atualiza a transação com o ID do pagamento real para o webhook encontrar
+                await supabaseAdmin.from("transactions").update({ external_id: pixPaymentId }).eq("id", newTx.id);
+            }
+        }
+
+        const qrRes = await fetch(`${asaasApiBaseUrl}/api/v3/payments/${pixPaymentId}/pixQrCode`, {
             method: "GET",
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
         const qrData = await qrRes.json();
-        console.log("[asaas-pagar] Resposta do QR Code Pix Asaas:", JSON.stringify(qrData));
         
         if (!qrRes.ok || qrData.errors) {
-            console.error("[asaas-pagar] Erro ao buscar QR Code Pix:", qrData.errors?.[0]?.description || JSON.stringify(qrData));
             return new Response(JSON.stringify({ error: "Falha ao gerar QR Code Pix." }), { status: 500, headers: corsHeaders });
         }
 
         return new Response(JSON.stringify({ 
             success: true, 
-            paymentId: paymentData.id, 
-            qrCode: qrData // Contém payload e encodedImage
+            paymentId: pixPaymentId, 
+            qrCode: qrData 
         }), {
             status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -267,12 +336,10 @@ serve(async (req) => {
 
     // Se for Cartão e status imediato for aprovado, libera benefícios
     if (transactionStatus === "approved") {
-        console.log(`[asaas-pagar] Pagamento aprovado no Asaas. Iniciando liberação de benefícios para usuário ${authUser.id}.`);
         await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
-        console.log("[asaas-pagar] Liberação de benefícios concluída.");
     }
 
-    return new Response(JSON.stringify({ success: true, status: paymentData.status, id: paymentData.id }), {
+    return new Response(JSON.stringify({ success: true, status: status, id: entityId }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -287,44 +354,33 @@ serve(async (req) => {
 });
 
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
-    console.log(`[Benefits Helper (asaas-pagar)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}, amount: ${amount}, referrerId: ${referrerId}`);
+    console.log(`[Benefits Helper (asaas-pagar)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}`);
 
     if (itemType === "plan") {
         await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        const { data: config, error: configError } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
-        if (configError) console.warn(`[Benefits Helper (asaas-pagar)] Erro ao buscar config de planos: ${configError.message}`);
+        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
 
         if (config?.value) {
           const plan = (config.value as any[]).find((p: any) => p.id === itemId);
           if (plan) {
             await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
-          } else {
-            console.warn(`[Benefits Helper (asaas-pagar)] Plano "${itemId}" não encontrado na configuração de sistema. Créditos não atribuídos.`);
           }
-        } else {
-            console.warn(`[Benefits Helper (asaas-pagar)] Configuração 'all_plans' não encontrada ou vazia.`);
         }
     } else if (itemType === "credits") {
-        const { data: current, error: currentCreditsError } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        if (currentCreditsError) console.warn(`[Benefits Helper (asaas-pagar)] Erro ao buscar créditos atuais para ${userId}: ${currentCreditsError.message}`);
-
+        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
         const currentCredits = current?.credits === -1 ? -1 : (current?.credits || 0);
         
         if (currentCredits !== -1) {
             const newCredits = currentCredits + Number(itemId); 
             await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
-        } else {
-            console.log(`[Benefits Helper (asaas-pagar)] Usuário ${userId} tem créditos ilimitados. Nenhuma alteração de saldo.`);
         }
     }
 
     if (referrerId) {
-        const COMMISSION_RATE = 0.20; // Definido como constante
+        const COMMISSION_RATE = 0.20; 
         const commission = parseFloat((Number(amount) * COMMISSION_RATE).toFixed(2));
         if (commission > 0) {
-            const { data: refUser, error: refUserError } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
-            if (refUserError) console.error(`[Benefits Helper (asaas-pagar)] Erro ao buscar afiliado ${referrerId}: ${refUserError.message}`);
-
+            const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
             if (refUser) {
                 const newBalance = (refUser.affiliate_balance || 0) + commission;
                 await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
@@ -333,14 +389,9 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
                     affiliate_id: referrerId,
                     source_user_id: userId,
                     amount: commission,
-                    description: `Comissão ${COMMISSION_RATE * 100}% - ${itemType === 'plan' ? 'Assinatura Plano' : 'Compra Créditos'} (Via asaas-pagar)`
+                    description: `Comissão ${COMMISSION_RATE * 100}% - ${itemType === 'plan' ? 'Assinatura Recorrente' : 'Compra Créditos'} (Via asaas-pagar)`
                 });
             }
-        } else {
-            console.log(`[Benefits Helper (asaas-pagar)] Comissão calculada foi zero ou negativa (${commission}). Não será processada.`);
         }
-    } else {
-        console.log(`[Benefits Helper (asaas-pagar)] Usuário ${userId} não foi indicado. Nenhuma comissão de afiliado.`);
     }
-    console.log(`[Benefits Helper (asaas-pagar)] Liberação de benefícios concluída.`);
 }

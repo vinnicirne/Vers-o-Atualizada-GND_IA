@@ -394,16 +394,20 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
 
       <div className="flex flex-1 overflow-hidden relative">
         
-        {/* SIDEBAR (Tools Navigation) */}
+        {/* SIDEBAR (Tools & Management) */}
         <aside className={`
-            fixed md:relative z-30 w-64 h-full bg-[#CFD8DC] border-r border-gray-300 flex flex-col transition-transform duration-300 ease-in-out
+            fixed md:relative z-30 w-64 h-full bg-[#CFD8DC] border-r border-gray-300 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-            <div className="p-4 border-b border-gray-300">
+            {/* Header Sidebar Mobile */}
+            <div className="p-4 border-b border-gray-300 flex justify-between items-center bg-[#CFD8DC]">
                 <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ferramentas</span>
+                <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-600 hover:text-red-500">
+                    <i className="fas fa-times"></i>
+                </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar">
                 {CREATOR_SUITE_MODES.map((svc) => {
                     const isSelected = currentMode === svc.value;
                     const isLocked = (isGuest && !GUEST_ALLOWED_MODES.includes(svc.value)) || (!isGuest && !hasAccessToService(svc.value));
@@ -439,17 +443,64 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                 })}
             </div>
 
-            {/* Integrações Mobile Button (Visible in Sidebar) */}
+            {/* Gerenciamento (Visível Mobile e Desktop) */}
             {user && (
-                <div className="p-3 border-t border-gray-300 bg-gray-200">
+                <div className="p-3 border-t border-gray-300 bg-gray-200 space-y-2">
+                    <div className="px-2 py-1">
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Minha Conta</span>
+                    </div>
+                    
+                    <button
+                        onClick={() => { setShowPlansModal(true); setSidebarOpen(false); }}
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                    >
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-[#F39C12] border border-gray-300 group-hover:border-[#F39C12]">
+                            <i className="fas fa-coins text-xs"></i>
+                        </div>
+                        <div className="text-left leading-tight">
+                            <span className="block text-sm font-semibold">Planos & Créditos</span>
+                            <span className="block text-[10px] text-gray-500 font-mono">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
+                        </div>
+                    </button>
+
+                    <button
+                        onClick={() => { setShowAffiliateModal(true); setSidebarOpen(false); }}
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                    >
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-yellow-600 border border-gray-300 group-hover:border-yellow-600">
+                            <i className="fas fa-handshake text-xs"></i>
+                        </div>
+                        <span className="text-sm font-semibold">Afiliados</span>
+                    </button>
+
+                    <button
+                        onClick={() => { setShowHistoryModal(true); setSidebarOpen(false); }}
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                    >
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-gray-600 border border-gray-300 group-hover:border-gray-600">
+                            <i className="fas fa-history text-xs"></i>
+                        </div>
+                        <span className="text-sm font-semibold">Meu Histórico</span>
+                    </button>
+
                     <button
                         onClick={() => { setShowIntegrationsModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-3 rounded-lg hover:bg-white text-gray-600 transition-colors"
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
                     >
-                        <div className="w-8 h-8 rounded-md flex items-center justify-center mr-3 bg-white text-pink-500">
-                            <i className="fas fa-plug text-sm"></i>
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-pink-500 border border-gray-300 group-hover:border-pink-500">
+                            <i className="fas fa-plug text-xs"></i>
                         </div>
-                        <span className="text-sm font-semibold">Integrações & Webhooks</span>
+                        <span className="text-sm font-semibold">Integrações</span>
+                    </button>
+
+                    <button
+                        onClick={() => { setShowManualModal(true); setSidebarOpen(false); }}
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                    >
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-blue-500 border border-gray-300 group-hover:border-blue-500">
+                            <i className="fas fa-book text-xs"></i>
+                        </div>
+                        <span className="text-sm font-semibold">Ajuda / Manual</span>
                     </button>
                 </div>
             )}

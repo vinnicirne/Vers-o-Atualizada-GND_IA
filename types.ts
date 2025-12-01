@@ -47,6 +47,9 @@ export interface User {
   referred_by?: string;
   affiliate_balance?: number;
   asaas_customer_id?: string; // Novo campo para Asaas Customer ID
+  // Subscription System
+  subscription_id?: string; // ID da assinatura recorrente (Asaas)
+  subscription_status?: string; // ACTIVE, EXPIRED, etc.
 }
 
 export interface AffiliateLog {

@@ -32,7 +32,6 @@ serve(async (req) => {
     }
     const jwt = authHeader.split(" ")[1];
 
-    // --- CHECK FOR SERVER CONFIG ---
     const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
     if (!mpAccessToken) {
         console.error("ERRO CRÍTICO: Variável MP_ACCESS_TOKEN não definida no Supabase.");
@@ -66,139 +65,218 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-    console.log("[mp-pagar] Requisição JSON recebida (para depuração):", JSON.stringify(reqJson));
-    console.log("[mp-pagar] Token do cartão recebido (para depuração):", reqJson.token ? "Presente" : "Ausente", reqJson.token);
+    console.log("[mp-pagar] Request:", JSON.stringify(reqJson));
 
+    // --- MODO 1: CANCELAMENTO DE ASSINATURA ---
+    if (reqJson.action === 'cancel_subscription') {
+        const { subscription_id } = reqJson;
+        if (!subscription_id) {
+            return new Response(JSON.stringify({ error: "ID da assinatura obrigatório." }), { status: 400, headers: corsHeaders });
+        }
 
-    // --- MODO 1: VERIFICAÇÃO DE STATUS (POLLING COM FALLBACK) ---
+        console.log(`[mp-pagar] Cancelando assinatura (Preapproval) ${subscription_id} para usuário ${authUser.id}`);
+
+        // Mercado Pago Subscription Cancellation (PUT /preapproval/{id})
+        const cancelRes = await fetch(`https://api.mercadopago.com/preapproval/${subscription_id}`, {
+            method: "PUT",
+            headers: {
+                "Authorization": `Bearer ${mpAccessToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ status: "cancelled" })
+        });
+
+        const cancelData = await cancelRes.json();
+        
+        if (!cancelRes.ok) {
+             const errorMsg = cancelData.message || "Falha ao cancelar no Mercado Pago.";
+             console.error(`[mp-pagar] Erro no cancelamento MP:`, cancelData);
+             return new Response(JSON.stringify({ error: errorMsg }), { status: 400, headers: corsHeaders });
+        }
+
+        // Atualiza banco
+        await supabaseAdmin.from("app_users").update({ 
+            subscription_status: 'cancelled', // MP uses 'cancelled'
+            plan: 'free' // Degrada para free
+        }).eq("id", authUser.id);
+
+        return new Response(JSON.stringify({ success: true, message: "Assinatura cancelada com sucesso." }), { status: 200, headers: corsHeaders });
+    }
+
+    // --- MODO 2: VERIFICAÇÃO DE STATUS (POLLING) ---
     if (reqJson.check_status_id) {
         const externalId = reqJson.check_status_id;
-        console.log(`[mp-pagar] Verificando status para ID: ${externalId}`);
-        let currentDbStatus = 'pending';
-
-        // 1. Busca status no DB local
-        const { data: tx, error: txError } = await supabaseAdmin
-            .from("transactions")
-            .select("status, usuario_id, metadata, valor, id") // Adicionado 'id' para uso posterior
-            .eq("external_id", externalId)
-            .single();
         
-        if (txError && txError.code !== 'PGRST116') { // PGRST116 = no rows found
-             console.error(`[mp-pagar] Erro ao buscar transação para polling: ${txError.message}`);
-             return new Response(JSON.stringify({ error: `Database error during polling: ${txError.message}` }), { status: 500, headers: corsHeaders });
+        const { data: tx } = await supabaseAdmin
+            .from("transactions")
+            .select("status")
+            .or(`external_id.eq.${externalId},id.eq.${externalId}`)
+            .single();
+
+        // Se já aprovada no DB, retorna
+        if (tx && tx.status === 'approved') {
+            return new Response(JSON.stringify({ status: 'approved' }), { status: 200, headers: corsHeaders });
         }
 
-        if (tx) {
-            currentDbStatus = tx.status;
-            console.log(`[mp-pagar] Status da transação ${externalId} no DB: ${currentDbStatus}`);
-
-            // Se já aprovada, retorna
-            if (currentDbStatus === 'approved') {
-                return new Response(JSON.stringify({ status: 'approved' }), { status: 200, headers: corsHeaders });
-            }
-        } else {
-            console.warn(`[mp-pagar] Transação ${externalId} NÃO encontrada no DB para polling.`)
-        }
-
-        // 2. Se não estiver aprovada (ou não encontrada), consulta a API do Mercado Pago diretamente
-        console.log(`[mp-pagar] Transação ainda pendente no DB ou não encontrada. Consultando API do Mercado Pago para ${externalId}...`);
+        // Fallback: Consulta API MP
         const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${externalId}`, {
             headers: { "Authorization": `Bearer ${mpAccessToken}` }
         });
         const paymentInfo = await mpRes.json();
-        console.log(`[mp-pagar] Resposta da API do MP para ${externalId}: ${JSON.stringify(paymentInfo)}`);
 
-        if (mpRes.ok && paymentInfo.status === 'approved') {
-            console.log(`[mp-pagar] API do MP confirmou pagamento ${externalId} como "approved". Atualizando DB e liberando benefícios.`);
-            
-            // 3. Atualiza DB e libera benefícios (se encontrado no DB)
-            if (tx) {
-                const { error: updateError } = await supabaseAdmin
-                    .from("transactions")
-                    .update({ status: 'approved', metadata: { ...tx.metadata, mp_status_polled: paymentInfo.status } })
-                    .eq("id", tx.id);
-                
-                if (updateError) {
-                    console.error(`[mp-pagar] Erro ao atualizar status DB no fallback polling: ${updateError.message}`);
-                    return new Response(JSON.stringify({ error: `DB update error in fallback polling: ${updateError.message}` }), { status: 500, headers: corsHeaders });
-                }
-
-                // Libera benefícios
-                const { data: userData, error: userError } = await supabaseAdmin
-                    .from("app_users")
-                    .select("referred_by")
-                    .eq("id", tx.usuario_id)
-                    .single();
-                if (userError) console.warn(`[mp-pagar] Erro ao buscar dados do usuário ${tx.usuario_id} (referido) para benefícios no polling: ${userError.message}`);
-                
-                await releaseBenefits(
-                    supabaseAdmin,
-                    tx.usuario_id,
-                    tx.metadata?.item_type,
-                    tx.metadata?.item_id,
-                    Number(tx.valor), // Usar tx.valor, pois é o valor da transação no DB
-                    userData?.referred_by
-                );
-            } else {
-                console.warn(`[mp-pagar] Pagamento ${externalId} aprovado pelo MP, mas transação NÃO ENCONTRADA no DB. Benefícios NÃO liberados via polling.`);
-            }
-
-            return new Response(JSON.stringify({ status: 'approved' }), { status: 200, headers: corsHeaders });
-        } else {
-            console.log(`[mp-pagar] Pagamento ${externalId} ainda não aprovado pelo MP ou erro na API. Status MP: ${paymentInfo.status || 'N/A'}`);
-            return new Response(JSON.stringify({ status: paymentInfo.status || 'pending' }), { status: 200, headers: corsHeaders });
-        }
+        return new Response(JSON.stringify({ status: paymentInfo.status || 'pending' }), { status: 200, headers: corsHeaders });
     }
 
-    // --- MODO 2: GERAÇÃO DE PAGAMENTO ---
+    // --- MODO 3: CRIAÇÃO DE PAGAMENTO OU ASSINATURA ---
     const {
-      token,
-      payment_method_id, 
-      issuer_id,
-      installments = 1,
       amount,
       item_type,
       item_id,
-      method, // 'pix' ou 'card'
-      docNumber
+      method,
+      docNumber,
+      token,
+      payment_method_id, 
+      issuer_id,
+      installments = 1
     } = reqJson;
 
-    if (!amount || !item_type || !item_id || !method) {
-      console.error("[mp-pagar] Dados do pagamento incompletos:", reqJson);
-      return new Response(JSON.stringify({ error: "Dados do pagamento incompletos" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    if (!amount || !item_type || !item_id) {
+      return new Response(JSON.stringify({ error: "Dados incompletos." }), { status: 400, headers: corsHeaders });
     }
 
-    const { data: userData, error: userDataError } = await supabaseAdmin
+    // 1. Busca Usuário
+    const { data: userData } = await supabaseAdmin
       .from("app_users")
-      .select("email, referred_by, full_name")
+      .select("email, referred_by, full_name, mercadopago_customer_id")
       .eq("id", authUser.id)
       .single();
 
-    if (userDataError || !userData?.email) {
-      console.error("[mp-pagar] Usuário não encontrado no banco de dados ou erro:", userDataError);
-      return new Response(JSON.stringify({ error: "Usuário não encontrado no banco de dados." }), {
-        status: 404,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    if (!userData) return new Response(JSON.stringify({ error: "User not found" }), { status: 404, headers: corsHeaders });
 
     const userEmail = userData.email;
     const referrerId = userData.referred_by;
-    const isPix = method === 'pix' || payment_method_id === 'pix';
+    let mpCustomerId = userData.mercadopago_customer_id;
 
-    const firstName = userData.full_name?.split(' ')[0] || 'Cliente';
-    const lastName = userData.full_name?.split(' ').slice(1).join(' ') || 'GDN';
+    // 2. Garante Cliente no MP (Necessário para Assinaturas e Recomendado para Cartão)
+    if (!mpCustomerId) {
+        console.log(`[mp-pagar] Criando/Buscando cliente MP para ${userEmail}`);
+        
+        // Search first
+        const searchRes = await fetch(`https://api.mercadopago.com/v1/customers/search?email=${userEmail}`, {
+            headers: { "Authorization": `Bearer ${mpAccessToken}` }
+        });
+        const searchData = await searchRes.json();
 
+        if (searchData.results && searchData.results.length > 0) {
+            mpCustomerId = searchData.results[0].id;
+        } else {
+            // Create
+            const createRes = await fetch(`https://api.mercadopago.com/v1/customers`, {
+                method: "POST",
+                headers: { "Authorization": `Bearer ${mpAccessToken}`, "Content-Type": "application/json" },
+                body: JSON.stringify({ 
+                    email: userEmail,
+                    first_name: userData.full_name?.split(' ')[0] || 'Cliente',
+                    last_name: userData.full_name?.split(' ').slice(1).join(' ') || 'GDN'
+                })
+            });
+            const createData = await createRes.json();
+            if (createData.id) mpCustomerId = createData.id;
+        }
+
+        if (mpCustomerId) {
+            await supabaseAdmin.from("app_users").update({ mercadopago_customer_id: mpCustomerId }).eq("id", authUser.id);
+        }
+    }
+
+    // --- FLUXO DE ASSINATURA (PLANOS) ---
+    if (item_type === 'plan') {
+        console.log(`[mp-pagar] Iniciando fluxo de assinatura (Preapproval) para plano ${item_id}`);
+        
+        // Para assinar com cartão transparente, precisamos associar o cartão ao cliente ou usar card_token_id no preapproval
+        // A API de Preapproval aceita `card_token_id`.
+        
+        const preapprovalPayload = {
+            payer_email: userEmail,
+            back_url: "https://gdn.ia",
+            reason: `Assinatura GDN_IA - Plano ${item_id}`,
+            external_reference: authUser.id,
+            auto_recurring: {
+                frequency: 1,
+                frequency_type: "months",
+                transaction_amount: Number(amount),
+                currency_id: "BRL"
+            },
+            status: "authorized"
+        };
+
+        // Se for cartão, adiciona o token
+        if (token && method === 'card') {
+            (preapprovalPayload as any).card_token_id = token;
+        }
+
+        const subRes = await fetch("https://api.mercadopago.com/preapproval", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${mpAccessToken}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(preapprovalPayload)
+        });
+
+        const subData = await subRes.json();
+        console.log("[mp-pagar] Resposta Preapproval:", JSON.stringify(subData));
+
+        if (!subRes.ok) {
+            return new Response(JSON.stringify({ error: subData.message || "Erro ao criar assinatura." }), { status: 400, headers: corsHeaders });
+        }
+
+        // Salva Subscription ID no banco
+        await supabaseAdmin.from("app_users").update({ 
+            subscription_id: subData.id,
+            subscription_status: subData.status // authorized, pending, etc.
+        }).eq("id", authUser.id);
+
+        // Cria registro de transação
+        const txStatus = subData.status === 'authorized' ? 'approved' : 'pending';
+        
+        await supabaseAdmin.from("transactions").insert({
+            usuario_id: authUser.id,
+            valor: Number(amount),
+            metodo: 'card', // Assumindo cartão para assinatura transparente por enquanto
+            status: txStatus,
+            external_id: subData.id, // ID da assinatura
+            metadata: {
+                item_type,
+                item_id,
+                provider: "mercado_pago",
+                is_subscription: true,
+                preapproval_id: subData.id
+            },
+            data: new Date().toISOString(),
+        });
+
+        // Libera benefícios se autorizado
+        if (txStatus === 'approved') {
+            await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
+        }
+
+        return new Response(JSON.stringify({ success: true, id: subData.id, status: subData.status }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+    }
+
+    // --- FLUXO DE PAGAMENTO ÚNICO (CRÉDITOS / PIX) ---
+    // (Existing Logic for /v1/payments)
+    
     const mpPayload: any = {
         transaction_amount: Number(amount),
         description: `Compra GDN_IA - ${item_type} (${item_id})`,
         payer: {
             email: userEmail,
-            first_name: firstName,
-            last_name: lastName
+            first_name: userData.full_name?.split(' ')[0] || 'Cliente',
+            last_name: userData.full_name?.split(' ').slice(1).join(' ') || 'GDN'
         }
     };
 
@@ -206,27 +284,20 @@ serve(async (req) => {
         const cleanDoc = docNumber.replace(/\D/g, '');
         if (cleanDoc.length >= 11) {
             const docType = cleanDoc.length > 11 ? 'CNPJ' : 'CPF';
-            mpPayload.payer.identification = {
-                type: docType,
-                number: cleanDoc
-            };
+            mpPayload.payer.identification = { type: docType, number: cleanDoc };
         }
     }
 
+    const isPix = method === 'pix' || payment_method_id === 'pix';
     if (isPix) {
         mpPayload.payment_method_id = 'pix';
     } else {
-        if (!token) {
-            console.error("[mp-pagar] Token do cartão ausente para pagamento com cartão.");
-            throw new Error("Token do cartão é obrigatório.");
-        }
+        if (!token) throw new Error("Token do cartão é obrigatório.");
         mpPayload.token = token;
         mpPayload.installments = Number(installments);
         mpPayload.payment_method_id = payment_method_id;
         if (issuer_id) mpPayload.issuer_id = issuer_id;
     }
-
-    console.log("[mp-pagar] Enviando payload para MP API:", JSON.stringify(mpPayload));
 
     const mpResponse = await fetch("https://api.mercadopago.com/v1/payments", {
       method: "POST",
@@ -239,98 +310,36 @@ serve(async (req) => {
     });
 
     const payment = await mpResponse.json();
-    console.log("[mp-pagar] Resposta completa do Mercado Pago:", JSON.stringify(payment));
-    console.log(`[mp-pagar] Tipo de Pagamento (isPix): ${isPix}`);
-    console.log(`[mp-pagar] payment.id do Mercado Pago (para Pix): ${payment.id}`);
-    console.log(`[mp-pagar] payment.point_of_interaction?.transaction_data?.id (para Pix): ${payment.point_of_interaction?.transaction_data?.id}`);
 
-
-    // Tratamento de Erro do MP
     if (!mpResponse.ok) {
-        console.error("[mp-pagar] Erro na API do Mercado Pago:", payment);
-        
-        let errorMessage = payment.message || "Erro desconhecido no Mercado Pago";
-        const errorCode = payment.error || "unknown_error";
-
-        // Tradução de erros comuns de autenticação
-        if (mpResponse.status === 401 || errorCode === 'unauthorized' || errorMessage.includes('invalid access token')) {
-            errorMessage = "Erro de Configuração: Chave de API do Mercado Pago inválida ou expirada.";
-        }
-
-        return new Response(JSON.stringify({ 
-            error: errorMessage,
-            code: errorCode,
-            details: payment.cause 
-        }), {
-            status: 400,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return new Response(JSON.stringify({ error: payment.message || "Erro no Mercado Pago" }), { status: 400, headers: corsHeaders });
     }
 
     const transactionStatus = payment.status === "approved" ? "approved" : "pending";
     
-    // --- CORREÇÃO AQUI: Prioriza transaction_data.id para Pix ---
+    // Correct external ID for Pix
     let externalIdToSave = payment.id?.toString();
     if (isPix && payment.point_of_interaction?.transaction_data?.id) {
         externalIdToSave = payment.point_of_interaction.transaction_data.id.toString();
-        console.log(`[mp-pagar] Pix detectado. Usando payment.point_of_interaction.transaction_data.id como external_id: ${externalIdToSave}`);
-    } else {
-        console.log(`[mp-pagar] Usando payment.id como external_id: ${externalIdToSave}`);
     }
 
-
-    console.log(`[mp-pagar] Pagamento MP ID: ${payment.id}, Status MP: ${payment.status}, Status DB: ${transactionStatus}`);
-
-    const { data: newTx, error: insertTxError } = await supabaseAdmin
-      .from("transactions")
-      .insert({
+    await supabaseAdmin.from("transactions").insert({
         usuario_id: authUser.id,
         valor: Number(amount),
         metodo: isPix ? "pix" : "card",
         status: transactionStatus,
-        external_id: externalIdToSave, // Usa o ID corrigido aqui
+        external_id: externalIdToSave,
         metadata: {
             item_type,
             item_id,
             provider: "mercado_pago",
-            mp_id: payment.id // Mantém o ID original (preference/payment) nos metadados para auditoria
+            mp_id: payment.id
         },
         data: new Date().toISOString(),
-      })
-      .select()
-      .single(); // Para obter o ID da transação inserida
+    });
 
-    if (insertTxError) {
-        console.error(`[mp-pagar] Erro ao inserir transação no DB: ${insertTxError.message}`);
-        return new Response(JSON.stringify({ error: `Failed to save transaction: ${insertTxError.message}` }), { status: 500, headers: corsHeaders });
-    }
-    console.log(`[mp-pagar] Transação salva no DB com ID: ${newTx.id}, external_id SALVO NO DB: ${newTx.external_id}`);
-
-
-    if (isPix) {
-        // Valida se o QR Code realmente veio
-        if (!payment.point_of_interaction?.transaction_data?.qr_code) {
-             console.error("[mp-pagar] Pix criado mas sem QR Code. Resposta completa:", payment);
-             return new Response(JSON.stringify({ 
-                 error: "Pix criado, mas o banco não retornou o QR Code. Tente novamente ou verifique seus dados.",
-                 full_response: payment 
-             }), {
-                status: 400,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-        }
-        
-        return new Response(JSON.stringify(payment), {
-            status: 200,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-    }
-
-    // Para pagamentos com cartão, se aprovado imediatamente, já libera os benefícios
     if (transactionStatus === "approved") {
-        console.log(`[mp-pagar] Pagamento aprovado no MP. Iniciando liberação de benefícios para usuário ${authUser.id}.`);
         await releaseBenefits(supabaseAdmin, authUser.id, item_type, item_id, amount, referrerId);
-        console.log("[mp-pagar] Liberação de benefícios concluída.");
     }
 
     return new Response(JSON.stringify(payment), {
@@ -339,69 +348,46 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error("[mp-pagar] Erro interno no processamento:", err);
-    return new Response(JSON.stringify({ error: err.message || "Internal server error" }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    console.error("[mp-pagar] Error:", err);
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });
 
+// Shared Benefit Logic
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
-    console.log(`[Benefits Helper (mp-pagar)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}, amount: ${amount}, referrerId: ${referrerId}`);
-
     if (itemType === "plan") {
         await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        const { data: config, error: configError } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
-        if (configError) console.warn(`[Benefits Helper (mp-pagar)] Erro ao buscar config de planos: ${configError.message}`);
-
+        const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
         if (config?.value) {
             const plan = (config.value as any[]).find((p: any) => p.id === itemId);
             if (plan) {
                 await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: plan.credits }, { onConflict: "user_id" });
-            } else {
-                console.warn(`[Benefits Helper (mp-pagar)] Plano "${itemId}" não encontrado na configuração de sistema. Créditos não atribuídos.`);
             }
-        } else {
-            console.warn(`[Benefits Helper (mp-pagar)] Configuração 'all_plans' não encontrada ou vazia.`);
         }
     } else if (itemType === "credits") {
-        const { data: current, error: currentCreditsError } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
-        if (currentCreditsError) console.warn(`[Benefits Helper (mp-pagar)] Erro ao buscar créditos atuais para ${userId}: ${currentCreditsError.message}`);
-
+        const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
         const currentCredits = current?.credits === -1 ? -1 : (current?.credits || 0);
-        
         if (currentCredits !== -1) {
             const newCredits = currentCredits + Number(itemId); 
             await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
-        } else {
-            console.log(`[Benefits Helper (mp-pagar)] Usuário ${userId} tem créditos ilimitados. Nenhuma alteração de saldo.`);
         }
     }
 
     if (referrerId) {
-        const COMMISSION_RATE = 0.20; // Definido como constante
+        const COMMISSION_RATE = 0.20;
         const commission = parseFloat((Number(amount) * COMMISSION_RATE).toFixed(2));
         if (commission > 0) {
-            const { data: refUser, error: refUserError } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
-            if (refUserError) console.error(`[Benefits Helper (mp-pagar)] Erro ao buscar afiliado ${referrerId}: ${refUserError.message}`);
-
+            const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
             if (refUser) {
                 const newBalance = (refUser.affiliate_balance || 0) + commission;
                 await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
-                
                 await supabaseAdmin.from("affiliate_logs").insert({
                     affiliate_id: referrerId,
                     source_user_id: userId,
                     amount: commission,
-                    description: `Comissão ${COMMISSION_RATE * 100}% - ${itemType === 'plan' ? 'Assinatura Plano' : 'Compra Créditos'} (Via mp-pagar)`
+                    description: `Comissão (Via MP)`
                 });
             }
-        } else {
-            console.log(`[Benefits Helper (mp-pagar)] Comissão calculada foi zero ou negativa (${commission}). Não será processada.`);
         }
-    } else {
-        console.log(`[Benefits Helper (mp-pagar)] Usuário ${userId} não foi indicado. Nenhuma comissão de afiliado.`);
     }
-    console.log(`[Benefits Helper (mp-pagar)] Liberação de benefícios concluída.`);
 }
