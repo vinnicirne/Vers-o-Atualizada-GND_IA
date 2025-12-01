@@ -277,6 +277,9 @@ export default function CheckoutCompleto({
                 setFatalError("Erro ao inicializar pagamento.");
             }
         }
+    } else {
+        // Se não for MP, o "SDK" é considerado pronto (não precisamos dele)
+        setIsMpSdkReady(true);
     }
 
     // Cleanup
@@ -467,7 +470,9 @@ export default function CheckoutCompleto({
   // --- Pagamento com Cartão ---
   const handleCardSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (processing || !isMpSdkReady) return; // Bloqueia se SDK não estiver pronto
+      // Bloqueia se estiver processando OU se for MP e o SDK não estiver pronto
+      if (processing || (activeGateway === 'mercadopago' && !isMpSdkReady)) return;
+      
       if (!validateDoc()) return;
       
       const { cardNumber, holderName, expirationDate, cvv, installments, amount: formAmount, docNumber } = commonFormData;
@@ -504,7 +509,6 @@ export default function CheckoutCompleto({
             }
             
             // --- TOKENIZAÇÃO MP NO CLIENT-SIDE (SDK v2) ---
-            // IMPORTANTE: createCardToken é um método Promise-based na V2 e usa CamelCase
             const cardTokenData = {
                 cardNumber: cleanCard,
                 cardholderName: holderName,
@@ -526,10 +530,8 @@ export default function CheckoutCompleto({
                 token = mpTokenResponse.id;
             } catch (tokenError: any) {
                 console.error("[MP SDK - Tokenização] Erro:", tokenError);
-                // Tenta extrair mensagem de erro amigável do MP
                 let errMsg = "Dados do cartão inválidos.";
                 if (tokenError.message) errMsg = tokenError.message;
-                // Array de erros comum no MP
                 if (Array.isArray(tokenError) && tokenError.length > 0 && tokenError[0].message) {
                     errMsg = tokenError[0].message;
                 }
@@ -548,10 +550,7 @@ export default function CheckoutCompleto({
             let issuer_id = null;
 
             if (paymentMethodsResponse && paymentMethodsResponse.results && paymentMethodsResponse.results.length > 0) {
-                // Pega o primeiro método de pagamento compatível
                 payment_method_id = paymentMethodsResponse.results[0].id;
-
-                // Tenta obter o issuer_id
                 try {
                     const issuers = await mpSDK.current.getIssuers({ paymentMethodId: payment_method_id, bin: cardBin });
                     if (issuers && issuers.length > 0) {
@@ -564,12 +563,9 @@ export default function CheckoutCompleto({
 
             if (!payment_method_id) {
                  console.error("[MP SDK] Payment Method ID não encontrado para BIN", cardBin);
-                 // Fallback simples se falhar a detecção automática
                  payment_method_id = 'credit_card';
             }
             
-            console.log(`[MP SDK] Token: ${token}, Payment Method ID: ${payment_method_id}, Issuer ID: ${issuer_id}`);
-
             payload = {
                 ...payload,
                 token,
@@ -595,9 +591,9 @@ export default function CheckoutCompleto({
                       name: user?.full_name || holderName,
                       email: user?.email,
                       cpfCnpj: cleanDoc,
-                      postalCode: "00000000", // Placeholder, idealmente coletado
-                      addressNumber: "0",     // Placeholder, idealmente coletado
-                      phone: "11999999999"    // Placeholder, idealmente coletado
+                      postalCode: "00000000", // Placeholder
+                      addressNumber: "0",     // Placeholder
+                      phone: "11999999999"    // Placeholder
                   }
               };
               endpoint = 'asaas-pagar';
@@ -643,6 +639,10 @@ export default function CheckoutCompleto({
       </div>
     );
   }
+
+  // Determine button disabled state and content
+  const isMpLoading = activeGateway === 'mercadopago' && !isMpSdkReady;
+  const isSubmitDisabled = processing || isMpLoading;
 
   return (
     <div className="relative max-w-md mx-auto bg-gray-950 p-6 rounded-2xl border border-gray-800 shadow-2xl">
@@ -701,14 +701,14 @@ export default function CheckoutCompleto({
             <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} />
             <button
               type="submit"
-              disabled={processing || !isMpSdkReady} // Bloqueia se SDK não estiver pronto
+              disabled={isSubmitDisabled}
               className="w-full mt-6 py-4 bg-green-600 hover:bg-green-500 disabled:bg-gray-800 disabled:text-gray-500 text-black font-bold rounded-xl text-lg transition-all shadow-lg shadow-green-900/20 transform active:scale-[0.98] flex items-center justify-center"
             >
               {processing ? (
                 <span className="flex items-center justify-center gap-3">
                   <i className="fas fa-circle-notch fa-spin"></i> Processando...
                 </span>
-              ) : !isMpSdkReady ? (
+              ) : isMpLoading ? (
                  <span className="flex items-center justify-center gap-3">
                     <i className="fas fa-sync-alt fa-spin"></i> Carregando SDK...
                  </span>

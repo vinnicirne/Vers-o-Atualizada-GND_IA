@@ -131,6 +131,10 @@ ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS subscription_status text;
 -- Campos para Assinatura Recorrente (Mercado Pago)
 ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS mercadopago_customer_id text;
 
+-- 2.1 CAMPOS PARA TRANSAÇÕES (Webhook & Metadados)
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS external_id text;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
+
 -- 3. TABELA DE LOGS DE AFILIADOS
 CREATE TABLE IF NOT EXISTS public.affiliate_logs (
     id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
@@ -177,6 +181,9 @@ CREATE POLICY "Users manage own memory" ON public.user_memory FOR ALL USING (aut
 
 DROP POLICY IF EXISTS "Users view own affiliate logs" ON public.affiliate_logs;
 CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELECT USING (auth.uid() = affiliate_id);
+
+DROP POLICY IF EXISTS "Users view own subscription data" ON public.app_users;
+CREATE POLICY "Users view own subscription data" ON public.app_users FOR SELECT USING (auth.uid() = id);
 `;
 
   const n8nWorkflowJson = JSON.stringify({

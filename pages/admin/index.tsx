@@ -42,7 +42,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    fetch('./metadata.json')
+    // Caminho absoluto para evitar 404 em rotas aninhadas (/admin)
+    fetch('/metadata.json')
       .then(response => response.ok ? response.json() : { version: 'Error' })
       .then(data => setMetadata(data))
       .catch(err => setMetadata({ version: 'Erro' }));

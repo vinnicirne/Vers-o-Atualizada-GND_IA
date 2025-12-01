@@ -1,0 +1,21 @@
+
+{
+  "name": "GDN_IA - Creator Suite",
+  "short_name": "GDN_IA",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ECEFF1",
+  "theme_color": "#ECEFF1",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4712/4712035.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/4712/4712035.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

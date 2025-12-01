@@ -443,9 +443,9 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                 })}
             </div>
 
-            {/* Gerenciamento (Visível Mobile e Desktop) */}
+            {/* Gerenciamento (Visível Apenas no Mobile agora) */}
             {user && (
-                <div className="p-3 border-t border-gray-300 bg-gray-200 space-y-2">
+                <div className="p-3 border-t border-gray-300 bg-gray-200 space-y-2 md:hidden">
                     <div className="px-2 py-1">
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Minha Conta</span>
                     </div>
