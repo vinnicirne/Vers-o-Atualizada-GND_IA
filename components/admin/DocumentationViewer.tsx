@@ -178,18 +178,25 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
 
   // Workflow Seguro com Path Parameters e Validação (N8N)
   const n8nWorkflowJson = JSON.stringify({
+    "name": "GDN - Fluxo Seguro Multi-Usuário (Gemini)",
     "nodes": [
       {
         "parameters": {
           "httpMethod": "POST",
-          "path": "webhook/gdn/user/:userId",
+          "path": "gdn/user/:userId",
           "options": {}
         },
-        "name": "Webhook Seguro (User ID)",
+        "id": "webhook-node",
+        "name": "Webhook Seguro",
         "type": "n8n-nodes-base.webhook",
         "typeVersion": 1,
-        "position": [460, 300],
-        "webhookId": "gdn-secure-webhook"
+        "position": [460, 340],
+        "credentials": {
+          "httpHeaderAuth": {
+            "id": "GDN_AUTH_CREDENTIAL",
+            "name": "GDN Header Auth"
+          }
+        }
       },
       {
         "parameters": {
@@ -206,22 +213,23 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
             ]
           }
         },
-        "name": "Validar Request",
+        "id": "validate-input",
+        "name": "Validar Entrada",
         "type": "n8n-nodes-base.if",
         "typeVersion": 1,
-        "position": [680, 300]
+        "position": [680, 340]
       },
       {
         "parameters": {
           "method": "POST",
-          "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+          "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent",
           "authentication": "none",
           "sendQuery": true,
           "queryParameters": {
             "parameters": [
               {
                 "name": "key",
-                "value": "YOUR_GEMINI_API_KEY_HERE"
+                "value": "={{ $env.GEMINI_API_KEY }}"
               }
             ]
           },
@@ -235,77 +243,91 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
               }
             ]
           },
-          "options": {}
+          "options": {
+            "response": {
+              "response": {
+                "neverError": true
+              }
+            }
+          }
         },
+        "id": "gemini-api",
         "name": "Gemini AI",
         "type": "n8n-nodes-base.httpRequest",
         "typeVersion": 3,
-        "position": [900, 300]
-      },
-      {
-        "parameters": {
-          "keepOnlySet": true,
-          "values": {
-            "string": [
-              {
-                "name": "status",
-                "value": "ok"
-              },
-              {
-                "name": "result",
-                "value": "={{ $json.candidates[0].content.parts[0].text }}"
-              },
-              {
-                "name": "userId",
-                "value": "={{ $('Webhook Seguro (User ID)').item.json.params.userId }}"
-              }
-            ]
-          },
-          "options": {}
-        },
-        "name": "Formatar Sucesso",
-        "type": "n8n-nodes-base.set",
-        "typeVersion": 1,
-        "position": [1120, 300]
+        "position": [920, 240]
       },
       {
         "parameters": {
           "respondWith": "json",
-          "responseBody": "={{ $json }}",
+          "responseBody": "={\n  \"status\": \"success\",\n  \"userId\": \"{{ $('Webhook Seguro').item.json.params.userId }}\",\n  \"data\": {\n    \"text\": \"{{ $json.candidates[0].content.parts[0].text.replace(/\"/g, '\\\\\"') }}\"\n  }\n}",
           "options": {}
         },
-        "name": "Responder ao GDN",
+        "id": "success-response",
+        "name": "Resposta Sucesso",
         "type": "n8n-nodes-base.respondToWebhook",
         "typeVersion": 1,
-        "position": [1340, 300]
+        "position": [1180, 240]
       },
       {
         "parameters": {
           "respondWith": "json",
-          "responseBody": "{\"status\": \"error\", \"message\": \"Prompt ou UserID inválido\"}",
+          "responseBody": "={\n  \"status\": \"error\",\n  \"message\": \"Dados inválidos. Prompt ou UserId ausente.\",\n  \"code\": 400\n}",
           "options": {
             "responseCode": 400
           }
         },
-        "name": "Erro 400",
+        "id": "error-validation",
+        "name": "Erro Validação (400)",
         "type": "n8n-nodes-base.respondToWebhook",
         "typeVersion": 1,
-        "position": [900, 500]
+        "position": [920, 460]
+      },
+      {
+        "parameters": {
+          "conditions": {
+            "boolean": [
+              {
+                "value1": "={{ $json.error === undefined }}",
+                "value2": true
+              }
+            ]
+          }
+        },
+        "id": "check-gemini-success",
+        "name": "Verificar Sucesso API",
+        "type": "n8n-nodes-base.if",
+        "typeVersion": 1,
+        "position": [1050, 240]
+      },
+      {
+        "parameters": {
+          "respondWith": "json",
+          "responseBody": "={\n  \"status\": \"error\",\n  \"message\": \"Erro ao processar com Gemini AI\",\n  \"details\": \"{{ $json.error.message || 'Unknown error' }}\",\n  \"code\": 500\n}",
+          "options": {
+            "responseCode": 500
+          }
+        },
+        "id": "error-gemini",
+        "name": "Erro API (500)",
+        "type": "n8n-nodes-base.respondToWebhook",
+        "typeVersion": 1,
+        "position": [1180, 400]
       }
     ],
     "connections": {
-      "Webhook Seguro (User ID)": {
+      "Webhook Seguro": {
         "main": [
           [
             {
-              "node": "Validar Request",
+              "node": "Validar Entrada",
               "type": "main",
               "index": 0
             }
           ]
         ]
       },
-      "Validar Request": {
+      "Validar Entrada": {
         "main": [
           [
             {
@@ -316,7 +338,7 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
           ],
           [
             {
-              "node": "Erro 400",
+              "node": "Erro Validação (400)",
               "type": "main",
               "index": 0
             }
@@ -327,18 +349,25 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
         "main": [
           [
             {
-              "node": "Formatar Sucesso",
+              "node": "Verificar Sucesso API",
               "type": "main",
               "index": 0
             }
           ]
         ]
       },
-      "Formatar Sucesso": {
+      "Verificar Sucesso API": {
         "main": [
           [
             {
-              "node": "Responder ao GDN",
+              "node": "Resposta Sucesso",
+              "type": "main",
+              "index": 0
+            }
+          ],
+          [
+            {
+              "node": "Erro API (500)",
               "type": "main",
               "index": 0
             }
@@ -443,12 +472,24 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
                 
                 <ol className="list-decimal pl-6 space-y-4 text-gray-700">
                     <li>
-                        <strong>Crie um Webhook Node com Path Dinâmico:</strong>
-                        <p className="text-sm mt-1 text-gray-500">Configure o path como <code>webhook/gdn/user/:userId</code>. O <code>:userId</code> será capturado automaticamente.</p>
+                        <strong>Configuração no N8N:</strong>
+                        <p className="text-sm mt-1 text-gray-500">
+                            Importe o JSON abaixo. Ele criará um Webhook com o path <code>gdn/user/:userId</code>.
+                            <br/>
+                            O node "Validar Entrada" checa se o token e o userId estão presentes.
+                        </p>
                     </li>
                     <li>
-                        <strong>Segurança (Authentication):</strong>
-                        <p className="text-sm mt-1 text-gray-500">No node Webhook, selecione <strong>Header Auth</strong>. Crie uma credencial (ex: <code>x-api-key</code>) e compartilhe apenas com o administrador do sistema.</p>
+                        <strong>Variável de Ambiente (Gemini API Key):</strong>
+                        <p className="text-sm mt-1 text-gray-500">
+                            Configure <code>GEMINI_API_KEY</code> nas variáveis de ambiente do seu N8N. O workflow usa <code>{`{{ $env.GEMINI_API_KEY }}`}</code> para segurança.
+                        </p>
+                    </li>
+                    <li>
+                        <strong>Segurança (Credential):</strong>
+                        <p className="text-sm mt-1 text-gray-500">
+                            O workflow espera uma credencial "Header Auth". Crie uma nova credencial no N8N chamada <code>GDN Header Auth</code> com a chave <code>x-gdn-token</code> (valor opcional, mas recomendado para produção).
+                        </p>
                     </li>
                     <li>
                         <strong>Configuração no GDN_IA:</strong>
@@ -471,7 +512,7 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
                             {copiedField === 'n8n_json' ? 'Copiado!' : 'Copiar JSON'}
                         </button>
                     </div>
-                    <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-64 border border-gray-700 shadow-inner">
+                    <div className="bg-gray-900 rounded-lg p-4 overflow-auto max-h-96 border border-gray-700 shadow-inner">
                         <pre className="text-xs text-green-400 font-mono whitespace-pre">{n8nWorkflowJson}</pre>
                     </div>
                 </div>
@@ -488,7 +529,7 @@ CREATE POLICY "Users view own affiliate logs" ON public.affiliate_logs FOR SELEC
                     <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-r-lg">
                         <h4 className="font-bold text-blue-700 text-sm mb-1">Resposta 400 Bad Request</h4>
                         <p className="text-xs text-blue-600">
-                            O node "Validar Request" bloqueia chamadas sem <code>prompt</code> ou <code>userId</code>. Verifique se o GDN_IA está logado.
+                            O node "Validar Entrada" bloqueia chamadas sem <code>prompt</code> ou <code>userId</code>. Verifique se o GDN_IA está logado e se a URL no modal de integrações está correta (sem espaços extras).
                         </p>
                     </div>
                 </div>

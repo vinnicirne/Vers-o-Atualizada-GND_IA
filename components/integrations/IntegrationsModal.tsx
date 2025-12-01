@@ -143,7 +143,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
       }
       
       setTestingN8n(true);
-      const result = await validateN8nWebhook(url);
+      const result = await validateN8nWebhook(url, user?.id);
       setTestingN8n(false);
 
       if (result.success) {

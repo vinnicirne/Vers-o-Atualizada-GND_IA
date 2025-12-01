@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
 import { getN8nConfig, sendToN8nWebhook } from '../services/n8nService';
+import { useUser } from '../contexts/UserContext';
 
 interface ResultDisplayProps {
   text: string;
@@ -15,6 +16,7 @@ interface ResultDisplayProps {
 }
 
 export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProps) {
+  const { user } = useUser();
   const [copiedText, setCopiedText] = useState(false);
   const [copiedTitle, setCopiedTitle] = useState(false);
   
@@ -91,7 +93,8 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
           title,
           content: text,
           mode,
-          generated_at: new Date().toISOString()
+          generated_at: new Date().toISOString(),
+          userId: user?.id
       });
 
       if (result.success) {

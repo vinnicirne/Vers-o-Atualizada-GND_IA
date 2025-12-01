@@ -340,7 +340,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
               mode: mode,
               generated_at: new Date().toISOString(),
               audio_base64: audioResult,
-              image_prompt: mode === 'image_generation' ? text : undefined
+              image_prompt: mode === 'image_generation' ? text : undefined,
+              userId: user?.id
           }).then(res => {
               if(res.success) {
                   setToast({ message: "Conteúdo enviado automaticamente para n8n!", type: 'success' });
