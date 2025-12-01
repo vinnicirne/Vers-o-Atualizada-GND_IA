@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase, supabaseUrl } from '../services/supabaseClient';
@@ -264,32 +265,21 @@ export default function CheckoutCompleto({
 
         if (!mpSDK.current) {
             console.log("[MP SDK] Inicializando nova instância do MercadoPago SDK (v2).");
-            mpSDK.current = new window.MercadoPago(mpPublicKey, {
-                locale: 'pt-BR'
-            });
-        }
-
-        // NOVO: Polling para verificar se cardToken está pronto
-        const checkSdkReady = setInterval(() => {
-            console.log("[MP SDK] Verificando prontidão...", mpSDK.current?.cardToken);
-            if (mpSDK.current?.cardToken?.create) {
-                console.log("[MP SDK] cardToken.create está disponível. SDK pronto.");
+            try {
+                mpSDK.current = new window.MercadoPago(mpPublicKey, {
+                    locale: 'pt-BR'
+                });
+                console.log("[MP SDK] Instanciado com sucesso.");
+                // Na V2, se a instância existe, podemos assumir que os métodos core estão disponíveis
                 setIsMpSdkReady(true);
-                clearInterval(checkSdkReady);
+            } catch (e) {
+                console.error("[MP SDK] Falha ao instanciar:", e);
+                setFatalError("Erro ao inicializar pagamento.");
             }
-        }, 500); // Tenta a cada 500ms
-
-        // Limpeza de qualquer tokenization anterior ou campos monitorados
-        if (mpSDK.current && mpSDK.current.fields) {
-             // mpSDK.current.fields = {}; // Isso pode quebrar o SDK v2, removendo.
         }
-        
-        return () => {
-            clearInterval(checkSdkReady); // Limpa o intervalo no unmount
-        };
     }
 
-    // Cleanup: Destroi o cardForm se ele existe
+    // Cleanup
     return () => {
       mpCardForm.current = null;
     };
@@ -477,7 +467,7 @@ export default function CheckoutCompleto({
   // --- Pagamento com Cartão ---
   const handleCardSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      if (processing || !isMpSdkReady) return; // NOVO: Bloqueia se SDK não estiver pronto
+      if (processing || !isMpSdkReady) return; // Bloqueia se SDK não estiver pronto
       if (!validateDoc()) return;
       
       const { cardNumber, holderName, expirationDate, cvv, installments, amount: formAmount, docNumber } = commonFormData;
@@ -509,52 +499,51 @@ export default function CheckoutCompleto({
           let endpoint = '';
 
           if (activeGateway === 'mercadopago') {
-            if (!mpSDK.current || !mpSDK.current.cardToken?.create) { // NOVO: Verifica create
-                console.error("[MP SDK] Instância do Mercado Pago ou cardToken não inicializado/pronto.", mpSDK.current); // NOVO: Log da instância
-                throw new Error("SDK do Mercado Pago não inicializado corretamente para tokenização. Tente recarregar a página.");
+            if (!mpSDK.current) {
+                throw new Error("SDK do Mercado Pago não inicializado. Recarregue a página.");
             }
             
             // --- TOKENIZAÇÃO MP NO CLIENT-SIDE (SDK v2) ---
+            // IMPORTANTE: createCardToken é um método Promise-based na V2 e usa CamelCase
             const cardTokenData = {
-                card_number: cleanCard,
-                card_holder_name: holderName,
-                card_expiration_month: month,
-                card_expiration_year: year,
-                security_code: cvv,
-                doc_type: cleanDoc.length === 11 ? 'CPF' : 'CNPJ',
-                doc_number: cleanDoc
+                cardNumber: cleanCard,
+                cardholderName: holderName,
+                cardExpirationMonth: month,
+                cardExpirationYear: year,
+                securityCode: cvv,
+                identification: {
+                    type: cleanDoc.length === 11 ? 'CPF' : 'CNPJ',
+                    number: cleanDoc
+                }
             };
 
-            console.log("[MP SDK - Tokenização] Dados do cartão para createCardToken:", cardTokenData);
+            console.log("[MP SDK - Tokenização] Iniciando createCardToken...");
 
-            const mpTokenResponse = await new Promise((resolve, reject) => {
-                mpSDK.current.cardToken.create(cardTokenData, (status: number, response: any) => {
-                    console.log("[MP SDK - Tokenização] createCardToken callback - Status:", status, "Response:", JSON.stringify(response));
-                    if (status === 200 || status === 201) {
-                        if (!response || !response.id) { 
-                            console.error("[MP SDK - Tokenização] Resposta de tokenização bem-sucedida, mas ID do token ausente:", response);
-                            return reject(new Error("Erro na tokenização: ID do token do cartão ausente na resposta."));
-                        }
-                        resolve(response);
-                    } else {
-                        // Se for erro, tenta extrair mensagem ou stringify
-                        const errorMessage = response.message || JSON.stringify(response) || `Erro MP SDK desconhecido: ${status}`;
-                        reject(new Error(errorMessage));
-                    }
-                });
-            });
-
-            const { id: token } = mpTokenResponse as any;
+            let token = null;
+            try {
+                const mpTokenResponse = await mpSDK.current.createCardToken(cardTokenData);
+                console.log("[MP SDK - Tokenização] Sucesso:", mpTokenResponse);
+                token = mpTokenResponse.id;
+            } catch (tokenError: any) {
+                console.error("[MP SDK - Tokenização] Erro:", tokenError);
+                // Tenta extrair mensagem de erro amigável do MP
+                let errMsg = "Dados do cartão inválidos.";
+                if (tokenError.message) errMsg = tokenError.message;
+                // Array de erros comum no MP
+                if (Array.isArray(tokenError) && tokenError.length > 0 && tokenError[0].message) {
+                    errMsg = tokenError[0].message;
+                }
+                throw new Error(`Erro na validação do cartão: ${errMsg}`);
+            }
             
             if (!token) {
-                throw new Error("Erro na tokenização: Token do cartão não foi gerado.");
+                throw new Error("Não foi possível gerar o token do cartão.");
             }
 
             // --- OBTER PAYMENT_METHOD_ID E ISSUER_ID (v2) ---
             console.log("[MP SDK - Get Payment Methods] Buscando método de pagamento para BIN:", cardBin);
             const paymentMethodsResponse = await mpSDK.current.getPaymentMethods({ bin: cardBin });
-            console.log("[MP SDK - Get Payment Methods] Resposta:", JSON.stringify(paymentMethodsResponse));
-
+            
             let payment_method_id = null;
             let issuer_id = null;
 
@@ -562,17 +551,21 @@ export default function CheckoutCompleto({
                 // Pega o primeiro método de pagamento compatível
                 payment_method_id = paymentMethodsResponse.results[0].id;
 
-                // Tenta obter o issuer_id, se disponível (pode não ser necessário dependendo do gateway)
-                // MP SDK v2 getIssuers é um método Promise-based, não callback-based
-                const issuers = await mpSDK.current.getIssuers(payment_method_id, cardBin);
-                if (issuers && issuers.length > 0) {
-                    issuer_id = issuers[0].id;
+                // Tenta obter o issuer_id
+                try {
+                    const issuers = await mpSDK.current.getIssuers({ paymentMethodId: payment_method_id, bin: cardBin });
+                    if (issuers && issuers.length > 0) {
+                        issuer_id = issuers[0].id;
+                    }
+                } catch (issuerErr) {
+                    console.warn("[MP SDK] Erro ao buscar emissores, seguindo sem issuer_id", issuerErr);
                 }
             }
 
             if (!payment_method_id) {
-                 console.error("[MP SDK - Get Payment Methods] Não foi possível determinar o payment_method_id.", paymentMethodsResponse);
-                 throw new Error("Não foi possível identificar o método de pagamento para este cartão. Tente outro.");
+                 console.error("[MP SDK] Payment Method ID não encontrado para BIN", cardBin);
+                 // Fallback simples se falhar a detecção automática
+                 payment_method_id = 'credit_card';
             }
             
             console.log(`[MP SDK] Token: ${token}, Payment Method ID: ${payment_method_id}, Issuer ID: ${issuer_id}`);
@@ -708,16 +701,16 @@ export default function CheckoutCompleto({
             <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} />
             <button
               type="submit"
-              disabled={processing || !isMpSdkReady} // NOVO: Bloqueia se SDK não estiver pronto
+              disabled={processing || !isMpSdkReady} // Bloqueia se SDK não estiver pronto
               className="w-full mt-6 py-4 bg-green-600 hover:bg-green-500 disabled:bg-gray-800 disabled:text-gray-500 text-black font-bold rounded-xl text-lg transition-all shadow-lg shadow-green-900/20 transform active:scale-[0.98] flex items-center justify-center"
             >
               {processing ? (
                 <span className="flex items-center justify-center gap-3">
                   <i className="fas fa-circle-notch fa-spin"></i> Processando...
                 </span>
-              ) : !isMpSdkReady ? ( // NOVO: Mensagem de espera do SDK
+              ) : !isMpSdkReady ? (
                  <span className="flex items-center justify-center gap-3">
-                    <i className="fas fa-sync-alt fa-spin"></i> Carregando Pagamento...
+                    <i className="fas fa-sync-alt fa-spin"></i> Carregando SDK...
                  </span>
               ) : (
                 <> <i className="fas fa-check mr-2"></i> Pagar Agora </>
