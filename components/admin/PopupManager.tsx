@@ -25,6 +25,26 @@ const DEFAULT_POPUP: Omit<Popup, 'id' | 'created_at'> = {
     is_active: true
 };
 
+const AFFILIATE_TEMPLATE: Omit<Popup, 'id' | 'created_at'> = {
+    title: 'Torne-se um Parceiro',
+    content: 'Gostou do sistema? Indique o GDN_IA para amigos e ganhe 20% de comissão recorrente por cada assinatura realizada através do seu link exclusivo.',
+    type: 'image',
+    media_url: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', // Ícone genérico de aperto de mão/dinheiro
+    style: {
+        background_color: '#111827', // Dark Gray (Quase preto)
+        text_color: '#FBBF24',       // Amber 400 (Dourado)
+        button_color: '#D97706',     // Amber 600 (Dourado Escuro)
+        button_text_color: '#000000' // Preto
+    },
+    trigger_settings: {
+        delay: 3,
+        frequency: 'once', // Mostrar apenas uma vez
+        button_text: 'Quero meu Link',
+        button_link: '/?open_affiliate=true' // Link interno (pode precisar de ajuste no router se não for query param)
+    },
+    is_active: true
+};
+
 export function PopupManager() {
     const { user: adminUser } = useUser();
     const [popups, setPopups] = useState<Popup[]>([]);
@@ -55,6 +75,13 @@ export function PopupManager() {
         setEditingPopup(null);
         setFormData(DEFAULT_POPUP);
         setIsFormOpen(true);
+    };
+
+    const handleLoadTemplate = () => {
+        setEditingPopup(null);
+        setFormData(AFFILIATE_TEMPLATE);
+        setIsFormOpen(true);
+        setToast({ message: "Template de Afiliados carregado! Ajuste e salve.", type: 'success' });
     };
 
     const handleEdit = (popup: Popup) => {
@@ -134,17 +161,25 @@ export function PopupManager() {
             {!isFormOpen ? (
                 // LIST VIEW
                 <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <div>
                             <h2 className="text-2xl font-bold text-[#263238]">Gerenciador de Popups</h2>
                             <p className="text-sm text-gray-500">Crie avisos, promoções ou mensagens de boas-vindas.</p>
                         </div>
-                        <button
-                            onClick={handleCreateNew}
-                            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-bold flex items-center gap-2"
-                        >
-                            <i className="fas fa-plus"></i> Novo Popup
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleLoadTemplate}
+                                className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-4 py-2 rounded-lg hover:bg-yellow-100 transition font-bold flex items-center gap-2 text-sm"
+                            >
+                                <i className="fas fa-magic"></i> Template: Afiliados
+                            </button>
+                            <button
+                                onClick={handleCreateNew}
+                                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition font-bold flex items-center gap-2 text-sm"
+                            >
+                                <i className="fas fa-plus"></i> Novo Popup
+                            </button>
+                        </div>
                     </div>
 
                     {loading ? (
@@ -166,7 +201,7 @@ export function PopupManager() {
                                             <button onClick={() => handleDelete(popup.id)} className="text-red-600 hover:bg-red-50 p-1 rounded"><i className="fas fa-trash"></i></button>
                                         </div>
                                     </div>
-                                    <h3 className="font-bold text-gray-800 mb-1 truncate">{popup.title}</h3>
+                                    <h3 className="font-bold text-gray-800 mb-1 truncate" title={popup.title}>{popup.title}</h3>
                                     <p className="text-xs text-gray-500 mb-3 flex items-center gap-2">
                                         <i className={`fas ${popup.type === 'video' ? 'fa-video' : popup.type === 'image' ? 'fa-image' : 'fa-align-left'}`}></i>
                                         {popup.type.toUpperCase()} • {popup.trigger_settings.frequency === 'once' ? 'Uma vez' : popup.trigger_settings.frequency === 'always' ? 'Sempre' : 'Diário'}
@@ -209,6 +244,7 @@ export function PopupManager() {
                                     <div>
                                         <label className="block text-xs font-bold text-gray-500 mb-1">URL da Mídia</label>
                                         <input type="text" value={formData.media_url} onChange={e => handleChange('media_url', e.target.value)} className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm focus:ring-green-500 focus:border-green-500" placeholder="https://..." />
+                                        <p className="text-[10px] text-gray-400 mt-1">Dica: Para o template de afiliados, use uma imagem PNG transparente.</p>
                                     </div>
                                 )}
                                 <div>
