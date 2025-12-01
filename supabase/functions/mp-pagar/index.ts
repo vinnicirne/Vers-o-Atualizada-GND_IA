@@ -65,7 +65,14 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-    console.log("[mp-pagar] Request:", JSON.stringify(reqJson));
+    
+    // LOG SANITIZATION
+    const safeLog = { ...reqJson };
+    if (safeLog.token) safeLog.token = "***REDACTED***";
+    if (safeLog.docNumber) safeLog.docNumber = "***REDACTED***";
+    if (safeLog.card_token_id) safeLog.card_token_id = "***REDACTED***";
+    
+    console.log("[mp-pagar] Request:", JSON.stringify(safeLog));
 
     // --- MODO 1: CANCELAMENTO DE ASSINATURA ---
     if (reqJson.action === 'cancel_subscription') {
@@ -256,7 +263,7 @@ serve(async (req) => {
             return new Response(JSON.stringify({ error: "Erro de comunicação com MP (Preapproval)" }), { status: 502, headers: corsHeaders });
         }
 
-        console.log("[mp-pagar] Resposta Preapproval:", JSON.stringify(subData));
+        console.log("[mp-pagar] Resposta Preapproval (Sanitized ID):", subData.id);
 
         if (!subRes.ok) {
             return new Response(JSON.stringify({ error: subData.message || "Erro ao criar assinatura." }), { status: 400, headers: corsHeaders });
@@ -386,7 +393,7 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error("[mp-pagar] Error:", err);
+    console.error("[mp-pagar] Error:", err.message);
     return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 });

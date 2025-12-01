@@ -50,7 +50,16 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-    console.log("[asaas-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
+    
+    // LOG SANITIZATION
+    const safeLog = { ...reqJson };
+    if (safeLog.creditCard) {
+        safeLog.creditCard = { ...safeLog.creditCard, number: "***REDACTED***", ccv: "***" };
+    }
+    if (safeLog.creditCardToken) {
+        safeLog.creditCardToken = "***REDACTED***";
+    }
+    console.log("[asaas-pagar] Requisição JSON recebida:", JSON.stringify(safeLog));
 
     // --- CHECK FOR SERVER CONFIG ---
     const asaasKey = Deno.env.get("ASAAS_KEY");
@@ -276,7 +285,12 @@ serve(async (req) => {
         }
     }
 
-    console.log(`[asaas-pagar] Enviando payload para Asaas (${isSubscription ? 'ASSINATURA' : 'PAGAMENTO ÚNICO'}):`, JSON.stringify(paymentPayload));
+    // SANITIZATION FOR LOG
+    const safePayload = { ...paymentPayload };
+    if (safePayload.creditCard) safePayload.creditCard = { ...safePayload.creditCard, number: "***", ccv: "***" };
+    if (safePayload.creditCardToken) safePayload.creditCardToken = "***";
+
+    console.log(`[asaas-pagar] Enviando payload para Asaas (${isSubscription ? 'ASSINATURA' : 'PAGAMENTO ÚNICO'}):`, JSON.stringify(safePayload));
     
     // Escolhe endpoint correto
     const endpoint = isSubscription ? getUrl("/subscriptions") : getUrl("/payments");
