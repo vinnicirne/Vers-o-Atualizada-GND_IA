@@ -1,3 +1,4 @@
+
 // supabase/functions/webhook/index.ts
 
 declare const Deno: any;
@@ -28,6 +29,7 @@ serve(async (req) => {
     );
 
     let transactionId: string | null = null;
+    let subscriptionId: string | null = null; // Para recorrência Asaas
     let paymentStatus: string | null = null;
     let paidAmount: number | null = null;
     let transactionMetadata: any = {}; // Para capturar e persistir metadados úteis
@@ -43,9 +45,6 @@ serve(async (req) => {
         rawBody = await req.text();
         console.error(`[Webhook] Erro ao parsear JSON. Body raw: ${rawBody}. Erro: ${jsonError.message}`);
         // Se o body não for JSON válido, loga e tenta seguir, mas pode falhar mais tarde.
-        // Para webhooks, é comum que provedores enviem tipos diferentes.
-        // Se for um provedor específico que esperamos JSON, podemos retornar erro aqui.
-        // Por enquanto, tentamos seguir.
     }
     
     // --- LÓGICA MERCADO PAGO ---
@@ -86,7 +85,6 @@ serve(async (req) => {
             }
         } else {
             console.log("[Webhook MP] Tipo de notificação ignorado (não é payment.created/updated ou type=payment).");
-            // Ignora outros tipos de notificação (ex: subscription, test)
             return new Response(JSON.stringify({ message: "Ignored type" }), { status: 200, headers: corsHeaders });
         }
     } 
@@ -98,11 +96,12 @@ serve(async (req) => {
 
         if (event === "PAYMENT_CONFIRMED" || event === "PAYMENT_RECEIVED") {
             transactionId = payment.id;
+            subscriptionId = payment.subscription; // Se for assinatura, esse campo existe
             paymentStatus = "approved"; // Asaas status 'CONFIRMED' ou 'RECEIVED' -> 'approved'
             paidAmount = payment.value;
             transactionMetadata.asaas_id = payment.id;
             transactionMetadata.provider = "asaas";
-            transactionMetadata.payment_status_asaas = payment.status; // Manter status original do Asaas
+            transactionMetadata.payment_status_asaas = payment.status;
         } else if (event === "PAYMENT_REFUNDED") {
              transactionId = payment.id;
              paymentStatus = "refunded";
@@ -119,7 +118,6 @@ serve(async (req) => {
              transactionMetadata.payment_status_asaas = payment.status;
         } else {
              console.log(`[Webhook Asaas] Evento "${event}" ignorado.`);
-             // Eventos intermediários ignorados
              return new Response(JSON.stringify({ received: true }), { status: 200, headers: corsHeaders });
         }
     } else {
@@ -134,7 +132,7 @@ serve(async (req) => {
     if (transactionId && paymentStatus) {
         console.log(`[Webhook] Iniciando processamento para transação ID: "${transactionId}", Novo Status: "${paymentStatus}"`);
         
-        // 1. Busca transação no banco pelo ID externo
+        // 1. Busca transação no banco pelo ID externo (Pagamento)
         console.log(`[Webhook] Searching DB for external_id: "${transactionId}"`);
         const { data: tx, error: txError } = await supabaseAdmin
             .from("transactions")
@@ -142,21 +140,64 @@ serve(async (req) => {
             .eq("external_id", transactionId)
             .single();
 
-        if (txError && txError.code === 'PGRST116') { // PGRST116 = no rows found
-            console.warn(`[Webhook] Transação NÃO ENCONTRADA no DB para external_id: "${transactionId}" (PGRST116). Isso pode ser uma notificação de teste ou um pagamento externo não iniciado pelo nosso app. Body raw: ${rawBody}`);
-            // Retorna 200 para o gateway não ficar tentando reenviar se for uma transação que não iniciamos
-            return new Response(JSON.stringify({ message: `Transaction not found locally for external_id "${transactionId}", gracefully ignored` }), { status: 200, headers: corsHeaders });
-        } else if (txError) {
-            console.error(`[Webhook] Erro ao buscar transação no DB para external_id "${transactionId}": ${txError.message}`);
-            return new Response(JSON.stringify({ error: `Database error during transaction lookup: ${txError.message}` }), { status: 500, headers: corsHeaders });
+        let targetTx = tx;
+
+        // --- LÓGICA DE RECORRÊNCIA (ASSAAS MÊS 2+) ---
+        // Se a transação não existe E é uma assinatura do Asaas, significa que é um pagamento recorrente (nova fatura)
+        if (!tx && subscriptionId && provider === "asaas") {
+            console.log(`[Webhook] Transação ${transactionId} não encontrada, mas possui subscriptionId ${subscriptionId}. Verificando recorrência.`);
+            
+            // Busca o usuário dono dessa assinatura
+            const { data: subUser, error: subUserError } = await supabaseAdmin
+                .from("app_users")
+                .select("id, email, plan")
+                .eq("subscription_id", subscriptionId)
+                .single();
+
+            if (subUser) {
+                console.log(`[Webhook] Recorrência identificada para usuário ${subUser.email}. Criando nova transação automática.`);
+                
+                // Normaliza status
+                let newDbStatus: 'pending' | 'approved' | 'refunded' | 'failed' = 'pending';
+                if (paymentStatus === 'approved') newDbStatus = 'approved';
+                else if (paymentStatus === 'refunded') newDbStatus = 'refunded';
+                else if (paymentStatus === 'failed') newDbStatus = 'failed';
+
+                // Cria nova transação para o mês corrente
+                const { data: newRecurrTx, error: newTxError } = await supabaseAdmin.from("transactions").insert({
+                    usuario_id: subUser.id,
+                    valor: Number(paidAmount),
+                    metodo: 'card', // Assumindo padrão assinatura
+                    status: newDbStatus,
+                    external_id: transactionId, // ID do pagamento atual do Asaas
+                    metadata: { 
+                        provider: "asaas", 
+                        item_type: 'plan', 
+                        item_id: subUser.plan || 'premium', // Assume o plano atual do usuário
+                        is_subscription: true,
+                        subscription_id: subscriptionId,
+                        auto_generated: true 
+                    },
+                    data: new Date().toISOString(),
+                }).select().single();
+
+                if (!newTxError) {
+                    targetTx = newRecurrTx;
+                    console.log(`[Webhook] Nova transação de recorrência criada: ${newRecurrTx.id}`);
+                } else {
+                    console.error(`[Webhook] Erro ao criar transação de recorrência: ${newTxError.message}`);
+                }
+            } else {
+                console.warn(`[Webhook] Assinatura ${subscriptionId} não vinculada a nenhum usuário no sistema.`);
+            }
         }
 
-        if (tx) {
-            console.log(`[Webhook] Transação local ENCONTRADA (DB ID: ${tx.id}). Status atual: "${tx.status}", Novo status reportado pelo gateway: "${paymentStatus}"`);
+        if (targetTx) {
+            console.log(`[Webhook] Processando Transação Local (DB ID: ${targetTx.id}). Status atual: "${targetTx.status}", Novo status: "${paymentStatus}"`);
 
             // Evita processamento duplicado se já estiver aprovada
-            if (tx.status === 'approved' && paymentStatus === 'approved') {
-                 console.log(`[Webhook] Transação ${tx.id} já está aprovada. Ignorando atualização duplicada.`);
+            if (targetTx.status === 'approved' && paymentStatus === 'approved') {
+                 console.log(`[Webhook] Transação ${targetTx.id} já está aprovada. Ignorando atualização duplicada.`);
                  return new Response(JSON.stringify({ message: "Already approved" }), {
                     status: 200,
                     headers: { ...corsHeaders, "Content-Type": "application/json" }
@@ -168,59 +209,58 @@ serve(async (req) => {
             if (paymentStatus === 'approved' || paymentStatus === 'CONFIRMED' || paymentStatus === 'RECEIVED') newDbStatus = 'approved';
             else if (paymentStatus === 'refunded' || paymentStatus === 'CHARGED_BACK') newDbStatus = 'refunded';
             else if (paymentStatus === 'rejected' || paymentStatus === 'cancelled' || paymentStatus === 'failed' || paymentStatus === 'OVERDUE') newDbStatus = 'failed';
-            else if (paymentStatus === 'pending' || paymentStatus === 'AUTHORIZED' || paymentStatus === 'BILLET_PRINTED') newDbStatus = 'pending'; // Mantém como pending
+            else if (paymentStatus === 'pending' || paymentStatus === 'AUTHORIZED' || paymentStatus === 'BILLET_PRINTED') newDbStatus = 'pending';
 
-            console.log(`[Webhook] Atualizando status DB de "${tx.status}" para "${newDbStatus}" para transação ID: ${tx.id}`);
+            console.log(`[Webhook] Atualizando status DB de "${targetTx.status}" para "${newDbStatus}" para transação ID: ${targetTx.id}`);
 
             // Atualiza status no banco
             const { error: updateError } = await supabaseAdmin
                 .from("transactions")
-                .update({ status: newDbStatus, metadata: { ...tx.metadata, ...transactionMetadata } }) // Mescla metadados
-                .eq("id", tx.id);
+                .update({ status: newDbStatus, metadata: { ...targetTx.metadata, ...transactionMetadata } })
+                .eq("id", targetTx.id);
 
             if (updateError) {
-                console.error(`[Webhook] Erro ao atualizar status da transação ${tx.id}: ${updateError.message}`);
+                console.error(`[Webhook] Erro ao atualizar status da transação ${targetTx.id}: ${updateError.message}`);
                 return new Response(JSON.stringify({ error: `Failed to update transaction status: ${updateError.message}` }), { status: 500, headers: corsHeaders });
             }
 
             // Se aprovado, libera benefícios
             if (newDbStatus === 'approved') {
-                console.log(`[Webhook] Status "approved" detectado. Iniciando liberação de benefícios para usuário ${tx.usuario_id}.`);
+                console.log(`[Webhook] Status "approved" detectado. Iniciando liberação de benefícios para usuário ${targetTx.usuario_id}.`);
                 // Busca usuário para saber quem indicou (Afiliado)
                 const { data: userData, error: userError } = await supabaseAdmin
                     .from("app_users")
                     .select("referred_by")
-                    .eq("id", tx.usuario_id)
+                    .eq("id", targetTx.usuario_id)
                     .single();
 
-                if (userError) console.warn(`[Webhook] Erro ao buscar dados do usuário ${tx.usuario_id} (referido): ${userError.message}`);
-
-                const amountToUse = paidAmount || tx.valor; // Prioriza o valor real pago se disponível
-                const metadata = tx.metadata || {};
+                const amountToUse = paidAmount || targetTx.valor; 
+                const metadata = targetTx.metadata || {};
 
                 // Libera Créditos/Plano e Paga Comissão
                 await releaseBenefits(
                     supabaseAdmin,
-                    tx.usuario_id,
+                    targetTx.usuario_id,
                     metadata.item_type, // 'plan' ou 'credits'
                     metadata.item_id,   // plan_id ou amount de creditos
                     Number(amountToUse),
                     userData?.referred_by
                 );
                 
-                // Opcional: Logar sucesso
                 await supabaseAdmin.from("logs").insert({
-                    usuario_id: tx.usuario_id,
+                    usuario_id: targetTx.usuario_id,
                     acao: "payment_approved_webhook",
                     modulo: "Pagamentos",
                     detalhes: { provider, transactionId, amount: amountToUse, itemType: metadata.item_type, itemId: metadata.item_id },
                     data: new Date().toISOString()
                 });
-                console.log(`[Webhook] Liberação de benefícios e log para transação ${tx.id} concluídos.`);
+                console.log(`[Webhook] Liberação de benefícios e log para transação ${targetTx.id} concluídos.`);
 
             } else {
-                console.log(`[Webhook] Transação ${tx.id} com status "${newDbStatus}". Benefícios não liberados.`);
+                console.log(`[Webhook] Transação ${targetTx.id} com status "${newDbStatus}". Benefícios não liberados.`);
             }
+        } else {
+             console.warn(`[Webhook] Transação não encontrada e não processada como recorrência. ID Externo: ${transactionId}`);
         }
     }
 
@@ -239,7 +279,7 @@ serve(async (req) => {
   }
 });
 
-// Lógica Compartilhada de Liberação de Benefícios (Idêntica a mp-pagar e asaas-pagar)
+// Lógica Compartilhada de Liberação de Benefícios
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
     console.log(`[Benefits Helper (Webhook)] Iniciando liberação para userId: ${userId}, itemType: ${itemType}, itemId: ${itemId}, amount: ${amount}, referrerId: ${referrerId}`);
     

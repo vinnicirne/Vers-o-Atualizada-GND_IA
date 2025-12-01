@@ -66,10 +66,13 @@ serve(async (req) => {
     }
     
     // --- URL CONSTRUCTION LOGIC (FIX 404) ---
-    const asaasApiBaseUrl = Deno.env.get("ASAAS_API_BASE_URL") || "https://api.asaas.com"; // Default para produção
+    // A API v3 de produção é https://api.asaas.com/v3/...
+    // A Sandbox é https://sandbox.asaas.com/api/v3/...
+    const asaasApiBaseUrl = Deno.env.get("ASAAS_API_BASE_URL") || "https://api.asaas.com"; 
     const cleanBaseUrl = asaasApiBaseUrl.replace(/\/$/, "");
+    
+    // Detecta se é produção moderna (api.asaas.com) ou sandbox/legacy (www.asaas.com)
     const isProduction = cleanBaseUrl.includes("api.asaas.com");
-    // Produção usa /v3/..., Sandbox/Outros usam /api/v3/...
     const pathPrefix = isProduction ? "/v3" : "/api/v3";
 
     const getUrl = (path: string) => `${cleanBaseUrl}${pathPrefix}${path}`;
@@ -107,7 +110,7 @@ serve(async (req) => {
         // Atualiza banco
         await supabaseAdmin.from("app_users").update({ 
             subscription_status: 'CANCELED',
-            plan: 'free' // Degrada para free ou mantém até o fim do ciclo? Simplificando: degrada
+            plan: 'free' // Degrada para free
         }).eq("id", authUser.id);
 
         return new Response(JSON.stringify({ success: true, message: "Assinatura cancelada com sucesso." }), { status: 200, headers: corsHeaders });

@@ -642,7 +642,12 @@ export default function CheckoutCompleto({
               console.error("[Checkout] JSON Parse Error. Raw response:", resText);
               // Handle HTML errors (usually starting with <)
               if (resText.trim().startsWith('<')) {
-                  throw new Error(`Erro de configuração da API (${res.status}). A URL do endpoint de pagamento pode estar incorreta no backend.`);
+                  // User-friendly message for HTML error pages (404/500/502)
+                  throw new Error(`Erro de comunicação com o servidor (${res.status}). Por favor, tente novamente mais tarde.`);
+              }
+              // If not HTML but still invalid JSON
+              if (e instanceof SyntaxError) {
+                   throw new Error("Erro de configuração da API. Resposta inválida do servidor.");
               }
               throw new Error(`Erro inesperado na resposta do pagamento (${res.status}).`);
           }
