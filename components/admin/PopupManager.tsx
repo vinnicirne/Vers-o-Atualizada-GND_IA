@@ -14,7 +14,8 @@ const DEFAULT_POPUP: Omit<Popup, 'id' | 'created_at'> = {
         background_color: '#ffffff',
         text_color: '#263238',
         button_color: '#10B981',
-        button_text_color: '#ffffff'
+        button_text_color: '#ffffff',
+        theme: 'default'
     },
     trigger_settings: {
         delay: 5,
@@ -29,18 +30,19 @@ const AFFILIATE_TEMPLATE: Omit<Popup, 'id' | 'created_at'> = {
     title: 'Torne-se um Parceiro',
     content: 'Gostou do sistema? Indique o GDN_IA para amigos e ganhe 20% de comissão recorrente por cada assinatura realizada através do seu link exclusivo.',
     type: 'image',
-    media_url: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', // Ícone genérico de aperto de mão/dinheiro
+    media_url: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png', // Ícone genérico de aperto de mão/dinheiro (fallback se não tiver no renderer)
     style: {
         background_color: '#111827', // Dark Gray (Quase preto)
         text_color: '#FBBF24',       // Amber 400 (Dourado)
         button_color: '#D97706',     // Amber 600 (Dourado Escuro)
-        button_text_color: '#000000' // Preto
+        button_text_color: '#000000', // Preto
+        theme: 'dark_gold' // ATIVA O DESIGN PREMIUM
     },
     trigger_settings: {
         delay: 3,
         frequency: 'once', // Mostrar apenas uma vez
         button_text: 'Quero meu Link',
-        button_link: '/?open_affiliate=true' // Link interno (pode precisar de ajuste no router se não for query param)
+        button_link: '/?open_affiliate=true' // Link interno
     },
     is_active: true
 };
@@ -81,7 +83,7 @@ export function PopupManager() {
         setEditingPopup(null);
         setFormData(AFFILIATE_TEMPLATE);
         setIsFormOpen(true);
-        setToast({ message: "Template de Afiliados carregado! Ajuste e salve.", type: 'success' });
+        setToast({ message: "Template 'Afiliados Gold' carregado! Salve para ativar.", type: 'success' });
     };
 
     const handleEdit = (popup: Popup) => {
@@ -120,7 +122,9 @@ export function PopupManager() {
             setToast({ message: "Título é obrigatório.", type: 'error' });
             return;
         }
-        if ((formData.type === 'image' || formData.type === 'video') && !formData.media_url) {
+        
+        // Em dark_gold, media_url pode ser opcional ou usado como icone
+        if ((formData.type === 'image' || formData.type === 'video') && !formData.media_url && formData.style.theme !== 'dark_gold') {
             setToast({ message: "URL da mídia é obrigatória para Imagem/Vídeo.", type: 'error' });
             return;
         }
@@ -171,7 +175,7 @@ export function PopupManager() {
                                 onClick={handleLoadTemplate}
                                 className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-4 py-2 rounded-lg hover:bg-yellow-100 transition font-bold flex items-center gap-2 text-sm"
                             >
-                                <i className="fas fa-magic"></i> Template: Afiliados
+                                <i className="fas fa-magic"></i> Carregar Template: Afiliados
                             </button>
                             <button
                                 onClick={handleCreateNew}
@@ -191,11 +195,18 @@ export function PopupManager() {
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {popups.map(popup => (
-                                <div key={popup.id} className={`border rounded-xl p-4 transition ${popup.is_active ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-70'}`}>
+                                <div key={popup.id} className={`border rounded-xl p-4 transition ${popup.is_active ? 'border-gray-200 bg-white' : 'border-gray-200 bg-gray-50 opacity-70'} ${popup.style.theme === 'dark_gold' ? 'ring-1 ring-yellow-400' : ''}`}>
                                     <div className="flex justify-between items-start mb-3">
-                                        <span className={`text-xs font-bold px-2 py-1 rounded capitalize ${popup.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
-                                            {popup.is_active ? 'Ativo' : 'Inativo'}
-                                        </span>
+                                        <div className="flex gap-2">
+                                            <span className={`text-xs font-bold px-2 py-1 rounded capitalize ${popup.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
+                                                {popup.is_active ? 'Ativo' : 'Inativo'}
+                                            </span>
+                                            {popup.style.theme === 'dark_gold' && (
+                                                <span className="text-xs font-bold px-2 py-1 rounded bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                                    Gold
+                                                </span>
+                                            )}
+                                        </div>
                                         <div className="flex gap-2">
                                             <button onClick={() => handleEdit(popup)} className="text-blue-600 hover:bg-blue-50 p-1 rounded"><i className="fas fa-edit"></i></button>
                                             <button onClick={() => handleDelete(popup.id)} className="text-red-600 hover:bg-red-50 p-1 rounded"><i className="fas fa-trash"></i></button>
@@ -257,36 +268,52 @@ export function PopupManager() {
                             <div className="space-y-6">
                                 <div>
                                     <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4">Aparência</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="block text-xs text-gray-500 mb-1">Fundo</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="color" value={formData.style.background_color} onChange={e => handleNestedChange('style', 'background_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
-                                                <input type="text" value={formData.style.background_color} onChange={e => handleNestedChange('style', 'background_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-gray-500 mb-1">Texto</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="color" value={formData.style.text_color} onChange={e => handleNestedChange('style', 'text_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
-                                                <input type="text" value={formData.style.text_color} onChange={e => handleNestedChange('style', 'text_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-gray-500 mb-1">Botão</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="color" value={formData.style.button_color} onChange={e => handleNestedChange('style', 'button_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
-                                                <input type="text" value={formData.style.button_color} onChange={e => handleNestedChange('style', 'button_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <label className="block text-xs text-gray-500 mb-1">Texto Botão</label>
-                                            <div className="flex items-center gap-2">
-                                                <input type="color" value={formData.style.button_text_color} onChange={e => handleNestedChange('style', 'button_text_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
-                                                <input type="text" value={formData.style.button_text_color} onChange={e => handleNestedChange('style', 'button_text_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
-                                            </div>
-                                        </div>
+                                    
+                                    <div className="mb-4">
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">Tema Visual</label>
+                                        <select 
+                                            value={formData.style.theme || 'default'} 
+                                            onChange={e => handleNestedChange('style', 'theme', e.target.value)} 
+                                            className="w-full bg-gray-50 border border-gray-300 rounded p-2 text-sm focus:ring-green-500"
+                                        >
+                                            <option value="default">Padrão (Customizável)</option>
+                                            <option value="dark_gold">Afiliados Gold (Premium)</option>
+                                        </select>
+                                        <p className="text-[10px] text-gray-400 mt-1">O tema 'Afiliados Gold' ignora algumas cores personalizadas para manter o estilo premium.</p>
                                     </div>
+
+                                    {formData.style.theme !== 'dark_gold' && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Fundo</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={formData.style.background_color} onChange={e => handleNestedChange('style', 'background_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                    <input type="text" value={formData.style.background_color} onChange={e => handleNestedChange('style', 'background_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Texto</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={formData.style.text_color} onChange={e => handleNestedChange('style', 'text_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                    <input type="text" value={formData.style.text_color} onChange={e => handleNestedChange('style', 'text_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Botão</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={formData.style.button_color} onChange={e => handleNestedChange('style', 'button_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                    <input type="text" value={formData.style.button_color} onChange={e => handleNestedChange('style', 'button_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs text-gray-500 mb-1">Texto Botão</label>
+                                                <div className="flex items-center gap-2">
+                                                    <input type="color" value={formData.style.button_text_color} onChange={e => handleNestedChange('style', 'button_text_color', e.target.value)} className="h-8 w-8 rounded border cursor-pointer" />
+                                                    <input type="text" value={formData.style.button_text_color} onChange={e => handleNestedChange('style', 'button_text_color', e.target.value)} className="w-full text-xs border rounded p-1.5" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>

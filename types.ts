@@ -220,6 +220,7 @@ export interface Popup {
     text_color: string;
     button_color: string;
     button_text_color: string;
+    theme?: 'default' | 'dark_gold';
   };
   trigger_settings: {
     delay: number; // segundos
