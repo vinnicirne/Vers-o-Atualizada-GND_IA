@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { WordPressConfig, AnalyticsConfig, N8nConfig } from '../../types';
 import { saveWordPressConfig, getWordPressConfig, validateWordPressConnection, clearWordPressConfig } from '../../services/wordpressService';
 import { saveAnalyticsConfig, getAnalyticsConfig, clearAnalyticsConfig } from '../../services/analyticsService';
-import { saveN8nConfig, getN8nConfig, clearN8nConfig, syncN8nConfig } from '../../services/n8nService';
+import { saveN8nConfig, getN8nConfig, clearN8nConfig, syncN8nConfig, validateN8nWebhook } from '../../services/n8nService';
 import { Toast } from '../admin/Toast';
 import { useUser } from '../../contexts/UserContext';
 import { usePlan } from '../../hooks/usePlan'; // Importar hook de planos
@@ -39,6 +39,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   });
 
   const [loading, setLoading] = useState(false);
+  const [testingN8n, setTestingN8n] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
 
@@ -129,19 +130,43 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
   };
 
   // --- N8N HANDLERS ---
+  const handleTestN8n = async () => {
+      const url = n8nConfig.webhookUrl.trim();
+      if(!url) {
+          setToast({ message: "Insira uma URL para testar.", type: 'error' });
+          return;
+      }
+      
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+          setToast({ message: "URL inválida. Deve começar com http:// ou https://", type: 'error' });
+          return;
+      }
+      
+      setTestingN8n(true);
+      const result = await validateN8nWebhook(url);
+      setTestingN8n(false);
+
+      if (result.success) {
+          setToast({ message: "Conexão bem-sucedida! Payload de teste enviado.", type: 'success' });
+      } else {
+          setToast({ message: `Falha no teste: ${result.message}`, type: 'error' });
+      }
+  };
+
   const handleConnectN8n = async (e: React.FormEvent) => {
       e.preventDefault();
       if(!n8nConfig.webhookUrl.startsWith('http')) {
-          setToast({ message: "URL inválida.", type: 'error' });
+          setToast({ message: "URL inválida. Deve começar com http:// ou https://", type: 'error' });
           return;
       }
+      
       const newConfig = { ...n8nConfig, isConnected: true };
       setN8nConfig(newConfig);
       
       // Salva local e nuvem
       await saveN8nConfig(newConfig, user?.id);
       
-      setToast({ message: "Webhook n8n salvo e sincronizado!", type: 'success' });
+      setToast({ message: "Integração salva! Webhook pronto para uso.", type: 'success' });
   };
 
   const handleDisconnectN8n = async () => {
@@ -214,7 +239,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                                 <div className="w-10 h-10 bg-[#FF6D5A] rounded flex items-center justify-center text-white font-bold text-lg">n8n</div>
                                 <div>
                                     <h3 className="text-lg font-bold text-[#263238]">n8n / Webhook</h3>
-                                    <p className="text-xs text-gray-500 max-w-[200px]">Envie o conteúdo gerado (texto, imagem, áudio) para um workflow externo.</p>
+                                    <p className="text-xs text-gray-500 max-w-[200px]">Envie o conteúdo gerado para um workflow externo.</p>
                                 </div>
                             </div>
                             {n8nConfig.isConnected && <span className="bg-pink-100 text-pink-700 text-xs px-2 py-1 rounded border border-pink-200 font-bold">Ativo</span>}
@@ -233,6 +258,7 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                                         required
                                         disabled={!hasN8nAccess}
                                     />
+                                    <p className="text-[10px] text-gray-400 mt-1">Dica: Use um webhook que aceite requisições CORS (*).</p>
                                 </div>
                                 <div>
                                     <label className="flex items-center gap-2 cursor-pointer">
@@ -246,13 +272,23 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                                         <span className="text-sm text-gray-600 font-medium">Envio Automático (Ao Gerar)</span>
                                     </label>
                                 </div>
-                                <button 
-                                    type="submit" 
-                                    className="w-full bg-[#FF6D5A] hover:bg-[#E05A4A] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2 shadow-lg shadow-pink-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    disabled={!hasN8nAccess}
-                                >
-                                    Salvar Integração
-                                </button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        type="button"
+                                        onClick={handleTestN8n}
+                                        disabled={testingN8n || !hasN8nAccess || !n8nConfig.webhookUrl}
+                                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-lg transition border border-gray-300 disabled:opacity-50 text-xs flex items-center justify-center gap-2"
+                                    >
+                                        {testingN8n ? <><i className="fas fa-spinner fa-spin"></i> Testando...</> : <><i className="fas fa-flask"></i> Testar</>}
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="flex-[2] bg-[#FF6D5A] hover:bg-[#E05A4A] text-white font-bold py-3 rounded-lg transition flex justify-center items-center gap-2 shadow-lg shadow-pink-900/20 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                                        disabled={!hasN8nAccess}
+                                    >
+                                        Salvar Integração
+                                    </button>
+                                </div>
                             </form>
                         ) : (
                             <div className="space-y-4">
@@ -264,13 +300,22 @@ export function IntegrationsModal({ onClose }: IntegrationsModalProps) {
                                         {n8nConfig.autoSend ? 'Envio Automático Ativado' : 'Envio Manual (Botão nos Resultados)'}
                                     </p>
                                 </div>
-                                <button 
-                                    onClick={handleDisconnectN8n}
-                                    className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 font-bold py-2 rounded transition disabled:opacity-50"
-                                    disabled={!hasN8nAccess}
-                                >
-                                    Remover / Editar
-                                </button>
+                                <div className="flex gap-2">
+                                    <button 
+                                        onClick={handleTestN8n}
+                                        className="flex-1 bg-white hover:bg-gray-50 text-gray-600 border border-gray-300 font-bold py-2 rounded transition disabled:opacity-50 text-xs flex items-center justify-center gap-2"
+                                        disabled={testingN8n || !hasN8nAccess}
+                                    >
+                                        {testingN8n ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-flask"></i> Testar</>}
+                                    </button>
+                                    <button 
+                                        onClick={handleDisconnectN8n}
+                                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-600 border border-gray-300 font-bold py-2 rounded transition disabled:opacity-50 text-xs"
+                                        disabled={!hasN8nAccess}
+                                    >
+                                        Remover
+                                    </button>
+                                </div>
                             </div>
                         )}
                     </div>

@@ -99,6 +99,28 @@ A IA aprende com você! Após cada geração, dê uma nota de 0 a 10. O sistema 
 
 ---
 
+## 🔌 6. Integração Avançada (N8N / Webhooks)
+
+O GDN_IA permite conectar o conteúdo gerado diretamente a outros sistemas.
+
+1.  **Acesse:** Clique no ícone de Tomada (🔌) no topo do Dashboard.
+2.  **Configurar:** Insira a URL do seu Webhook (N8N, Make, Zapier).
+3.  **Uso:**
+    *   **Envio Manual:** Após gerar um conteúdo, clique no botão "Enviar p/ n8n".
+    *   **Envio Automático:** Marque a opção na configuração para enviar tudo que você gerar automaticamente.
+
+**Exemplo de Payload (JSON):**
+```json
+{
+  "title": "Título do Conteúdo",
+  "content": "Conteúdo completo em HTML...",
+  "mode": "news_generator",
+  "generated_at": "2023-10-27T10:00:00.000Z"
+}
+```
+
+---
+
 ## ❓ Dicas de Uso
 
 **Organização na hora de publicar:**
