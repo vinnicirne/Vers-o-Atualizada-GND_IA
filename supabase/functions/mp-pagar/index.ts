@@ -86,7 +86,14 @@ serve(async (req) => {
             body: JSON.stringify({ status: "cancelled" })
         });
 
-        const cancelData = await cancelRes.json();
+        // Safe JSON Parse
+        let cancelData;
+        try {
+            cancelData = await cancelRes.json();
+        } catch (e) {
+            console.error("Erro ao parsear resposta de cancelamento MP:", e);
+            cancelData = { message: "Erro de comunicação com MP" };
+        }
         
         if (!cancelRes.ok) {
              const errorMsg = cancelData.message || "Falha ao cancelar no Mercado Pago.";
@@ -122,7 +129,14 @@ serve(async (req) => {
         const mpRes = await fetch(`https://api.mercadopago.com/v1/payments/${externalId}`, {
             headers: { "Authorization": `Bearer ${mpAccessToken}` }
         });
-        const paymentInfo = await mpRes.json();
+        
+        let paymentInfo;
+        try {
+            paymentInfo = await mpRes.json();
+        } catch(e) {
+            console.error("Polling parse error MP");
+            return new Response(JSON.stringify({ error: "API Error" }), { status: 500, headers: corsHeaders });
+        }
 
         return new Response(JSON.stringify({ status: paymentInfo.status || 'pending' }), { status: 200, headers: corsHeaders });
     }
@@ -165,9 +179,13 @@ serve(async (req) => {
         const searchRes = await fetch(`https://api.mercadopago.com/v1/customers/search?email=${userEmail}`, {
             headers: { "Authorization": `Bearer ${mpAccessToken}` }
         });
-        const searchData = await searchRes.json();
+        
+        let searchData;
+        try {
+            searchData = await searchRes.json();
+        } catch(e) {}
 
-        if (searchData.results && searchData.results.length > 0) {
+        if (searchData && searchData.results && searchData.results.length > 0) {
             mpCustomerId = searchData.results[0].id;
         } else {
             // Create
@@ -180,8 +198,12 @@ serve(async (req) => {
                     last_name: userData.full_name?.split(' ').slice(1).join(' ') || 'GDN'
                 })
             });
-            const createData = await createRes.json();
-            if (createData.id) mpCustomerId = createData.id;
+            let createData;
+            try {
+                createData = await createRes.json();
+            } catch(e) {}
+            
+            if (createData && createData.id) mpCustomerId = createData.id;
         }
 
         if (mpCustomerId) {
@@ -224,7 +246,15 @@ serve(async (req) => {
             body: JSON.stringify(preapprovalPayload)
         });
 
-        const subData = await subRes.json();
+        let subData;
+        try {
+            subData = await subRes.json();
+        } catch (e) {
+            const text = await subRes.text();
+            console.error("Erro parse JSON Preapproval MP:", text);
+            return new Response(JSON.stringify({ error: "Erro de comunicação com MP (Preapproval)" }), { status: 502, headers: corsHeaders });
+        }
+
         console.log("[mp-pagar] Resposta Preapproval:", JSON.stringify(subData));
 
         if (!subRes.ok) {
@@ -309,7 +339,14 @@ serve(async (req) => {
       body: JSON.stringify(mpPayload),
     });
 
-    const payment = await mpResponse.json();
+    let payment;
+    try {
+        payment = await mpResponse.json();
+    } catch (e) {
+        const text = await mpResponse.text();
+        console.error("Erro parse JSON Payment MP:", text);
+        return new Response(JSON.stringify({ error: "Erro de comunicação com MP (Payment)" }), { status: 502, headers: corsHeaders });
+    }
 
     if (!mpResponse.ok) {
         return new Response(JSON.stringify({ error: payment.message || "Erro no Mercado Pago" }), { status: 400, headers: corsHeaders });

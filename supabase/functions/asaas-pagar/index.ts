@@ -81,7 +81,14 @@ serve(async (req) => {
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
 
-        const cancelData = await cancelRes.json();
+        // Safe JSON Parse
+        let cancelData;
+        try {
+            cancelData = await cancelRes.json();
+        } catch (e) {
+            console.error("Erro ao parsear resposta de cancelamento:", e);
+            cancelData = { deleted: false };
+        }
         
         // Asaas retorna { deleted: true, id: ... } em sucesso
         if (!cancelRes.ok && !cancelData.deleted) {
@@ -171,7 +178,15 @@ serve(async (req) => {
             cpfCnpj: cpfCnpjToUse
         }),
       });
-      let customer = await customerResponse.json();
+      
+      let customer;
+      try {
+          customer = await customerResponse.json();
+      } catch (e) {
+          console.error("Falha ao parsear resposta de criação de cliente Asaas");
+          return new Response(JSON.stringify({ error: "Erro de comunicação com Asaas ao criar cliente." }), { status: 502, headers: corsHeaders });
+      }
+
       console.log("[asaas-pagar] Resposta de criação/busca de cliente Asaas:", JSON.stringify(customer));
       
       if (!customer.id) {
@@ -181,8 +196,13 @@ serve(async (req) => {
                const searchRes = await fetch(`${asaasApiBaseUrl}/api/v3/customers?email=${userEmail}`, {
                    headers: { "access_token": asaasKey }
                });
-               const searchData = await searchRes.json();
-               if (searchData.data && searchData.data.length > 0) {
+               
+               let searchData;
+               try {
+                   searchData = await searchRes.json();
+               } catch(e) { /* ignore */ }
+
+               if (searchData && searchData.data && searchData.data.length > 0) {
                    asaasCustomerId = searchData.data[0].id;
                    console.log(`[asaas-pagar] Cliente Asaas encontrado por email: ${asaasCustomerId}`);
                }
@@ -253,7 +273,17 @@ serve(async (req) => {
       body: JSON.stringify(paymentPayload),
     });
 
-    const paymentData = await paymentRes.json();
+    let paymentData;
+    try {
+        paymentData = await paymentRes.json();
+    } catch (e) {
+        const text = await paymentRes.text();
+        console.error(`[asaas-pagar] Erro de parse JSON Asaas (Status ${paymentRes.status}):`, text);
+        return new Response(JSON.stringify({ 
+            error: "Erro de comunicação com gateway de pagamento (Resposta inválida). Tente novamente." 
+        }), { status: 502, headers: corsHeaders });
+    }
+
     console.log("[asaas-pagar] Resposta completa do Asaas:", JSON.stringify(paymentData));
 
     if (!paymentRes.ok || paymentData.errors) {
@@ -306,8 +336,12 @@ serve(async (req) => {
             const subPaymentsRes = await fetch(`${asaasApiBaseUrl}/api/v3/subscriptions/${entityId}/payments`, {
                 headers: { "access_token": asaasKey }
             });
-            const subPayments = await subPaymentsRes.json();
-            if (subPayments.data && subPayments.data.length > 0) {
+            let subPayments;
+            try {
+                subPayments = await subPaymentsRes.json();
+            } catch(e) {}
+
+            if (subPayments && subPayments.data && subPayments.data.length > 0) {
                 pixPaymentId = subPayments.data[0].id; // Pega o pagamento da primeira cobrança
                 // Atualiza a transação com o ID do pagamento real para o webhook encontrar
                 await supabaseAdmin.from("transactions").update({ external_id: pixPaymentId }).eq("id", newTx.id);
@@ -318,7 +352,14 @@ serve(async (req) => {
             method: "GET",
             headers: { "access_token": asaasKey, "Content-Type": "application/json" }
         });
-        const qrData = await qrRes.json();
+        
+        let qrData;
+        try {
+            qrData = await qrRes.json();
+        } catch(e) {
+            console.error("Erro parse QR Code Asaas");
+            return new Response(JSON.stringify({ error: "Erro ao gerar QR Code (Parse Error)" }), { status: 502, headers: corsHeaders });
+        }
         
         if (!qrRes.ok || qrData.errors) {
             return new Response(JSON.stringify({ error: "Falha ao gerar QR Code Pix." }), { status: 500, headers: corsHeaders });

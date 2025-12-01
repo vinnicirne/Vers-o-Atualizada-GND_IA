@@ -347,7 +347,15 @@ export default function CheckoutCompleto({
           body: JSON.stringify({ check_status_id: transactionId }),
         });
         
-        const data = await res.json();
+        // SAFE JSON PARSE for Polling
+        let data;
+        try {
+            data = await res.json();
+        } catch (e) {
+            console.warn(`[CheckoutCompleto] Polling parse error (likely 502/503 from edge function)`);
+            return; // Skip this poll cycle
+        }
+
         console.log(`[CheckoutCompleto] Polling para ${transactionId} retornou:`, data.status);
 
         // Mercado Pago retorna 'approved', Asaas pode retornar 'CONFIRMED', 'RECEIVED'
@@ -357,7 +365,7 @@ export default function CheckoutCompleto({
         } else if (!res.ok) {
             // Se o polling retornar erro do servidor, loga e interrompe
             console.error(`[CheckoutCompleto] Polling recebeu erro do servidor: ${data.error || res.statusText}`);
-            setError(`Erro ao verificar pagamento: ${data.error || res.statusText}`);
+            // setError(`Erro ao verificar pagamento: ${data.error || res.statusText}`);
             clearInterval(pollInterval.current);
             // Optionally, call onError or show specific UI
         }
@@ -393,7 +401,13 @@ export default function CheckoutCompleto({
         body: JSON.stringify(payload),
       });
 
-      const result = await res.json();
+      // SAFE JSON PARSE
+      let result;
+      try {
+          result = await res.json();
+      } catch (e) {
+          throw new Error(`Erro de comunicação com o servidor de pagamento (${res.status}).`);
+      }
       
       if (!res.ok) {
           throw new Error(result.error || result.message || 'Erro ao gerar Pix.');
@@ -443,7 +457,14 @@ export default function CheckoutCompleto({
             }),
         });
 
-        const result = await res.json();
+        // SAFE JSON PARSE
+        let result;
+        try {
+            result = await res.json();
+        } catch (e) {
+            throw new Error(`Erro de comunicação com o servidor de pagamento Asaas (${res.status}).`);
+        }
+
         if (!res.ok) throw new Error(result.error || 'Erro ao gerar Pix.');
         
         if (!result.qrCode || !result.qrCode.encodedImage) {
@@ -607,7 +628,17 @@ export default function CheckoutCompleto({
               body: JSON.stringify(payload),
           });
 
-          const result = await res.json();
+          // SAFE JSON PARSE
+          let result;
+          try {
+              result = await res.json();
+          } catch (e) {
+              console.error("[Checkout] JSON Parse Error:", e);
+              // Tenta ler o texto para debug
+              // const text = await res.text();
+              // console.error("Raw response:", text);
+              throw new Error(`Erro de comunicação com o gateway (${res.status}). Tente novamente mais tarde.`);
+          }
           
           if (!res.ok) {
               console.error("[Backend Payment Error]", result);
