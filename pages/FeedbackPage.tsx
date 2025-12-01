@@ -53,7 +53,13 @@ export default function FeedbackPage({ onBack }: FeedbackPageProps) {
           setContent('');
           setRating(5);
       } catch (e: any) {
-          setToast({ message: "Erro ao enviar.", type: 'error' });
+          const errMsg = e.message || '';
+          if (errMsg.includes('row-level security policy') || errMsg.includes('permission denied')) {
+              setToast({ message: "Erro: Permissão negada pelo banco de dados. O Administrador precisa executar o script de correção na aba 'Updates & SQL'.", type: 'error' });
+          } else {
+              setToast({ message: "Erro ao enviar: " + errMsg, type: 'error' });
+          }
+          console.error("Erro de envio:", e);
       } finally {
           setSubmitting(false);
       }
