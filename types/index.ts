@@ -49,7 +49,7 @@ export interface User {
   asaas_customer_id?: string;
   subscription_id?: string;
   subscription_status?: string;
-  mercadopago_customer_id?: string; // Novo campo
+  mercadopago_customer_id?: string;
 }
 
 export interface AffiliateLog {
@@ -72,7 +72,8 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups';
+// Update AdminView to include 'feedbacks'
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks';
 
 export interface AllowedDomain {
   id: string;
@@ -183,6 +184,20 @@ export interface AILog {
 export interface FeedbackData {
   rating: number;
   comment: string;
+}
+
+// Nova interface para Feedbacks do Sistema (Depoimentos)
+export interface SystemFeedback {
+  id: string;
+  user_id: string;
+  content: string;
+  rating: number;
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  user?: {
+    full_name: string;
+    email: string;
+  };
 }
 
 export interface WordPressConfig {

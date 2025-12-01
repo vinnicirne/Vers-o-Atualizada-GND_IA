@@ -14,13 +14,14 @@ import { CreateUserModal } from '../../components/admin/CreateUserModal';
 import { PlansManager } from '../../components/admin/PlansManager'; 
 import { SecurityManager } from '../../components/admin/SecurityManager'; 
 import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; 
-import { PopupManager } from '../../components/admin/PopupManager'; // Importar PopupManager
+import { PopupManager } from '../../components/admin/PopupManager'; 
+import { FeedbackManager } from '../../components/admin/FeedbackManager'; // Import FeedbackManager
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { downloadSitemap } from '../../services/sitemapService'; 
-import { supabase } from '../../services/supabaseClient'; // Import para Realtime
+import { supabase } from '../../services/supabaseClient';
 
 interface AdminPageProps {
   onNavigateToDashboard: () => void;
@@ -34,15 +35,13 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const [isCreateUserModalOpen, setCreateUserModalOpen] = useState(false);
   
   const [dataVersion, setDataVersion] = useState(0);
-  const [realtimeStatus, setRealtimeStatus] = useState<string>('CONNECTING'); // Status da conexão
+  const [realtimeStatus, setRealtimeStatus] = useState<string>('CONNECTING');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); 
   
-  // Ref para debounce do realtime
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Caminho absoluto para evitar 404 em rotas aninhadas (/admin)
     fetch('/metadata.json')
       .then(response => response.ok ? response.json() : { version: 'Error' })
       .then(data => setMetadata(data))
@@ -50,7 +49,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   }, []);
 
   const refreshData = () => {
-      // Debounce simples para evitar multiplos refreshes seguidos
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
       refreshTimeout.current = setTimeout(() => {
           console.log("Admin: Detectada mudança no banco. Atualizando...");
@@ -58,14 +56,13 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       }, 500);
   };
 
-  // --- REALTIME LISTENER ---
   useEffect(() => {
-      // Escuta mudanças globais em tabelas críticas para o admin
       const channel = supabase.channel('admin_dashboard_global')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) // Listen to feedbacks
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -151,6 +148,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PlansManager />;
       case 'popups': 
         return <PopupManager />;
+      case 'feedbacks':
+        return <FeedbackManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
       case 'security': 

@@ -14,6 +14,7 @@ import { UserHistoryModal } from './components/UserHistoryModal';
 import { AffiliateModal } from './components/AffiliateModal'; 
 import { IntegrationsModal } from './components/integrations/IntegrationsModal'; 
 import { AffiliateInvitePopup } from './components/AffiliateInvitePopup';
+import { FeedbackInvitePopup } from './components/FeedbackInvitePopup'; // Import Popup
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
 import { api } from './services/api';
@@ -45,7 +46,7 @@ const SERVICE_ICONS: Record<ServiceKey, string> = {
     n8n_integration: 'fa-plug',
 };
 
-// Cores para os ícones (Visual Minimalista Colorido)
+// Cores para os ícones
 const SERVICE_COLORS: Record<ServiceKey, string> = {
     news_generator: 'text-green-500 bg-green-50',
     text_to_speech: 'text-blue-500 bg-blue-50',
@@ -58,7 +59,7 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
     n8n_integration: 'text-red-500 bg-red-50',
 };
 
-// Modos permitidos para Visitantes (Free sem login)
+// Modos permitidos para Visitantes
 const GUEST_ALLOWED_MODES: ServiceKey[] = ['news_generator', 'copy_generator', 'prompt_generator'];
 
 const extractTitleAndContent = (text: string, mode: ServiceKey) => {
@@ -115,7 +116,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}>({width: 1024, height: 1024});
   
   const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
-  const [isSidebarOpen, setSidebarOpen] = useState(false); // Mobile sidebar toggle
+  const [isSidebarOpen, setSidebarOpen] = useState(false);
   
   // Modals States
   const [showPlansModal, setShowPlansModal] = useState(false);
@@ -126,6 +127,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showAffiliateInvite, setShowAffiliateInvite] = useState(false);
+  const [showFeedbackInvite, setShowFeedbackInvite] = useState(false); // Novo Estado
+  
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
   // Inicialização de Dados
@@ -143,7 +146,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       .catch(err => console.error("Failed to load metadata:", err));
   }, []);
 
-  // Sincroniza configurações do n8n ao logar
+  // Sincroniza configurações do n8n
   useEffect(() => {
       if (user) {
           syncN8nConfig(user.id).then(config => {
@@ -178,7 +181,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         return;
     }
     setCurrentMode(mode);
-    setSidebarOpen(false); // Close sidebar on mobile after selection
+    setSidebarOpen(false); 
   };
 
   const handleGenerateContent = useCallback(async (
@@ -220,7 +223,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
              return;
         }
         if (activeCredits !== -1 && activeCredits < totalCost) {
-            setError(`Saldo insuficiente. Esta operação custa ${totalCost} créditos (Conteúdo: ${mainCost} + Áudio: ${audioCost}).`);
+            setError(`Saldo insuficiente. Esta operação custa ${totalCost} créditos.`);
             setShowPlansModal(true);
             return;
         }
@@ -234,6 +237,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
     setShowFeedback(false);
     setAudioBase64(null);
     setGeneratedImagePrompt('');
+    setShowFeedbackInvite(false); // Reset popup
 
     try {
       const { text, audioBase64: audioResult, sources } = await generateCreativeContent(
@@ -352,6 +356,11 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       }
 
       setShowFeedback(true);
+      
+      // SHOW FEEDBACK INVITE POPUP (Random chance or logic)
+      if (user && Math.random() > 0.5) { // 50% de chance de mostrar o convite após gerar
+          setTimeout(() => setShowFeedbackInvite(true), 2000);
+      }
 
     } catch (err) {
       if (err instanceof Error) {
@@ -394,16 +403,16 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
 
       <div className="flex flex-1 overflow-hidden relative">
         
-        {/* SIDEBAR (Tools & Management) */}
+        {/* SIDEBAR */}
         <aside className={`
-            fixed md:relative z-30 w-64 h-full bg-[#CFD8DC] border-r border-gray-300 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none
+            fixed md:relative z-30 w-64 h-full bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 ease-in-out shadow-xl md:shadow-none
             ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
         `}>
-            {/* Header Sidebar Mobile */}
-            <div className="p-4 border-b border-gray-300 flex justify-between items-center bg-[#CFD8DC]">
-                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">Ferramentas</span>
-                <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-600 hover:text-red-500">
-                    <i className="fas fa-times"></i>
+            {/* ... (Mobile Header) ... */}
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white">
+                <span className="text-xs font-bold text-[#263238] uppercase tracking-wider">Ferramentas</span>
+                <button onClick={() => setSidebarOpen(false)} className="md:hidden text-gray-500 hover:text-red-500">
+                    <i className="fas fa-times text-lg"></i>
                 </button>
             </div>
             
@@ -412,7 +421,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                     const isSelected = currentMode === svc.value;
                     const isLocked = (isGuest && !GUEST_ALLOWED_MODES.includes(svc.value)) || (!isGuest && !hasAccessToService(svc.value));
                     
-                    const colorClasses = SERVICE_COLORS[svc.value] || 'text-gray-600 bg-gray-200';
+                    const colorClasses = SERVICE_COLORS[svc.value] || 'text-gray-600 bg-gray-100';
                     const [textColor, bgColor] = colorClasses.split(' ');
 
                     return (
@@ -421,18 +430,18 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                             onClick={() => handleModeSelection(svc.value)}
                             className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 text-left group
                                 ${isSelected 
-                                    ? 'bg-white shadow-md ring-1 ring-[#F39C12]' 
-                                    : 'hover:bg-[#ECEFF1]'
+                                    ? 'bg-gray-100 shadow-sm ring-1 ring-[#F39C12]' 
+                                    : 'hover:bg-gray-50'
                                 }
                                 ${isLocked ? 'opacity-60 grayscale' : ''}
                             `}
                         >
-                            <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${bgColor} ${isSelected ? textColor : 'text-gray-500 bg-gray-200'}`}>
+                            <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${bgColor} ${isSelected ? textColor : 'text-gray-500 bg-gray-100'}`}>
                                 <i className={`fas ${SERVICE_ICONS[svc.value]} text-sm`}></i>
                             </div>
                             
                             <div className="flex-1 min-w-0">
-                                <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[#263238]' : 'text-gray-600'}`}>
+                                <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[#263238]' : 'text-gray-600 group-hover:text-[#263238]'}`}>
                                     {svc.label}
                                 </p>
                             </div>
@@ -443,9 +452,9 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                 })}
             </div>
 
-            {/* Gerenciamento (Visível Apenas no Mobile agora) */}
+            {/* Menu Extra (Mobile Only) */}
             {user && (
-                <div className="p-3 border-t border-gray-300 bg-gray-200 space-y-2 md:hidden">
+                <div className="p-3 border-t border-gray-200 bg-gray-50 space-y-2 md:hidden">
                     <div className="px-2 py-1">
                         <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Minha Conta</span>
                     </div>
@@ -454,12 +463,12 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         onClick={() => { setShowPlansModal(true); setSidebarOpen(false); }}
                         className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
                     >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-[#F39C12] border border-gray-300 group-hover:border-[#F39C12]">
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-[#F39C12] border border-gray-200 group-hover:border-[#F39C12]">
                             <i className="fas fa-coins text-xs"></i>
                         </div>
-                        <div className="text-left leading-tight">
-                            <span className="block text-sm font-semibold">Planos & Créditos</span>
-                            <span className="block text-[10px] text-gray-500 font-mono">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
+                        <div className="flex flex-col items-start">
+                            <span className="text-sm font-semibold">Planos & Créditos</span>
+                            <span className="text-[10px] text-gray-500">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
                         </div>
                     </button>
 
@@ -467,7 +476,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         onClick={() => { setShowAffiliateModal(true); setSidebarOpen(false); }}
                         className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
                     >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-yellow-600 border border-gray-300 group-hover:border-yellow-600">
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-yellow-600 border border-gray-200 group-hover:border-yellow-600">
                             <i className="fas fa-handshake text-xs"></i>
                         </div>
                         <span className="text-sm font-semibold">Afiliados</span>
@@ -477,7 +486,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         onClick={() => { setShowHistoryModal(true); setSidebarOpen(false); }}
                         className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
                     >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-gray-600 border border-gray-300 group-hover:border-gray-600">
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-gray-600 border border-gray-200 group-hover:border-gray-600">
                             <i className="fas fa-history text-xs"></i>
                         </div>
                         <span className="text-sm font-semibold">Meu Histórico</span>
@@ -487,7 +496,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         onClick={() => { setShowIntegrationsModal(true); setSidebarOpen(false); }}
                         className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
                     >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-pink-500 border border-gray-300 group-hover:border-pink-500">
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-pink-600 border border-gray-200 group-hover:border-pink-600">
                             <i className="fas fa-plug text-xs"></i>
                         </div>
                         <span className="text-sm font-semibold">Integrações</span>
@@ -497,15 +506,36 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         onClick={() => { setShowManualModal(true); setSidebarOpen(false); }}
                         className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
                     >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-blue-500 border border-gray-300 group-hover:border-blue-500">
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-blue-600 border border-gray-200 group-hover:border-blue-600">
                             <i className="fas fa-book text-xs"></i>
                         </div>
                         <span className="text-sm font-semibold">Ajuda / Manual</span>
                     </button>
+
+                    <button
+                        onClick={() => { if(onNavigate) onNavigate('feedback'); setSidebarOpen(false); }}
+                        className="w-full flex items-center p-2 rounded-lg hover:bg-white text-gray-700 transition-colors group"
+                    >
+                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-green-600 border border-gray-300 group-hover:border-green-600">
+                            <i className="fas fa-comment-dots text-xs"></i>
+                        </div>
+                        <span className="text-sm font-semibold">Mural do Cliente</span>
+                    </button>
+                </div>
+            )}
+            
+            {/* Link para Feedback Desktop */}
+            {user && (
+                <div className="hidden md:block p-4 border-t border-gray-200">
+                    <button 
+                        onClick={() => onNavigate && onNavigate('feedback')}
+                        className="w-full bg-white border border-gray-300 text-gray-600 hover:text-green-600 hover:border-green-400 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
+                    >
+                        <i className="fas fa-comment-dots"></i> Deixe seu Depoimento
+                    </button>
                 </div>
             )}
 
-            {/* Mobile Overlay to close sidebar */}
             {isSidebarOpen && (
                 <div 
                     className="fixed inset-0 bg-black/50 z-[-1] md:hidden"
@@ -518,7 +548,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#ECEFF1] w-full">
             <div className="max-w-5xl mx-auto">
                 
-                {/* Plan Info Bar (Visible on Dashboard) */}
+                {/* Plan Info Bar */}
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                     <div className="flex items-center gap-3">
                         <div className="bg-[#ECEFF1] p-2 rounded-full text-gray-500">
@@ -634,6 +664,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
       )}
 
+      {/* Guest & Lock Modals (Keep existing code) */}
       {showGuestLimitModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center relative overflow-hidden border border-gray-200">
@@ -687,7 +718,20 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       {showManualModal && <ManualModal onClose={() => setShowManualModal(false)} />}
       {showHistoryModal && user && <UserHistoryModal userId={user.id} onClose={() => setShowHistoryModal(false)} />}
       {showAffiliateModal && user && <AffiliateModal onClose={() => setShowAffiliateModal(false)} />}
+      
+      {/* Popups */}
       {showAffiliateInvite && <AffiliateInvitePopup onClose={handleCloseAffiliateInvite} onAccept={handleAcceptAffiliateInvite} />}
+      
+      {showFeedbackInvite && onNavigate && (
+          <FeedbackInvitePopup 
+            onClose={() => setShowFeedbackInvite(false)}
+            onAccept={() => {
+                setShowFeedbackInvite(false);
+                onNavigate('feedback');
+            }}
+          />
+      )}
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );

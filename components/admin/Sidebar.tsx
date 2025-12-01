@@ -14,7 +14,8 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
     { key: 'news', label: 'Histórico', icon: 'fas fa-newspaper' },
     { key: 'payments', label: 'Pagamentos', icon: 'fas fa-credit-card' },
     { key: 'plans', label: 'Planos', icon: 'fas fa-layer-group' },
-    { key: 'popups', label: 'Popups & Avisos', icon: 'fas fa-bullhorn' }, // Novo item
+    { key: 'popups', label: 'Popups & Avisos', icon: 'fas fa-bullhorn' },
+    { key: 'feedbacks', label: 'Depoimentos', icon: 'fas fa-comment-dots' }, // Novo Item
     { key: 'multi_ia_system', label: 'Sistema Multi-IA', icon: 'fas fa-brain' },
     { key: 'security', label: 'Segurança', icon: 'fas fa-shield-alt' },
     { key: 'logs', label: 'Logs', icon: 'fas fa-clipboard-list' },
