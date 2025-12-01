@@ -10,7 +10,31 @@ export function NotificationBell() {
     const [unreadCount, setUnreadCount] = useState(0);
     const [isOpen, setIsOpen] = useState(false);
     const [loading, setLoading] = useState(false);
+    const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>('default');
     const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Verifica permissão atual ao carregar
+    useEffect(() => {
+        if ('Notification' in window) {
+            setPermissionStatus(Notification.permission);
+        }
+    }, []);
+
+    // Função para pedir permissão ao navegador
+    const requestPermission = async () => {
+        if (!('Notification' in window)) {
+            alert("Seu navegador não suporta notificações.");
+            return;
+        }
+        const permission = await Notification.requestPermission();
+        setPermissionStatus(permission);
+        if (permission === 'granted') {
+            new Notification("Notificações Ativadas!", {
+                body: "Agora você receberá alertas importantes do GDN_IA aqui.",
+                icon: "https://cdn-icons-png.flaticon.com/512/16806/16806607.png"
+            });
+        }
+    };
 
     // Carrega iniciais e setup Realtime
     useEffect(() => {
@@ -32,12 +56,34 @@ export function NotificationBell() {
             setNotifications(prev => [newNotif, ...prev]);
             setUnreadCount(prev => prev + 1);
             
-            // Opcional: Tocar som suave
+            // 1. Tocar som suave
             try {
-                const audio = new Audio('/notification.mp3'); // Se existir
-                audio.volume = 0.2;
-                audio.play().catch(() => {});
+                const audio = new Audio('/notification.mp3'); // Se existir, toca. Se não, ignora erro.
+                audio.volume = 0.5;
+                audio.play().catch(() => {}); // Ignora erro de autoplay policy
             } catch(e) {}
+
+            // 2. Disparar Notificação Nativa do Navegador (Push)
+            if (Notification.permission === 'granted') {
+                const systemNotif = new Notification(newNotif.title, {
+                    body: newNotif.message,
+                    icon: "https://cdn-icons-png.flaticon.com/512/16806/16806607.png", // Ícone do App
+                    tag: newNotif.id // Evita duplicação
+                });
+
+                // Clique na notificação foca a janela e vai para o link
+                systemNotif.onclick = function(event) {
+                    event.preventDefault();
+                    window.focus();
+                    if (newNotif.action_link) {
+                        window.location.href = newNotif.action_link;
+                    } else {
+                        // Se não tiver link específico, apenas abre o menu de notificações (logicamente não abre o dropdown, mas foca o app)
+                        setIsOpen(true);
+                    }
+                    systemNotif.close();
+                };
+            }
         });
 
         return () => {
@@ -113,6 +159,32 @@ export function NotificationBell() {
                             </button>
                         )}
                     </div>
+
+                    {/* Aviso de Permissão */}
+                    {permissionStatus === 'default' && (
+                        <div className="bg-blue-50 p-3 border-b border-blue-100 flex items-start gap-3">
+                            <i className="fas fa-bell text-blue-500 mt-1"></i>
+                            <div className="flex-1">
+                                <p className="text-xs text-blue-800 font-medium leading-tight mb-2">
+                                    Receba alertas mesmo com o app fechado.
+                                </p>
+                                <button 
+                                    onClick={requestPermission}
+                                    className="text-[10px] bg-blue-600 text-white px-3 py-1 rounded-md font-bold hover:bg-blue-700 transition"
+                                >
+                                    Ativar Notificações no Navegador
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {permissionStatus === 'denied' && (
+                        <div className="bg-red-50 p-2 border-b border-red-100 text-center">
+                            <p className="text-[10px] text-red-600">
+                                <i className="fas fa-bell-slash mr-1"></i> Notificações bloqueadas no navegador.
+                            </p>
+                        </div>
+                    )}
 
                     <div className="max-h-[400px] overflow-y-auto custom-scrollbar">
                         {loading && notifications.length === 0 ? (

@@ -1,8 +1,9 @@
 
-import React, { useState } from 'react';
-import { sendSystemNotification } from '../../services/adminService';
+import React, { useState, useEffect, useRef } from 'react';
+import { sendSystemNotification, searchUsers } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from './Toast';
+import { User } from '../../types';
 
 export function NotificationManager() {
     const { user: adminUser } = useUser();
@@ -11,11 +12,64 @@ export function NotificationManager() {
     const [message, setMessage] = useState('');
     const [type, setType] = useState<'info' | 'success' | 'warning' | 'error'>('info');
     const [target, setTarget] = useState<'all' | 'specific'>('all');
-    const [targetId, setTargetId] = useState('');
     const [link, setLink] = useState('');
+    
+    // Search States
+    const [searchTerm, setSearchTerm] = useState('');
+    const [searchResults, setSearchResults] = useState<User[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
+    const [showDropdown, setShowDropdown] = useState(false);
     
     const [sending, setSending] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Debounce effect for search
+    useEffect(() => {
+        const delayDebounceFn = setTimeout(async () => {
+            if (searchTerm.length >= 3 && !selectedUser) {
+                setIsSearching(true);
+                try {
+                    const results = await searchUsers(searchTerm);
+                    setSearchResults(results);
+                    setShowDropdown(true);
+                } catch (error) {
+                    console.error("Erro na busca:", error);
+                } finally {
+                    setIsSearching(false);
+                }
+            } else {
+                setSearchResults([]);
+                setShowDropdown(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [searchTerm, selectedUser]);
+
+    // Close dropdown on click outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    const handleSelectUser = (user: User) => {
+        setSelectedUser(user);
+        setSearchTerm('');
+        setSearchResults([]);
+        setShowDropdown(false);
+    };
+
+    const handleClearSelection = () => {
+        setSelectedUser(null);
+        setSearchTerm('');
+    };
 
     const handleSend = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -24,14 +78,14 @@ export function NotificationManager() {
             setToast({ message: "Título e mensagem são obrigatórios.", type: 'error' });
             return;
         }
-        if (target === 'specific' && !targetId.trim()) {
-            setToast({ message: "ID do usuário é obrigatório para envio individual.", type: 'error' });
+        if (target === 'specific' && !selectedUser) {
+            setToast({ message: "Selecione um usuário para o envio individual.", type: 'error' });
             return;
         }
 
         setSending(true);
         try {
-            const recipient = target === 'all' ? 'all' : targetId.trim();
+            const recipient = target === 'all' ? 'all' : selectedUser!.id;
             const result = await sendSystemNotification(
                 title, 
                 message, 
@@ -50,6 +104,9 @@ export function NotificationManager() {
             setTitle('');
             setMessage('');
             setLink('');
+            if (target === 'specific') {
+                handleClearSelection();
+            }
         } catch (error: any) {
             setToast({ message: "Erro ao enviar notificação: " + error.message, type: 'error' });
         } finally {
@@ -77,18 +134,18 @@ export function NotificationManager() {
                         <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Destinatário</label>
                             <div className="flex gap-4">
-                                <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded border border-gray-200 flex-1">
+                                <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border flex-1 transition ${target === 'all' ? 'bg-blue-50 border-blue-500 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
                                     <input 
                                         type="radio" 
                                         name="target" 
                                         value="all" 
                                         checked={target === 'all'} 
-                                        onChange={() => setTarget('all')}
+                                        onChange={() => { setTarget('all'); handleClearSelection(); }}
                                         className="text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Todos (Broadcast)</span>
+                                    <span className="text-sm font-medium">Todos (Broadcast)</span>
                                 </label>
-                                <label className="flex items-center gap-2 cursor-pointer bg-gray-50 px-3 py-2 rounded border border-gray-200 flex-1">
+                                <label className={`flex items-center gap-2 cursor-pointer px-3 py-2 rounded border flex-1 transition ${target === 'specific' ? 'bg-blue-50 border-blue-500 text-blue-800' : 'bg-gray-50 border-gray-200 text-gray-700'}`}>
                                     <input 
                                         type="radio" 
                                         name="target" 
@@ -97,7 +154,7 @@ export function NotificationManager() {
                                         onChange={() => setTarget('specific')}
                                         className="text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span className="text-sm font-medium text-gray-700">Usuário Específico</span>
+                                    <span className="text-sm font-medium">Usuário Específico</span>
                                 </label>
                             </div>
                         </div>
@@ -118,15 +175,66 @@ export function NotificationManager() {
                     </div>
 
                     {target === 'specific' && (
-                        <div className="animate-fade-in">
-                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">ID do Usuário (UUID)</label>
-                            <input 
-                                type="text" 
-                                value={targetId}
-                                onChange={(e) => setTargetId(e.target.value)}
-                                className="w-full bg-white border border-gray-300 rounded p-2 text-sm focus:border-blue-500 outline-none font-mono"
-                                placeholder="ex: 550e8400-e29b-41d4-a716-446655440000"
-                            />
+                        <div className="animate-fade-in relative" ref={dropdownRef}>
+                            <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Buscar Usuário (Nome, Email ou ID)</label>
+                            
+                            {!selectedUser ? (
+                                <div className="relative">
+                                    <input 
+                                        type="text" 
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        onFocus={() => { if(searchResults.length > 0) setShowDropdown(true); }}
+                                        className="w-full bg-white border border-gray-300 rounded p-2 pl-9 text-sm focus:border-blue-500 outline-none transition"
+                                        placeholder="Digite para buscar..."
+                                    />
+                                    <div className="absolute left-3 top-2.5 text-gray-400">
+                                        {isSearching ? <i className="fas fa-spinner fa-spin text-blue-500"></i> : <i className="fas fa-search"></i>}
+                                    </div>
+
+                                    {/* Dropdown Results */}
+                                    {showDropdown && (
+                                        <div className="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-60 overflow-y-auto">
+                                            {searchResults.length > 0 ? (
+                                                searchResults.map(u => (
+                                                    <div 
+                                                        key={u.id}
+                                                        onClick={() => handleSelectUser(u)}
+                                                        className="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0 transition"
+                                                    >
+                                                        <p className="text-sm font-bold text-gray-800">{u.full_name || 'Sem nome'}</p>
+                                                        <p className="text-xs text-gray-500">{u.email}</p>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="px-4 py-3 text-sm text-gray-500 text-center">Nenhum usuário encontrado.</div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                // Selected User Card
+                                <div className="flex items-center justify-between bg-blue-50 border border-blue-200 p-3 rounded-lg animate-fade-in-scale">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-blue-200 text-blue-700 rounded-full flex items-center justify-center font-bold">
+                                            {selectedUser.full_name?.charAt(0).toUpperCase() || selectedUser.email.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-bold text-[#263238]">{selectedUser.full_name || 'Sem nome'}</p>
+                                            <p className="text-xs text-gray-500">{selectedUser.email}</p>
+                                            <p className="text-[10px] text-gray-400 font-mono mt-0.5">{selectedUser.id}</p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        onClick={handleClearSelection}
+                                        className="text-gray-400 hover:text-red-500 hover:bg-white p-2 rounded-full transition"
+                                        title="Remover seleção"
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -3,6 +3,7 @@ import { api } from './api';
 import { logger } from './loggerService';
 import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup } from '../types';
 import { GUEST_ID } from '../constants';
+import { supabase } from './supabaseClient'; // Import supabase directly for complex queries
 
 // Helper for client-side pagination since API might return all data
 const paginate = (items: any[], page: number, limit: number) => {
@@ -317,6 +318,36 @@ export const getUsers = async ({ page, limit, role, status }: GetUsersParams) =>
   });
 
   return { users: paginate(enrichedUsers, page, limit), count: enrichedUsers.length };
+};
+
+export const searchUsers = async (term: string): Promise<User[]> => {
+    if (!term || term.length < 3) return [];
+
+    let query = supabase
+        .from('app_users')
+        .select('*');
+
+    // Se parecer um UUID, faz match exato, senão busca nome/email
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+
+    if (isUuid) {
+        query = query.eq('id', term);
+    } else {
+        query = query.or(`email.ilike.%${term}%,full_name.ilike.%${term}%`);
+    }
+
+    const { data, error } = await query.limit(10); // Limite de resultados para performance
+
+    if (error) {
+        console.error("Erro na busca de usuários:", error);
+        return [];
+    }
+
+    // Mapeamento básico para o tipo User (pode faltar créditos, mas ok para seleção)
+    return (data || []).map((u: any) => ({
+        ...u,
+        credits: 0 // Placeholder, não precisamos dos créditos para esta view
+    }));
 };
 
 export const updateUser = async (userId: string, updates: any, adminId: string) => {

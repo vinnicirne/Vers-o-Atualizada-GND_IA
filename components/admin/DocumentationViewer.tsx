@@ -100,6 +100,38 @@ export function DocumentationViewer() {
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`;
 
   const schemaSql = `
+-- === 🚨 CORREÇÃO URGENTE: PERMISSÃO NOTIFICAÇÕES (RLS) ===
+-- Execute este bloco se estiver recebendo erro ao enviar Push Notifications.
+
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+
+-- Remove políticas antigas e restritivas
+DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
+
+-- 1. Leitura: Usuário vê as suas, Admin vê todas
+CREATE POLICY "Users can view own notifications" ON public.notifications
+FOR SELECT USING (
+  auth.uid() = user_id OR
+  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+);
+
+-- 2. Inserção: Apenas Admins podem criar notificações (para qualquer um)
+CREATE POLICY "Admins can insert notifications" ON public.notifications
+FOR INSERT WITH CHECK (
+  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+);
+
+-- 3. Atualização: Usuário marca como lida (suas), Admin edita qualquer uma
+CREATE POLICY "Users can update own notifications" ON public.notifications
+FOR UPDATE USING (
+  auth.uid() = user_id OR
+  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+);
+
+
 -- === ATUALIZAÇÃO CADASTRO (NOME E TELEFONE) ===
 
 -- 1. ADICIONAR COLUNA TELEFONE
@@ -147,8 +179,6 @@ CREATE TABLE IF NOT EXISTS public.notifications (
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 GRANT ALL ON public.notifications TO authenticated;
 GRANT ALL ON public.notifications TO service_role;
-DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
-CREATE POLICY "Users manage own notifications" ON public.notifications FOR ALL USING (auth.uid() = user_id);
 
 begin;
   drop publication if exists supabase_realtime;
@@ -277,7 +307,7 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Para habilitar o salvamento de <strong>Nome e Telefone</strong> no cadastro, execute o SQL abaixo no editor do Supabase.
+                    Para corrigir o erro de envio de Notificações, copie o SQL abaixo e execute no editor SQL do Supabase.
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>
