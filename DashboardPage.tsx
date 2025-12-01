@@ -14,7 +14,7 @@ import { UserHistoryModal } from './components/UserHistoryModal';
 import { AffiliateModal } from './components/AffiliateModal'; 
 import { IntegrationsModal } from './components/integrations/IntegrationsModal'; 
 import { AffiliateInvitePopup } from './components/AffiliateInvitePopup';
-import { FeedbackInvitePopup } from './components/FeedbackInvitePopup'; // Import Popup
+import { FeedbackInvitePopup } from './components/FeedbackInvitePopup'; 
 import { Toast } from './components/admin/Toast';
 import { generateCreativeContent } from './services/geminiService';
 import { api } from './services/api';
@@ -127,7 +127,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
   const [showAffiliateModal, setShowAffiliateModal] = useState(false); 
   const [showIntegrationsModal, setShowIntegrationsModal] = useState(false);
   const [showAffiliateInvite, setShowAffiliateInvite] = useState(false);
-  const [showFeedbackInvite, setShowFeedbackInvite] = useState(false); // Novo Estado
+  const [showFeedbackInvite, setShowFeedbackInvite] = useState(false); 
   
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
@@ -237,7 +237,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
     setShowFeedback(false);
     setAudioBase64(null);
     setGeneratedImagePrompt('');
-    setShowFeedbackInvite(false); // Reset popup
+    setShowFeedbackInvite(false); 
 
     try {
       const { text, audioBase64: audioResult, sources } = await generateCreativeContent(
@@ -357,8 +357,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
 
       setShowFeedback(true);
       
-      // SHOW FEEDBACK INVITE POPUP (Random chance or logic)
-      if (user && Math.random() > 0.5) { // 50% de chance de mostrar o convite após gerar
+      if (user && Math.random() > 0.5) { 
           setTimeout(() => setShowFeedbackInvite(true), 2000);
       }
 
@@ -461,76 +460,74 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
             </div>
 
             {/* Menu Extra (Mobile Only) */}
-            {user && (
-                <div className="p-3 border-t border-gray-200 bg-white space-y-2 md:hidden">
-                    <div className="px-2 py-1">
-                        <span className="text-[10px] font-extrabold text-gray-900 uppercase tracking-widest">Minha Conta</span>
-                    </div>
-                    
-                    <button
-                        onClick={() => { setShowPlansModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
-                    >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-[#F39C12] border border-gray-200 group-hover:border-[#F39C12]">
-                            <i className="fas fa-coins text-xs"></i>
-                        </div>
-                        <div className="flex flex-col items-start">
-                            <span className="text-sm font-bold">Planos & Créditos</span>
-                            <span className="text-[10px] text-gray-500 font-medium">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
-                        </div>
-                    </button>
-
-                    <button
-                        onClick={() => { setShowAffiliateModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
-                    >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-yellow-600 border border-gray-200 group-hover:border-yellow-600">
-                            <i className="fas fa-handshake text-xs"></i>
-                        </div>
-                        <span className="text-sm font-bold">Afiliados</span>
-                    </button>
-
-                    <button
-                        onClick={() => { setShowHistoryModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
-                    >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-gray-600 border border-gray-200 group-hover:border-gray-600">
-                            <i className="fas fa-history text-xs"></i>
-                        </div>
-                        <span className="text-sm font-bold">Meu Histórico</span>
-                    </button>
-
-                    <button
-                        onClick={() => { setShowIntegrationsModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
-                    >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-pink-600 border border-gray-200 group-hover:border-pink-600">
-                            <i className="fas fa-plug text-xs"></i>
-                        </div>
-                        <span className="text-sm font-bold">Integrações</span>
-                    </button>
-
-                    <button
-                        onClick={() => { setShowManualModal(true); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
-                    >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-blue-600 border border-gray-200 group-hover:border-blue-600">
-                            <i className="fas fa-book text-xs"></i>
-                        </div>
-                        <span className="text-sm font-bold">Ajuda / Manual</span>
-                    </button>
-
-                    <button
-                        onClick={() => { if(onNavigate) onNavigate('feedback'); setSidebarOpen(false); }}
-                        className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
-                    >
-                        <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-green-600 border border-gray-300 group-hover:border-green-600">
-                            <i className="fas fa-comment-dots text-xs"></i>
-                        </div>
-                        <span className="text-sm font-bold">Mural do Cliente</span>
-                    </button>
+            <div className={`p-3 border-t border-gray-200 bg-white space-y-2 md:hidden ${!user ? 'hidden' : ''}`}>
+                <div className="px-2 py-1">
+                    <span className="text-[10px] font-extrabold text-gray-900 uppercase tracking-widest">Minha Conta</span>
                 </div>
-            )}
+                
+                <button
+                    onClick={() => { setShowPlansModal(true); setSidebarOpen(false); }}
+                    className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
+                >
+                    <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-[#F39C12] border border-gray-200 group-hover:border-[#F39C12]">
+                        <i className="fas fa-coins text-xs"></i>
+                    </div>
+                    <div className="flex flex-col items-start">
+                        <span className="text-sm font-bold">Planos & Créditos</span>
+                        <span className="text-[10px] text-gray-500 font-medium">Saldo: {activeCredits === -1 ? '∞' : activeCredits}</span>
+                    </div>
+                </button>
+
+                <button
+                    onClick={() => { setShowAffiliateModal(true); setSidebarOpen(false); }}
+                    className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
+                >
+                    <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-yellow-600 border border-gray-200 group-hover:border-yellow-600">
+                        <i className="fas fa-handshake text-xs"></i>
+                    </div>
+                    <span className="text-sm font-bold">Afiliados</span>
+                </button>
+
+                <button
+                    onClick={() => { setShowHistoryModal(true); setSidebarOpen(false); }}
+                    className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
+                >
+                    <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-gray-600 border border-gray-200 group-hover:border-gray-600">
+                        <i className="fas fa-history text-xs"></i>
+                    </div>
+                    <span className="text-sm font-bold">Meu Histórico</span>
+                </button>
+
+                <button
+                    onClick={() => { setShowIntegrationsModal(true); setSidebarOpen(false); }}
+                    className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
+                >
+                    <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-pink-600 border border-gray-200 group-hover:border-pink-600">
+                        <i className="fas fa-plug text-xs"></i>
+                    </div>
+                    <span className="text-sm font-bold">Integrações</span>
+                </button>
+
+                <button
+                    onClick={() => { setShowManualModal(true); setSidebarOpen(false); }}
+                    className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
+                >
+                    <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-blue-600 border border-gray-200 group-hover:border-blue-600">
+                        <i className="fas fa-book text-xs"></i>
+                    </div>
+                    <span className="text-sm font-bold">Ajuda / Manual</span>
+                </button>
+
+                <button
+                    onClick={() => { if(onNavigate) onNavigate('feedback'); setSidebarOpen(false); }}
+                    className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[#263238] transition-colors group"
+                >
+                    <div className="w-7 h-7 rounded flex items-center justify-center mr-3 bg-white text-green-600 border border-gray-300 group-hover:border-green-600">
+                        <i className="fas fa-comment-dots text-xs"></i>
+                    </div>
+                    <span className="text-sm font-bold">Mural do Cliente</span>
+                </button>
+            </div>
             
             {/* Link para Feedback Desktop */}
             {user && (
@@ -549,6 +546,22 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
         <main className="flex-1 overflow-y-auto p-4 md:p-8 bg-[#ECEFF1] w-full">
             <div className="max-w-5xl mx-auto">
                 
+                {/* Hero Section for Guests (Hybrid Landing) */}
+                {isGuest && (
+                    <div className="text-center mb-10 mt-2 animate-fade-in">
+                        <span className="inline-block py-1 px-3 rounded-full bg-green-100 text-green-700 text-xs font-bold tracking-wide uppercase mb-4 shadow-sm border border-green-200">
+                            🚀 Teste Grátis Agora
+                        </span>
+                        <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-[#263238] mb-4 leading-tight">
+                            Crie Notícias, Imagens e Sites <br/>
+                            <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-emerald-500">10x Mais Rápido.</span>
+                        </h1>
+                        <p className="text-lg text-gray-500 mb-6 max-w-2xl mx-auto">
+                            Plataforma completa de IA para criadores. Experimente nossas ferramentas abaixo sem compromisso.
+                        </p>
+                    </div>
+                )}
+
                 {/* Plan Info Bar */}
                 <div className="mb-6 flex flex-wrap items-center justify-between gap-4 bg-white p-4 rounded-xl shadow-sm border border-gray-200">
                     <div className="flex items-center gap-3">
@@ -562,8 +575,8 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                     </div>
                     
                     {isGuest && (
-                        <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full border border-orange-200 font-medium">
-                            <i className="fas fa-info-circle mr-1"></i> Modo Visitante
+                        <span className="text-xs bg-orange-100 text-orange-700 px-3 py-1 rounded-full border border-orange-200 font-medium animate-pulse">
+                            <i className="fas fa-info-circle mr-1"></i> Modo Visitante ({guestCredits} créditos)
                         </span>
                     )}
                 </div>
@@ -647,6 +660,67 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                     </>
                     )}
                 </div>
+
+                {/* GUEST MARKETING SECTIONS */}
+                {isGuest && (
+                    <div className="mt-20 border-t border-gray-200 pt-16 animate-fade-in">
+                        {/* Features */}
+                        <section className="mb-20">
+                            <div className="text-center mb-10">
+                                <h2 className="text-3xl font-bold text-[#263238] mb-3">Tudo em um só lugar</h2>
+                                <p className="text-gray-500">Substitua dezenas de ferramentas caras por uma suíte inteligente.</p>
+                            </div>
+                            <div className="grid md:grid-cols-3 gap-6">
+                                <FeatureCard icon="fa-newspaper" title="Notícias & SEO" desc="Artigos completos e otimizados para o Google." color="text-green-600" bg="bg-green-50"/>
+                                <FeatureCard icon="fa-paint-brush" title="Studio de Arte IA" desc="Crie imagens e logos ultra-realistas." color="text-purple-600" bg="bg-purple-50"/>
+                                <FeatureCard icon="fa-laptop-code" title="Criador de Sites" desc="Landing pages e sites institucionais prontos." color="text-blue-600" bg="bg-blue-50"/>
+                            </div>
+                        </section>
+
+                        {/* Pricing Preview */}
+                        <section className="mb-20">
+                             <div className="text-center mb-10">
+                                <h2 className="text-3xl font-bold text-[#263238] mb-3">Planos Flexíveis</h2>
+                                <p className="text-gray-500">Comece grátis e escale conforme sua necessidade.</p>
+                            </div>
+                            <div className="grid md:grid-cols-3 gap-6">
+                                 {Object.values(PLANS).filter(p => p.id !== 'free').slice(0, 3).map(plan => (
+                                     <div key={plan.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative hover:shadow-md transition">
+                                         {plan.id === 'premium' && <span className="absolute top-0 right-0 bg-green-600 text-white text-[10px] px-2 py-1 rounded-bl-lg font-bold uppercase tracking-wide">Mais Popular</span>}
+                                         <h3 className="font-bold text-xl text-[#263238] mb-2">{plan.name}</h3>
+                                         <p className="text-3xl font-bold text-[#263238] mb-1">R$ {plan.price.toFixed(0)}<span className="text-sm text-gray-500 font-normal">/mês</span></p>
+                                         <p className="text-xs text-gray-400 mb-6 font-medium">{plan.credits} Créditos Mensais</p>
+                                         <ul className="space-y-3 mb-8 text-sm text-gray-600">
+                                             <li className="flex items-center"><i className="fas fa-check-circle text-green-500 mr-2"></i> Acesso ao Creator Suite</li>
+                                             <li className="flex items-center"><i className="fas fa-check-circle text-green-500 mr-2"></i> Geração de Imagens</li>
+                                             <li className="flex items-center"><i className="fas fa-check-circle text-green-500 mr-2"></i> Suporte Prioritário</li>
+                                         </ul>
+                                         <button onClick={() => onNavigateToLogin && onNavigateToLogin()} className="w-full py-2.5 bg-[#F39C12] hover:bg-orange-500 text-white font-bold rounded-lg transition shadow-md shadow-orange-100">
+                                             Escolher {plan.name}
+                                         </button>
+                                     </div>
+                                 ))}
+                            </div>
+                        </section>
+
+                        {/* Footer */}
+                        <footer className="bg-white border-t border-gray-200 pt-10 pb-6">
+                             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                 <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 bg-green-600 rounded flex items-center justify-center font-bold text-white shadow-sm">G</div>
+                                    <span className="font-bold text-xl text-[#263238]">GDN<span className="text-green-600">_IA</span></span>
+                                 </div>
+                                 <div className="text-sm text-gray-500">
+                                     &copy; {new Date().getFullYear()} GDN_IA. Todos os direitos reservados.
+                                 </div>
+                                 <div className="flex gap-4">
+                                     <button onClick={() => onNavigate && onNavigate('terms')} className="text-gray-400 hover:text-green-600 text-xs">Termos</button>
+                                     <button onClick={() => onNavigate && onNavigate('privacy')} className="text-gray-400 hover:text-green-600 text-xs">Privacidade</button>
+                                 </div>
+                             </div>
+                        </footer>
+                    </div>
+                )}
             </div>
         </main>
       </div>
@@ -665,7 +739,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           <IntegrationsModal onClose={() => setShowIntegrationsModal(false)} />
       )}
 
-      {/* Guest & Lock Modals (Keep existing code) */}
+      {/* Guest & Lock Modals */}
       {showGuestLimitModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center relative overflow-hidden border border-gray-200">
@@ -736,6 +810,18 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
+}
+
+function FeatureCard({ icon, title, desc, color, bg }: { icon: string, title: string, desc: string, color: string, bg: string }) {
+    return (
+        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition duration-300">
+            <div className={`w-12 h-12 ${bg} ${color} rounded-lg flex items-center justify-center text-xl mb-4 border border-opacity-50`}>
+                <i className={`fas ${icon}`}></i>
+            </div>
+            <h3 className="text-lg font-bold text-[#263238] mb-2">{title}</h3>
+            <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+        </div>
+    );
 }
 
 export default DashboardPage;

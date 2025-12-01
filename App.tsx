@@ -10,7 +10,8 @@ const PrivacyPage = React.lazy(() => import('./pages/legal/PrivacyPage'));
 const TermsPage = React.lazy(() => import('./pages/legal/TermsPage'));
 const CookiesPage = React.lazy(() => import('./pages/legal/CookiesPage'));
 const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
-const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage')); // New Page
+const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage'));
+const LandingPage = React.lazy(() => import('./pages/LandingPage')); 
 
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
@@ -22,7 +23,7 @@ const SimpleLoader = () => (
   </div>
 );
 
-type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback';
+type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
 
 function AppContent() {
   const { user, loading, error } = useUser();
@@ -36,11 +37,11 @@ function AppContent() {
         try {
             const params = new URLSearchParams(window.location.search);
             const page = params.get('page');
-            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback'];
+            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
             if (page && validPages.includes(page as PageRoute)) {
                 return page as PageRoute;
             }
-            return 'dashboard';
+            return 'dashboard'; 
         } catch (e) {
             console.warn('Erro ao ler URLSearchParams:', e);
             return 'dashboard';
@@ -51,11 +52,18 @@ function AppContent() {
 
   const [currentPage, setCurrentPage] = useState<PageRoute>(getInitialPage);
 
+  // Redirecionamento inteligente baseado em autenticação
   useEffect(() => {
-    if (user && currentPage === 'login') {
-      setCurrentPage('dashboard');
+    if (!loading) {
+        if (user) {
+            // Se logado e está na landing ou login, vai pro dashboard
+            if (currentPage === 'landing' || currentPage === 'login') {
+                setCurrentPage('dashboard');
+            }
+        }
+        // Se não logado, PERMITE ficar no dashboard (Modo Híbrido/Landing)
     }
-  }, [user, currentPage]);
+  }, [user, loading, currentPage]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -71,7 +79,7 @@ function AppContent() {
 
         const params = new URLSearchParams(window.location.search);
         if (currentPage === 'dashboard') {
-          params.delete('page');
+          params.delete('page'); // Root URL for dashboard/home
         } else {
           params.set('page', currentPage);
         }
@@ -165,6 +173,11 @@ function AppContent() {
   return (
     <Suspense fallback={<SimpleLoader />}>
         <PopupRenderer />
+
+        {/* Landing Page Route (Still available if needed directly, but dashboard is default) */}
+        {currentPage === 'landing' && (
+            <LandingPage onNavigate={(page) => handleNavigate(page as PageRoute)} />
+        )}
 
         {currentPage === 'login' && (
             <div className="relative">
