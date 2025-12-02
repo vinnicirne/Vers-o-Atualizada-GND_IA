@@ -130,26 +130,20 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
                     value={formData.docNumber}
                     onChange={(e) => onChange('docNumber', formatCpfCnpj(e.target.value))}
                     maxLength={18}
-                    autoComplete="off"
                 />
             </div>
 
             <div>
                 <label htmlFor="cardNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Número do Cartão</label>
-                <div className="relative">
-                    <input
-                        id="cardNumber"
-                        type="text"
-                        className={`${inputClass} pl-10`}
-                        placeholder="0000 0000 0000 0000"
-                        value={formData.cardNumber}
-                        onChange={(e) => onChange('cardNumber', formatCardNumber(e.target.value))}
-                        maxLength={19}
-                        autoComplete="off"
-                        data-lpignore="true" 
-                    />
-                    <i className="fas fa-lock absolute left-3 top-4 text-green-500/50"></i>
-                </div>
+                <input
+                    id="cardNumber"
+                    type="text"
+                    className={inputClass}
+                    placeholder="0000 0000 0000 0000"
+                    value={formData.cardNumber}
+                    onChange={(e) => onChange('cardNumber', formatCardNumber(e.target.value))}
+                    maxLength={19}
+                />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -163,24 +157,19 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
                         value={formData.expirationDate}
                         onChange={(e) => onChange('expirationDate', formatExpiration(e.target.value))}
                         maxLength={5}
-                        autoComplete="off"
                     />
                 </div>
                 <div>
                     <label htmlFor="cvv" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CVV</label>
-                    <div className="relative">
-                        <input
-                            id="cvv"
-                            type="password"
-                            className={inputClass}
-                            placeholder="123"
-                            value={formData.cvv}
-                            onChange={(e) => onChange('cvv', e.target.value.replace(/\D/g, '').substring(0, 4))}
-                            maxLength={4}
-                            autoComplete="new-password"
-                            data-lpignore="true"
-                        />
-                    </div>
+                    <input
+                        id="cvv"
+                        type="text"
+                        className={inputClass}
+                        placeholder="123"
+                        value={formData.cvv}
+                        onChange={(e) => onChange('cvv', e.target.value.replace(/\D/g, '').substring(0, 4))}
+                        maxLength={4}
+                    />
                 </div>
             </div>
 
@@ -193,7 +182,6 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
                     placeholder="Como impresso no cartão"
                     value={formData.holderName}
                     onChange={(e) => onChange('holderName', e.target.value.toUpperCase())}
-                    autoComplete="off"
                 />
             </div>
 
@@ -209,11 +197,6 @@ const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (
                         <option key={n} value={n}>{n}x de R$ {(formData.amount / n).toFixed(2).replace('.', ',')}</option>
                     ))}
                 </select>
-            </div>
-            
-            <div className="flex items-center justify-center gap-2 mt-2 opacity-60">
-                <i className="fas fa-shield-alt text-green-500"></i>
-                <span className="text-[10px] text-gray-400">Dados criptografados e tokenizados (PCI DSS).</span>
             </div>
         </div>
     );
@@ -620,9 +603,6 @@ export default function CheckoutCompleto({
 
           } else if (activeGateway === 'asaas') {
               // --- ASAAS: CONTINUA ENVIANDO DADOS CRUS (BACKEND TOKENIZA) ---
-              // Em um cenário ideal, o ASAAS também teria tokenização client-side.
-              // Como estamos mantendo compatibilidade com a Edge Function existente, 
-              // garantimos que o HTTPS/TLS e a CSP protegem o trânsito.
               payload = {
                   ...payload,
                   billingType: 'CREDIT_CARD',
@@ -720,7 +700,7 @@ export default function CheckoutCompleto({
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <i className="fas fa-lock text-green-500"></i> Checkout Seguro
+            <i className="fas fa-lock text-green-500"></i> Checkout
           </h3>
           <p className="text-xs text-gray-500">
               Via {activeGateway === 'mercadopago' ? 'Mercado Pago' : 'Asaas Safe'}
@@ -760,7 +740,7 @@ export default function CheckoutCompleto({
 
       {/* RENDER FORMS */}
       {paymentMethod === 'card' ? (
-          <form onSubmit={handleCardSubmit} autoComplete="off">
+          <form onSubmit={handleCardSubmit}>
             <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} />
             <button
               type="submit"
@@ -794,7 +774,6 @@ export default function CheckoutCompleto({
                             value={commonFormData.docNumber}
                             onChange={(e) => handleInputChange('docNumber', formatCpfCnpj(e.target.value))}
                             maxLength={18}
-                            autoComplete="off"
                           />
                       </div>
 
@@ -824,7 +803,6 @@ export default function CheckoutCompleto({
       )}
       
       <p className="text-[10px] text-gray-600 text-center mt-6">
-          <i className="fas fa-lock mr-1"></i>
           Ambiente seguro 256-bit SSL. {activeGateway === 'asaas' ? 'Processado por Asaas.' : 'Processado por Mercado Pago.'}
       </p>
     </div>

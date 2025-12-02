@@ -29,6 +29,7 @@ export function PaymentsConfig() {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [visibleKeys, setVisibleKeys] = useState<{ [key: string]: boolean }>({});
 
     const fetchSettings = useCallback(async () => {
         setLoading(true);
@@ -87,9 +88,12 @@ export function PaymentsConfig() {
     const removePackage = (index: number) => {
         setSettings(prev => {
             if (!prev) return null;
+            // This is a soft delete for the UI, the save function will need to handle the actual DB operation if needed
             const newPackages = prev.packages.filter((_, i) => i !== index);
             return { ...prev, packages: newPackages };
         });
+        // Note: a proper implementation for existing items would require a DELETE call to the DB.
+        // For simplicity here, we assume we can just remove it from the list and on save, the full list is upserted.
     };
     
     const handleSave = async () => {
@@ -101,6 +105,8 @@ export function PaymentsConfig() {
         // Validation
         for (const [key, gw] of Object.entries(settings.gateways)) {
             const gatewayConfig = gw as GatewayConfig;
+            // Para Asaas, talvez apenas apiKey seja obrigatória, depende da implementação. 
+            // Aqui assumimos que se enabled, precisa de chave.
             if (gatewayConfig.enabled && !gatewayConfig.publicKey) {
                 setToast({ message: `Gateway ${key} ativo deve ter a chave API (Public Key) preenchida.`, type: 'error' });
                 return;
@@ -150,9 +156,14 @@ export function PaymentsConfig() {
                     <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">{placeholderKey}</label>
                     <input type="text" value={settings.gateways[name]?.publicKey ?? ''} onChange={(e) => handleGatewayChange(name, 'publicKey', e.target.value)} className="w-full bg-gray-50 border border-gray-300 text-gray-700 rounded p-2 text-sm focus:ring-green-500 focus:border-green-500" />
                 </div>
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
-                    <i className="fas fa-lock mr-2"></i>
-                    Chaves Secretas (Secret Keys) não são mais gerenciadas aqui. Configure as variáveis de ambiente <code>MP_ACCESS_TOKEN</code> e <code>ASAAS_KEY</code> no painel do Supabase (Edge Functions) para segurança.
+                <div>
+                    <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">{name === 'stripe' ? 'Secret Key' : 'Secret / Wallet ID (Opcional)'}</label>
+                     <div className="relative">
+                        <input type={visibleKeys[name] ? 'text' : 'password'} value={settings.gateways[name]?.secretKey ?? ''} onChange={(e) => handleGatewayChange(name, 'secretKey', e.target.value)} className="w-full bg-gray-50 border border-gray-300 text-gray-700 rounded p-2 text-sm pr-10 focus:ring-green-500 focus:border-green-500" />
+                        <button onClick={() => setVisibleKeys(p => ({ ...p, [name]: !p[name]}))} className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                            <i className={`fas ${visibleKeys[name] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -164,8 +175,8 @@ export function PaymentsConfig() {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {renderGatewayConfig('stripe', 'Stripe', 'fab fa-stripe-s')}
-                {renderGatewayConfig('mercadoPago', 'Mercado Pago', 'fas fa-hand-holding-usd', 'Access Token (Público)')}
-                {renderGatewayConfig('asaas', 'Asaas', 'fas fa-money-bill-wave', 'API Key (Pública)')}
+                {renderGatewayConfig('mercadoPago', 'Mercado Pago', 'fas fa-hand-holding-usd', 'Access Token')}
+                {renderGatewayConfig('asaas', 'Asaas', 'fas fa-money-bill-wave', 'API Key (Asaas)')}
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">

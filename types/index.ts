@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './plan.types'; // Looks for sibling 'plan.types.ts'
 
@@ -71,6 +72,7 @@ export interface Log {
   user_email?: string;
 }
 
+// ATUALIZADO AQUI:
 export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
 
 export interface AllowedDomain {
@@ -116,7 +118,7 @@ export interface Transaction {
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string; 
-  // secretKey removed for security
+  secretKey: string; 
 }
 
 export interface CreditPackage {

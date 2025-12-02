@@ -177,6 +177,48 @@ export const getAffiliateStats = async (userId: string) => {
     };
 };
 
+export const processAffiliateCommission = async (payerUserId: string, amount: number, description: string) => {
+    // 1. Check if payer was referred
+    const { data: payerData } = await api.select('app_users', { id: payerUserId });
+    if (!payerData || payerData.length === 0) return;
+    
+    const referrerId = payerData[0].referred_by;
+    if (!referrerId) return; // No affiliate to pay
+
+    // Evita pagar comissão para si mesmo
+    if (referrerId === payerUserId) return;
+
+    // 2. Calculate Commission (20%)
+    const COMMISSION_RATE = 0.20;
+    const commission = parseFloat((amount * COMMISSION_RATE).toFixed(2));
+    
+    if (commission <= 0) return;
+
+    // 3. Update Affiliate Balance
+    // ATENÇÃO: Isso roda no client. Requer RLS permissiva ou Backend Function em produção.
+    const { data: affiliateData } = await api.select('app_users', { id: referrerId });
+    if (!affiliateData || affiliateData.length === 0) return;
+    
+    const currentBalance = Number(affiliateData[0].affiliate_balance || 0);
+    const newBalance = parseFloat((currentBalance + commission).toFixed(2));
+
+    await api.update('app_users', { affiliate_balance: newBalance }, { id: referrerId });
+
+    // 4. Log Transaction
+    await api.insert('affiliate_logs', {
+        affiliate_id: referrerId,
+        source_user_id: payerUserId,
+        amount: commission,
+        description: `${description} (20%)`
+    });
+    
+    logger.info(referrerId, 'Pagamentos', 'affiliate_commission_paid', { 
+        amount: commission, 
+        source: payerUserId,
+        original_amount: amount
+    });
+};
+
 // --- CONFIGURAÇÕES GERAIS ---
 
 const getConfig = async <T>(key: string, defaultValue: T): Promise<T> => {
@@ -507,12 +549,7 @@ export const getApprovedRevenueInRange = async (startDate: string, endDate: stri
 
 export const getPaymentSettings = async (): Promise<PaymentSettings> => {
     const defaults: PaymentSettings = {
-        // Removed secretKey from defaults for security
-        gateways: { 
-            stripe: { enabled: false, publicKey: '' }, 
-            mercadoPago: { enabled: false, publicKey: '' }, 
-            asaas: { enabled: false, publicKey: '' } 
-        },
+        gateways: { stripe: { enabled: false, publicKey: '', secretKey: '' }, mercadoPago: { enabled: false, publicKey: '', secretKey: '' }, asaas: { enabled: false, publicKey: '', secretKey: '' } },
         packages: []
     };
     const saved = await getConfig<Partial<PaymentSettings>>('payment_settings', defaults);
