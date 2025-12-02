@@ -96,8 +96,8 @@ export const generateWordPressPluginZip = async (userGeminiKey?: string) => {
     const mainFileContent = `<?php
 /*
 Plugin Name: GDN_IA - Poster Pro
-Description: Sistema de geração de notícias com IA. Versão 1.5.4 com correções de autenticação e compatibilidade SSL.
-Version: 1.5.4
+Description: Sistema de geração de notícias com IA. Versão 1.5.5 com correções de segurança SSL.
+Version: 1.5.5
 Author: GDN_IA Team
 */
 
@@ -187,7 +187,7 @@ class NoticiasPosterGDN {
             'method' => $method,
             'headers' => $headers,
             'timeout' => 20,
-            'sslverify' => false
+            'sslverify' => true // Segurança ativada
         );
         
         if ($body) {
@@ -303,7 +303,7 @@ class NoticiasPosterGDN {
             'body' => json_encode($payload),
             'headers' => array('Content-Type' => 'application/json'),
             'timeout' => 90,
-            'sslverify' => false
+            'sslverify' => true // Segurança ativada
         ));
         
         if (is_wp_error($response)) {
@@ -410,7 +410,7 @@ function gdn_get_user_posts() {
 <div class="wrap gdn-wrap">
     <div class="gdn-header">
         <h1><span class="dashicons dashicons-superhero"></span> GDN_IA Poster Pro</h1>
-        <p>Sistema v1.5.4</p>
+        <p>Sistema v1.5.5</p>
     </div>
     
     <?php
@@ -600,7 +600,7 @@ jQuery(document).ready(function($) {
     const url = window.URL.createObjectURL(content);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', "gdn-poster-pro-v1.5.4.zip");
+    link.setAttribute('download', "gdn-poster-pro-v1.5.5.zip");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
