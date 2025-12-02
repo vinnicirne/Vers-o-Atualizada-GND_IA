@@ -26,36 +26,50 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    let transactionId: string | null = null;
-    let subscriptionId: string | null = null; // Para recorrência Asaas
-    let paymentStatus: string | null = null;
-    let paidAmount: number | null = null;
-    let transactionMetadata: any = {}; 
     let rawBody: string = '';
     let body: any = {};
 
     // Tenta fazer parse do body
     try {
-        body = await req.json();
-        rawBody = JSON.stringify(body);
+        rawBody = await req.text();
+        if (rawBody) {
+            body = JSON.parse(rawBody);
+        }
     } catch (jsonError) {
-        // Se falhar o JSON, tenta ler como texto para debug
-        try {
-             rawBody = await req.text();
-        } catch(e) {}
-        console.warn(`[Webhook] Aviso: Erro ao parsear JSON. Raw: ${rawBody.substring(0, 200)}...`);
+        console.warn(`[Webhook] Erro ao parsear JSON. Raw: ${rawBody.substring(0, 200)}...`);
     }
 
-    // --- AUTO DETECÇÃO DE PROVEDOR ---
+    // === BYPASS IMEDIATO PARA TESTE DE CONEXÃO MERCADO PAGO ===
+    // O Mercado Pago envia id: 123456 (number) ou "123456" (string) na raiz ou dentro de data.
+    // Verifica isso antes de qualquer lógica para garantir 200 OK.
+    const possibleIds = [
+        body?.id?.toString(), 
+        body?.data?.id?.toString()
+    ];
+    
+    if (possibleIds.includes("123456")) {
+        console.log("✅ [Webhook MP] Notificação de TESTE (123456) detectada e aprovada.");
+        return new Response(JSON.stringify({ success: true, message: "Webhook URL validada (Test Mode)." }), { 
+            status: 200, 
+            headers: corsHeaders 
+        });
+    }
+    // =========================================================
+
+    let transactionId: string | null = null;
+    let subscriptionId: string | null = null;
+    let paymentStatus: string | null = null;
+    let paidAmount: number | null = null;
+    let transactionMetadata: any = {}; 
     let provider = url.searchParams.get("provider");
     
+    // --- AUTO DETECÇÃO DE PROVEDOR ---
     if (!provider) {
-        // Mercado Pago Detection logic
         if (body && (
             body.action === "payment.updated" || 
             body.action === "payment.created" || 
             body.type === "payment" ||
-            (body.data && body.data.id) // Estrutura comum v1
+            (body.data && body.data.id) // Padrão MP V1
         )) {
             provider = "mercadopago";
         } else if (body && (body.event && body.event.startsWith("PAYMENT_"))) {
@@ -63,35 +77,18 @@ serve(async (req) => {
         }
     }
     
-    console.log(`[Webhook] Provedor: ${provider}. ID Payload: ${body?.id || body?.data?.id || 'N/A'}`);
+    console.log(`[Webhook] Provedor: ${provider}. ID: ${body?.id || body?.data?.id || 'N/A'}`);
 
-    // --- LÓGICA MERCADO PAGO ---
     if (provider === "mercadopago") {
-        const { data, action, type } = body;
-        
-        // Verifica ID no data (v1) ou na raiz (testes antigos)
-        let notificationId = data?.id;
-        if (!notificationId && body.id) notificationId = body.id; 
+        let notificationId = body?.data?.id || body?.id;
 
         if (notificationId) {
             notificationId = notificationId.toString();
-
-            // === BYPASS CRÍTICO PARA TESTE DO MERCADO PAGO ===
-            // O MP envia o ID 123456 para validar a URL. Devemos retornar 200 OK imediatamente.
-            if (notificationId === "123456") {
-                console.log("✅ [Webhook MP] Notificação de TESTE (123456) recebida. Retornando 200 OK.");
-                return new Response(JSON.stringify({ success: true, message: "Webhook URL validada com sucesso." }), { 
-                    status: 200, 
-                    headers: corsHeaders 
-                });
-            }
-            // ====================================================
             
-            // Validação de Segurança: Consulta API do MP
             const mpAccessToken = Deno.env.get("MP_ACCESS_TOKEN");
             if (!mpAccessToken) {
                 console.error("[Webhook MP] Erro: MP_ACCESS_TOKEN não configurado.");
-                // Retornamos 200 para o MP não ficar reenviando, mas logamos o erro grave
+                // Retorna 200 para evitar retries infinitos do MP
                 return new Response(JSON.stringify({ error: "Server config error" }), { status: 200, headers: corsHeaders });
             }
 
@@ -103,26 +100,23 @@ serve(async (req) => {
                 if (mpRes.ok) {
                     const paymentInfo = await mpRes.json();
                     transactionId = paymentInfo.id.toString();
-                    paymentStatus = paymentInfo.status; // approved, pending, rejected, refunded
+                    paymentStatus = paymentInfo.status;
                     paidAmount = paymentInfo.transaction_amount;
                     transactionMetadata.mp_id = paymentInfo.id;
-                    transactionMetadata.provider = "mercado_pago";
+                    transactionMetadata.provider = "mercadopago";
                 } else {
-                    console.warn(`[Webhook MP] Pagamento ${notificationId} não encontrado na API (HTTP ${mpRes.status}).`);
-                    // Se a API do MP diz que não existe, ignoramos (200 OK)
-                    return new Response(JSON.stringify({ message: "Payment not found in MP, ignoring." }), { status: 200, headers: corsHeaders });
+                    console.warn(`[Webhook MP] Pagamento ${notificationId} não encontrado (HTTP ${mpRes.status}).`);
+                    return new Response(JSON.stringify({ message: "Payment not found in MP" }), { status: 200, headers: corsHeaders });
                 }
             } catch (fetchErr) {
                 console.error("[Webhook MP] Erro de conexão com API MP:", fetchErr);
-                // Erro de rede nosso -> Retorna 500 para o MP tentar de novo mais tarde
-                return new Response(JSON.stringify({ error: "Network error validating payment" }), { status: 500, headers: corsHeaders });
+                return new Response(JSON.stringify({ error: "Network error" }), { status: 500, headers: corsHeaders });
             }
         } else {
-            console.log("[Webhook MP] Payload sem ID de notificação. Ignorando.");
+            console.log("[Webhook MP] Payload sem ID. Retornando 200 para limpar fila.");
             return new Response(JSON.stringify({ message: "No ID found" }), { status: 200, headers: corsHeaders });
         }
     } 
-    // --- LÓGICA ASAAS ---
     else if (provider === "asaas") {
         const { event, payment } = body;
         
@@ -146,22 +140,21 @@ serve(async (req) => {
              transactionMetadata.asaas_id = payment.id;
              transactionMetadata.provider = "asaas";
         } else {
-             // Eventos irrelevantes (criação, visualização) -> 200 OK
              return new Response(JSON.stringify({ received: true }), { status: 200, headers: corsHeaders });
         }
     } else {
-        // Se nenhum provedor for detectado, loga o body para debug
-        console.warn(`[Webhook] Provedor desconhecido ou payload inválido. Body: ${rawBody}`);
-        return new Response(JSON.stringify({ error: "Provider not detected" }), {
-            status: 400,
+        console.warn(`[Webhook] Provedor não detectado. Body: ${rawBody.substring(0, 100)}`);
+        // Retorna 200 para evitar que webhooks desconhecidos fiquem tentando infinitamente
+        return new Response(JSON.stringify({ message: "Provider not detected, ignoring." }), {
+            status: 200,
             headers: { ...corsHeaders, "Content-Type": "application/json" }
         });
     }
 
-    // --- PROCESSAMENTO DA TRANSAÇÃO (COMUM) ---
+    // --- PROCESSAMENTO DA TRANSAÇÃO ---
     if (transactionId && paymentStatus) {
         
-        // 1. Busca transação no banco
+        // Busca transação
         const { data: tx } = await supabaseAdmin
             .from("transactions")
             .select("*")
@@ -170,7 +163,7 @@ serve(async (req) => {
 
         let targetTx = tx;
 
-        // Lógica de Recorrência Asaas (Nova transação se não existir e for assinatura)
+        // Recorrência Asaas (Cria nova se não existir)
         if (!tx && subscriptionId && provider === "asaas") {
             const { data: subUser } = await supabaseAdmin
                 .from("app_users")
@@ -206,51 +199,46 @@ serve(async (req) => {
         }
 
         if (targetTx) {
-            // Evita processamento duplicado
-            if (targetTx.status === 'approved' && paymentStatus === 'approved') {
-                 return new Response(JSON.stringify({ message: "Already approved" }), { status: 200, headers: corsHeaders });
-            }
-
             // Normalização de Status
             let newDbStatus = 'pending';
             if (['approved', 'CONFIRMED', 'RECEIVED'].includes(paymentStatus)) newDbStatus = 'approved';
             else if (['refunded', 'CHARGED_BACK'].includes(paymentStatus)) newDbStatus = 'refunded';
             else if (['rejected', 'cancelled', 'failed', 'OVERDUE'].includes(paymentStatus)) newDbStatus = 'failed';
 
-            // Atualiza DB
-            await supabaseAdmin
-                .from("transactions")
-                .update({ status: newDbStatus, metadata: { ...targetTx.metadata, ...transactionMetadata } })
-                .eq("id", targetTx.id);
+            // Evita update redundante
+            if (targetTx.status !== newDbStatus) {
+                await supabaseAdmin
+                    .from("transactions")
+                    .update({ status: newDbStatus, metadata: { ...targetTx.metadata, ...transactionMetadata } })
+                    .eq("id", targetTx.id);
 
-            // Libera Benefícios
-            if (newDbStatus === 'approved') {
-                const { data: userData } = await supabaseAdmin
-                    .from("app_users")
-                    .select("referred_by")
-                    .eq("id", targetTx.usuario_id)
-                    .single();
+                if (newDbStatus === 'approved') {
+                    const { data: userData } = await supabaseAdmin
+                        .from("app_users")
+                        .select("referred_by")
+                        .eq("id", targetTx.usuario_id)
+                        .single();
 
-                const amountToUse = paidAmount || targetTx.valor; 
-                const metadata = targetTx.metadata || {};
+                    const amountToUse = paidAmount || targetTx.valor; 
+                    const metadata = targetTx.metadata || {};
 
-                await releaseBenefits(
-                    supabaseAdmin,
-                    targetTx.usuario_id,
-                    metadata.item_type,
-                    metadata.item_id,
-                    Number(amountToUse),
-                    userData?.referred_by
-                );
-                
-                // Log da aprovação
-                await supabaseAdmin.from("logs").insert({
-                    usuario_id: targetTx.usuario_id,
-                    acao: "payment_approved_webhook",
-                    modulo: "Pagamentos",
-                    detalhes: { provider, transactionId, amount: amountToUse },
-                    data: new Date().toISOString()
-                });
+                    await releaseBenefits(
+                        supabaseAdmin,
+                        targetTx.usuario_id,
+                        metadata.item_type,
+                        metadata.item_id,
+                        Number(amountToUse),
+                        userData?.referred_by
+                    );
+                    
+                    await supabaseAdmin.from("logs").insert({
+                        usuario_id: targetTx.usuario_id,
+                        acao: "payment_approved_webhook",
+                        modulo: "Pagamentos",
+                        detalhes: { provider, transactionId, amount: amountToUse },
+                        data: new Date().toISOString()
+                    });
+                }
             }
         }
     }
@@ -261,22 +249,17 @@ serve(async (req) => {
     });
 
   } catch (err: any) {
-    console.error("Webhook Error:", err);
-    // Retorna 200 em erro genérico para evitar loop infinito de retries do gateway se for um erro de código
-    // Se for erro de infra (timeout), o Supabase retornará 5xx automaticamente.
+    console.error("Webhook Critical Error:", err);
     return new Response(JSON.stringify({ error: err.message }), {
-      status: 200,
+      status: 200, // Retorna 200 para evitar retry loop em erros de lógica interna
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
 
-// Lógica Compartilhada de Liberação de Benefícios (Simplificada)
 async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: string, itemId: string, amount: number, referrerId?: string) {
     if (itemType === "plan") {
         await supabaseAdmin.from("app_users").update({ plan: itemId }).eq("id", userId);
-        
-        // Busca config de planos para saber quantos créditos dar
         const { data: config } = await supabaseAdmin.from("system_config").select("value").eq("key", "all_plans").single();
         if (config?.value) {
           const plan = (config.value as any[]).find((p: any) => p.id === itemId);
@@ -287,7 +270,6 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
     } else if (itemType === "credits") {
         const { data: current } = await supabaseAdmin.from("user_credits").select("credits").eq("user_id", userId).single();
         const currentCredits = current?.credits === -1 ? -1 : (current?.credits || 0);
-        
         if (currentCredits !== -1) {
             const newCredits = currentCredits + Number(itemId); 
             await supabaseAdmin.from("user_credits").upsert({ user_id: userId, credits: newCredits }, { onConflict: "user_id" });
@@ -297,18 +279,16 @@ async function releaseBenefits(supabaseAdmin: any, userId: string, itemType: str
     if (referrerId) {
         const COMMISSION_RATE = 0.20;
         const commission = parseFloat((Number(amount) * COMMISSION_RATE).toFixed(2));
-        
         if (commission > 0) {
             const { data: refUser } = await supabaseAdmin.from("app_users").select("affiliate_balance").eq("id", referrerId).single();
             if (refUser) {
                 const newBalance = (refUser.affiliate_balance || 0) + commission;
                 await supabaseAdmin.from("app_users").update({ affiliate_balance: newBalance }).eq("id", referrerId);
-                
                 await supabaseAdmin.from("affiliate_logs").insert({
                     affiliate_id: referrerId,
                     source_user_id: userId,
                     amount: commission,
-                    description: `Comissão ${COMMISSION_RATE * 100}%`
+                    description: `Comissão Webhook`
                 });
             }
         }

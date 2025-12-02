@@ -1,9 +1,10 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Usando esm.sh que é mais estável para o Deno Edge Runtime que npm: em alguns casos
-import { GoogleGenAI } from "https://esm.sh/@google/genai@0.1.1";
+// Atualizado para versão 1.30.0 para compatibilidade com modelos Gemini 2.5
+import { GoogleGenAI } from "https://esm.sh/@google/genai@1.30.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -65,7 +66,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
    - Adicione detalhes de iluminação (ex: cinematic lighting, volumetric fog, golden hour).
    - Adicione detalhes de câmera/estilo (ex: 8k, photorealistic, wide shot, macro, oil painting, cyberpunk).
    - Adicione "magic words" de qualidade (ex: masterpiece, trending on artstation, sharp focus).
-   - SAÍDA: Retorne APENAS o prompt em inglês. Nada mais. Sem "Aqui está o prompt". Apenas o texto cru.
+   - SAÍDA: Retorne APENAS o prompt em inglês. Nada mais. Sem "Aqui está o prompt". Apenas a string crua.
 
 6. **Gerador de Copy**: Textos persuasivos para ads, emails, posts. Foque em AIDA (Atenção, Interesse, Desejo, Ação).
 
@@ -123,8 +124,6 @@ serve(async (req) => {
     }
 
     // 4. Initialize Gemini (GoogleGenAI SDK)
-    // Note: The SDK constructor signature might vary slightly between versions, 
-    // but { apiKey } is standard for @google/genai
     const ai = new GoogleGenAI({ apiKey });
     
     // Use the correct model
@@ -165,24 +164,26 @@ serve(async (req) => {
         `;
     }
 
-    let config: any = {
+    // Configuração do Gemini 2.5
+    // Importante: No novo SDK, ferramentas e systemInstruction vão no config ou na chamada.
+    let generateConfig: any = {
         systemInstruction: systemPromptWithMemory
     };
     
     if (mode === 'news_generator') {
-        config.tools = [{ googleSearch: {} }];
+        generateConfig.tools = [{ googleSearch: {} }];
     }
 
     // 5. Call Generate Content
     const response = await ai.models.generateContent({
         model: modelName,
         contents: fullPrompt,
-        config: config,
+        config: generateConfig,
     });
 
     let text = response.text;
     
-    // Grounding extraction
+    // Grounding extraction (se houver google search)
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         sources = response.candidates[0].groundingMetadata.groundingChunks
@@ -196,7 +197,13 @@ serve(async (req) => {
     }
 
     if (!text) {
-        throw new Error('A API não retornou conteúdo de texto.');
+        // Fallback: Tenta extrair de parts se .text falhar (comportamento antigo vs novo)
+        const parts = response.candidates?.[0]?.content?.parts;
+        if (parts && parts.length > 0 && parts[0].text) {
+            text = parts[0].text;
+        } else {
+            throw new Error('A API respondeu mas não retornou texto gerado.');
+        }
     }
 
     // Cleanup Logic
@@ -215,9 +222,11 @@ serve(async (req) => {
     let audioBase64 = null;
     if (generateAudio && mode === 'news_generator') {
         try {
+            // Nota: Texto para Voz usa um modelo diferente e endpoint diferente, 
+            // mas o SDK unificado lida com isso se o modelo for correto.
             const audioResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash-preview-tts",
-                contents: [{ parts: [{ text: text }] }],
+                contents: [{ parts: [{ text: text.substring(0, 4000) }] }], // Limita tamanho para TTS
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
@@ -228,6 +237,7 @@ serve(async (req) => {
                 },
             });
             
+            // Extração de áudio do novo formato de resposta
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
         } catch (audioError) {
             console.error("Failed to generate audio on backend:", audioError);
@@ -241,7 +251,7 @@ serve(async (req) => {
 
   } catch (error: any) {
     console.error("Error in generate-content function:", error);
-    return new Response(JSON.stringify({ error: error.message || "Unknown error" }), {
+    return new Response(JSON.stringify({ error: error.message || "Unknown error in Edge Function" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
