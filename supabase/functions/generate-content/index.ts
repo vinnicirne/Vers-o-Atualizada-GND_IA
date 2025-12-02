@@ -2,8 +2,8 @@
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Mudança para npm: para garantir compatibilidade com o Edge Runtime do Supabase
-import { GoogleGenAI } from "npm:@google/genai";
+// Usando esm.sh que é mais estável para o Deno Edge Runtime que npm: em alguns casos
+import { GoogleGenAI } from "https://esm.sh/@google/genai@0.1.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -107,7 +107,14 @@ serve(async (req) => {
 
   try {
     // 2. Parse Body
-    const { prompt, mode, userId, generateAudio, options, userMemory } = await req.json();
+    let reqBody;
+    try {
+        reqBody = await req.json();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+    }
+    
+    const { prompt, mode, userId, generateAudio, options, userMemory } = reqBody;
     
     // 3. Get & Validate API Key
     const apiKey = Deno.env.get("GEMINI_API_KEY");
