@@ -1,9 +1,9 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { GoogleGenAI } from "https://esm.sh/@google/genai@0.1.3"; // Adjust version as needed
+// Mudança para npm: para garantir compatibilidade com o Edge Runtime do Supabase
+import { GoogleGenAI } from "npm:@google/genai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,20 +100,27 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 `;
 
 serve(async (req) => {
+  // 1. Handle Preflight Requests (CORS)
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // 2. Parse Body
     const { prompt, mode, userId, generateAudio, options, userMemory } = await req.json();
     
-    // SERVER SIDE API KEY
+    // 3. Get & Validate API Key
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-        throw new Error("Server API Key configuration error.");
+        throw new Error("Erro de Configuração: GEMINI_API_KEY não encontrada no servidor.");
     }
 
+    // 4. Initialize Gemini (GoogleGenAI SDK)
+    // Note: The SDK constructor signature might vary slightly between versions, 
+    // but { apiKey } is standard for @google/genai
     const ai = new GoogleGenAI({ apiKey });
+    
+    // Use the correct model
     const modelName = 'gemini-2.5-flash';
 
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
@@ -123,7 +130,6 @@ serve(async (req) => {
       Modo de Geração: ${mode}
     `;
 
-    // Prompt Customization Logic (Moved from frontend)
     if (mode === 'image_generation' && options) {
         fullPrompt += `
         CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
@@ -160,7 +166,7 @@ serve(async (req) => {
         config.tools = [{ googleSearch: {} }];
     }
 
-    // Call Gemini
+    // 5. Call Generate Content
     const response = await ai.models.generateContent({
         model: modelName,
         contents: fullPrompt,
@@ -218,6 +224,7 @@ serve(async (req) => {
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
         } catch (audioError) {
             console.error("Failed to generate audio on backend:", audioError);
+            // Non-fatal error, proceed with text
         }
     }
 
@@ -226,7 +233,8 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Error in generate-content function:", error);
+    return new Response(JSON.stringify({ error: error.message || "Unknown error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
