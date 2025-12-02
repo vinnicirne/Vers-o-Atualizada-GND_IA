@@ -123,6 +123,7 @@ export interface Transaction {
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string; 
+  secretKey: string; 
 }
 
 export interface CreditPackage {

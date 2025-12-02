@@ -50,16 +50,7 @@ serve(async (req) => {
     }
 
     const reqJson = await req.json();
-    
-    // LOG SANITIZATION
-    const safeLog = { ...reqJson };
-    if (safeLog.creditCard) {
-        safeLog.creditCard = { ...safeLog.creditCard, number: "***REDACTED***", ccv: "***" };
-    }
-    if (safeLog.creditCardToken) {
-        safeLog.creditCardToken = "***REDACTED***";
-    }
-    console.log("[asaas-pagar] Requisição JSON recebida:", JSON.stringify(safeLog));
+    console.log("[asaas-pagar] Requisição JSON recebida:", JSON.stringify(reqJson));
 
     // --- CHECK FOR SERVER CONFIG ---
     const asaasKey = Deno.env.get("ASAAS_KEY");
@@ -167,7 +158,7 @@ serve(async (req) => {
     // Busca dados do usuário
     const { data: userData, error: userDataError } = await supabaseAdmin
       .from("app_users")
-      .select("email, full_name, asaas_customer_id, referred_by, plan") // Adding plan for validation
+      .select("email, full_name, asaas_customer_id, referred_by")
       .eq("id", authUser.id)
       .single();
 
@@ -175,50 +166,6 @@ serve(async (req) => {
       console.error("[asaas-pagar] Usuário não encontrado no banco de dados ou erro:", userDataError);
       return new Response(JSON.stringify({ error: "Usuário não encontrado." }), { status: 404, headers: corsHeaders });
     }
-
-    // === VALIDAÇÃO DE SEGURANÇA DE PREÇO (Server-Side Price Validation) ===
-    console.log("[asaas-pagar] Validando preço para evitar manipulação...");
-    
-    // Busca planos e configs do banco
-    const { data: configRows } = await supabaseAdmin
-        .from("system_config")
-        .select("key, value")
-        .in("key", ["all_plans"]);
-    
-    const allPlans = configRows?.find((r: any) => r.key === "all_plans")?.value || [];
-    let expectedPrice = 0;
-    let isValidPrice = false;
-
-    if (item_type === "plan") {
-        const targetPlan = allPlans.find((p: any) => p.id === item_id);
-        if (targetPlan) {
-            expectedPrice = targetPlan.price;
-            // Permite pequena margem de erro float (0.10)
-            if (Math.abs(expectedPrice - Number(amount)) < 0.1) isValidPrice = true;
-        } else {
-            console.error(`[asaas-pagar] Plano ${item_id} não encontrado no banco.`);
-        }
-    } else if (item_type === "credits") {
-        // Para créditos, o item_id é a quantidade
-        const quantity = Number(item_id);
-        // O preço do crédito depende do plano ATUAL do usuário
-        const userPlanId = userData.plan || 'free';
-        const userPlanConfig = allPlans.find((p: any) => p.id === userPlanId) || allPlans.find((p: any) => p.id === 'free');
-        
-        if (userPlanConfig && quantity > 0) {
-            const unitPrice = userPlanConfig.expressCreditPrice || 1.0;
-            expectedPrice = quantity * unitPrice;
-            if (Math.abs(expectedPrice - Number(amount)) < 0.1) isValidPrice = true;
-        }
-    }
-
-    if (!isValidPrice) {
-        console.error(`[asaas-pagar] ALERTA DE SEGURANÇA: Preço inválido. Esperado: ${expectedPrice}, Recebido: ${amount}. Bloqueando.`);
-        return new Response(JSON.stringify({ 
-            error: "Erro de validação de valor. O preço enviado não corresponde ao preço atual do item. Atualize a página e tente novamente." 
-        }), { status: 400, headers: corsHeaders });
-    }
-    // === FIM VALIDAÇÃO ===
 
     const userEmail = userData.email;
     const userFullName = userData.full_name || userEmail.split("@")[0];
@@ -329,12 +276,7 @@ serve(async (req) => {
         }
     }
 
-    // SANITIZATION FOR LOG
-    const safePayload = { ...paymentPayload };
-    if (safePayload.creditCard) safePayload.creditCard = { ...safePayload.creditCard, number: "***", ccv: "***" };
-    if (safePayload.creditCardToken) safePayload.creditCardToken = "***";
-
-    console.log(`[asaas-pagar] Enviando payload para Asaas (${isSubscription ? 'ASSINATURA' : 'PAGAMENTO ÚNICO'}):`, JSON.stringify(safePayload));
+    console.log(`[asaas-pagar] Enviando payload para Asaas (${isSubscription ? 'ASSINATURA' : 'PAGAMENTO ÚNICO'}):`, JSON.stringify(paymentPayload));
     
     // Escolhe endpoint correto
     const endpoint = isSubscription ? getUrl("/subscriptions") : getUrl("/payments");
