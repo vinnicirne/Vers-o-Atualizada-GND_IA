@@ -85,7 +85,8 @@ export const generateWordPressPluginZip = async (userGeminiKey?: string) => {
     const jsFolder = assetsFolder?.folder("js");
 
     // Injeção de credenciais no PHP
-    const GEMINI_KEY = userGeminiKey || process.env.API_KEY || '';
+    // SEGURANÇA: NUNCA usar process.env.API_KEY aqui, pois vazaria a chave mestra do sistema para o plugin do usuário.
+    const GEMINI_KEY = userGeminiKey || '';
 
     // Fragmentação das chaves para bypass de WAF
     const phpSupabaseKey = splitForPhp(supabaseAnonKey);
@@ -95,8 +96,8 @@ export const generateWordPressPluginZip = async (userGeminiKey?: string) => {
     const mainFileContent = `<?php
 /*
 Plugin Name: GDN_IA - Poster Pro
-Description: Sistema de geração de notícias com IA. Versão 1.5.3 com correções de autenticação e compatibilidade SSL.
-Version: 1.5.3
+Description: Sistema de geração de notícias com IA. Versão 1.5.4 com correções de autenticação e compatibilidade SSL.
+Version: 1.5.4
 Author: GDN_IA Team
 */
 
@@ -266,7 +267,7 @@ class NoticiasPosterGDN {
         if (!$token) wp_send_json_error('Sessão expirada. Faça login novamente.');
         
         if (empty($this->gemini_key) || strlen($this->gemini_key) < 10) {
-            wp_send_json_error('Erro Crítico: Chave de API do Google Gemini não configurada.');
+            wp_send_json_error('Erro Crítico: Chave de API do Google Gemini não configurada neste plugin. Gere uma nova chave no painel do GDN_IA.');
         }
 
         $credit_data = $this->supabase_request("/rest/v1/user_credits?user_id=eq.{$uid}&select=credits", 'GET', null, $token);
@@ -409,7 +410,7 @@ function gdn_get_user_posts() {
 <div class="wrap gdn-wrap">
     <div class="gdn-header">
         <h1><span class="dashicons dashicons-superhero"></span> GDN_IA Poster Pro</h1>
-        <p>Sistema v1.5.3</p>
+        <p>Sistema v1.5.4</p>
     </div>
     
     <?php
@@ -599,7 +600,7 @@ jQuery(document).ready(function($) {
     const url = window.URL.createObjectURL(content);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', "gdn-poster-pro-v1.5.3.zip");
+    link.setAttribute('download', "gdn-poster-pro-v1.5.4.zip");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
