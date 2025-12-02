@@ -1,4 +1,5 @@
 
+
 # 🏗️ Documentação Técnica do Sistema - GDN_IA
 
 ## 1. Visão Geral
@@ -12,10 +13,10 @@ O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligênci
 ### Tecnologias Utilizadas
 *   **Frontend:** React 18, Vite, TypeScript.
 *   **Estilização:** Tailwind CSS, FontAwesome.
-*   **Backend / BaaS:** Supabase (PostgreSQL, Auth, Realtime, Edge Functions).
+*   **Backend / BaaS:** Supabase (PostgreSQL, Auth, Realtime).
 *   **Inteligência Artificial:**
-    *   Google Gemini API (`gemini-2.5-flash`, `gemini-2.5-flash-preview-tts`) para texto e áudio, **via Edge Functions**.
-    *   Pollinations.ai para geração de imagens, **via Edge Functions**.
+    *   Google Gemini API (`gemini-2.5-flash`, `gemini-2.5-flash-preview-tts`) para texto e áudio.
+    *   Pollinations.ai para geração de imagens.
 *   **Editor Visual:** GrapesJS (para Landing Pages e Sites).
 *   **SEO Engine:** Algoritmos proprietários para análise léxica e geração de metadados.
 
@@ -59,19 +60,9 @@ O sistema utiliza o **Supabase Auth**.
 *   **Sessão:** Persistida e monitorada via `UserContext.tsx`.
 *   **Sincronização:** Ao logar, os créditos do banco (`user_credits`) substituem os créditos do localStorage.
 
-### Segurança de Domínios (`services/adminService.ts`, `supabase/functions/check-domain-access/`)
-*   **Blacklist Interna (Frontend):** Bloqueia domínios temporários (`teste.com`, `tempmail.com`) para feedback imediato.
-*   **Validação Híbrida (Backend-driven):**
-    *   Configurada via painel Admin (`SecurityManager.tsx`).
-    *   A lógica de validação `isDomainAllowed` (Client-side) foi refatorada para chamar uma **Edge Function (`check-domain-access`)**.
-    *   A Edge Function, no servidor, verifica se o domínio está na "Allowlist" (`allowed_domains` no DB) ou realiza uma validação DNS real (consultando registros MX), garantindo a segurança e impedindo a burla da validação.
-
-### Criptografia de Credenciais (WordPress)
-*   **`applicationPassword`:** Credenciais do WordPress são agora **criptografadas** usando AES-GCM (Web Crypto API) e uma chave secreta (`WORDPRESS_ENCRYPTION_KEY`) armazenada como variável de ambiente no Supabase.
-*   **Edge Functions Envolvidas:**
-    *   `wp-credentials-proxy`: Criptografa a senha antes de salvar em `user_integrations`.
-    *   `wp-post-proxy`: Descriptografa a senha no momento do uso para autenticar com o WordPress.
-*   **Armazenamento:** A senha criptografada é guardada na tabela `user_integrations` (campo `config_data` JSONB).
+### Segurança de Domínios (`services/adminService.ts`)
+*   **Blacklist Interna:** Bloqueia domínios temporários (`teste.com`, `tempmail.com`).
+*   **Validação Híbrida:** Configurada via painel Admin. Pode operar em modo Estrito (Allowlist) ou modo DNS (consulta pública de registros MX).
 
 ---
 
@@ -84,8 +75,6 @@ O sistema utiliza o **Supabase Auth**.
 *   **`transactions`**: Histórico financeiro.
 *   **`affiliate_logs`**: Registro de comissões.
 *   **`system_config`**: Armazena JSONs de configuração (Planos, Pagamentos, IA).
-*   **`user_integrations`**: Configurações sensíveis de integrações (ex: credenciais WordPress criptografadas).
-*   **`allowed_domains`**: Lista de domínios permitidos para cadastro, com RLS para leitura anônima.
 
 ### Planos e Personalização
 Os planos são armazenados em um JSON na tabela `system_config`.
@@ -94,8 +83,8 @@ Os planos são armazenados em um JSON na tabela `system_config`.
 
 ### Sistema de Afiliados
 1.  **Tracking:** Parâmetro URL `?ref=CODE` salvo no `localStorage`.
-2.  **Vínculo:** No cadastro (`signUp`), o código é lido e o ID do afiliado é salvo em `referred_by` via a **Edge Function `register-referral`**.
-3.  **Comissão:** Script `processAffiliateCommission` (no backend) roda após cada transação aprovada, creditando 20% ao afiliado pai.
+2.  **Vínculo:** No cadastro (`signUp`), o código é lido e o ID do afiliado é salvo em `referred_by`.
+3.  **Comissão:** Script `processAffiliateCommission` roda após cada transação aprovada, creditando 20% ao afiliado pai.
 
 ---
 
@@ -106,7 +95,7 @@ Logs centralizados operando em modo *Fire-and-Forget* para performance. Registra
 
 ### `services/geminiService.ts`
 *   **System Prompt:** Instruções atualizadas para forçar a IA a colocar a palavra-chave no primeiro parágrafo (crucial para o Score 100 de SEO).
-*   **Grounding:** Integração com Google Search para notícias recentes **via Edge Function**.
+*   **Grounding:** Integração com Google Search para notícias recentes.
 
 ---
 
@@ -118,7 +107,6 @@ O sistema possui integração nativa com automações externas (Make/N8N) via **
 *   **Configuração:** O usuário insere a URL do Webhook no modal de Integrações.
 *   **Persistência:** A URL é salva em `user_memory` (Chave: `n8n_config`) e sincronizada entre dispositivos.
 *   **Disparo:** Pode ser manual (botão no resultado) ou automático (configurável).
-*   **Proxy Seguro:** A chamada `sendToN8nWebhook` para o N8N customizado do usuário é feita diretamente do cliente. Se houver um proxy N8N global (`n8n-proxy` Edge Function), este é usado para chamadas server-to-server.
 
 ### Payload JSON
 O GDN_IA envia o seguinte payload para a URL configurada:
@@ -137,4 +125,4 @@ O GDN_IA envia o seguinte payload para a URL configurada:
 
 ---
 
-*Documentação técnica atualizada para o sistema GDN_IA v1.0.9.*
+*Documentação técnica atualizada para o sistema GDN_IA v1.0.8.*

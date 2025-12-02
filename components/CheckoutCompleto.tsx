@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { supabase, supabaseUrl } from '../services/supabaseClient';
@@ -115,22 +114,11 @@ const PixDisplay = ({ qrCodeBase64, copyPasteCode, onCopy }: { qrCodeBase64: str
 );
 
 // --- Formulário de Inputs (Reutilizado para manter estilo) ---
-const GenericPaymentForm = ({ formData, onChange, gateway }: { formData: any, onChange: (field: string, value: string) => void, gateway: GatewayType }) => {
+const GenericPaymentForm = ({ formData, onChange }: { formData: any, onChange: (field: string, value: string) => void }) => {
     const inputClass = "w-full h-12 bg-gray-900 border border-gray-700 rounded-lg px-4 text-white focus:border-green-500 focus:outline-none text-sm transition-colors";
     
     return (
         <div className="space-y-4 animate-fade-in">
-            {/* Aviso para ASAAS sobre tokenização */}
-            {gateway === 'asaas' && (
-                <div className="bg-yellow-900/20 border border-yellow-500/30 p-3 rounded-lg flex items-start gap-3">
-                    <i className="fas fa-exclamation-triangle text-yellow-400 mt-0.5"></i>
-                    <p className="text-xs text-yellow-200 leading-relaxed font-bold">
-                        Atenção: Os dados do seu cartão serão enviados para o servidor para tokenização.
-                        Recomendamos o uso de um SDK de tokenização no cliente para maior segurança, se disponível para Asaas.
-                    </p>
-                </div>
-            )}
-            
             {/* CPF/CNPJ sempre visível */}
             <div>
                 <label htmlFor="docNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CPF ou CNPJ</label>
@@ -142,26 +130,20 @@ const GenericPaymentForm = ({ formData, onChange, gateway }: { formData: any, on
                     value={formData.docNumber}
                     onChange={(e) => onChange('docNumber', formatCpfCnpj(e.target.value))}
                     maxLength={18}
-                    autoComplete="off"
                 />
             </div>
 
             <div>
                 <label htmlFor="cardNumber" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Número do Cartão</label>
-                <div className="relative">
-                    <input
-                        id="cardNumber"
-                        type="text"
-                        className={`${inputClass} pl-10`}
-                        placeholder="0000 0000 0000 0000"
-                        value={formData.cardNumber}
-                        onChange={(e) => onChange('cardNumber', formatCardNumber(e.target.value))}
-                        maxLength={19}
-                        autoComplete="off"
-                        data-lpignore="true" 
-                    />
-                    <i className="fas fa-lock absolute left-3 top-4 text-green-500/50"></i>
-                </div>
+                <input
+                    id="cardNumber"
+                    type="text"
+                    className={inputClass}
+                    placeholder="0000 0000 0000 0000"
+                    value={formData.cardNumber}
+                    onChange={(e) => onChange('cardNumber', formatCardNumber(e.target.value))}
+                    maxLength={19}
+                />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -175,24 +157,19 @@ const GenericPaymentForm = ({ formData, onChange, gateway }: { formData: any, on
                         value={formData.expirationDate}
                         onChange={(e) => onChange('expirationDate', formatExpiration(e.target.value))}
                         maxLength={5}
-                        autoComplete="off"
                     />
                 </div>
                 <div>
                     <label htmlFor="cvv" className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">CVV</label>
-                    <div className="relative">
-                        <input
-                            id="cvv"
-                            type="password"
-                            className={inputClass}
-                            placeholder="123"
-                            value={formData.cvv}
-                            onChange={(e) => onChange('cvv', e.target.value.replace(/\D/g, '').substring(0, 4))}
-                            maxLength={4}
-                            autoComplete="new-password"
-                            data-lpignore="true"
-                        />
-                    </div>
+                    <input
+                        id="cvv"
+                        type="text"
+                        className={inputClass}
+                        placeholder="123"
+                        value={formData.cvv}
+                        onChange={(e) => onChange('cvv', e.target.value.replace(/\D/g, '').substring(0, 4))}
+                        maxLength={4}
+                    />
                 </div>
             </div>
 
@@ -205,7 +182,6 @@ const GenericPaymentForm = ({ formData, onChange, gateway }: { formData: any, on
                     placeholder="Como impresso no cartão"
                     value={formData.holderName}
                     onChange={(e) => onChange('holderName', e.target.value.toUpperCase())}
-                    autoComplete="off"
                 />
             </div>
 
@@ -221,11 +197,6 @@ const GenericPaymentForm = ({ formData, onChange, gateway }: { formData: any, on
                         <option key={n} value={n}>{n}x de R$ {(formData.amount / n).toFixed(2).replace('.', ',')}</option>
                     ))}
                 </select>
-            </div>
-            
-            <div className="flex items-center justify-center gap-2 mt-2 opacity-60">
-                <i className="fas fa-shield-alt text-green-500"></i>
-                <span className="text-[10px] text-gray-400">Dados criptografados e tokenizados (PCI DSS).</span>
             </div>
         </div>
     );
@@ -632,9 +603,6 @@ export default function CheckoutCompleto({
 
           } else if (activeGateway === 'asaas') {
               // --- ASAAS: CONTINUA ENVIANDO DADOS CRUS (BACKEND TOKENIZA) ---
-              // Em um cenário ideal, o ASAAS também teria tokenização client-side.
-              // Como estamos mantendo compatibilidade com a Edge Function existente, 
-              // garantimos que o HTTPS/TLS e a CSP protegem o trânsito.
               payload = {
                   ...payload,
                   billingType: 'CREDIT_CARD',
@@ -652,8 +620,7 @@ export default function CheckoutCompleto({
                       postalCode: "00000000", // Placeholder
                       addressNumber: "0",     // Placeholder
                       phone: "11999999999"    // Placeholder
-                  },
-                  asaasPublicKey: asaasPublicKey // Passa a chave pública do Asaas para a Edge Function
+                  }
               };
               endpoint = 'asaas-pagar';
           } else {
@@ -733,7 +700,7 @@ export default function CheckoutCompleto({
       <div className="flex justify-between items-center mb-6">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <i className="fas fa-lock text-green-500"></i> Checkout Seguro
+            <i className="fas fa-lock text-green-500"></i> Checkout
           </h3>
           <p className="text-xs text-gray-500">
               Via {activeGateway === 'mercadopago' ? 'Mercado Pago' : 'Asaas Safe'}
@@ -773,8 +740,8 @@ export default function CheckoutCompleto({
 
       {/* RENDER FORMS */}
       {paymentMethod === 'card' ? (
-          <form onSubmit={handleCardSubmit} autoComplete="off">
-            <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} gateway={activeGateway} />
+          <form onSubmit={handleCardSubmit}>
+            <GenericPaymentForm formData={commonFormData} onChange={handleInputChange} />
             <button
               type="submit"
               disabled={isSubmitDisabled}
@@ -807,7 +774,6 @@ export default function CheckoutCompleto({
                             value={commonFormData.docNumber}
                             onChange={(e) => handleInputChange('docNumber', formatCpfCnpj(e.target.value))}
                             maxLength={18}
-                            autoComplete="off"
                           />
                       </div>
 
@@ -837,7 +803,6 @@ export default function CheckoutCompleto({
       )}
       
       <p className="text-[10px] text-gray-600 text-center mt-6">
-          <i className="fas fa-lock mr-1"></i>
           Ambiente seguro 256-bit SSL. {activeGateway === 'asaas' ? 'Processado por Asaas.' : 'Processado por Mercado Pago.'}
       </p>
     </div>

@@ -1,5 +1,4 @@
 
-
 // supabase/functions/asaas-pagar/index.ts
 
 declare const Deno: any;
@@ -157,8 +156,7 @@ serve(async (req) => {
       item_id,
       installments = 1,
       billingType, // 'PIX' ou 'CREDIT_CARD'
-      docNumber, // CPF/CNPJ
-      asaasPublicKey // Adicionado ao payload para tokenização (se o frontend enviar)
+      docNumber // CPF/CNPJ
     } = reqJson;
 
     if (!amount || !item_type || !item_id || !billingType) {
@@ -319,8 +317,6 @@ serve(async (req) => {
         if (creditCardToken) {
             paymentPayload.creditCardToken = creditCardToken;
         } else {
-            // Se não houver token, usa dados do cartão "crus". 
-            // Em um cenário de tokenização client-side, isso não aconteceria.
             paymentPayload.creditCard = creditCard;
             paymentPayload.creditCardHolderInfo = creditCardHolderInfo || {
                 name: userFullName,
@@ -347,14 +343,7 @@ serve(async (req) => {
     // Cria cobrança/assinatura
     const paymentRes = await fetch(endpoint, {
       method: "POST",
-      headers: { 
-          "access_token": asaasKey, 
-          "Content-Type": "application/json",
-          // Se asaasPublicKey foi fornecida pelo frontend, inclua-a nos cabeçalhos
-          // Isso é um placeholder caso o Asaas tenha tokenização client-side que precise da public key
-          // Mas para envio de dados "crus", a access_token (secret) é a que importa
-          ...(asaasPublicKey ? { "X-Asaas-Public-Key": asaasPublicKey } : {})
-      },
+      headers: { "access_token": asaasKey, "Content-Type": "application/json" },
       body: JSON.stringify(paymentPayload),
     });
 

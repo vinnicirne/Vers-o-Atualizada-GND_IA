@@ -54,17 +54,17 @@ O sistema utiliza uma arquitetura moderna **Client-Side / Serverless**, eliminan
 
 *   **Frontend**: React 18, Vite, TypeScript.
 *   **Estilização**: Tailwind CSS.
-*   **Backend as a Service (BaaS)**: Supabase (PostgreSQL, Auth, Realtime, Edge Functions).
+*   **Backend as a Service (BaaS)**: Supabase (PostgreSQL, Auth, Realtime).
 *   **Motor de IA**:
-    *   **Texto/Código**: Google Gemini Pro (`gemini-2.5-flash`) via Edge Functions.
-    *   **Imagens**: Pollinations.ai (Stable Diffusion) via Edge Functions.
+    *   **Texto/Código**: Google Gemini Pro (`gemini-2.5-flash`).
+    *   **Imagens**: Pollinations.ai (Stable Diffusion).
 
 ### 2. Especificações da API de Integração
 
-A integração com sistemas externos (como o Plugin WordPress) é feita através das **Edge Functions do Supabase**, que atuam como proxies seguros para APIs de terceiros.
+A integração com sistemas externos (como o Plugin WordPress) é feita diretamente através da **API REST do Supabase** e da **Google Gemini API**.
 
 #### Autenticação
-Todos os requests para as Edge Functions e o banco de dados exigem autenticação via JWT.
+Todos os requests para o banco de dados exigem autenticação via JWT.
 
 **Endpoint Base**: `https://bckujotuhhkagcqfiyye.supabase.co`
 
@@ -72,7 +72,7 @@ Todos os requests para as Edge Functions e o banco de dados exigem autenticaçã
 | :--- | :--- | :--- | :--- |
 | **Login** | POST | `/auth/v1/token?grant_type=password` | Obtém `access_token` e `refresh_token`. |
 | **Créditos** | GET | `/rest/v1/user_credits` | Consulta saldo do usuário. |
-| **Gerar IA** | POST | `/functions/v1/wp-gemini-proxy` | Gera conteúdo de IA de forma segura via proxy. |
+| **Consumo** | PATCH | `/rest/v1/user_credits` | Deduz créditos após uso. |
 
 #### Exemplo de Fluxo de Autenticação (Login)
 
@@ -141,25 +141,16 @@ Gerenciamento de chaves para desenvolvedores.
 | `key_prefix` | text | Prefixo visual para identificação. |
 | `user_id` | uuid | Dono da chave. |
 
-#### Tabela `user_integrations` (NOVA)
-Armazena configurações sensíveis de integrações, como credenciais do WordPress (criptografadas).
-| Coluna | Tipo | Descrição |
-| :--- | :--- | :--- |
-| `id` | uuid (PK) | ID da integração. |
-| `user_id` | uuid (FK) | Usuário proprietário. |
-| `integration_type` | text | Tipo (ex: 'wordpress'). |
-| `config_data` | jsonb | Dados da configuração (ex: URL, user, senha criptografada). |
-
-
 ### 4. Integração WordPress (Plugin)
 
-O plugin oficial (`gdn-poster-pro`) agora utiliza **Edge Functions do Supabase** para todas as operações sensíveis, como autenticação e geração de conteúdo de IA.
+O plugin oficial (`gdn-poster-pro`) atua como um cliente autônomo.
 
-**Fluxo de Funcionamento (Seguro):**
-1.  **Configuração:** O usuário configura a **URL do Supabase**, a **Supabase Anon Key** e a **URL do Proxy Gemini (Edge Function)** no painel de admin do WordPress.
-2.  **Autenticação**: O plugin envia e-mail/senha para o Supabase Auth (via a Anon Key).
-3.  **Verificação & Geração**: Se houver saldo (verificado pela Edge Function), o plugin chama a **Edge Function `wp-gemini-proxy`** (que usa a `GEMINI_API_KEY` do servidor, não exposta no plugin) enviando o prompt. A dedução de créditos também é feita na Edge Function.
-4.  **Publicação**: O texto retornado pela Edge Function é salvo como Rascunho no WordPress.
+**Fluxo de Funcionamento:**
+1.  **Autenticação**: O plugin envia e-mail/senha para o Supabase Auth.
+2.  **Verificação**: Consulta a tabela `user_credits` usando o token recebido.
+3.  **Geração**: Se houver saldo, o plugin chama diretamente a API do **Google Gemini** (`generativelanguage.googleapis.com`) enviando o prompt otimizado.
+4.  **Publicação**: O texto retornado é salvo como Rascunho no WordPress.
+5.  **Cobrança**: O plugin envia um comando `PATCH` para o Supabase descontando 1 crédito.
 
 ### 5. Tratamento de Erros e Suporte
 

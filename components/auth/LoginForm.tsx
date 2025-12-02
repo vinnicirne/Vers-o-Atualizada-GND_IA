@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '../../services/supabaseClient';
 import { isDomainAllowed } from '../../services/adminService'; 
-import { api } from '../../services/api'; 
+import { api } from '../../services/api'; // Import api proxy for updates
 import type { User } from '../../types';
 
 const performLogin = async (email: string, password: string): Promise<User> => {
@@ -21,6 +21,7 @@ const performLogin = async (email: string, password: string): Promise<User> => {
 
     if (!authData.user) throw new Error('Usuário não encontrado após a autenticação.');
 
+    // REGISTRAR ÚLTIMO LOGIN
     try {
         await supabase
             .from('app_users')
@@ -75,34 +76,44 @@ const performLogin = async (email: string, password: string): Promise<User> => {
     return fullUser;
 };
 
-// Helper function to link user to affiliate SECURELY via Edge Function
+// Helper function to link user to affiliate with retries
 const linkUserToAffiliate = async (newUserId: string, referralCode: string) => {
     console.log(`Tentando vincular novo usuário ${newUserId} ao código ${referralCode}...`);
     
     try {
+        // 1. Encontrar o ID do afiliado dono do código
+        const { data: referrers } = await api.select('app_users', { affiliate_code: referralCode });
+        
+        if (!referrers || referrers.length === 0) {
+            console.warn(`Código de afiliado inválido ou não encontrado: ${referralCode}`);
+            return;
+        }
+        
+        const referrerId = referrers[0].id;
+        
+        if (referrerId === newUserId) {
+            console.warn("Usuário tentou se auto-indicar. Vínculo ignorado.");
+            return;
+        }
+
+        // 2. Tentar atualizar o usuário com retries (backoff exponencial)
         let attempts = 0;
-        const maxAttempts = 3;
+        const maxAttempts = 5;
         
         while (attempts < maxAttempts) {
-            const { data, error } = await supabase.functions.invoke('register-referral', {
-                body: { userId: newUserId, referralCode }
-            });
+            const { data, error } = await api.update('app_users', { referred_by: referrerId }, { id: newUserId });
             
-            if (!error && data?.success) {
-                console.log(`Sucesso! Usuário vinculado via servidor.`);
+            if (!error && data && data.length > 0) {
+                console.log(`Sucesso! Usuário vinculado ao afiliado ${referrerId}`);
                 return;
             }
             
-            if (data?.error === 'SELF_REFERRAL') {
-                console.warn("Auto-indicação detectada e bloqueada pelo servidor.");
-                return;
-            }
-
             attempts++;
             const delay = 1500 * attempts; 
-            console.log(`Tentativa ${attempts} falhou. Retentando em ${delay}ms...`);
+            console.log(`Tentativa ${attempts} falhou (User not ready?). Retentando em ${delay}ms...`);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
+        
         console.error("Falha ao vincular afiliado após várias tentativas.");
         
     } catch (e) {
@@ -110,18 +121,20 @@ const linkUserToAffiliate = async (newUserId: string, referralCode: string) => {
     }
 };
 
+// Helper de máscara de telefone
 const maskPhone = (value: string) => {
   return value
-    .replace(/\D/g, '') 
-    .replace(/^(\d{2})(\d)/, '($1) $2') 
-    .replace(/(\d)(\d{4})$/, '$1-$2') 
-    .substring(0, 15); 
+    .replace(/\D/g, '') // Remove tudo o que não é dígito
+    .replace(/^(\d{2})(\d)/, '($1) $2') // Coloca parênteses em volta dos dois primeiros dígitos
+    .replace(/(\d)(\d{4})$/, '$1-$2') // Coloca hífen entre o quarto e o quinto dígitos
+    .substring(0, 15); // Limita tamanho
 };
 
 export function LoginForm() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false);
   
+  // Form Fields
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -180,8 +193,8 @@ export function LoginForm() {
             password,
             options: {
                 data: {
-                    full_name: fullName, 
-                    phone: phone,        
+                    full_name: fullName, // Envia nome para o metadata
+                    phone: phone,        // Envia telefone para o metadata
                     referral_code: referralCode 
                 }
             }
@@ -191,7 +204,6 @@ export function LoginForm() {
             setMessage({ type: 'error', text: error.message });
         } else {
             if (signUpData.user && referralCode) {
-                // Call secure edge function
                 linkUserToAffiliate(signUpData.user.id, referralCode);
             }
 
@@ -263,6 +275,7 @@ export function LoginForm() {
         <div className="px-8 pb-8 pt-0">
           <form onSubmit={handleAuth} className="space-y-5">
             
+            {/* Campos Adicionais de Cadastro */}
             {isSignUp && (
                 <>
                     <div>
