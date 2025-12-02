@@ -1,3 +1,4 @@
+
 interface ImportMetaEnv {
   readonly VITE_SUPABASE_URL: string;
   readonly VITE_SUPABASE_ANON_KEY: string;
@@ -14,8 +15,8 @@ declare namespace NodeJS {
     VITE_SUPABASE_ANON_KEY: string;
     GEMINI_API_KEY: string;
     API_KEY: string;
-    MP_ACCESS_TOKEN: string; // Adicionado para tipagem
-    ASAAS_KEY: string; // Adicionado para tipagem
-    ASAAS_API_BASE_URL: string; // Nova variável para a URL base da API do Asaas
+    MP_ACCESS_TOKEN: string; // Backend/Edge Function only
+    ASAAS_KEY: string; // Backend/Edge Function only
+    ASAAS_API_BASE_URL: string; // Backend/Edge Function only
   }
 }
