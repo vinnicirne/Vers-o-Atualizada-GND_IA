@@ -2,8 +2,8 @@
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// Usando esm.sh que é mais estável para o Deno Edge Runtime que npm: em alguns casos
-import { GoogleGenAI } from "https://esm.sh/@google/genai@0.1.1";
+// CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
+import { GoogleGenAI } from "npm:@google/genai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -123,8 +123,6 @@ serve(async (req) => {
     }
 
     // 4. Initialize Gemini (GoogleGenAI SDK)
-    // Note: The SDK constructor signature might vary slightly between versions, 
-    // but { apiKey } is standard for @google/genai
     const ai = new GoogleGenAI({ apiKey });
     
     // Use the correct model
