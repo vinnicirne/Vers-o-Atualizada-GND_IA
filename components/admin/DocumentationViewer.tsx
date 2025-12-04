@@ -191,6 +191,22 @@ GRANT ALL ON public.notifications TO service_role;
 -- 4. DIAGNÓSTICO: CHECAR LOGS DE VISITANTES
 -- Selecione a linha abaixo e clique em RUN para ver se os logs estão salvando.
 -- SELECT count(*) FROM public.logs WHERE usuario_id = '00000000-0000-0000-0000-000000000000';
+
+-- 5. CORREÇÃO DE ÚLTIMO LOGIN
+-- Permite que o usuário atualize seu próprio registro (necessário para marcar last_login)
+ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS last_login timestamptz;
+
+ALTER TABLE public.app_users ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.app_users;
+
+CREATE POLICY "Users can update own profile" ON public.app_users
+FOR UPDATE
+USING (auth.uid() = id)
+WITH CHECK (auth.uid() = id);
+
+GRANT UPDATE ON public.app_users TO authenticated;
+GRANT UPDATE ON public.app_users TO service_role;
 `;
 
   return (
