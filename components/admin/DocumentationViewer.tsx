@@ -232,6 +232,10 @@ FOR UPDATE USING (
   EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
 );
 
+-- 4. Permissões de tabela
+GRANT ALL ON public.notifications TO authenticated;
+GRANT ALL ON public.notifications TO service_role;
+
 
 -- === ATUALIZAÇÃO CADASTRO (NOME E TELEFONE) ===
 
