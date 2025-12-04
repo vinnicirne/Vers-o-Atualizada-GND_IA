@@ -1,97 +1,194 @@
-// ... existing imports ...
+import { api } from './api';
+import { supabase } from './supabaseClient';
+import { GUEST_ID } from '../constants';
 
-// ... inside DocumentationViewer component ...
-  const schemaSql = `
--- =========================================================
--- 🚨 PACOTE DE CORREÇÃO COMPLETO (EXECUTAR TUDO)
--- =========================================================
+export interface DashboardMetrics {
+  totalUsers: number;
+  activeUsers: number;
+  creditsInCirculation: number;
+  totalRevenue: number;
+  totalGenerations: number;
+  guestGenerations: number;
+  systemErrors: number;
+  totalCommissions: number;
+}
 
--- 1. CORREÇÃO DE LOGS DE VISITANTES (Dashboard)
--- Remove restrição que impede salvar logs de usuários não cadastrados (GUEST_ID)
-ALTER TABLE public.logs DROP CONSTRAINT IF EXISTS logs_usuario_id_fkey;
+export interface DailyUsageDataPoint {
+    report_date: string;
+    news_count: number;
+    new_users_count: number;
+}
 
-ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
+// Helper to format date YYYY-MM-DD
+const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
--- Remove políticas antigas para limpar
-DROP POLICY IF EXISTS "Anon can insert logs" ON public.logs;
-DROP POLICY IF EXISTS "Admins can view all logs" ON public.logs;
-DROP POLICY IF EXISTS "Users can view own logs" ON public.logs;
+export const getDashboardMetrics = async (): Promise<DashboardMetrics> => {
+  try {
+    // 1. Total Users (Count Exact)
+    const { count: totalUsers } = await supabase
+        .from('app_users')
+        .select('*', { count: 'exact', head: true });
 
--- Permite que qualquer um (inclusive visitantes) grave logs
-CREATE POLICY "Anon can insert logs" ON public.logs 
-FOR INSERT 
-TO anon, authenticated 
-WITH CHECK (true);
+    // 2. Active Users (Last 7 Days) - Fetch IDs only for performance
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    // Using supabase direct client for complex filtering logic not supported by simple proxy
+    const { data: activeLogs } = await supabase
+        .from('logs')
+        .select('usuario_id')
+        .gte('data', sevenDaysAgo.toISOString());
+    
+    let activeUsers = 0;
+    if (activeLogs) {
+        const uniqueUsers = new Set(activeLogs.map((log: any) => log.usuario_id).filter((id: string) => id && id !== GUEST_ID));
+        activeUsers = uniqueUsers.size;
+    }
 
--- Permite que Admins vejam todos os logs
-CREATE POLICY "Admins can view all logs" ON public.logs 
-FOR SELECT 
-USING (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
+    // 3. Credits (Sum)
+    const { data: creditsData } = await api.select('user_credits');
+    let creditsInCirculation = 0;
+    if (creditsData) {
+        creditsInCirculation = creditsData
+            .filter((c: any) => c.credits !== -1)
+            .reduce((sum: number, c: any) => sum + c.credits, 0);
+    }
 
--- Permissões de tabela
-GRANT INSERT, SELECT ON public.logs TO anon, authenticated;
-GRANT ALL ON public.logs TO service_role;
+    // 4. Revenue (Sum)
+    const { data: transactionsData } = await api.select('transactions', { status: 'approved' });
+    let totalRevenue = 0;
+    if (transactionsData) {
+        totalRevenue = transactionsData.reduce((sum: number, t: any) => sum + t.valor, 0);
+    }
 
+    // 5. Guest Generations (Count Exact with Filter)
+    // Counts logs where user is GUEST and action starts with 'generated_content_'
+    // Using simple ILIKE search on action column
+    const { count: guestGenerations } = await supabase
+        .from('logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('usuario_id', GUEST_ID)
+        .ilike('acao', 'generated_content_%');
 
--- 2. CORREÇÃO DE CRÉDITOS (RPC)
-CREATE OR REPLACE FUNCTION public.deduct_credits(cost int)
-RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-AS $$
-DECLARE
-  current_credits int;
-BEGIN
-  SELECT credits INTO current_credits FROM public.user_credits WHERE user_id = auth.uid();
-  
-  IF current_credits IS NULL THEN
-    INSERT INTO public.user_credits (user_id, credits) VALUES (auth.uid(), 3);
-    current_credits := 3;
-  END IF;
+    // 6. Total Generations (News Count + Guest Count)
+    const { count: userGenerations } = await supabase
+        .from('news')
+        .select('*', { count: 'exact', head: true });
+        
+    const totalGenerations = (userGenerations || 0) + (guestGenerations || 0);
 
-  IF current_credits = -1 THEN
-    RETURN;
-  END IF;
+    // 7. System Errors (Last 24h)
+    // Counting logs where JSON details contains "level": "error" is hard without proper indexing/parsing
+    // We will approximate by fetching recent logs and filtering in memory or checking action names if applicable
+    const oneDayAgo = new Date();
+    oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+    
+    const { data: recentLogs } = await supabase
+        .from('logs')
+        .select('detalhes')
+        .gte('data', oneDayAgo.toISOString());
+        
+    let systemErrors = 0;
+    if (recentLogs) {
+        systemErrors = recentLogs.filter((log: any) => {
+            const det = log.detalhes;
+            // Check for explicit level or common error keys
+            return det && (det.level === 'error' || det.error); 
+        }).length;
+    }
 
-  IF current_credits < cost THEN
-    RAISE EXCEPTION 'Saldo insuficiente';
-  END IF;
+    // 8. Total Commissions Paid
+    const { data: affiliateLogs } = await api.select('affiliate_logs');
+    let totalCommissions = 0;
+    if (affiliateLogs) {
+        totalCommissions = affiliateLogs.reduce((sum: number, log: any) => sum + Number(log.amount), 0);
+    }
 
-  UPDATE public.user_credits
-  SET credits = credits - cost
-  WHERE user_id = auth.uid();
-END;
-$$;
+    return {
+      totalUsers: totalUsers || 0,
+      activeUsers,
+      creditsInCirculation,
+      totalRevenue,
+      totalGenerations,
+      guestGenerations: guestGenerations || 0,
+      systemErrors,
+      totalCommissions
+    };
+  } catch (error) {
+    console.error('Erro ao buscar métricas (Otimizado):', error);
+    // Return zeros on error to avoid crashing UI
+    return {
+      totalUsers: 0,
+      activeUsers: 0,
+      creditsInCirculation: 0,
+      totalRevenue: 0,
+      totalGenerations: 0,
+      guestGenerations: 0,
+      systemErrors: 0,
+      totalCommissions: 0
+    };
+  }
+};
 
-GRANT EXECUTE ON FUNCTION public.deduct_credits TO authenticated;
-GRANT EXECUTE ON FUNCTION public.deduct_credits TO service_role;
+export const getDailyUsageChartData = async (): Promise<DailyUsageDataPoint[]> => {
+    try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+        // Fetch needed data (optimized selection)
+        const { data: newsData } = await supabase
+            .from('news')
+            .select('criado_em')
+            .gte('criado_em', sevenDaysAgo.toISOString());
+            
+        const { data: usersData } = await supabase
+            .from('app_users')
+            .select('created_at')
+            .gte('created_at', sevenDaysAgo.toISOString());
 
--- 3. CORREÇÃO DE NOTIFICAÇÕES
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
+        // Initialize map for last 7 days
+        const dailyMap = new Map<string, { news: number, users: number }>();
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            dailyMap.set(formatDate(d), { news: 0, users: 0 });
+        }
 
-CREATE POLICY "Admins can insert notifications" ON public.notifications FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
+        // Process News
+        if (newsData) {
+            newsData.forEach((n: any) => {
+                const dateKey = formatDate(new Date(n.criado_em));
+                if (dailyMap.has(dateKey)) {
+                    dailyMap.get(dateKey)!.news++;
+                }
+            });
+        }
 
-CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (
-  auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
+        // Process Users
+        if (usersData) {
+            usersData.forEach((u: any) => {
+                const dateKey = formatDate(new Date(u.created_at));
+                if (dailyMap.has(dateKey)) {
+                    dailyMap.get(dateKey)!.users++;
+                }
+            });
+        }
 
-CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (
-  auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
+        // Convert map to array
+        const chartData: DailyUsageDataPoint[] = [];
+        dailyMap.forEach((val, key) => {
+            chartData.push({
+                report_date: key,
+                news_count: val.news,
+                new_users_count: val.users
+            });
+        });
 
-GRANT ALL ON public.notifications TO authenticated;
-GRANT ALL ON public.notifications TO service_role;
+        // Sort by date ascending
+        return chartData.sort((a, b) => a.report_date.localeCompare(b.report_date));
 
--- 4. DIAGNÓSTICO: CHECAR LOGS DE VISITANTES
--- Selecione a linha abaixo e clique em RUN para ver se os logs estão salvando.
--- SELECT count(*) FROM public.logs WHERE usuario_id = '00000000-0000-0000-0000-000000000000';
-`;
-// ... rest of component
+    } catch (error) {
+        console.error('Erro ao calcular gráfico:', error);
+        return [];
+    }
+};
