@@ -164,5 +164,21 @@ export const api = {
         return { data: null, error: errorMsg };
         }
     });
+  },
+
+  // Executa função RPC (Postgres Function)
+  rpc: async (functionName: string, params: Record<string, any> = {}) => {
+    return retryOperation(async () => {
+        try {
+            const { data, error } = await supabase.rpc(functionName, params);
+            if (error) {
+                const errorMsg = error.message || JSON.stringify(error);
+                return { data: null, error: errorMsg };
+            }
+            return { data, error: null };
+        } catch (err: any) {
+            return { data: null, error: err.message || String(err) };
+        }
+    });
   }
 };

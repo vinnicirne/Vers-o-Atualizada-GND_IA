@@ -100,12 +100,113 @@ export function DocumentationViewer() {
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`;
 
   const schemaSql = `
+-- === 🛠️ CORREÇÃO DE CRÉDITOS (RPC & RLS) ===
+-- Execute este bloco para corrigir o consumo de créditos e evitar erros de política existente.
+
+-- 1. Cria a função segura para descontar créditos
+CREATE OR REPLACE FUNCTION public.deduct_credits(cost int)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  current_credits int;
+BEGIN
+  -- Verifica saldo atual do usuário
+  SELECT credits INTO current_credits FROM public.user_credits WHERE user_id = auth.uid();
+  
+  -- Se o saldo não existir, inicializa com 3 (fallback)
+  IF current_credits IS NULL THEN
+    INSERT INTO public.user_credits (user_id, credits) VALUES (auth.uid(), 3);
+    current_credits := 3;
+  END IF;
+
+  -- Se for admin (-1), não desconta
+  IF current_credits = -1 THEN
+    RETURN;
+  END IF;
+
+  -- Verifica se tem saldo suficiente
+  IF current_credits < cost THEN
+    RAISE EXCEPTION 'Saldo insuficiente';
+  END IF;
+
+  -- Atualiza o saldo
+  UPDATE public.user_credits
+  SET credits = credits - cost
+  WHERE user_id = auth.uid();
+END;
+$$;
+
+-- Concede permissão de execução
+GRANT EXECUTE ON FUNCTION public.deduct_credits TO authenticated;
+GRANT EXECUTE ON FUNCTION public.deduct_credits TO service_role;
+
+-- 2. Correção de Políticas da Tabela (Idempotente)
+DO $$
+BEGIN
+    -- Garante que a tabela existe
+    CREATE TABLE IF NOT EXISTS public.user_credits (
+        user_id uuid REFERENCES auth.users NOT NULL PRIMARY KEY,
+        credits integer DEFAULT 3
+    );
+
+    -- Habilita RLS
+    ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
+
+    -- Remove política antiga se existir para evitar erro "already exists"
+    DROP POLICY IF EXISTS "Users can view own credits" ON public.user_credits;
+    
+    -- Recria a política de leitura
+    CREATE POLICY "Users can view own credits" ON public.user_credits
+    FOR SELECT USING (auth.uid() = user_id);
+
+    -- Garante permissões básicas
+    GRANT SELECT ON public.user_credits TO authenticated;
+END $$;
+
+
+-- === 🛠️ CORREÇÃO DE LOGS DE VISITANTES (Dashboard) ===
+-- Execute para permitir que o sistema registre ações de usuários não logados.
+
+-- 1. Remove a restrição que obriga o usuario_id a ser um usuário real
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'logs_usuario_id_fkey') THEN
+    ALTER TABLE public.logs DROP CONSTRAINT logs_usuario_id_fkey;
+  END IF;
+END $$;
+
+-- 2. Permite que visitantes (anon) insiram logs
+ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
+
+-- Remove política antiga se existir para evitar conflito
+DROP POLICY IF EXISTS "Anon can insert logs" ON public.logs;
+DROP POLICY IF EXISTS "Admins can view all logs" ON public.logs;
+
+-- Cria política permitindo inserção pública (necessário para logs de visitantes)
+CREATE POLICY "Anon can insert logs" ON public.logs 
+FOR INSERT 
+TO anon, authenticated 
+WITH CHECK (true);
+
+-- 3. Garante que admins vejam todos os logs
+CREATE POLICY "Admins can view all logs" ON public.logs 
+FOR SELECT 
+USING (
+  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+);
+
+-- Concede permissão de nível de tabela
+GRANT INSERT ON public.logs TO anon, authenticated;
+GRANT SELECT ON public.logs TO anon, authenticated;
+
+
 -- === 🚨 CORREÇÃO URGENTE: PERMISSÃO NOTIFICAÇÕES (RLS) ===
 -- Execute este bloco se estiver recebendo erro ao enviar Push Notifications.
 
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
--- Remove políticas antigas e restritivas
 DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
@@ -138,7 +239,6 @@ FOR UPDATE USING (
 ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS phone text;
 
 -- 2. ATUALIZAR TRIGGER DE NOVO USUÁRIO
--- Esta função pega os metadados (nome/telefone) enviados pelo formulário de cadastro
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
@@ -146,8 +246,8 @@ BEGIN
   VALUES (
     new.id,
     new.email,
-    new.raw_user_meta_data->>'full_name', -- Pega o nome do metadata
-    new.raw_user_meta_data->>'phone',     -- Pega o telefone do metadata
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'phone',    
     'user',
     3, -- Créditos iniciais (Free)
     'active',
@@ -161,67 +261,6 @@ BEGIN
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
-
--- === ATUALIZAÇÕES ANTERIORES (Para integridade) ===
-
--- NOTIFICAÇÕES E REALTIME
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id uuid REFERENCES public.app_users(id) NOT NULL,
-    title text NOT NULL,
-    message text NOT NULL,
-    type text DEFAULT 'info',
-    is_read boolean DEFAULT false,
-    action_link text,
-    created_at timestamp with time zone DEFAULT now()
-);
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-GRANT ALL ON public.notifications TO authenticated;
-GRANT ALL ON public.notifications TO service_role;
-
-begin;
-  drop publication if exists supabase_realtime;
-  create publication supabase_realtime;
-commit;
-alter publication supabase_realtime add table public.notifications;
-
--- TABELA DE FEEDBACKS
-CREATE TABLE IF NOT EXISTS public.system_feedbacks (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id uuid REFERENCES public.app_users(id),
-    content text NOT NULL,
-    rating int DEFAULT 5,
-    status text DEFAULT 'pending',
-    created_at timestamp with time zone DEFAULT now()
-);
-ALTER TABLE public.system_feedbacks ENABLE ROW LEVEL SECURITY;
-GRANT ALL ON public.system_feedbacks TO authenticated;
-GRANT ALL ON public.system_feedbacks TO service_role;
-GRANT SELECT ON public.system_feedbacks TO anon;
-
-DROP POLICY IF EXISTS "Anyone can read approved feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Anyone can read approved feedbacks" ON public.system_feedbacks FOR SELECT USING (status = 'approved');
-
-DROP POLICY IF EXISTS "Users can create feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Users can create feedbacks" ON public.system_feedbacks FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Admins manage all feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Admins manage all feedbacks" ON public.system_feedbacks FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
-
--- CAMPOS EXTRAS
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS affiliate_code text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS referred_by uuid REFERENCES public.app_users(id);
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS affiliate_balance numeric DEFAULT 0;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS asaas_customer_id text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS subscription_id text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS subscription_status text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS mercadopago_customer_id text;
-
-ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS external_id text;
-ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
 `;
 
   return (
@@ -307,7 +346,7 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Para corrigir o erro de envio de Notificações, copie o SQL abaixo e execute no editor SQL do Supabase.
+                    Copie e execute o SQL abaixo para aplicar as correções no banco de dados.
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>

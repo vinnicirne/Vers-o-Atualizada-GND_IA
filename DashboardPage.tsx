@@ -258,11 +258,26 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           setGuestCredits(updatedCredits);
           localStorage.setItem('gdn_guest_credits', updatedCredits.toString());
       } else if (user && activeCredits !== -1) {
-          updatedCredits = activeCredits - totalCost;
-          const { error: creditError } = await api.update('user_credits', { credits: updatedCredits }, { user_id: user.id });
-          if (creditError) {
-              console.error('Erro API Proxy ao atualizar créditos:', creditError);
+          // --- CREDIT DEDUCTION (RPC with Fallback) ---
+          
+          // Tenta usar função RPC segura primeiro
+          const { error: rpcError } = await api.rpc('deduct_credits', { cost: totalCost });
+          
+          if (rpcError) {
+              console.warn("RPC deduct_credits falhou, tentando update direto:", rpcError);
+              
+              // Fallback para update direto (Se RLS permitir)
+              updatedCredits = activeCredits - totalCost;
+              const { error: updateError } = await api.update('user_credits', { credits: updatedCredits }, { user_id: user.id });
+              
+              if (updateError) {
+                  console.error('Falha crítica ao atualizar créditos:', updateError);
+                  // Não bloqueamos a UI pois o conteúdo já foi gerado
+              } else {
+                  await refresh();
+              }
           } else {
+              // RPC Sucesso
               await refresh();
           }
       }
@@ -276,7 +291,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
 
       setResultMetadata({
           plan: activePlanName,
-          credits: activeCredits === -1 ? 'Ilimitado' : updatedCredits
+          credits: activeCredits === -1 ? 'Ilimitado' : (activeCredits - totalCost) // Approx display until refresh
       });
       
       if ((mode === 'landingpage_generator' || mode === 'institutional_website_generator') && (isGuest || (currentPlan.id !== 'premium' && !isAdmin))) {
