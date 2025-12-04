@@ -100,10 +100,40 @@ export function DocumentationViewer() {
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`;
 
   const schemaSql = `
--- === 🛠️ CORREÇÃO DE CRÉDITOS (RPC & RLS) ===
--- Execute este bloco para corrigir o consumo de créditos e evitar erros de política existente.
+-- =========================================================
+-- 🚨 PACOTE DE CORREÇÃO COMPLETO (EXECUTAR TUDO)
+-- =========================================================
 
--- 1. Cria a função segura para descontar créditos
+-- 1. CORREÇÃO DE LOGS DE VISITANTES (Dashboard)
+-- Remove restrição que impede salvar logs de usuários não cadastrados (GUEST_ID)
+ALTER TABLE public.logs DROP CONSTRAINT IF EXISTS logs_usuario_id_fkey;
+
+ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
+
+-- Remove políticas antigas para limpar
+DROP POLICY IF EXISTS "Anon can insert logs" ON public.logs;
+DROP POLICY IF EXISTS "Admins can view all logs" ON public.logs;
+DROP POLICY IF EXISTS "Users can view own logs" ON public.logs;
+
+-- Permite que qualquer um (inclusive visitantes) grave logs
+CREATE POLICY "Anon can insert logs" ON public.logs 
+FOR INSERT 
+TO anon, authenticated 
+WITH CHECK (true);
+
+-- Permite que Admins vejam todos os logs
+CREATE POLICY "Admins can view all logs" ON public.logs 
+FOR SELECT 
+USING (
+  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+);
+
+-- Permissões de tabela
+GRANT INSERT, SELECT ON public.logs TO anon, authenticated;
+GRANT ALL ON public.logs TO service_role;
+
+
+-- 2. CORREÇÃO DE CRÉDITOS (RPC)
 CREATE OR REPLACE FUNCTION public.deduct_credits(cost int)
 RETURNS void
 LANGUAGE plpgsql
@@ -112,159 +142,51 @@ AS $$
 DECLARE
   current_credits int;
 BEGIN
-  -- Verifica saldo atual do usuário
   SELECT credits INTO current_credits FROM public.user_credits WHERE user_id = auth.uid();
   
-  -- Se o saldo não existir, inicializa com 3 (fallback)
   IF current_credits IS NULL THEN
     INSERT INTO public.user_credits (user_id, credits) VALUES (auth.uid(), 3);
     current_credits := 3;
   END IF;
 
-  -- Se for admin (-1), não desconta
   IF current_credits = -1 THEN
     RETURN;
   END IF;
 
-  -- Verifica se tem saldo suficiente
   IF current_credits < cost THEN
     RAISE EXCEPTION 'Saldo insuficiente';
   END IF;
 
-  -- Atualiza o saldo
   UPDATE public.user_credits
   SET credits = credits - cost
   WHERE user_id = auth.uid();
 END;
 $$;
 
--- Concede permissão de execução
 GRANT EXECUTE ON FUNCTION public.deduct_credits TO authenticated;
 GRANT EXECUTE ON FUNCTION public.deduct_credits TO service_role;
 
--- 2. Correção de Políticas da Tabela (Idempotente)
-DO $$
-BEGIN
-    -- Garante que a tabela existe
-    CREATE TABLE IF NOT EXISTS public.user_credits (
-        user_id uuid REFERENCES auth.users NOT NULL PRIMARY KEY,
-        credits integer DEFAULT 3
-    );
 
-    -- Habilita RLS
-    ALTER TABLE public.user_credits ENABLE ROW LEVEL SECURITY;
-
-    -- Remove política antiga se existir para evitar erro "already exists"
-    DROP POLICY IF EXISTS "Users can view own credits" ON public.user_credits;
-    
-    -- Recria a política de leitura
-    CREATE POLICY "Users can view own credits" ON public.user_credits
-    FOR SELECT USING (auth.uid() = user_id);
-
-    -- Garante permissões básicas
-    GRANT SELECT ON public.user_credits TO authenticated;
-END $$;
-
-
--- === 🛠️ CORREÇÃO DE LOGS DE VISITANTES (Dashboard) ===
--- Execute para permitir que o sistema registre ações de usuários não logados.
-
--- 1. Remove a restrição que obriga o usuario_id a ser um usuário real
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'logs_usuario_id_fkey') THEN
-    ALTER TABLE public.logs DROP CONSTRAINT logs_usuario_id_fkey;
-  END IF;
-END $$;
-
--- 2. Permite que visitantes (anon) insiram logs
-ALTER TABLE public.logs ENABLE ROW LEVEL SECURITY;
-
--- Remove política antiga se existir para evitar conflito
-DROP POLICY IF EXISTS "Anon can insert logs" ON public.logs;
-DROP POLICY IF EXISTS "Admins can view all logs" ON public.logs;
-
--- Cria política permitindo inserção pública (necessário para logs de visitantes)
-CREATE POLICY "Anon can insert logs" ON public.logs 
-FOR INSERT 
-TO anon, authenticated 
-WITH CHECK (true);
-
--- 3. Garante que admins vejam todos os logs
-CREATE POLICY "Admins can view all logs" ON public.logs 
-FOR SELECT 
-USING (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
-
--- Concede permissão de nível de tabela
-GRANT INSERT ON public.logs TO anon, authenticated;
-GRANT SELECT ON public.logs TO anon, authenticated;
-
-
--- === 🚨 CORREÇÃO URGENTE: PERMISSÃO NOTIFICAÇÕES (RLS) ===
--- Execute este bloco se estiver recebendo erro ao enviar Push Notifications.
-
+-- 3. CORREÇÃO DE NOTIFICAÇÕES
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
+DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
 DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
 
--- 1. Leitura: Usuário vê as suas, Admin vê todas
-CREATE POLICY "Users can view own notifications" ON public.notifications
-FOR SELECT USING (
-  auth.uid() = user_id OR
+CREATE POLICY "Admins can insert notifications" ON public.notifications FOR INSERT WITH CHECK (
   EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
 );
 
--- 2. Inserção: Apenas Admins podem criar notificações (para qualquer um)
-CREATE POLICY "Admins can insert notifications" ON public.notifications
-FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+CREATE POLICY "Users can view own notifications" ON public.notifications FOR SELECT USING (
+  auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
 );
 
--- 3. Atualização: Usuário marca como lida (suas), Admin edita qualquer uma
-CREATE POLICY "Users can update own notifications" ON public.notifications
-FOR UPDATE USING (
-  auth.uid() = user_id OR
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+CREATE POLICY "Users can update own notifications" ON public.notifications FOR UPDATE USING (
+  auth.uid() = user_id OR EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
 );
 
--- 4. Permissões de tabela
 GRANT ALL ON public.notifications TO authenticated;
 GRANT ALL ON public.notifications TO service_role;
-
-
--- === ATUALIZAÇÃO CADASTRO (NOME E TELEFONE) ===
-
--- 1. ADICIONAR COLUNA TELEFONE
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS phone text;
-
--- 2. ATUALIZAR TRIGGER DE NOVO USUÁRIO
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.app_users (id, email, full_name, phone, role, credits, status, plan)
-  VALUES (
-    new.id,
-    new.email,
-    new.raw_user_meta_data->>'full_name',
-    new.raw_user_meta_data->>'phone',    
-    'user',
-    3, -- Créditos iniciais (Free)
-    'active',
-    'free'
-  );
-  
-  -- Inicializa tabela de créditos
-  INSERT INTO public.user_credits (user_id, credits)
-  VALUES (new.id, 3);
-
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
 `;
 
   return (
@@ -350,7 +272,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Copie e execute o SQL abaixo para aplicar as correções no banco de dados.
+                    Copie e execute o SQL abaixo para aplicar <strong>TODAS</strong> as correções no banco de dados (Logs de Visitantes, Créditos e Notificações).
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>
