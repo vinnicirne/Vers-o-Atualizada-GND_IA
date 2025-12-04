@@ -187,6 +187,10 @@ CREATE POLICY "Users can update own notifications" ON public.notifications FOR U
 
 GRANT ALL ON public.notifications TO authenticated;
 GRANT ALL ON public.notifications TO service_role;
+
+-- 4. DIAGNÓSTICO: CHECAR LOGS DE VISITANTES
+-- Selecione a linha abaixo e clique em RUN para ver se os logs estão salvando.
+-- SELECT count(*) FROM public.logs WHERE usuario_id = '00000000-0000-0000-0000-000000000000';
 `;
 
   return (
