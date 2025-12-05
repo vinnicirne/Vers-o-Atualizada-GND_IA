@@ -65,12 +65,12 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         console.log("[LandingPageBuilder] Inicializando GrapesJS...");
         const editorInstance = GrapesJS.init({
           container: editorContainerRef.current,
-          components: initialHtml || '<div class="p-10 text-center text-gray-400">Selecione um template ou comece do zero...</div>',
+          components: initialHtml || '<body><div style="padding: 20px;">Comece a editar...</div></body>',
           height: '100%',
           width: 'auto',
-          fromElement: false, // Importante: não tentar ler do elemento container
-          panels: { defaults: [] }, // Custom UI handles panels
-          storageManager: false, // Desabilita storage local para evitar conflitos
+          fromElement: false, 
+          panels: { defaults: [] }, 
+          storageManager: false, 
           plugins: [],
           deviceManager: {
             devices: [
@@ -79,10 +79,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 { name: 'Mobile', width: '375px', widthMedia: '480px' },
             ]
           },
-          // Fix for text editing links
-          richTextEditor: {
-            actions: ['bold', 'italic', 'underline', 'strikethrough', 'link', 'unlink']
-          }
+          // REMOVED custom richTextEditor config to prevent 'appendChild' error on invalid node creation
         });
 
         console.log("[LandingPageBuilder] GrapesJS init success.");
@@ -93,8 +90,12 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           console.log("[LandingPageBuilder] Editor loaded completely.");
           if (!isMounted) return;
           setIsEditorReady(true);
-          injectTailwind(editorInstance);
-          addBlocks(editorInstance);
+          try {
+            injectTailwind(editorInstance);
+            addBlocks(editorInstance);
+          } catch(e) {
+            console.warn("Erro não fatal ao injetar assets:", e);
+          }
         });
 
       } catch (error: any) {
