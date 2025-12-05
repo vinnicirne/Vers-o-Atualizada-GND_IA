@@ -1,7 +1,8 @@
 
 import React from 'react';
 import { UserRole } from '../types';
-import { NotificationBell } from './NotificationBell'; // Import
+import { NotificationBell } from './NotificationBell';
+import metadata from '../metadata.json'; // Importação direta da versão
 
 interface HeaderProps {
   userEmail?: string;
@@ -15,13 +16,13 @@ interface HeaderProps {
   onOpenManual?: () => void; 
   onOpenHistory?: () => void;
   onOpenAffiliates?: () => void;
-  onOpenIntegrations?: () => void; // Novo Prop
+  onOpenIntegrations?: () => void;
   pageTitle?: string;
   userCredits?: number;
   userRole?: UserRole;
-  metadata?: { version: string }; 
-  realtimeStatus?: string; // New prop for Realtime Status
-  onToggleSidebar?: () => void; // For mobile hamburger
+  metadata?: { version: string }; // Mantido para compatibilidade, mas ignorado internamente
+  realtimeStatus?: string;
+  onToggleSidebar?: () => void;
 }
 
 export function Header({ 
@@ -40,7 +41,6 @@ export function Header({
     pageTitle, 
     userCredits, 
     userRole, 
-    metadata,
     realtimeStatus,
     onToggleSidebar
 }: HeaderProps) {
@@ -104,7 +104,7 @@ export function Header({
                     </div>
                     <span className={realtimeStatus === 'SUBSCRIBED' ? 'text-green-600 font-semibold' : 'text-gray-400'}>{badge.label}</span>
                 </div>
-                <span className="text-xs text-gray-400 font-mono">v{metadata?.version || 'N/A'}</span>
+                <span className="text-xs text-gray-400 font-mono">v{metadata.version}</span>
             </div>
 
             {/* Actions */}

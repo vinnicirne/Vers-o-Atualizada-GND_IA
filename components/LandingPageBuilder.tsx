@@ -101,7 +101,8 @@ const TEMPLATES = {
 
 export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
   const editorContainerRef = useRef<HTMLDivElement>(null);
-  const [editor, setEditor] = useState<any>(null);
+  const editorInstanceRef = useRef<any>(null); // Ref para manter a instância do editor
+  const [editor, setEditor] = useState<any>(null); // State para interações da UI
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [activeDevice, setActiveDevice] = useState('Desktop');
   const [showTemplateModal, setShowTemplateModal] = useState(true);
@@ -109,7 +110,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
   // Inicialização do Editor
   useEffect(() => {
-    let editorInstance: any = null;
+    if (editorInstanceRef.current) return; // Previne dupla inicialização (React Strict Mode)
 
     const initializeEditor = async () => {
       if (!editorContainerRef.current) return;
@@ -124,11 +125,19 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         const grapesjsModule = await import('grapesjs');
         const GrapesJS = grapesjsModule.default || grapesjsModule;
 
-        editorInstance = GrapesJS.init({
+        if (editorInstanceRef.current) return; // Checagem dupla após o await
+
+        // Limpa o container explicitamente para evitar erros de appendChild em nós sujos
+        if(editorContainerRef.current) {
+            editorContainerRef.current.innerHTML = '';
+        }
+
+        const editorInstance = GrapesJS.init({
           container: editorContainerRef.current,
           components: initialHtml || '<div class="p-10 text-center text-gray-400">Selecione um template ou comece do zero...</div>',
           height: '100%',
           width: '100%',
+          fromElement: false, // Importante: não tentar ler do elemento container
           panels: { defaults: [] }, // Custom UI handles panels
           storageManager: { type: 'local', autosave: false, autoload: false },
           plugins: [],
@@ -145,8 +154,10 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           }
         });
 
+        editorInstanceRef.current = editorInstance;
+        setEditor(editorInstance);
+
         editorInstance.on('load', () => {
-          setEditor(editorInstance);
           setIsEditorReady(true);
           injectTailwind(editorInstance);
           addBlocks(editorInstance);
@@ -161,7 +172,14 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
     initializeEditor();
 
     return () => {
-      if (editorInstance) editorInstance.destroy();
+      if (editorInstanceRef.current) {
+        try {
+            editorInstanceRef.current.destroy();
+        } catch(e) {
+            console.warn("Erro ao destruir editor:", e);
+        }
+        editorInstanceRef.current = null;
+      }
     };
   }, []); // Run once
 

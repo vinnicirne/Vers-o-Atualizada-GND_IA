@@ -90,8 +90,9 @@ export function DashboardResults({
              currentMode !== 'institutional_website_generator' && 
              currentMode !== 'image_generation' && 
              currentMode !== 'canva_structure' && 
-             // Esconde o texto apenas se for TTS E tiver áudio com sucesso.
-             (currentMode !== 'text_to_speech' || !results.audioBase64) &&
+             // CORREÇÃO: Esconde o texto SE o modo for TTS, independente de sucesso ou falha, 
+             // para evitar que a mensagem "Áudio gerado com sucesso" apareça como resultado.
+             currentMode !== 'text_to_speech' &&
              results.text && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
                     <div className="lg:col-span-2">

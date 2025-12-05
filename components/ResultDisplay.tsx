@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
@@ -103,6 +104,11 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       }
       setSendingToN8n(false);
   };
+
+  // CORREÇÃO: Oculta a caixa de texto no modo de áudio para focar no player
+  if (mode === 'text_to_speech') {
+      return null;
+  }
 
   const getTitleLabel = () => {
       if (mode === 'news_generator') return 'Título / Manchete';

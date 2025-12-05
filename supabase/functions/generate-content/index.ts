@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -9,6 +10,9 @@ const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Limite seguro de caracteres para o modelo de áudio (TTS)
+const MAX_TTS_CHARS = 2800;
 
 const CREATOR_SUITE_SYSTEM_PROMPT = `
 Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtivo. 
@@ -152,10 +156,13 @@ serve(async (req) => {
         // Se options.voice não for fornecido, usa Kore como padrão.
         const voiceName = options?.voice || 'Kore';
         
+        // CORREÇÃO CRÍTICA: Limitação de caracteres para o modelo de áudio para evitar erros
+        const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
+
         try {
             const audioResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash-preview-tts",
-                contents: [{ parts: [{ text: prompt }] }],
+                contents: [{ parts: [{ text: safePrompt }] }],
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
@@ -285,9 +292,12 @@ serve(async (req) => {
             // Aqui podemos usar 'Kore' ou 'Puck' como padrão.
             const newsVoice = options?.voice || 'Kore';
 
+            // Limitação de caracteres: Trunca o texto se for muito longo para o TTS
+            const textForAudio = text.length > MAX_TTS_CHARS ? text.substring(0, MAX_TTS_CHARS) + "..." : text;
+
             const audioResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash-preview-tts",
-                contents: [{ parts: [{ text: text }] }],
+                contents: [{ parts: [{ text: textForAudio }] }],
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
