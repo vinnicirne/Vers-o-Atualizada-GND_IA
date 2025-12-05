@@ -9,6 +9,47 @@ interface LandingPageBuilderProps {
   onClose: () => void;
 }
 
+// Function to clean HTML from unwanted navigation menus
+const sanitizeHtml = (html: string): string => {
+    try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+        
+        // 1. Remove tags <nav> explicitamente
+        doc.querySelectorAll('nav').forEach(el => el.remove());
+        
+        // 2. Remove tags <ul> dentro de <header> (padrão comum de menu)
+        doc.querySelectorAll('header ul').forEach(el => el.remove());
+        
+        // 3. Remove links soltos no header que NÃO sejam botões (CTAs)
+        // Heurística: Se não tem classe de botão, remove.
+        doc.querySelectorAll('header a').forEach(el => {
+            const className = el.className.toLowerCase();
+            // Mantém se parecer um botão (bg-, btn, button, rounded)
+            if (!className.includes('bg-') && !className.includes('btn') && !className.includes('button') && !className.includes('rounded')) {
+                el.remove();
+            }
+        });
+
+        // 4. Remove links comuns de navegação pelo texto (Home, Sobre, etc) caso tenham escapado
+        const forbiddenTexts = ['home', 'sobre', 'serviços', 'contato', 'preços', 'blog', 'about', 'services', 'contact'];
+        doc.querySelectorAll('a').forEach(el => {
+            if (forbiddenTexts.includes(el.innerText.trim().toLowerCase())) {
+                // Verificação dupla: se não parece botão, remove
+                const className = el.className.toLowerCase();
+                if (!className.includes('bg-') && !className.includes('btn')) {
+                    el.remove();
+                }
+            }
+        });
+
+        return doc.body.innerHTML;
+    } catch (e) {
+        console.warn("Erro ao sanitizar HTML:", e);
+        return html; // Fallback para HTML original se der erro no parser
+    }
+};
+
 export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const editorInstanceRef = useRef<any>(null); // Ref para manter a instância do editor
@@ -45,7 +86,10 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       }
 
       // Se houver HTML inicial válido da IA (> 50 chars), não force o modal
+      let processedHtml = initialHtml;
       if (initialHtml && initialHtml.length > 50) {
+          // SANITIZAÇÃO AUTOMÁTICA: Remove menus antes de carregar
+          processedHtml = sanitizeHtml(initialHtml);
           setShowTemplateModal(false);
       }
 
@@ -65,7 +109,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         console.log("[LandingPageBuilder] Inicializando GrapesJS...");
         const editorInstance = GrapesJS.init({
           container: editorContainerRef.current,
-          components: initialHtml || '<body><div style="padding: 20px;">Comece a editar...</div></body>',
+          components: processedHtml || '<body><div style="padding: 20px;">Comece a editar...</div></body>',
           height: '100%',
           width: 'auto',
           fromElement: false, 
@@ -151,7 +195,8 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
   const handleApplyTemplate = (templateKey: keyof typeof TEMPLATES) => {
     if (!editor) return;
-    const html = TEMPLATES[templateKey];
+    // O template já vem limpo do arquivo templates.ts, mas por segurança podemos sanitizar também
+    const html = sanitizeHtml(TEMPLATES[templateKey]);
     if (html) {
       editor.setComponents(html);
       setShowTemplateModal(false);

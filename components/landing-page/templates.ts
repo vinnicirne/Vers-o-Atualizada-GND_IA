@@ -1,10 +1,11 @@
 
 
+
 export const TEMPLATES = {
   saas_dark: `
     <header class="bg-gray-900 text-white p-6 flex justify-between items-center border-b border-gray-800">
       <div class="font-bold text-xl tracking-wider">SaaS<span class="text-blue-500">Pro</span></div>
-      <div class="hidden md:flex items-center">
+      <div class="flex items-center">
         <!-- Links de navegação removidos para foco total na conversão -->
         <a href="#contact" class="bg-blue-600 px-5 py-2 rounded-lg hover:bg-blue-500 transition font-bold shadow-lg shadow-blue-900/20">Começar Grátis</a>
       </div>
