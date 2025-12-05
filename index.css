@@ -65,95 +65,87 @@ body {
 }
 
 /* =========================================
-    GrapesJS Light Theme Overrides 
-    ========================================= */
+    GrapesJS UI Overrides - Sidebar Customizada
+   ========================================= */
 
-/* Main UI Backgrounds */
-.gjs-one-bg {
-  background-color: #FFFFFF !important;
+/* Limpa o background padrão do GrapesJS nos containers injetados */
+.gjs-block-category, .gjs-blocks-c, .gjs-sm-sectors, .gjs-sm-sector, .gjs-traits-c, .gjs-layers-c {
+    background-color: transparent !important;
 }
 
-.gjs-two-color {
-  color: #546E7A !important;
+/* Títulos das Categorias/Setores */
+.gjs-block-category .gjs-title, .gjs-sm-sector .gjs-sm-title, .gjs-layer-title {
+    background-color: #1f2937 !important; /* Gray-800 */
+    color: #e5e7eb !important; /* Gray-200 */
+    border-bottom: 1px solid #374151;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 10px !important;
 }
 
-.gjs-three-bg {
-  background-color: #F39C12 !important; /* Orange Primary */
-  color: white !important;
+/* Blocos Individuais */
+.gjs-block {
+    background-color: #374151 !important; /* Gray-700 */
+    color: #e5e7eb !important;
+    border: 1px solid #4b5563;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    min-height: 80px;
+}
+.gjs-block:hover {
+    background-color: #4b5563 !important; /* Gray-600 */
+    border-color: #10b981 !important; /* Green-500 */
+    color: #fff !important;
 }
 
-.gjs-four-color,
-.gjs-four-color-h:hover {
-  color: #F39C12 !important;
+/* Campos de Input (Style Manager & Traits) */
+.gjs-field, .gjs-field-color, .gjs-field-integer, .gjs-field-select {
+    background-color: #111827 !important; /* Gray-900 */
+    color: #fff !important;
+    border: 1px solid #374151 !important;
+    border-radius: 4px;
+}
+.gjs-field:focus-within {
+    border-color: #10b981 !important;
 }
 
-/* Canvas Area */
+/* Labels */
+.gjs-label, .gjs-sm-label, .gjs-trt-label {
+    color: #9ca3af !important; /* Gray-400 */
+    font-size: 0.7rem;
+}
+
+/* Ícones */
+.gjs-pn-btn, .gjs-block-category .gjs-caret-icon {
+    color: #9ca3af !important;
+}
+
+/* Checkboxes */
+.gjs-chk-icon {
+    border-color: #6b7280;
+}
+
+/* Inputs de Cor */
+.gjs-input-holder {
+    color: white !important;
+}
+
+/* Canvas background */
 .gjs-cv-canvas {
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #ECEFF1 !important;
+    background-color: #111827 !important; /* Fundo escuro atrás do canvas */
 }
 
-/* Panels & toolbars */
-.gjs-pn-panel {
-  background-color: #FFFFFF !important;
-  border-bottom: 1px solid #CFD8DC;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+/* Scrollbars na sidebar */
+.gjs-blocks-c::-webkit-scrollbar,
+.gjs-sm-sectors::-webkit-scrollbar {
+    width: 6px;
 }
-
-.gjs-pn-buttons {
-  border-right: 1px solid #CFD8DC;
-}
-
-/* Icons */
-.gjs-pn-btn {
-  color: #546E7A !important;
-}
-.gjs-pn-btn:hover {
-  color: #263238 !important;
-  background-color: #ECEFF1 !important;
-}
-.gjs-pn-btn.gjs-pn-active {
-  color: #F39C12 !important;
-  background-color: #FFF3E0 !important;
-  box-shadow: none !important;
-}
-
-/* Toolbars */
-.gjs-toolbar {
-  background-color: #263238 !important;
-  border-radius: 4px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
-
-.gjs-toolbar-item {
-  color: white !important;
-}
-
-/* Inputs & Fields */
-.gjs-field {
-  background-color: #F5F7FA !important;
-  color: #263238 !important;
-  border: 1px solid #CFD8DC !important;
-  border-radius: 4px;
-}
-
-.gjs-field-color-picker {
-  background-color: #F5F7FA !important;
-}
-
-/* Layers & Classes */
-.gjs-layer-name, .gjs-layer-count {
-  color: #263238 !important;
-}
-
-/* Fix preset specific styles */
-.gjs-pn-views-container {
-    background-color: #FFFFFF !important;
-    border-left: 1px solid #CFD8DC;
-    padding: 0 !important;
-    box-shadow: -5px 0 10px rgba(0,0,0,0.05);
+.gjs-blocks-c::-webkit-scrollbar-thumb,
+.gjs-sm-sectors::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+    border-radius: 3px;
 }
 
 .fa {

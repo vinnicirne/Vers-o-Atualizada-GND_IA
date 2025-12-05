@@ -14,129 +14,84 @@ const sanitizeHtml = (html: string): string => {
     try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        
-        // 1. Remove tags <nav> explicitamente em todo o documento
+        // Sanitização básica para remover menus antigos gerados pela IA que não sejam blocos
         doc.querySelectorAll('nav').forEach(el => el.remove());
-        
-        // 2. Foco no Header
-        const headers = doc.querySelectorAll('header');
-        headers.forEach(header => {
-            // Remove listas UL/OL dentro do header (padrão de menu)
-            header.querySelectorAll('ul, ol').forEach(el => el.remove());
-
-            // Remove divs que parecem wrappers de menu (contêm muitos links)
-            header.querySelectorAll('div').forEach(div => {
-                const links = div.querySelectorAll('a');
-                // Se uma div tem mais de 2 links e não parece ser uma área de botões de ação, remove
-                if (links.length > 2) {
-                    let hasButton = false;
-                    links.forEach(l => {
-                        if (l.className.includes('bg-') || l.className.includes('btn')) hasButton = true;
-                    });
-                    if (!hasButton) div.remove();
-                }
-            });
-
-            // 3. Remove links individuais de navegação (Home, Sobre, etc)
-            const forbiddenTexts = [
-                'home', 'início', 'inicio', 'sobre', 'sobre nós', 'serviços', 
-                'recursos', 'preços', 'planos', 'blog', 'contato', 'fale conosco',
-                'about', 'services', 'features', 'pricing', 'contact', 'login', 'entrar'
-            ];
-
-            header.querySelectorAll('a').forEach(el => {
-                const text = el.innerText.trim().toLowerCase();
-                const className = el.className.toLowerCase();
-                
-                // Se o texto for proibido e NÃO parecer um botão CTA explícito (bg- color), remove.
-                // Links de texto simples no header são removidos.
-                const isCtaButton = (className.includes('bg-') && !className.includes('bg-transparent')) || className.includes('btn-primary') || className.includes('button');
-                
-                if (forbiddenTexts.includes(text) && !isCtaButton) {
-                    el.remove();
-                } else if (!isCtaButton && el.getAttribute('href')?.startsWith('#') === false) {
-                    // Remove links externos que não sejam CTAs no header
-                    el.remove();
-                }
-            });
-        });
-
-        // 4. Fallback: Remove elementos com IDs ou Classes suspeitas
-        doc.querySelectorAll('#menu, .menu, .nav, .navigation, .navbar-nav').forEach(el => el.remove());
-
         return doc.body.innerHTML;
     } catch (e) {
-        console.warn("Erro ao sanitizar HTML:", e);
-        return html; // Fallback para HTML original se der erro no parser
+        return html;
     }
 };
 
 export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
-  const editorContainerRef = useRef<HTMLDivElement>(null);
-  const editorInstanceRef = useRef<any>(null); // Ref para manter a instância do editor
-  const [editor, setEditor] = useState<any>(null); // State para interações da UI
+  // Refs para containers do GrapesJS
+  const editorRef = useRef<HTMLDivElement>(null);
+  const blocksRef = useRef<HTMLDivElement>(null);
+  const stylesRef = useRef<HTMLDivElement>(null);
+  const traitsRef = useRef<HTMLDivElement>(null);
+  const layersRef = useRef<HTMLDivElement>(null);
+  
+  const editorInstanceRef = useRef<any>(null);
+  const [editor, setEditor] = useState<any>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
+  const [activeTab, setActiveTab] = useState<'blocks' | 'styles' | 'traits' | 'layers'>('blocks');
   const [activeDevice, setActiveDevice] = useState('Desktop');
   const [showTemplateModal, setShowTemplateModal] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [initError, setInitError] = useState<string | null>(null);
 
-  // Inicialização do Editor
+  // Inicialização
   useEffect(() => {
     let isMounted = true;
-    console.log("[LandingPageBuilder] Componente montado. Iniciando ciclo de vida...");
 
     const initializeEditor = async () => {
-      // Pequeno delay para garantir que o DOM (div container) foi montado pelo React e limpo
-      await new Promise(resolve => setTimeout(resolve, 100));
+      if (!editorRef.current) return;
+      if (editorInstanceRef.current) return;
 
-      if (!isMounted) {
-          console.log("[LandingPageBuilder] Componente desmontado antes do init. Cancelando.");
-          return;
-      }
-
-      if (!editorContainerRef.current) {
-          console.error("[LandingPageBuilder] Container ref não encontrado!");
-          setInitError("Erro: Container do editor não encontrado no DOM.");
-          return;
-      }
-
-      if (editorInstanceRef.current) {
-          console.warn("[LandingPageBuilder] Editor já inicializado. Evitando duplicidade.");
-          return; 
-      }
-
-      // Se houver HTML inicial válido da IA (> 50 chars), não force o modal
       let processedHtml = initialHtml;
       if (initialHtml && initialHtml.length > 50) {
-          // SANITIZAÇÃO AUTOMÁTICA: Remove menus antes de carregar
           processedHtml = sanitizeHtml(initialHtml);
           setShowTemplateModal(false);
       }
 
       try {
-        console.log("[LandingPageBuilder] Importando GrapesJS...");
         // @ts-ignore
         const grapesjsModule = await import('grapesjs');
         const GrapesJS: any = grapesjsModule.default || grapesjsModule;
 
         if (!isMounted) return;
 
-        // Limpa o container explicitamente para evitar erros de appendChild em nós sujos
-        if(editorContainerRef.current) {
-            editorContainerRef.current.innerHTML = '';
-        }
+        if(editorRef.current) editorRef.current.innerHTML = '';
 
-        console.log("[LandingPageBuilder] Inicializando GrapesJS...");
         const editorInstance = GrapesJS.init({
-          container: editorContainerRef.current,
-          components: processedHtml || '<body><div style="padding: 20px;">Comece a editar...</div></body>',
+          container: editorRef.current,
           height: '100%',
           width: 'auto',
-          fromElement: false, 
-          panels: { defaults: [] }, 
-          storageManager: false, 
-          plugins: [],
+          fromElement: false,
+          components: processedHtml || '<body class="bg-gray-50"><div style="padding: 50px; text-align: center;">Arraste blocos aqui...</div></body>',
+          // Desativa painéis padrão para usarmos os nossos customizados
+          panels: { defaults: [] },
+          storageManager: false,
+          // Gerenciadores injetados nos nossos DIVs React
+          blockManager: {
+            appendTo: blocksRef.current,
+          },
+          styleManager: {
+            appendTo: stylesRef.current,
+            sectors: [
+                { name: 'Dimensões', open: false, buildProps: ['width', 'min-height', 'padding', 'margin'] },
+                { name: 'Tipografia', open: false, buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align'] },
+                { name: 'Decoração', open: false, buildProps: ['background-color', 'border-radius', 'border', 'box-shadow', 'background'] },
+                { name: 'Extra', open: false, buildProps: ['opacity', 'cursor', 'display'] }
+            ]
+          },
+          traitManager: {
+            appendTo: traitsRef.current,
+          },
+          layerManager: {
+            appendTo: layersRef.current,
+          },
+          selectorManager: {
+            componentFirst: true, // Seleciona o componente ao invés da classe primeiro
+          },
           deviceManager: {
             devices: [
                 { name: 'Desktop', width: '' },
@@ -146,45 +101,51 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           },
         });
 
-        console.log("[LandingPageBuilder] GrapesJS init success.");
         editorInstanceRef.current = editorInstance;
         setEditor(editorInstance);
 
         editorInstance.on('load', () => {
-          console.log("[LandingPageBuilder] Editor loaded completely.");
           if (!isMounted) return;
           setIsEditorReady(true);
+          
+          // Configurações e Blocos
           try {
-            injectTailwind(editorInstance);
             addBlocks(editorInstance);
+            injectTailwind(editorInstance);
+            
+            // Evento: Ao selecionar um componente, mudar para aba de Estilos ou Configuração
+            editorInstance.on('component:selected', () => {
+                const selected = editorInstance.getSelected();
+                if (selected) {
+                    // Se for um link ou imagem, talvez o usuário queira ver os Traits (href, src)
+                    if (selected.is('link') || selected.is('image') || selected.is('map')) {
+                        setActiveTab('traits'); 
+                    } else {
+                        setActiveTab('styles');
+                    }
+                }
+            });
           } catch(e) {
-            console.warn("Erro não fatal ao injetar assets:", e);
+            console.warn("Erro ao configurar editor:", e);
           }
         });
 
       } catch (error: any) {
-        console.error('[LandingPageBuilder] CRITICAL ERROR:', error);
-        setInitError(`Falha ao iniciar editor: ${error.message || error}`);
-        setToast({ message: "Falha ao carregar editor. Verifique o console.", type: 'error' });
+        console.error('Erro ao iniciar GrapesJS:', error);
+        setToast({ message: "Falha ao carregar editor.", type: 'error' });
       }
     };
 
     initializeEditor();
 
     return () => {
-      console.log("[LandingPageBuilder] Desmontando componente...");
       isMounted = false;
       if (editorInstanceRef.current) {
-        try {
-            console.log("[LandingPageBuilder] Destruindo instância GrapesJS.");
-            editorInstanceRef.current.destroy();
-        } catch(e) {
-            console.warn("[LandingPageBuilder] Erro ao destruir editor:", e);
-        }
+        editorInstanceRef.current.destroy();
         editorInstanceRef.current = null;
       }
     };
-  }, []); // Run once
+  }, []);
 
   const injectTailwind = (ed: any) => {
       const frameEl = ed.Canvas.getFrameEl();
@@ -194,18 +155,26 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           script.src = "https://cdn.tailwindcss.com";
           head.appendChild(script);
           
+          // FontAwesome e Fontes
+          const link = document.createElement('link');
+          link.rel = 'stylesheet';
+          link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
+          head.appendChild(link);
+
           const style = document.createElement('style');
           style.innerHTML = `
-            body { background-color: #ffffff; color: #1f2937; overflow-x: hidden; }
+            body { background-color: #f9fafb; color: #1f2937; overflow-x: hidden; font-family: sans-serif; }
             a { cursor: pointer; }
-            ::-webkit-scrollbar { width: 8px; background: #000; }
-            ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+            section { position: relative; }
+            /* Highlight outline para visualizar elementos */
+            *:hover { outline: 1px dashed rgba(16, 185, 129, 0.3); }
+            .gjs-selected { outline: 2px solid #10b981 !important; outline-offset: -2px; }
           `;
           head.appendChild(style);
       }
   };
 
-  // --- ACTIONS ---
+  // Actions
   const handleDeviceChange = (device: string) => {
     if (!editor) return;
     setActiveDevice(device);
@@ -215,12 +184,11 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
   const handleApplyTemplate = (templateKey: keyof typeof TEMPLATES) => {
     if (!editor) return;
-    // O template já vem limpo do arquivo templates.ts, mas por segurança podemos sanitizar também
     const html = sanitizeHtml(TEMPLATES[templateKey]);
     if (html) {
       editor.setComponents(html);
       setShowTemplateModal(false);
-      setToast({ message: "Template aplicado com sucesso!", type: 'success' });
+      setToast({ message: "Template aplicado!", type: 'success' });
     }
   };
 
@@ -229,8 +197,12 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
     switch(action) {
       case 'undo': editor.runCommand('core:undo'); break;
       case 'redo': editor.runCommand('core:redo'); break;
+      case 'view': 
+        const isPreview = editor.isPreview();
+        isPreview ? editor.stopCommand('preview') : editor.runCommand('preview');
+        break;
       case 'clear': 
-        if(confirm('Tem certeza? Isso limpará todo o canvas.')) editor.runCommand('core:canvas-clear'); 
+        if(confirm('Limpar tudo?')) editor.runCommand('core:canvas-clear'); 
         break;
     }
   };
@@ -239,7 +211,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
     if (editor) {
       const html = editor.getHtml();
       const css = editor.getCss();
-      const fullHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Landing Page</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><style>${css}</style></head><body class="bg-white font-sans">${html}</body></html>`;
+      const fullHtml = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Landing Page</title><script src="https://cdn.tailwindcss.com"></script><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"><style>${css}</style></head><body class="bg-gray-50 font-sans">${html}</body></html>`;
       
       const blob = new Blob([fullHtml], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
@@ -256,125 +228,155 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
   return (
     <div className="fixed inset-0 z-[100] flex flex-col bg-gray-900 animate-fade-in font-sans">
       
-      {/* TOOLBAR SUPERIOR PRO */}
-      <div className="h-16 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-4 shadow-md z-20">
-        
-        {/* Esquerda: Título e Templates */}
+      {/* 1. TOP TOOLBAR */}
+      <div className="h-16 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-4 shadow-md z-20 shrink-0">
         <div className="flex items-center gap-4">
             <span className="text-green-500 font-bold flex items-center gap-2">
-                <i className="fas fa-layer-group"></i> <span className="hidden md:inline">Editor Visual Pro</span>
+                <i className="fas fa-layer-group"></i> <span className="hidden md:inline">Editor Pro</span>
             </span>
             <div className="h-6 w-px bg-gray-800"></div>
-            <button 
-                onClick={() => setShowTemplateModal(true)}
-                className="text-gray-400 hover:text-white text-xs font-bold flex items-center gap-2 bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded transition"
-            >
-                <i className="fas fa-th-large"></i> Templates
+            <button onClick={() => setShowTemplateModal(true)} className="text-gray-400 hover:text-white text-xs font-bold bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded transition">
+                <i className="fas fa-th-large mr-2"></i> Templates
             </button>
         </div>
 
-        {/* Centro: Dispositivos */}
         <div className="flex bg-gray-800 rounded-lg p-1 gap-1">
             {['Desktop', 'Tablet', 'Mobile'].map(dev => (
-                <button
-                    key={dev}
-                    onClick={() => handleDeviceChange(dev)}
-                    className={`w-8 h-8 flex items-center justify-center rounded transition ${activeDevice === dev ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300'}`}
-                    title={`Visualizar em ${dev}`}
-                >
+                <button key={dev} onClick={() => handleDeviceChange(dev)} className={`w-8 h-8 flex items-center justify-center rounded transition ${activeDevice === dev ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
                     <i className={`fas fa-${dev === 'Desktop' ? 'desktop' : dev === 'Tablet' ? 'tablet-alt' : 'mobile-alt'}`}></i>
                 </button>
             ))}
         </div>
 
-        {/* Direita: Ações */}
         <div className="flex items-center gap-3">
-            <div className="flex gap-1 mr-2">
-                <button onClick={() => handleAction('undo')} className="w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition"><i className="fas fa-undo"></i></button>
-                <button onClick={() => handleAction('redo')} className="w-8 h-8 text-gray-400 hover:text-white hover:bg-gray-800 rounded transition"><i className="fas fa-redo"></i></button>
-                <button onClick={() => handleAction('clear')} className="w-8 h-8 text-red-500 hover:bg-red-900/20 rounded transition ml-2" title="Limpar Tudo"><i className="fas fa-trash-alt"></i></button>
+            <div className="flex gap-1 mr-2 bg-gray-800 rounded p-1">
+                <button onClick={() => handleAction('undo')} className="w-8 h-8 text-gray-400 hover:text-white rounded transition"><i className="fas fa-undo"></i></button>
+                <button onClick={() => handleAction('redo')} className="w-8 h-8 text-gray-400 hover:text-white rounded transition"><i className="fas fa-redo"></i></button>
+                <button onClick={() => handleAction('view')} className="w-8 h-8 text-blue-400 hover:text-white rounded transition" title="Preview"><i className="fas fa-eye"></i></button>
+                <button onClick={() => handleAction('clear')} className="w-8 h-8 text-red-500 hover:bg-red-900/20 rounded transition"><i className="fas fa-trash-alt"></i></button>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-white text-sm font-bold px-3">Sair</button>
-            <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-green-900/20 flex items-center gap-2 transition">
+            <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition">
                 <i className="fas fa-download"></i> Baixar
             </button>
         </div>
       </div>
 
-      {/* EDITOR CANVAS */}
-      <div className="flex-1 relative bg-[#1e1e1e] overflow-hidden">
-        {!isEditorReady && !initError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-gray-500">
-                <i className="fas fa-circle-notch fa-spin text-3xl mb-2 text-green-500"></i>
-                <p>Carregando Editor...</p>
-            </div>
-        )}
+      {/* 2. MAIN WORKSPACE */}
+      <div className="flex-1 flex overflow-hidden">
         
-        {initError && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center z-10 bg-gray-900 p-8">
-                <i className="fas fa-bug text-red-500 text-4xl mb-4"></i>
-                <h3 className="text-xl font-bold text-white mb-2">Erro de Inicialização</h3>
-                <p className="text-red-400 bg-red-900/20 p-4 rounded border border-red-500/30 max-w-lg text-center">{initError}</p>
-                <button onClick={onClose} className="mt-6 px-6 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded font-bold">Voltar</button>
-            </div>
-        )}
+        {/* Canvas Area (Esquerda/Centro) */}
+        <div className="flex-1 relative bg-[#111827] overflow-hidden flex flex-col justify-center">
+            {!isEditorReady && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-gray-500">
+                    <i className="fas fa-circle-notch fa-spin text-3xl mb-2 text-green-500"></i>
+                    <p>Iniciando Motor Visual...</p>
+                </div>
+            )}
+            {/* O GrapesJS monta o iframe aqui */}
+            <div ref={editorRef} className="h-full w-full" />
+        </div>
 
-        <div ref={editorContainerRef} className="h-full w-full" />
+        {/* Sidebar de Ferramentas (Direita) */}
+        <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 z-30 shadow-xl">
+            
+            {/* Abas */}
+            <div className="flex border-b border-gray-800 bg-gray-950">
+                <button onClick={() => setActiveTab('blocks')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'blocks' ? 'text-green-500 border-green-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
+                    <i className="fas fa-th-large mb-1 block text-sm"></i> Blocos
+                </button>
+                <button onClick={() => setActiveTab('styles')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'styles' ? 'text-blue-500 border-blue-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
+                    <i className="fas fa-paint-brush mb-1 block text-sm"></i> Estilo
+                </button>
+                <button onClick={() => setActiveTab('traits')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'traits' ? 'text-yellow-500 border-yellow-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
+                    <i className="fas fa-cog mb-1 block text-sm"></i> Config
+                </button>
+                <button onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'layers' ? 'text-purple-500 border-purple-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
+                    <i className="fas fa-layer-group mb-1 block text-sm"></i> Camadas
+                </button>
+            </div>
+
+            {/* Conteúdo das Abas */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative p-1">
+                
+                {/* 1. Blocos */}
+                <div ref={blocksRef} className={activeTab === 'blocks' ? 'block' : 'hidden'}></div>
+                
+                {/* 2. Estilos */}
+                <div className={activeTab === 'styles' ? 'block' : 'hidden'}>
+                    <div className="p-3 bg-gray-800/50 border-b border-gray-700 text-xs text-gray-400 mb-2">
+                        <i className="fas fa-info-circle mr-1"></i> Selecione um elemento no canvas para editar.
+                    </div>
+                    <div ref={stylesRef}></div>
+                </div>
+
+                {/* 3. Traits (Configurações do Elemento: href, src, etc) */}
+                <div className={activeTab === 'traits' ? 'block' : 'hidden'}>
+                    <div className="p-3 bg-gray-800/50 border-b border-gray-700 text-xs text-gray-400 mb-2">
+                        <i className="fas fa-link mr-1"></i> Edite links, IDs e atributos.
+                    </div>
+                    <div ref={traitsRef}></div>
+                </div>
+
+                {/* 4. Camadas */}
+                <div ref={layersRef} className={activeTab === 'layers' ? 'block' : 'hidden'}></div>
+
+            </div>
+        </div>
       </div>
 
-      {/* TEMPLATE MODAL */}
+      {/* Template Modal */}
       {showTemplateModal && isEditorReady && (
-        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden">
-                <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+        <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-700">
+                <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900">
                     <div>
-                        <h3 className="text-xl font-bold text-gray-800">Escolha um Template</h3>
-                        <p className="text-sm text-gray-500">Comece com uma estrutura profissional de alta conversão.</p>
+                        <h3 className="text-xl font-bold text-white">Escolha um Template</h3>
+                        <p className="text-sm text-gray-400">Comece com uma estrutura profissional de alta conversão.</p>
                     </div>
-                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-gray-600"><i className="fas fa-times text-xl"></i></button>
+                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white"><i className="fas fa-times text-xl"></i></button>
                 </div>
                 
-                <div className="p-8 overflow-y-auto bg-gray-100 grid md:grid-cols-3 gap-6">
+                <div className="p-8 overflow-y-auto bg-gray-900/50 grid md:grid-cols-3 gap-6">
                     {/* Card 1 */}
-                    <div onClick={() => handleApplyTemplate('saas_dark')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border-2 border-transparent hover:border-blue-500 transition shadow-lg relative h-64">
-                        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent opacity-80"></div>
+                    <div onClick={() => handleApplyTemplate('saas_dark')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-blue-500 transition shadow-lg relative h-64">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
                         <div className="absolute bottom-4 left-4">
                             <span className="text-xs font-bold text-blue-400 uppercase tracking-wider bg-blue-900/30 px-2 py-1 rounded">SaaS / Tech</span>
                             <h4 className="text-white font-bold text-lg mt-1">SaaS Dark Pro</h4>
                         </div>
-                        <div className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-sm">Popular</div>
                         <div className="p-4 text-center mt-10">
                             <i className="fas fa-layer-group text-6xl text-gray-700 group-hover:text-blue-500 transition duration-500"></i>
                         </div>
                     </div>
 
                     {/* Card 2 */}
-                    <div onClick={() => handleApplyTemplate('ebook_sales')} className="group cursor-pointer bg-amber-50 rounded-lg overflow-hidden border-2 border-transparent hover:border-amber-500 transition shadow-lg relative h-64">
-                        <div className="absolute inset-0 bg-gradient-to-t from-amber-100 via-transparent to-transparent opacity-60"></div>
+                    <div onClick={() => handleApplyTemplate('ebook_sales')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-amber-500 transition shadow-lg relative h-64">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
                         <div className="absolute bottom-4 left-4">
-                            <span className="text-xs font-bold text-amber-600 uppercase tracking-wider bg-amber-100 px-2 py-1 rounded">Infoproduto</span>
-                            <h4 className="text-gray-900 font-bold text-lg mt-1">Venda de Ebook</h4>
+                            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-900/30 px-2 py-1 rounded">Infoproduto</span>
+                            <h4 className="text-white font-bold text-lg mt-1">Venda de Ebook</h4>
                         </div>
                         <div className="p-4 text-center mt-10">
-                            <i className="fas fa-book-open text-6xl text-amber-200 group-hover:text-amber-500 transition duration-500"></i>
+                            <i className="fas fa-book-open text-6xl text-gray-700 group-hover:text-amber-500 transition duration-500"></i>
                         </div>
                     </div>
 
                     {/* Card 3 */}
-                    <div onClick={() => handleApplyTemplate('webinar')} className="group cursor-pointer bg-indigo-900 rounded-lg overflow-hidden border-2 border-transparent hover:border-indigo-400 transition shadow-lg relative h-64">
-                        <div className="absolute inset-0 bg-gradient-to-t from-indigo-900 via-transparent to-transparent opacity-80"></div>
+                    <div onClick={() => handleApplyTemplate('webinar')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-indigo-400 transition shadow-lg relative h-64">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
                         <div className="absolute bottom-4 left-4">
-                            <span className="text-xs font-bold text-indigo-300 uppercase tracking-wider bg-indigo-800/50 px-2 py-1 rounded">Captura de Lead</span>
+                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider bg-indigo-900/30 px-2 py-1 rounded">Lead Magnet</span>
                             <h4 className="text-white font-bold text-lg mt-1">Webinar / Aula</h4>
                         </div>
                         <div className="p-4 text-center mt-10">
-                            <i className="fas fa-microphone text-6xl text-indigo-800 group-hover:text-indigo-400 transition duration-500"></i>
+                            <i className="fas fa-microphone text-6xl text-gray-700 group-hover:text-indigo-400 transition duration-500"></i>
                         </div>
                     </div>
                 </div>
 
-                <div className="p-4 bg-white border-t border-gray-200 flex justify-end">
-                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-500 hover:text-gray-800 font-bold text-sm">Continuar com meu conteúdo atual</button>
+                <div className="p-4 bg-gray-900 border-t border-gray-700 flex justify-end">
+                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">Começar do Zero (ou com conteúdo da IA)</button>
                 </div>
             </div>
         </div>
