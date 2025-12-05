@@ -39,7 +39,7 @@ const GUEST_ALLOWED_MODES: ServiceKey[] = ['news_generator', 'copy_generator', '
 
 const extractTitleAndContent = (text: string, mode: ServiceKey) => {
     // Adicionei social_media_poster na lista de exclusão de título, pois é tratado como imagem/copy
-    if (['landingpage_generator', 'institutional_website_generator', 'canva_structure', 'image_generation', 'social_media_poster'].includes(mode)) {
+    if (['landingpage_generator', 'institutional_website_generator', 'canva_structure', 'image_generation', 'social_media_poster', 'text_to_speech'].includes(mode)) {
         return { title: null, content: text };
     }
 
@@ -310,6 +310,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
           
           setImageDimensions({ width: w, height: h });
       } else if (mode === 'text_to_speech') {
+          // No modo TTS, armazenamos o texto de sucesso mas não o exibimos no ResultDisplay
           setResultText(text); // "Áudio gerado com sucesso."
           setResultTitle("Texto para Voz");
       } else {
@@ -530,7 +531,9 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         {currentMode !== 'landingpage_generator' && 
                          currentMode !== 'institutional_website_generator' && 
                          currentMode !== 'image_generation' && 
-                         currentMode !== 'canva_structure' && resultText && (
+                         currentMode !== 'canva_structure' && 
+                         currentMode !== 'text_to_speech' && /* FIX: Hide ResultDisplay for TTS */
+                         resultText && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
                             <div className="lg:col-span-2">
                                 <ResultDisplay 
@@ -556,7 +559,7 @@ function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: Das
                         {/* AUDIO PLAYER (Seja TTS direto ou Áudio de Notícia) */}
                         {audioBase64 && <AudioPlayer audioBase64={audioBase64} />}
                         
-                        {(resultText || generatedImagePrompt) && showFeedback && user && (
+                        {(resultText || generatedImagePrompt || audioBase64) && showFeedback && user && (
                         <FeedbackWidget 
                             userId={user.id} 
                             onClose={() => setShowFeedback(false)} 
