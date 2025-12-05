@@ -2,7 +2,312 @@
 export const addBlocks = (editor: any) => {
     const bm = editor.BlockManager;
 
-    // --- CONVERSÃO ---
+    // =========================================
+    // CATEGORIA: INSTITUCIONAL (NOVO)
+    // =========================================
+
+    bm.add('navbar-simple', {
+        label: 'Menu / Navbar',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-bars' },
+        content: `
+          <header class="bg-white border-b border-gray-200 sticky top-0 z-50 font-sans">
+            <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
+                <div class="font-bold text-xl text-gray-900 flex items-center gap-2">
+                    <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white"><i class="fas fa-cube"></i></div>
+                    LogoEmpresa
+                </div>
+                <nav class="hidden md:flex gap-6 text-sm font-medium text-gray-600">
+                    <a href="#" class="hover:text-blue-600 transition">Início</a>
+                    <a href="#" class="hover:text-blue-600 transition">Sobre</a>
+                    <a href="#" class="hover:text-blue-600 transition">Serviços</a>
+                    <a href="#" class="hover:text-blue-600 transition">Contato</a>
+                </nav>
+                <a href="#" class="hidden md:inline-block bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition text-sm font-bold">Fale Conosco</a>
+                <button class="md:hidden text-gray-600 text-xl"><i class="fas fa-bars"></i></button>
+            </div>
+          </header>
+        `
+    });
+
+    bm.add('about-section', {
+        label: 'Sobre Nós',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-info-circle' },
+        content: `
+          <section class="py-20 bg-white font-sans">
+            <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
+              <div class="relative">
+                <div class="absolute -top-4 -left-4 w-24 h-24 bg-blue-100 rounded-full z-0"></div>
+                <img src="https://placehold.co/600x400" class="relative z-10 rounded-lg shadow-xl w-full object-cover" alt="Sobre Nós">
+                <div class="absolute -bottom-6 -right-6 bg-white p-4 rounded-lg shadow-lg z-20 border border-gray-100 hidden md:block">
+                    <div class="flex items-center gap-3">
+                        <div class="bg-green-100 text-green-600 p-2 rounded-full"><i class="fas fa-trophy"></i></div>
+                        <div>
+                            <p class="text-xs text-gray-500 font-bold uppercase">Experiência</p>
+                            <p class="font-bold text-gray-900">+10 Anos</p>
+                        </div>
+                    </div>
+                </div>
+              </div>
+              <div>
+                <h2 class="text-sm font-bold text-blue-600 uppercase tracking-widest mb-2">Quem Somos</h2>
+                <h3 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">Liderando a inovação no setor com excelência.</h3>
+                <p class="text-gray-600 leading-relaxed mb-6">Nossa missão é transformar empresas através de soluções inteligentes. Com uma equipe apaixonada e experiente, entregamos resultados que superam expectativas e criam valor real.</p>
+                <ul class="space-y-3 mb-8">
+                  <li class="flex items-center text-gray-700"><i class="fas fa-check-circle text-blue-500 mr-3"></i> Excelência Técnica Comprovada</li>
+                  <li class="flex items-center text-gray-700"><i class="fas fa-check-circle text-blue-500 mr-3"></i> Foco Total no Cliente</li>
+                  <li class="flex items-center text-gray-700"><i class="fas fa-check-circle text-blue-500 mr-3"></i> Inovação Constante</li>
+                </ul>
+                <a href="#" class="inline-block bg-gray-900 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-800 transition shadow-lg shadow-gray-900/20">Conheça Nossa História</a>
+              </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('services-grid', {
+        label: 'Grid de Serviços',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-briefcase' },
+        content: `
+          <section class="py-20 bg-gray-50 font-sans">
+            <div class="max-w-6xl mx-auto px-6">
+              <div class="text-center mb-16">
+                <span class="text-blue-600 font-bold tracking-wider text-xs uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">O que fazemos</span>
+                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mt-4 mb-4">Nossas Soluções</h2>
+                <p class="text-gray-500 max-w-2xl mx-auto">Serviços completos adaptados às necessidades específicas do seu negócio.</p>
+              </div>
+              <div class="grid md:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl transition duration-300 border-b-4 border-transparent hover:border-blue-500 group">
+                  <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">
+                    <i class="fas fa-rocket"></i>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-900 mb-3">Consultoria Estratégica</h3>
+                  <p class="text-gray-600 mb-6 text-sm leading-relaxed">Análise profunda e planejamento para alavancar o crescimento da sua empresa.</p>
+                  <a href="#" class="text-blue-600 font-bold text-sm hover:underline flex items-center">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
+                </div>
+                <!-- Card 2 -->
+                <div class="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl transition duration-300 border-b-4 border-transparent hover:border-blue-500 group">
+                  <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">
+                    <i class="fas fa-code"></i>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-900 mb-3">Desenvolvimento Tech</h3>
+                  <p class="text-gray-600 mb-6 text-sm leading-relaxed">Sites, aplicativos e sistemas sob medida com as tecnologias mais modernas.</p>
+                  <a href="#" class="text-purple-600 font-bold text-sm hover:underline flex items-center">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
+                </div>
+                <!-- Card 3 -->
+                <div class="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl transition duration-300 border-b-4 border-transparent hover:border-blue-500 group">
+                  <div class="w-14 h-14 bg-green-50 text-green-600 rounded-lg flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">
+                    <i class="fas fa-chart-pie"></i>
+                  </div>
+                  <h3 class="text-xl font-bold text-gray-900 mb-3">Marketing Digital</h3>
+                  <p class="text-gray-600 mb-6 text-sm leading-relaxed">Estratégias de tráfego e conteúdo para aumentar sua visibilidade online.</p>
+                  <a href="#" class="text-green-600 font-bold text-sm hover:underline flex items-center">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
+                </div>
+              </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('stats-bar', {
+        label: 'Estatísticas',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-chart-bar' },
+        content: `
+          <section class="bg-gray-900 text-white py-16 font-sans border-t border-gray-800">
+            <div class="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+              <div class="p-4">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">10+</div>
+                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Anos de Mercado</div>
+              </div>
+              <div class="p-4 border-l border-gray-800">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">500+</div>
+                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Projetos Entregues</div>
+              </div>
+              <div class="p-4 border-l border-gray-800">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">98%</div>
+                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Clientes Satisfeitos</div>
+              </div>
+              <div class="p-4 border-l border-gray-800">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">24/7</div>
+                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Suporte Dedicado</div>
+              </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('team-section', {
+        label: 'Equipe',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-users' },
+        content: `
+          <section class="py-20 bg-white font-sans">
+            <div class="max-w-6xl mx-auto px-6">
+              <div class="text-center mb-16">
+                <h2 class="text-3xl font-bold text-gray-900 mb-4">Conheça o Time</h2>
+                <p class="text-gray-500">Especialistas apaixonados pelo que fazem.</p>
+              </div>
+              <div class="grid md:grid-cols-4 gap-8">
+                <!-- Member 1 -->
+                <div class="text-center group">
+                  <div class="relative mb-4 inline-block">
+                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  </div>
+                  <h3 class="font-bold text-lg text-gray-900">Ana Silva</h3>
+                  <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">CEO & Founder</p>
+                </div>
+                <!-- Member 2 -->
+                <div class="text-center group">
+                  <div class="relative mb-4 inline-block">
+                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  </div>
+                  <h3 class="font-bold text-lg text-gray-900">Carlos Souza</h3>
+                  <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">Diretor de Ops</p>
+                </div>
+                <!-- Member 3 -->
+                <div class="text-center group">
+                  <div class="relative mb-4 inline-block">
+                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  </div>
+                  <h3 class="font-bold text-lg text-gray-900">Mariana Lima</h3>
+                  <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">Head de Design</p>
+                </div>
+                <!-- Member 4 -->
+                <div class="text-center group">
+                  <div class="relative mb-4 inline-block">
+                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  </div>
+                  <h3 class="font-bold text-lg text-gray-900">Pedro Santos</h3>
+                  <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">Lead Developer</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('contact-section', {
+        label: 'Contato e Mapa',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-map-marked-alt' },
+        content: `
+          <section class="py-20 bg-white font-sans" id="contato">
+            <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12">
+              <div>
+                <span class="text-blue-600 font-bold tracking-wider text-xs uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">Fale Conosco</span>
+                <h2 class="text-3xl font-bold text-gray-900 mt-4 mb-6">Estamos prontos para atender</h2>
+                <p class="text-gray-600 mb-8 leading-relaxed">Tem alguma dúvida ou projeto em mente? Entre em contato pelos canais abaixo ou preencha o formulário.</p>
+                
+                <div class="space-y-6">
+                  <div class="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
+                    <div class="bg-blue-100 w-10 h-10 rounded flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-map-marker-alt"></i></div>
+                    <div>
+                      <h4 class="font-bold text-gray-900 text-sm">Endereço</h4>
+                      <p class="text-gray-600 text-sm">Av. Paulista, 1000 - São Paulo, SP</p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
+                    <div class="bg-blue-100 w-10 h-10 rounded flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-phone"></i></div>
+                    <div>
+                      <h4 class="font-bold text-gray-900 text-sm">Telefone / WhatsApp</h4>
+                      <p class="text-gray-600 text-sm">+55 (11) 99999-9999</p>
+                    </div>
+                  </div>
+                  <div class="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
+                    <div class="bg-blue-100 w-10 h-10 rounded flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-envelope"></i></div>
+                    <div>
+                      <h4 class="font-bold text-gray-900 text-sm">E-mail</h4>
+                      <p class="text-gray-600 text-sm">contato@suaempresa.com.br</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="bg-gray-50 p-8 rounded-xl border border-gray-200 shadow-sm">
+                <form class="space-y-4">
+                  <h3 class="font-bold text-lg text-gray-900 mb-4">Envie uma mensagem</h3>
+                  <div>
+                    <input type="text" placeholder="Seu Nome" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm">
+                  </div>
+                  <div>
+                    <input type="email" placeholder="Seu E-mail" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm">
+                  </div>
+                  <div>
+                    <textarea rows="4" placeholder="Como podemos ajudar?" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm"></textarea>
+                  </div>
+                  <button type="button" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 transform hover:-translate-y-0.5">
+                    Enviar Mensagem
+                  </button>
+                </form>
+              </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('partners-logo', {
+        label: 'Logos Parceiros',
+        category: 'Institucional',
+        attributes: { class: 'far fa-handshake' },
+        content: `
+          <div class="py-12 bg-white border-t border-b border-gray-100 font-sans">
+            <div class="max-w-6xl mx-auto px-6">
+                <p class="text-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-8">Empresas que confiam em nosso trabalho</p>
+                <div class="flex flex-wrap justify-center items-center gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                    <img src="https://placehold.co/120x40?text=LOGO+1" class="h-8 md:h-10 object-contain hover:scale-110 transition">
+                    <img src="https://placehold.co/120x40?text=LOGO+2" class="h-8 md:h-10 object-contain hover:scale-110 transition">
+                    <img src="https://placehold.co/120x40?text=LOGO+3" class="h-8 md:h-10 object-contain hover:scale-110 transition">
+                    <img src="https://placehold.co/120x40?text=LOGO+4" class="h-8 md:h-10 object-contain hover:scale-110 transition">
+                    <img src="https://placehold.co/120x40?text=LOGO+5" class="h-8 md:h-10 object-contain hover:scale-110 transition">
+                </div>
+            </div>
+          </div>
+        `
+    });
+
+    // =========================================
+    // CATEGORIA: CONVERSÃO (NOVOS)
+    // =========================================
+
+    bm.add('vsl-section', {
+        label: 'Vídeo VSL',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-play-circle' },
+        content: `
+          <section class="py-16 bg-gray-900 text-center font-sans">
+            <div class="max-w-4xl mx-auto px-4">
+                <h2 class="text-3xl font-extrabold text-white mb-8 leading-tight">Veja como funciona na prática</h2>
+                <div class="relative aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-gray-800 group cursor-pointer">
+                    <!-- Placeholder de Vídeo -->
+                    <div class="absolute inset-0 flex items-center justify-center bg-gray-900 group-hover:bg-gray-800 transition">
+                        <div class="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center pl-2 shadow-lg shadow-red-900/50 group-hover:scale-110 transition transform duration-300">
+                            <i class="fas fa-play text-white text-3xl"></i>
+                        </div>
+                    </div>
+                    <p class="absolute bottom-6 left-0 right-0 text-gray-400 text-sm font-medium">Clique para assistir (Vídeo Explicativo)</p>
+                </div>
+                <div class="mt-8">
+                    <button class="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-10 rounded-full text-lg shadow-xl shadow-green-500/20 transition transform hover:-translate-y-1 animate-pulse">
+                        QUERO ESSA SOLUÇÃO
+                    </button>
+                </div>
+            </div>
+          </section>
+        `
+    });
+
+    // =========================================
+    // CATEGORIA: CONVERSÃO (EXISTENTES)
+    // =========================================
+
     bm.add('hero-capture', {
         label: 'Hero com Captura',
         category: 'Conversão',
@@ -58,7 +363,7 @@ export const addBlocks = (editor: any) => {
                 
                 <div class="grid md:grid-cols-3 gap-10">
                     <!-- Item 1 -->
-                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition">
+                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-200">
                         <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-sm">
                             <i class="fas fa-clock"></i>
                         </div>
@@ -66,7 +371,7 @@ export const addBlocks = (editor: any) => {
                         <p class="text-gray-600 leading-relaxed">Automatize tarefas repetitivas e ganhe horas livres no seu dia para focar no que importa.</p>
                     </div>
                     <!-- Item 2 -->
-                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition">
+                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-200">
                         <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-sm">
                             <i class="fas fa-chart-line"></i>
                         </div>
@@ -74,7 +379,7 @@ export const addBlocks = (editor: any) => {
                         <p class="text-gray-600 leading-relaxed">Metodologia validada por milhares de clientes que já atingiram seus objetivos.</p>
                     </div>
                     <!-- Item 3 -->
-                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition">
+                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-200">
                         <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-sm">
                             <i class="fas fa-headset"></i>
                         </div>
@@ -184,7 +489,7 @@ export const addBlocks = (editor: any) => {
         category: 'Conversão',
         attributes: { class: 'fas fa-hourglass-half' },
         content: `
-          <div class="bg-red-600 text-white p-4 text-center shadow-md">
+          <div class="bg-red-600 text-white p-4 text-center shadow-md font-sans">
             <div class="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-center gap-4">
               <span class="font-bold uppercase tracking-wider text-sm flex items-center"><i class="fas fa-fire mr-2 animate-pulse"></i> Oferta por tempo limitado!</span>
               <div class="flex gap-2 font-mono text-xl font-bold">
@@ -213,7 +518,10 @@ export const addBlocks = (editor: any) => {
         `
     });
 
-    // --- ESTRUTURA ---
+    // =========================================
+    // CATEGORIA: ESTRUTURA (EXISTENTES)
+    // =========================================
+
     bm.add('hero-section', {
         label: 'Hero Section',
         category: 'Estrutura',
@@ -300,11 +608,14 @@ export const addBlocks = (editor: any) => {
         `
     });
 
-    // --- BÁSICO ---
+    // =========================================
+    // CATEGORIA: BÁSICO
+    // =========================================
+
     bm.add('text-block', {
         label: 'Texto',
         category: 'Básico',
-        content: '<div class="p-4 text-gray-600"><p>Insira seu texto aqui...</p></div>'
+        content: '<div class="p-4 text-gray-600 font-sans"><p>Insira seu texto aqui...</p></div>'
     });
     
     bm.add('image-block', {

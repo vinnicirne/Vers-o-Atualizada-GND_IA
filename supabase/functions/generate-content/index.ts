@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -69,7 +68,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
       - Use gatilhos de **Urgência** ("Oferta por tempo limitado").
 
    6. **FAQ (Quebra de Objeções):**
-      - Use a tag HTML nativa `<details>` e `<summary>` para criar acordeões interativos sem Javascript. Estilize-os para parecerem modernos.
+      - Use a tag HTML nativa ${"`<details>`"} e ${"`<summary>`"} para criar acordeões interativos sem Javascript. Estilize-os para parecerem modernos.
 
    7. **CAPTURA FINAL (CTA):**
       - Fundo contrastante.
