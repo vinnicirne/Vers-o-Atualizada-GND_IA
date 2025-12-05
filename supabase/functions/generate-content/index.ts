@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -35,7 +36,24 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 2. **Gerador de Prompts**: Gere prompts otimizados para IAs como Gemini/ChatGPT, detalhando persona, tarefa, contexto e formato de saída.
 
 3. **Gerador de Landing Page**:
-   Você é um expert em CRO, Web Design e Tailwind CSS. Gere SOMENTE código HTML completo, 100% responsivo. Use imagens da Pollinations. Não inclua Markdown, apenas o código.
+   Você é um expert em CRO (Conversion Rate Optimization), Copywriting e Tailwind CSS.
+   
+   **FRAMEWORK DE COPY (OBRIGATÓRIO):**
+   Utilize o método **PAS (Problema, Agitação, Solução)** em todo o texto da página.
+   - **Problema:** Comece identificando a dor do usuário.
+   - **Agitação:** Intensifique a dor, mostrando as consequências de não resolver.
+   - **Solução:** Apresente o produto/serviço como a única solução viável.
+
+   **REGRAS ESTRUTURAIS E VISUAIS:**
+   - **MENU DE NAVEGAÇÃO PROIBIDO:** Landing Pages de alta conversão NÃO devem ter links de saída ou menus complexos no topo. Use apenas o Logo e um botão de CTA (Call to Action).
+   - **ANIMAÇÕES (AOS):** Inclua a biblioteca AOS (Animate On Scroll) no <head>. Adicione atributos \`data-aos="fade-up"\` ou \`data-aos="fade-in"\` nos elementos principais (títulos, cards, imagens) para dar movimento. Inicialize o AOS no final do body com \`<script>AOS.init();</script>\`.
+   - **RODAPÉ MINIMALISTA:** O footer deve conter apenas Copyright e links discretos para "Termos de Uso" e "Política de Privacidade". Nada de mapas de site ou links sociais que tirem o foco.
+   - **IMAGENS:** Use placeholders da Pollinations (https://image.pollinations.ai/prompt/...) com descrições ricas em inglês na URL.
+   
+   **SAÍDA:**
+   - Gere APENAS o código HTML completo.
+   - Use Tailwind CSS via CDN.
+   - Garanta responsividade total (mobile-first).
 
 4. **Site Institucional (Institutional Website)**:
    Você é um Arquiteto de Informação e Desenvolvedor Sênior.
@@ -43,7 +61,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
    
    ESTRUTURA OBRIGATÓRIA:
    - **Header:** Logotipo (texto), Menu de navegação (Home, Sobre, Serviços, Contato).
-   - **Hero Section:** Headline forte, subheadline, CTA e uma imagem de fundo impactante (use placeholder da Pollinations).
+   - **Hero Section:** Headline forte, subheadline, CTA e uma imagem de fundo impactante.
    - **Sobre Nós:** Quem somos, missão, visão.
    - **Nossos Serviços:** Grid de 3 ou 4 colunas com ícones (FontAwesome) e descrições.
    - **Diferenciais/Números:** Seção de prova social ou estatísticas.
@@ -53,8 +71,8 @@ MODOS DISPONÍVEIS (roteie baseado na query):
    REGRAS TÉCNICAS:
    - Use **Tailwind CSS** para todo o estilo.
    - Design corporativo, limpo e confiável.
-   - Use imagens da Pollinations (https://image.pollinations.ai/prompt/...) para deixar o site rico visualmente.
-   - Retorne APENAS o código HTML. Sem Markdown.
+   - Use imagens da Pollinations.
+   - Retorne APENAS o código HTML.
 
 5. **Studio de Arte IA (Image Generation)**:
    Você é um engenheiro de prompts especializado em Stable Diffusion XL e Flux Pro.
@@ -125,7 +143,47 @@ serve(async (req) => {
     // 4. Initialize Gemini (GoogleGenAI SDK)
     const ai = new GoogleGenAI({ apiKey });
     
-    // Use the correct model
+    // --- TEXT TO SPEECH MODE HANDLER ---
+    if (mode === 'text_to_speech') {
+        // Vozes disponíveis: Puck, Charon, Fenrir (Masculinas); Kore, Aoede (Femininas).
+        // Se options.voice não for fornecido, usa Kore como padrão.
+        const voiceName = options?.voice || 'Kore';
+        
+        try {
+            const audioResponse = await ai.models.generateContent({
+                model: "gemini-2.5-flash-preview-tts",
+                contents: [{ parts: [{ text: prompt }] }],
+                config: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voiceName },
+                        },
+                    },
+                },
+            });
+            
+            const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+            
+            if (!audioBase64) {
+                throw new Error("O modelo não retornou áudio.");
+            }
+
+            return new Response(JSON.stringify({ 
+                text: "Áudio gerado com sucesso.", 
+                audioBase64, 
+                sources: [] 
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+
+        } catch (ttsError) {
+            console.error("TTS Error:", ttsError);
+            throw new Error(`Falha na geração de áudio: ${ttsError.message}`);
+        }
+    }
+
+    // Use the correct model for text/code
     const modelName = 'gemini-2.5-flash';
 
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
@@ -209,10 +267,15 @@ serve(async (req) => {
         }
     }
 
-    // Audio Generation (Optional)
+    // Audio Generation (Optional for News mode only)
     let audioBase64 = null;
     if (generateAudio && mode === 'news_generator') {
         try {
+            // Se o usuário selecionou uma voz específica para a notícia, ela viria em options.voice
+            // Mas no caso de notícias, geralmente usamos uma voz padrão de "jornalista".
+            // Aqui podemos usar 'Kore' ou 'Puck' como padrão.
+            const newsVoice = options?.voice || 'Kore';
+
             const audioResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash-preview-tts",
                 contents: [{ parts: [{ text: text }] }],
@@ -220,7 +283,7 @@ serve(async (req) => {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
                         voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: 'Kore' },
+                            prebuiltVoiceConfig: { voiceName: newsVoice },
                         },
                     },
                 },

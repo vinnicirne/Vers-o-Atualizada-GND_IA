@@ -12,7 +12,7 @@ interface ContentGeneratorProps {
     prompt: string, 
     mode: ServiceKey, 
     generateAudio: boolean,
-    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string; platform?: string }
+    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string; platform?: string; voice?: string }
   ) => void;
   isLoading: boolean;
   isGuest?: boolean;
@@ -55,6 +55,14 @@ const ASPECT_RATIOS = [
     { value: '9:16', label: 'Retrato (Stories)' },
 ];
 
+const VOICES = [
+    { value: 'Kore', label: 'Kore (Feminina - Padrão)' },
+    { value: 'Aoede', label: 'Aoede (Feminina - Suave)' },
+    { value: 'Puck', label: 'Puck (Masculina - Energética)' },
+    { value: 'Charon', label: 'Charon (Masculina - Profunda)' },
+    { value: 'Fenrir', label: 'Fenrir (Masculina - Intensa)' },
+];
+
 export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, isGuest = false, guestAllowedModes = [] }: ContentGeneratorProps) {
   const { currentPlan, hasAccessToService, getCreditsCostForService } = usePlan();
   const ttsCost = getCreditsCostForService('text_to_speech');
@@ -68,6 +76,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
   const [aspectRatio, setAspectRatio] = useState('1:1');
   const [imageStyle, setImageStyle] = useState('photorealistic');
   const [platform, setPlatform] = useState('instagram_feed');
+  const [selectedVoice, setSelectedVoice] = useState('Kore');
 
   const isModeLocked = (modeValue: ServiceKey) => {
       if (isGuest) {
@@ -85,7 +94,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    let options = undefined;
+    let options: any = undefined;
     
     if (mode === 'landingpage_generator' || mode === 'institutional_website_generator') {
         options = { theme, primaryColor };
@@ -93,6 +102,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
         options = { aspectRatio, imageStyle };
     } else if (mode === 'social_media_poster') {
         options = { platform, theme };
+    } else if (mode === 'text_to_speech') {
+        options = { voice: selectedVoice };
     }
 
     onGenerate(prompt, mode, generateAudio, options);
@@ -192,6 +203,18 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
             </div>
           </div>
         )}
+
+        {/* Opções Extras para Text to Speech */}
+        {mode === 'text_to_speech' && !isModeLocked('text_to_speech') && (
+            <div className="animate-fade-in">
+                <label htmlFor="voice" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
+                    Selecione a Voz
+                </label>
+                <select id="voice" value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)} className={selectClasses} disabled={isLoading}>
+                    {VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                </select>
+            </div>
+        )}
         
         <div>
           <label htmlFor="prompt" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
@@ -250,8 +273,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                  </>
               ) : (
                  <>
-                    <i className={`fas ${mode === 'image_generation' || mode === 'social_media_poster' ? 'fa-paint-brush' : 'fa-wand-magic-sparkles'} mr-2`}></i>
-                    {mode === 'image_generation' || mode === 'social_media_poster' ? 'Criar Arte' : 'Gerar Conteúdo'}
+                    <i className={`fas ${mode === 'image_generation' || mode === 'social_media_poster' ? 'fa-paint-brush' : (mode === 'text_to_speech' ? 'fa-microphone' : 'fa-wand-magic-sparkles')} mr-2`}></i>
+                    {mode === 'image_generation' || mode === 'social_media_poster' ? 'Criar Arte' : (mode === 'text_to_speech' ? 'Gerar Áudio' : 'Gerar Conteúdo')}
                  </>
               )}
             </>
