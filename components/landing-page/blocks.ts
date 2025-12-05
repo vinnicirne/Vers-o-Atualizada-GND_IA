@@ -12,19 +12,24 @@ export const addBlocks = (editor: any) => {
         attributes: { class: 'fas fa-bars' },
         content: `
           <header class="bg-white border-b border-gray-200 sticky top-0 z-50 font-sans">
-            <div class="max-w-6xl mx-auto px-4 h-16 flex justify-between items-center">
-                <div class="font-bold text-xl text-gray-900 flex items-center gap-2">
-                    <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white"><i class="fas fa-cube"></i></div>
-                    LogoEmpresa
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16 items-center">
+                    <div class="flex-shrink-0 flex items-center gap-2">
+                        <div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center text-white"><i class="fas fa-cube"></i></div>
+                        <span class="font-bold text-xl text-gray-900">LogoEmpresa</span>
+                    </div>
+                    <div class="hidden md:flex space-x-8 items-center">
+                        <a href="#" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Início</a>
+                        <a href="#" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Sobre</a>
+                        <a href="#" class="text-gray-600 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition">Serviços</a>
+                        <a href="#" class="bg-blue-600 text-white px-5 py-2 rounded-md hover:bg-blue-700 transition text-sm font-bold shadow-sm">Fale Conosco</a>
+                    </div>
+                    <div class="flex items-center md:hidden">
+                        <button type="button" class="text-gray-400 hover:text-gray-500 focus:outline-none p-2">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                    </div>
                 </div>
-                <nav class="hidden md:flex gap-6 text-sm font-medium text-gray-600">
-                    <a href="#" class="hover:text-blue-600 transition">Início</a>
-                    <a href="#" class="hover:text-blue-600 transition">Sobre</a>
-                    <a href="#" class="hover:text-blue-600 transition">Serviços</a>
-                    <a href="#" class="hover:text-blue-600 transition">Contato</a>
-                </nav>
-                <a href="#" class="hidden md:inline-block bg-blue-600 text-white px-5 py-2 rounded hover:bg-blue-700 transition text-sm font-bold">Fale Conosco</a>
-                <button class="md:hidden text-gray-600 text-xl"><i class="fas fa-bars"></i></button>
             </div>
           </header>
         `
@@ -35,32 +40,58 @@ export const addBlocks = (editor: any) => {
         category: 'Institucional',
         attributes: { class: 'fas fa-info-circle' },
         content: `
-          <section class="py-20 bg-white font-sans">
-            <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12 items-center">
-              <div class="relative">
-                <div class="absolute -top-4 -left-4 w-24 h-24 bg-blue-100 rounded-full z-0"></div>
-                <img src="https://placehold.co/600x400" class="relative z-10 rounded-lg shadow-xl w-full object-cover" alt="Sobre Nós">
-                <div class="absolute -bottom-6 -right-6 bg-white p-4 rounded-lg shadow-lg z-20 border border-gray-100 hidden md:block">
-                    <div class="flex items-center gap-3">
-                        <div class="bg-green-100 text-green-600 p-2 rounded-full"><i class="fas fa-trophy"></i></div>
-                        <div>
-                            <p class="text-xs text-gray-500 font-bold uppercase">Experiência</p>
-                            <p class="font-bold text-gray-900">+10 Anos</p>
+          <section class="py-20 bg-white font-sans overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
+                    <div class="relative mb-12 lg:mb-0">
+                        <div class="absolute -top-4 -left-4 w-24 h-24 bg-blue-100 rounded-full z-0 opacity-50"></div>
+                        <div class="absolute -bottom-4 -right-4 w-32 h-32 bg-yellow-100 rounded-full z-0 opacity-50"></div>
+                        <img src="https://placehold.co/600x500" class="relative z-10 rounded-2xl shadow-xl w-full object-cover transform hover:scale-[1.01] transition duration-500" alt="Sobre Nós">
+                        <div class="absolute bottom-8 left-8 bg-white/90 backdrop-blur-sm p-4 rounded-xl shadow-lg z-20 border border-gray-100 hidden md:block animate-fade-in-up">
+                            <div class="flex items-center gap-3">
+                                <div class="bg-green-100 text-green-600 p-3 rounded-full"><i class="fas fa-trophy text-xl"></i></div>
+                                <div>
+                                    <p class="text-xs text-gray-500 font-bold uppercase tracking-wider">Experiência</p>
+                                    <p class="font-bold text-gray-900 text-lg">+10 Anos de Mercado</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    <div>
+                        <div class="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-600 text-xs font-bold uppercase tracking-wide mb-4">
+                            Quem Somos
+                        </div>
+                        <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-6 leading-tight">
+                            Transformando ideias em <span class="text-blue-600">resultados reais</span>.
+                        </h2>
+                        <p class="text-lg text-gray-600 mb-6 leading-relaxed">
+                            Nossa missão é empoderar empresas através de soluções inovadoras. Combinamos tecnologia de ponta com uma abordagem humana para entregar excelência.
+                        </p>
+                        <div class="space-y-4 mb-8">
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-green-100 text-green-600 mt-1">
+                                    <i class="fas fa-check text-xs"></i>
+                                </div>
+                                <p class="ml-4 text-base text-gray-600">Equipe certificada e multidisciplinar.</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-green-100 text-green-600 mt-1">
+                                    <i class="fas fa-check text-xs"></i>
+                                </div>
+                                <p class="ml-4 text-base text-gray-600">Metodologia ágil focada em ROI.</p>
+                            </div>
+                            <div class="flex items-start">
+                                <div class="flex-shrink-0 h-6 w-6 flex items-center justify-center rounded-full bg-green-100 text-green-600 mt-1">
+                                    <i class="fas fa-check text-xs"></i>
+                                </div>
+                                <p class="ml-4 text-base text-gray-600">Suporte dedicado 24/7.</p>
+                            </div>
+                        </div>
+                        <a href="#" class="inline-flex items-center justify-center px-8 py-3 border border-transparent text-base font-bold rounded-md text-white bg-gray-900 hover:bg-gray-800 md:py-4 md:text-lg shadow-lg hover:shadow-xl transition transform hover:-translate-y-1">
+                            Conheça Nossa História
+                        </a>
+                    </div>
                 </div>
-              </div>
-              <div>
-                <h2 class="text-sm font-bold text-blue-600 uppercase tracking-widest mb-2">Quem Somos</h2>
-                <h3 class="text-3xl md:text-4xl font-bold text-gray-900 mb-6 leading-tight">Liderando a inovação no setor com excelência.</h3>
-                <p class="text-gray-600 leading-relaxed mb-6">Nossa missão é transformar empresas através de soluções inteligentes. Com uma equipe apaixonada e experiente, entregamos resultados que superam expectativas e criam valor real.</p>
-                <ul class="space-y-3 mb-8">
-                  <li class="flex items-center text-gray-700"><i class="fas fa-check-circle text-blue-500 mr-3"></i> Excelência Técnica Comprovada</li>
-                  <li class="flex items-center text-gray-700"><i class="fas fa-check-circle text-blue-500 mr-3"></i> Foco Total no Cliente</li>
-                  <li class="flex items-center text-gray-700"><i class="fas fa-check-circle text-blue-500 mr-3"></i> Inovação Constante</li>
-                </ul>
-                <a href="#" class="inline-block bg-gray-900 text-white font-bold py-3 px-8 rounded-lg hover:bg-gray-800 transition shadow-lg shadow-gray-900/20">Conheça Nossa História</a>
-              </div>
             </div>
           </section>
         `
@@ -71,42 +102,96 @@ export const addBlocks = (editor: any) => {
         category: 'Institucional',
         attributes: { class: 'fas fa-briefcase' },
         content: `
-          <section class="py-20 bg-gray-50 font-sans">
-            <div class="max-w-6xl mx-auto px-6">
+          <section class="py-24 bg-gray-50 font-sans">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div class="text-center mb-16">
-                <span class="text-blue-600 font-bold tracking-wider text-xs uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">O que fazemos</span>
-                <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mt-4 mb-4">Nossas Soluções</h2>
-                <p class="text-gray-500 max-w-2xl mx-auto">Serviços completos adaptados às necessidades específicas do seu negócio.</p>
+                <span class="text-blue-600 font-bold tracking-wider text-xs uppercase bg-blue-100 px-3 py-1 rounded-full">Nossas Soluções</span>
+                <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mt-4 mb-4">Serviços Especializados</h2>
+                <p class="text-xl text-gray-500 max-w-2xl mx-auto">Tudo o que sua empresa precisa para crescer em um só lugar.</p>
               </div>
               <div class="grid md:grid-cols-3 gap-8">
-                <!-- Card 1 -->
-                <div class="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl transition duration-300 border-b-4 border-transparent hover:border-blue-500 group">
-                  <div class="w-14 h-14 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center text-2xl mb-6 group-hover:bg-blue-600 group-hover:text-white transition">
+                <!-- Service 1 -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition duration-300 border border-gray-100 group">
+                  <div class="w-14 h-14 bg-blue-600 text-white rounded-xl flex items-center justify-center text-2xl mb-6 shadow-lg shadow-blue-200 group-hover:scale-110 transition">
                     <i class="fas fa-rocket"></i>
                   </div>
                   <h3 class="text-xl font-bold text-gray-900 mb-3">Consultoria Estratégica</h3>
-                  <p class="text-gray-600 mb-6 text-sm leading-relaxed">Análise profunda e planejamento para alavancar o crescimento da sua empresa.</p>
-                  <a href="#" class="text-blue-600 font-bold text-sm hover:underline flex items-center">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
+                  <p class="text-gray-600 mb-6 leading-relaxed">Planejamento detalhado para identificar oportunidades e otimizar seus processos de negócio.</p>
+                  <a href="#" class="text-blue-600 font-bold text-sm hover:text-blue-800 flex items-center group-hover:translate-x-2 transition">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
                 </div>
-                <!-- Card 2 -->
-                <div class="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl transition duration-300 border-b-4 border-transparent hover:border-blue-500 group">
-                  <div class="w-14 h-14 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center text-2xl mb-6 group-hover:bg-purple-600 group-hover:text-white transition">
+                <!-- Service 2 -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition duration-300 border border-gray-100 group">
+                  <div class="w-14 h-14 bg-purple-600 text-white rounded-xl flex items-center justify-center text-2xl mb-6 shadow-lg shadow-purple-200 group-hover:scale-110 transition">
                     <i class="fas fa-code"></i>
                   </div>
-                  <h3 class="text-xl font-bold text-gray-900 mb-3">Desenvolvimento Tech</h3>
-                  <p class="text-gray-600 mb-6 text-sm leading-relaxed">Sites, aplicativos e sistemas sob medida com as tecnologias mais modernas.</p>
-                  <a href="#" class="text-purple-600 font-bold text-sm hover:underline flex items-center">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
+                  <h3 class="text-xl font-bold text-gray-900 mb-3">Desenvolvimento Web</h3>
+                  <p class="text-gray-600 mb-6 leading-relaxed">Sites, aplicativos e sistemas robustos desenvolvidos com as tecnologias mais modernas do mercado.</p>
+                  <a href="#" class="text-purple-600 font-bold text-sm hover:text-purple-800 flex items-center group-hover:translate-x-2 transition">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
                 </div>
-                <!-- Card 3 -->
-                <div class="bg-white p-8 rounded-xl shadow-sm hover:shadow-xl transition duration-300 border-b-4 border-transparent hover:border-blue-500 group">
-                  <div class="w-14 h-14 bg-green-50 text-green-600 rounded-lg flex items-center justify-center text-2xl mb-6 group-hover:bg-green-600 group-hover:text-white transition">
+                <!-- Service 3 -->
+                <div class="bg-white p-8 rounded-2xl shadow-sm hover:shadow-xl transition duration-300 border border-gray-100 group">
+                  <div class="w-14 h-14 bg-green-600 text-white rounded-xl flex items-center justify-center text-2xl mb-6 shadow-lg shadow-green-200 group-hover:scale-110 transition">
                     <i class="fas fa-chart-pie"></i>
                   </div>
                   <h3 class="text-xl font-bold text-gray-900 mb-3">Marketing Digital</h3>
-                  <p class="text-gray-600 mb-6 text-sm leading-relaxed">Estratégias de tráfego e conteúdo para aumentar sua visibilidade online.</p>
-                  <a href="#" class="text-green-600 font-bold text-sm hover:underline flex items-center">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
+                  <p class="text-gray-600 mb-6 leading-relaxed">Gestão de tráfego, SEO e conteúdo para aumentar sua visibilidade e converter leads em clientes.</p>
+                  <a href="#" class="text-green-600 font-bold text-sm hover:text-green-800 flex items-center group-hover:translate-x-2 transition">Saiba mais <i class="fas fa-arrow-right ml-2 text-xs"></i></a>
                 </div>
               </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('gallery-grid', {
+        label: 'Galeria de Fotos',
+        category: 'Institucional',
+        attributes: { class: 'fas fa-images' },
+        content: `
+          <section class="py-20 bg-white font-sans">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-12">
+                    <h2 class="text-3xl font-bold text-gray-900">Nosso Portfólio</h2>
+                    <p class="text-gray-500 mt-2">Confira alguns de nossos projetos recentes.</p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="relative group overflow-hidden rounded-lg aspect-[4/3]">
+                        <img src="https://placehold.co/600x450/EEE/31343C" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt="Projeto 1">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                            <span class="text-white font-bold text-lg border border-white px-4 py-2 rounded">Ver Projeto</span>
+                        </div>
+                    </div>
+                    <div class="relative group overflow-hidden rounded-lg aspect-[4/3]">
+                        <img src="https://placehold.co/600x450/EEE/31343C" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt="Projeto 2">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                            <span class="text-white font-bold text-lg border border-white px-4 py-2 rounded">Ver Projeto</span>
+                        </div>
+                    </div>
+                    <div class="relative group overflow-hidden rounded-lg aspect-[4/3]">
+                        <img src="https://placehold.co/600x450/EEE/31343C" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt="Projeto 3">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                            <span class="text-white font-bold text-lg border border-white px-4 py-2 rounded">Ver Projeto</span>
+                        </div>
+                    </div>
+                    <div class="relative group overflow-hidden rounded-lg aspect-[4/3]">
+                        <img src="https://placehold.co/600x450/EEE/31343C" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt="Projeto 4">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                            <span class="text-white font-bold text-lg border border-white px-4 py-2 rounded">Ver Projeto</span>
+                        </div>
+                    </div>
+                    <div class="relative group overflow-hidden rounded-lg aspect-[4/3]">
+                        <img src="https://placehold.co/600x450/EEE/31343C" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt="Projeto 5">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                            <span class="text-white font-bold text-lg border border-white px-4 py-2 rounded">Ver Projeto</span>
+                        </div>
+                    </div>
+                    <div class="relative group overflow-hidden rounded-lg aspect-[4/3]">
+                        <img src="https://placehold.co/600x450/EEE/31343C" class="w-full h-full object-cover transform group-hover:scale-110 transition duration-500" alt="Projeto 6">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition duration-300 flex items-center justify-center">
+                            <span class="text-white font-bold text-lg border border-white px-4 py-2 rounded">Ver Projeto</span>
+                        </div>
+                    </div>
+                </div>
             </div>
           </section>
         `
@@ -117,23 +202,24 @@ export const addBlocks = (editor: any) => {
         category: 'Institucional',
         attributes: { class: 'fas fa-chart-bar' },
         content: `
-          <section class="bg-gray-900 text-white py-16 font-sans border-t border-gray-800">
-            <div class="max-w-6xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              <div class="p-4">
-                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">10+</div>
-                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Anos de Mercado</div>
+          <section class="bg-gray-900 text-white py-16 font-sans relative overflow-hidden">
+            <div class="absolute inset-0 bg-blue-600/10"></div>
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-2 md:grid-cols-4 gap-8 text-center relative z-10">
+              <div class="p-4 transform hover:scale-105 transition duration-300">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-blue-400">10+</div>
+                <div class="text-gray-300 text-xs font-bold uppercase tracking-widest">Anos de Mercado</div>
               </div>
-              <div class="p-4 border-l border-gray-800">
-                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">500+</div>
-                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Projetos Entregues</div>
+              <div class="p-4 border-l border-gray-800 transform hover:scale-105 transition duration-300">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-blue-400">500+</div>
+                <div class="text-gray-300 text-xs font-bold uppercase tracking-widest">Projetos Entregues</div>
               </div>
-              <div class="p-4 border-l border-gray-800">
-                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">98%</div>
-                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Clientes Satisfeitos</div>
+              <div class="p-4 border-l border-gray-800 transform hover:scale-105 transition duration-300">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-blue-400">98%</div>
+                <div class="text-gray-300 text-xs font-bold uppercase tracking-widest">Clientes Satisfeitos</div>
               </div>
-              <div class="p-4 border-l border-gray-800">
-                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-b from-white to-gray-400">24/7</div>
-                <div class="text-gray-400 text-xs font-bold uppercase tracking-widest">Suporte Dedicado</div>
+              <div class="p-4 border-l border-gray-800 transform hover:scale-105 transition duration-300">
+                <div class="text-4xl md:text-5xl font-extrabold mb-2 text-blue-400">24/7</div>
+                <div class="text-gray-300 text-xs font-bold uppercase tracking-widest">Suporte Dedicado</div>
               </div>
             </div>
           </section>
@@ -146,44 +232,48 @@ export const addBlocks = (editor: any) => {
         attributes: { class: 'fas fa-users' },
         content: `
           <section class="py-20 bg-white font-sans">
-            <div class="max-w-6xl mx-auto px-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div class="text-center mb-16">
                 <h2 class="text-3xl font-bold text-gray-900 mb-4">Conheça o Time</h2>
-                <p class="text-gray-500">Especialistas apaixonados pelo que fazem.</p>
+                <p class="text-gray-500 max-w-2xl mx-auto">Especialistas apaixonados dedicados ao sucesso do seu projeto.</p>
               </div>
               <div class="grid md:grid-cols-4 gap-8">
                 <!-- Member 1 -->
                 <div class="text-center group">
-                  <div class="relative mb-4 inline-block">
-                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
-                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  <div class="relative mb-6 inline-block">
+                    <div class="absolute inset-0 bg-blue-500 rounded-full blur-md opacity-20 group-hover:opacity-40 transition"></div>
+                    <img src="https://placehold.co/150x150" class="relative w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-500 border-4 border-white shadow-lg">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition duration-300"><i class="fab fa-linkedin-in text-xs"></i></div>
                   </div>
                   <h3 class="font-bold text-lg text-gray-900">Ana Silva</h3>
                   <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">CEO & Founder</p>
                 </div>
                 <!-- Member 2 -->
                 <div class="text-center group">
-                  <div class="relative mb-4 inline-block">
-                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
-                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  <div class="relative mb-6 inline-block">
+                    <div class="absolute inset-0 bg-blue-500 rounded-full blur-md opacity-20 group-hover:opacity-40 transition"></div>
+                    <img src="https://placehold.co/150x150" class="relative w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-500 border-4 border-white shadow-lg">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition duration-300"><i class="fab fa-linkedin-in text-xs"></i></div>
                   </div>
                   <h3 class="font-bold text-lg text-gray-900">Carlos Souza</h3>
                   <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">Diretor de Ops</p>
                 </div>
                 <!-- Member 3 -->
                 <div class="text-center group">
-                  <div class="relative mb-4 inline-block">
-                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
-                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  <div class="relative mb-6 inline-block">
+                    <div class="absolute inset-0 bg-blue-500 rounded-full blur-md opacity-20 group-hover:opacity-40 transition"></div>
+                    <img src="https://placehold.co/150x150" class="relative w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-500 border-4 border-white shadow-lg">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition duration-300"><i class="fab fa-linkedin-in text-xs"></i></div>
                   </div>
                   <h3 class="font-bold text-lg text-gray-900">Mariana Lima</h3>
                   <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">Head de Design</p>
                 </div>
                 <!-- Member 4 -->
                 <div class="text-center group">
-                  <div class="relative mb-4 inline-block">
-                    <img src="https://placehold.co/150x150" class="w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-300 border-4 border-gray-100">
-                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform group-hover:scale-110 transition"><i class="fab fa-linkedin-in text-xs"></i></div>
+                  <div class="relative mb-6 inline-block">
+                    <div class="absolute inset-0 bg-blue-500 rounded-full blur-md opacity-20 group-hover:opacity-40 transition"></div>
+                    <img src="https://placehold.co/150x150" class="relative w-32 h-32 rounded-full object-cover mx-auto grayscale group-hover:grayscale-0 transition duration-500 border-4 border-white shadow-lg">
+                    <div class="absolute bottom-0 right-0 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center border-2 border-white shadow-sm transform translate-y-2 group-hover:translate-y-0 opacity-0 group-hover:opacity-100 transition duration-300"><i class="fab fa-linkedin-in text-xs"></i></div>
                   </div>
                   <h3 class="font-bold text-lg text-gray-900">Pedro Santos</h3>
                   <p class="text-blue-600 text-xs font-bold uppercase tracking-wide mt-1">Lead Developer</p>
@@ -200,50 +290,54 @@ export const addBlocks = (editor: any) => {
         attributes: { class: 'fas fa-map-marked-alt' },
         content: `
           <section class="py-20 bg-white font-sans" id="contato">
-            <div class="max-w-6xl mx-auto px-6 grid md:grid-cols-2 gap-12">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-16">
               <div>
                 <span class="text-blue-600 font-bold tracking-wider text-xs uppercase bg-blue-50 px-3 py-1 rounded-full border border-blue-100">Fale Conosco</span>
                 <h2 class="text-3xl font-bold text-gray-900 mt-4 mb-6">Estamos prontos para atender</h2>
                 <p class="text-gray-600 mb-8 leading-relaxed">Tem alguma dúvida ou projeto em mente? Entre em contato pelos canais abaixo ou preencha o formulário.</p>
                 
                 <div class="space-y-6">
-                  <div class="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
-                    <div class="bg-blue-100 w-10 h-10 rounded flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-map-marker-alt"></i></div>
+                  <div class="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100 group">
+                    <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition"><i class="fas fa-map-marker-alt text-lg"></i></div>
                     <div>
-                      <h4 class="font-bold text-gray-900 text-sm">Endereço</h4>
-                      <p class="text-gray-600 text-sm">Av. Paulista, 1000 - São Paulo, SP</p>
+                      <h4 class="font-bold text-gray-900 text-base">Endereço</h4>
+                      <p class="text-gray-600 text-sm mt-1">Av. Paulista, 1000 - Bela Vista<br>São Paulo, SP - 01310-100</p>
                     </div>
                   </div>
-                  <div class="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
-                    <div class="bg-blue-100 w-10 h-10 rounded flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-phone"></i></div>
+                  <div class="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100 group">
+                    <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition"><i class="fas fa-phone text-lg"></i></div>
                     <div>
-                      <h4 class="font-bold text-gray-900 text-sm">Telefone / WhatsApp</h4>
-                      <p class="text-gray-600 text-sm">+55 (11) 99999-9999</p>
+                      <h4 class="font-bold text-gray-900 text-base">Telefone / WhatsApp</h4>
+                      <p class="text-gray-600 text-sm mt-1">+55 (11) 99999-9999</p>
+                      <p class="text-gray-500 text-xs mt-1">Seg-Sex, 9h às 18h</p>
                     </div>
                   </div>
-                  <div class="flex items-start gap-4 p-4 rounded-lg hover:bg-gray-50 transition border border-transparent hover:border-gray-100">
-                    <div class="bg-blue-100 w-10 h-10 rounded flex items-center justify-center text-blue-600 shrink-0"><i class="fas fa-envelope"></i></div>
+                  <div class="flex items-start gap-4 p-4 rounded-xl hover:bg-gray-50 transition border border-transparent hover:border-gray-100 group">
+                    <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition"><i class="fas fa-envelope text-lg"></i></div>
                     <div>
-                      <h4 class="font-bold text-gray-900 text-sm">E-mail</h4>
-                      <p class="text-gray-600 text-sm">contato@suaempresa.com.br</p>
+                      <h4 class="font-bold text-gray-900 text-base">E-mail</h4>
+                      <p class="text-gray-600 text-sm mt-1">contato@suaempresa.com.br</p>
                     </div>
                   </div>
                 </div>
               </div>
               
-              <div class="bg-gray-50 p-8 rounded-xl border border-gray-200 shadow-sm">
-                <form class="space-y-4">
-                  <h3 class="font-bold text-lg text-gray-900 mb-4">Envie uma mensagem</h3>
+              <div class="bg-gray-50 p-8 rounded-2xl border border-gray-200 shadow-sm">
+                <form class="space-y-5">
+                  <h3 class="font-bold text-xl text-gray-900 mb-6">Envie uma mensagem</h3>
                   <div>
-                    <input type="text" placeholder="Seu Nome" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Seu Nome</label>
+                    <input type="text" placeholder="João Silva" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm">
                   </div>
                   <div>
-                    <input type="email" placeholder="Seu E-mail" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm">
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Seu E-mail</label>
+                    <input type="email" placeholder="joao@email.com" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm">
                   </div>
                   <div>
-                    <textarea rows="4" placeholder="Como podemos ajudar?" class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm"></textarea>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Mensagem</label>
+                    <textarea rows="4" placeholder="Olá, gostaria de um orçamento..." class="w-full p-3 rounded-lg border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none transition bg-white text-sm resize-none"></textarea>
                   </div>
-                  <button type="button" class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 transform hover:-translate-y-0.5">
+                  <button type="button" class="w-full bg-blue-600 text-white font-bold py-4 rounded-lg hover:bg-blue-700 transition shadow-lg shadow-blue-600/20 transform hover:-translate-y-0.5 text-sm uppercase tracking-wide">
                     Enviar Mensagem
                   </button>
                 </form>
@@ -259,14 +353,14 @@ export const addBlocks = (editor: any) => {
         attributes: { class: 'far fa-handshake' },
         content: `
           <div class="py-12 bg-white border-t border-b border-gray-100 font-sans">
-            <div class="max-w-6xl mx-auto px-6">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <p class="text-center text-xs font-bold text-gray-400 uppercase tracking-widest mb-8">Empresas que confiam em nosso trabalho</p>
-                <div class="flex flex-wrap justify-center items-center gap-12 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
-                    <img src="https://placehold.co/120x40?text=LOGO+1" class="h-8 md:h-10 object-contain hover:scale-110 transition">
-                    <img src="https://placehold.co/120x40?text=LOGO+2" class="h-8 md:h-10 object-contain hover:scale-110 transition">
-                    <img src="https://placehold.co/120x40?text=LOGO+3" class="h-8 md:h-10 object-contain hover:scale-110 transition">
-                    <img src="https://placehold.co/120x40?text=LOGO+4" class="h-8 md:h-10 object-contain hover:scale-110 transition">
-                    <img src="https://placehold.co/120x40?text=LOGO+5" class="h-8 md:h-10 object-contain hover:scale-110 transition">
+                <div class="flex flex-wrap justify-center items-center gap-12 md:gap-16 opacity-60 grayscale hover:grayscale-0 transition-all duration-500">
+                    <img src="https://placehold.co/120x40?text=LOGO+1" class="h-8 md:h-10 object-contain hover:scale-110 transition cursor-pointer">
+                    <img src="https://placehold.co/120x40?text=LOGO+2" class="h-8 md:h-10 object-contain hover:scale-110 transition cursor-pointer">
+                    <img src="https://placehold.co/120x40?text=LOGO+3" class="h-8 md:h-10 object-contain hover:scale-110 transition cursor-pointer">
+                    <img src="https://placehold.co/120x40?text=LOGO+4" class="h-8 md:h-10 object-contain hover:scale-110 transition cursor-pointer">
+                    <img src="https://placehold.co/120x40?text=LOGO+5" class="h-8 md:h-10 object-contain hover:scale-110 transition cursor-pointer">
                 </div>
             </div>
           </div>
@@ -274,7 +368,7 @@ export const addBlocks = (editor: any) => {
     });
 
     // =========================================
-    // CATEGORIA: CONVERSÃO (NOVOS)
+    // CATEGORIA: CONVERSÃO (NOVOS E MELHORADOS)
     // =========================================
 
     bm.add('vsl-section', {
@@ -282,31 +376,154 @@ export const addBlocks = (editor: any) => {
         category: 'Conversão',
         attributes: { class: 'fas fa-play-circle' },
         content: `
-          <section class="py-16 bg-gray-900 text-center font-sans">
-            <div class="max-w-4xl mx-auto px-4">
-                <h2 class="text-3xl font-extrabold text-white mb-8 leading-tight">Veja como funciona na prática</h2>
+          <section class="py-20 bg-gray-900 text-center font-sans">
+            <div class="max-w-4xl mx-auto px-4 sm:px-6">
+                <h2 class="text-3xl md:text-4xl font-extrabold text-white mb-8 leading-tight">Veja como funciona na prática</h2>
                 <div class="relative aspect-video bg-black rounded-2xl shadow-2xl overflow-hidden border border-gray-800 group cursor-pointer">
-                    <!-- Placeholder de Vídeo -->
-                    <div class="absolute inset-0 flex items-center justify-center bg-gray-900 group-hover:bg-gray-800 transition">
-                        <div class="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center pl-2 shadow-lg shadow-red-900/50 group-hover:scale-110 transition transform duration-300">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent z-10"></div>
+                    <!-- Placeholder Image for Video -->
+                    <img src="https://placehold.co/1280x720/111/333?text=Video+Thumbnail" class="w-full h-full object-cover opacity-80" alt="Video Thumb">
+                    
+                    <div class="absolute inset-0 flex items-center justify-center z-20">
+                        <div class="w-20 h-20 bg-red-600 rounded-full flex items-center justify-center pl-2 shadow-lg shadow-red-900/50 group-hover:scale-110 group-hover:bg-red-500 transition transform duration-300">
                             <i class="fas fa-play text-white text-3xl"></i>
                         </div>
                     </div>
-                    <p class="absolute bottom-6 left-0 right-0 text-gray-400 text-sm font-medium">Clique para assistir (Vídeo Explicativo)</p>
+                    <p class="absolute bottom-6 left-0 right-0 text-gray-300 text-sm font-medium z-20">Clique para assistir (2 min)</p>
                 </div>
-                <div class="mt-8">
+                <div class="mt-10">
                     <button class="bg-green-500 hover:bg-green-600 text-white font-extrabold py-4 px-10 rounded-full text-lg shadow-xl shadow-green-500/20 transition transform hover:-translate-y-1 animate-pulse">
                         QUERO ESSA SOLUÇÃO
                     </button>
+                    <p class="mt-4 text-xs text-gray-500 uppercase tracking-wide">Acesso Imediato • Garantia de 7 Dias</p>
                 </div>
             </div>
           </section>
         `
     });
 
-    // =========================================
-    // CATEGORIA: CONVERSÃO (EXISTENTES)
-    // =========================================
+    bm.add('cta-banner', {
+        label: 'Banner CTA',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-bullhorn' },
+        content: `
+          <section class="py-12 bg-blue-600 font-sans">
+            <div class="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+                <div>
+                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-2">Pronto para transformar seu negócio?</h2>
+                    <p class="text-blue-100 text-lg">Junte-se a mais de 500 empresas que já cresceram conosco.</p>
+                </div>
+                <button class="bg-white text-blue-600 hover:bg-gray-100 font-bold py-3 px-8 rounded-full shadow-lg transition transform hover:scale-105 whitespace-nowrap">
+                    Começar Agora
+                </button>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('process-steps', {
+        label: 'Passo a Passo',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-list-ol' },
+        content: `
+          <section class="py-20 bg-white font-sans">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl font-bold text-gray-900 mb-4">Como Funciona?</h2>
+                    <p class="text-gray-500">É simples, rápido e prático.</p>
+                </div>
+                <div class="grid md:grid-cols-3 gap-8">
+                    <!-- Step 1 -->
+                    <div class="relative flex flex-col items-center text-center p-6">
+                        <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-blue-200 z-10 relative">1</div>
+                        <!-- Connector Line -->
+                        <div class="hidden md:block absolute top-14 left-1/2 w-full h-1 bg-gray-100 -z-0"></div>
+                        
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Cadastro</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">Crie sua conta gratuita em menos de 1 minuto. Sem necessidade de cartão de crédito.</p>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="relative flex flex-col items-center text-center p-6">
+                        <div class="w-16 h-16 bg-blue-600 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-blue-200 z-10 relative">2</div>
+                        <!-- Connector Line -->
+                        <div class="hidden md:block absolute top-14 left-1/2 w-full h-1 bg-gray-100 -z-0"></div>
+
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Configuração</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">Personalize a ferramenta de acordo com as necessidades do seu negócio com poucos cliques.</p>
+                    </div>
+                    <!-- Step 3 -->
+                    <div class="relative flex flex-col items-center text-center p-6">
+                        <div class="w-16 h-16 bg-green-500 text-white rounded-full flex items-center justify-center text-2xl font-bold mb-6 shadow-lg shadow-green-200 z-10 relative">3</div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Resultados</h3>
+                        <p class="text-gray-600 text-sm leading-relaxed">Acompanhe o crescimento e comece a colher os frutos da automação inteligente.</p>
+                    </div>
+                </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('features-split-right', {
+        label: 'Feature (Img Dir)',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-columns' },
+        content: `
+          <section class="py-20 bg-white font-sans overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
+                    <div class="mb-12 lg:mb-0">
+                        <h2 class="text-3xl font-extrabold text-gray-900 mb-6">
+                            Controle total sobre <br><span class="text-blue-600">seus dados</span>.
+                        </h2>
+                        <p class="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Chega de planilhas confusas. Nossa dashboard intuitiva permite que você visualize todas as métricas importantes em tempo real, facilitando a tomada de decisão.
+                        </p>
+                        <ul class="space-y-4">
+                            <li class="flex items-center text-gray-700 font-medium"><i class="fas fa-check-circle text-green-500 mr-3 text-lg"></i> Relatórios em Tempo Real</li>
+                            <li class="flex items-center text-gray-700 font-medium"><i class="fas fa-check-circle text-green-500 mr-3 text-lg"></i> Exportação de Dados (CSV/PDF)</li>
+                            <li class="flex items-center text-gray-700 font-medium"><i class="fas fa-check-circle text-green-500 mr-3 text-lg"></i> Integração via API</li>
+                        </ul>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute -inset-4 bg-gradient-to-r from-blue-100 to-gray-100 rounded-xl transform rotate-2"></div>
+                        <img src="https://placehold.co/600x400/EEE/31343C?text=Dashboard+UI" class="relative rounded-lg shadow-2xl w-full object-cover transform transition hover:-rotate-1" alt="Feature">
+                    </div>
+                </div>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('features-split-left', {
+        label: 'Feature (Img Esq)',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-columns' },
+        content: `
+          <section class="py-20 bg-gray-50 font-sans overflow-hidden">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
+                    <div class="relative order-2 lg:order-1 mb-12 lg:mb-0">
+                        <div class="absolute -inset-4 bg-gradient-to-l from-purple-100 to-blue-50 rounded-xl transform -rotate-2"></div>
+                        <img src="https://placehold.co/600x400/EEE/31343C?text=Mobile+App" class="relative rounded-lg shadow-2xl w-full object-cover transform transition hover:rotate-1" alt="Feature">
+                    </div>
+                    <div class="order-1 lg:order-2">
+                        <h2 class="text-3xl font-extrabold text-gray-900 mb-6">
+                            Acesse de onde estiver, <br><span class="text-purple-600">quando quiser</span>.
+                        </h2>
+                        <p class="text-lg text-gray-600 mb-8 leading-relaxed">
+                            Nossa plataforma é 100% responsiva e baseada na nuvem. Seja no escritório, em casa ou em viagem, seu negócio continua rodando na palma da sua mão.
+                        </p>
+                        <ul class="space-y-4">
+                            <li class="flex items-center text-gray-700 font-medium"><i class="fas fa-mobile-alt text-purple-500 mr-3 text-lg"></i> App Nativo (iOS e Android)</li>
+                            <li class="flex items-center text-gray-700 font-medium"><i class="fas fa-wifi text-purple-500 mr-3 text-lg"></i> Modo Offline Inteligente</li>
+                            <li class="flex items-center text-gray-700 font-medium"><i class="fas fa-lock text-purple-500 mr-3 text-lg"></i> Segurança de Ponta a Ponta</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+          </section>
+        `
+    });
 
     bm.add('hero-capture', {
         label: 'Hero com Captura',

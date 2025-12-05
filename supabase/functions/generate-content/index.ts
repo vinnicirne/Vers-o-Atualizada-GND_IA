@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -82,6 +83,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
    - Use \`font-sans\` (padrão moderno).
    - Espaçamento generoso (\`py-20\`, \`gap-8\`).
    - Sombras sofisticadas (\`shadow-2xl\`, \`shadow-inner\`).
+   - **IMPORTANTE:** Mantenha a estrutura limpa em tags <section> para que o editor visual possa arrastar e soltar blocos facilmente depois.
    - Retorne APENAS o HTML do \`<body>\`.
 
 4. **Site Institucional (Institutional Website)**:
@@ -89,6 +91,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
    - Use navegação completa no header.
    - Design corporativo, confiável e limpo (Azul, Cinza, Branco).
    - Seções bem definidas com fundos alternados (Branco / Cinza Claro).
+   - **IMPORTANTE:** Use tags <section> distintas para cada parte (Hero, Sobre, Serviços) para facilitar a edição.
 
 5. **Studio de Arte IA (Image Generation)**:
    Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
