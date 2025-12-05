@@ -38,114 +38,73 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 
 2. **Gerador de Prompts**: Gere prompts otimizados para IAs como Gemini/ChatGPT, detalhando persona, tarefa, contexto e formato de saída.
 
-3. **Gerador de Landing Page**:
-   Você é um especialista mundial em Copywriting e Design de Conversão (CRO).
-   Sua tarefa é gerar o código HTML completo de uma Landing Page de Alta Conversão.
+3. **Gerador de Landing Page (WORLD-CLASS DESIGN)**:
+   Você é um **Diretor de Arte Premiado** e um **Copywriter de Resposta Direta**.
+   Sua tarefa é criar uma Landing Page que pareça ter custado $10.000.
    
-   **ESTRUTURA OBRIGATÓRIA (Siga esta ordem exata):**
+   **ESTRUTURA DE ALTA CONVERSÃO (Obrigatória):**
 
-   1. **CABEÇALHO PODEROSO (Sem Menu):** 
-      - Apenas Logo (esquerda) e Botão CTA (direita).
-      - PROIBIDO: Menu de navegação (Home, Sobre, etc).
-   
-   2. **HERO SECTION (Primeira Dobra):**
-      - **Título Impactante (H1):** Comunique o benefício principal em poucas palavras.
-      - **Subtítulo (H2):** Reforce a promessa com detalhes ("Como X ajuda você a Y").
-      - **Visual:** Uma imagem da Pollinations que mostre o produto/serviço em ação.
-      - **CTA Principal:** Botão em destaque com cor contrastante (ex: "Quero Começar Agora").
-   
-   3. **PROVA SOCIAL (Logos):**
-      - Uma faixa cinza clara com logos de empresas ou parceiros (use placeholders de ícones FontAwesome ou texto estilizado) para gerar autoridade.
-   
-   4. **BENEFÍCIOS CLAROS (Não Features):**
-      - Lista em Grid ou Bullet Points.
-      - Foque no GANHO do usuário: Economia de tempo, Resultados comprovados, Facilidade.
-      - Use ícones do FontAwesome para cada benefício.
-   
-   5. **OFERTA IRRESISTÍVEL & ESCASSEZ:**
-      - Crie uma seção de destaque.
-      - Inclua Bônus, Desconto ou Garantia ("Risco Zero").
-      - **Gatilho de Urgência:** Adicione um texto simulando contagem regressiva ou "Oferta válida até hoje".
-      - **Gatilho de Escassez:** "Vagas limitadas".
-   
-   6. **DEPOIMENTOS (Prova Social):**
-      - 3 Cards com fotos (use https://randomuser.me/api/portraits/...) e textos elogiando o resultado.
-   
-   7. **CAPTURA SIMPLES (Fundo da Página):**
-      - Um formulário limpo solicitando APENAS: Nome e E-mail.
-      - Botão de envio grande: "Garantir meu Acesso".
-   
-   8. **RODAPÉ (Reforço):**
-      - Repita a promessa principal resumida.
-      - Links mínimos (apenas Termos e Privacidade).
-      - Copyright.
+   1. **HEADER (Minimalista & Focado):**
+      - **NUNCA** use tags de navegação (<nav>, <ul>, <li>) no topo.
+      - Apenas: Uma <div> com o Logo (texto estilizado, ex: font-extrabold tracking-tighter) à esquerda e um botão CTA (ex: "Falar com Consultor") à direita.
 
-   **REGRAS TÉCNICAS:**
-   - Use **Tailwind CSS** para todo o estilo (design limpo, responsivo, mobile-first).
-   - Use cores contrastantes para os botões (Laranja, Verde ou Vermelho dependendo do tema).
-   - Adicione animações simples 'hover:scale-105' nos botões.
-   - Retorne APENAS o código HTML dentro do body (não precisa de <html> ou <head>, pois o editor já injeta).
+   2. **HERO SECTION (Impacto Visual):**
+      - Use **GRADIENTES** sutis no fundo (ex: bg-gradient-to-r from-slate-900 to-slate-800).
+      - **Headline (H1):** Grande (text-5xl ou 6xl), negrito, com palavras coloridas usando 'text-transparent bg-clip-text bg-gradient-to-r'.
+      - **Subheadline:** Texto cinza claro, max-width controlado para leitura fácil.
+      - **CTA Principal:** Botão grande, com sombra colorida (shadow-lg shadow-blue-500/50), bordas arredondadas (rounded-xl) e hover effect (scale-105).
+
+   3. **PROVA SOCIAL (Autoridade):**
+      - Faixa discreta "Empresas que confiam em nós". Use nomes de empresas em cinza (opacity-50) para simular logos.
+
+   4. **BENEFÍCIOS (Não Features):**
+      - Use **GRID** (grid-cols-1 md:grid-cols-3).
+      - Cards com **Glassmorphism** (bg-white/5 backdrop-blur-sm border border-white/10) se o fundo for escuro.
+      - Ícones grandes e coloridos (FontAwesome).
+      - Foque na transformação: "Economize 20h/semana" em vez de "Automação rápida".
+
+   5. **OFERTA & GARANTIA (Risco Zero):**
+      - Seção destacada.
+      - Inclua um selo visual de "Garantia de 30 Dias" (ícone check-circle).
+      - Use gatilhos de **Urgência** ("Oferta por tempo limitado").
+
+   6. **FAQ (Quebra de Objeções):**
+      - Use a tag HTML nativa `<details>` e `<summary>` para criar acordeões interativos sem Javascript. Estilize-os para parecerem modernos.
+
+   7. **CAPTURA FINAL (CTA):**
+      - Fundo contrastante.
+      - Formulário simples: Apenas E-mail.
+      - Botão de ação massiva.
+
+   8. **FOOTER:**
+      - Copyright e Links de Termos/Privacidade (pequenos e discretos).
+
+   **REGRAS TÉCNICAS (Tailwind CSS):**
+   - Use \`font-sans\` (padrão moderno).
+   - Espaçamento generoso (\`py-20\`, \`gap-8\`).
+   - Sombras sofisticadas (\`shadow-2xl\`, \`shadow-inner\`).
+   - Retorne APENAS o HTML do \`<body>\`.
 
 4. **Site Institucional (Institutional Website)**:
-   Você é um Arquiteto de Informação e Desenvolvedor Sênior.
-   Gere um site institucional completo (Single Page Application com âncoras) para empresas.
-   
-   ESTRUTURA OBRIGATÓRIA:
-   - **Header:** Logotipo (texto), Menu de navegação (Home, Sobre, Serviços, Contato).
-   - **Hero Section:** Headline forte, subheadline, CTA e uma imagem de fundo impactante.
-   - **Sobre Nós:** Quem somos, missão, visão.
-   - **Nossos Serviços:** Grid de 3 ou 4 colunas com ícones (FontAwesome) e descrições.
-   - **Diferenciais/Números:** Seção de prova social ou estatísticas.
-   - **Contato:** Formulário estilizado (visual apenas) e informações de rodapé.
-   - **Footer:** Links, Copyright e Redes Sociais.
-   
-   REGRAS TÉCNICAS:
-   - Use **Tailwind CSS** para todo o estilo.
-   - Design corporativo, limpo e confiável.
-   - Use imagens da Pollinations.
-   - Retorne APENAS o código HTML.
+   Gere um site completo (Home, Sobre, Serviços, Contato).
+   - Use navegação completa no header.
+   - Design corporativo, confiável e limpo (Azul, Cinza, Branco).
+   - Seções bem definidas com fundos alternados (Branco / Cinza Claro).
 
 5. **Studio de Arte IA (Image Generation)**:
-   Você é um engenheiro de prompts especializado em Stable Diffusion XL e Flux Pro.
-   Sua tarefa NÃO é gerar a imagem, mas sim transformar o pedido simples do usuário em português em um PROMPT TÉCNICO EM INGLÊS altamente detalhado.
-   
-   Regras para o Prompt de Imagem:
-   - Traduza a intenção para inglês.
-   - Adicione detalhes de iluminação (ex: cinematic lighting, volumetric fog, golden hour).
-   - Adicione detalhes de câmera/estilo (ex: 8k, photorealistic, wide shot, macro, oil painting, cyberpunk).
-   - Adicione "magic words" de qualidade (ex: masterpiece, trending on artstation, sharp focus).
-   - SAÍDA: Retorne APENAS o prompt em inglês. Nada mais. Sem "Aqui está o prompt". Apenas o texto cru.
+   Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
+   - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
+   - Retorne APENAS o prompt em inglês.
 
-6. **Gerador de Copy**: Textos persuasivos para ads, emails, posts. Foque em AIDA (Atenção, Interesse, Desejo, Ação).
+6. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
 
 7. **Editor Visual (Social Media)**:
-   ATENÇÃO: MODO DE GERAÇÃO DE CÓDIGO ESTRITO. PROIBIDO RETORNAR TEXTO EXPLICATIVO.
-   Você é um motor de renderização de templates.
-   Sua tarefa: Gerar APENAS o código HTML de uma <div> container representando um post de rede social, usando Tailwind CSS para estilização.
-   REGRAS: NÃO inclua tags <html>, <head> ou <body>. Apenas a DIV container principal com style="width: 1080px; height: 1080px;".
+   Gere APENAS o código HTML de uma \`<div>\` (1080x1080px) com Tailwind CSS.
+   - Design vibrante, tipografia grande, contraste alto.
 
 8. **Criador de Posts Sociais (Social Media Poster)**:
-   Você é um **Estrategista de Autoridade, Líder de Pensamento (Thought Leader) e Copywriter Sênior**.
-   Sua missão é criar conteúdo que posicione o usuário como uma REFERÊNCIA no mercado.
-   
-   **DIRETRIZES DE AUTORIDADE (COPY):**
-   - **Tom de Voz:** Visionário, Confiante, Assertivo, Sofisticado. Evite linguagem genérica ou "vendedor barato".
-   - **Estrutura:**
-     1. **Hook (Gancho):** Comece com uma afirmação ousada, uma pergunta desafiadora ou uma verdade inconveniente.
-     2. **Desenvolvimento:** Use "Power Words" (Revolução, Inovação, Estratégia, Essencial, Liderança, Domínio). Fale sobre o futuro, tendências e transformação.
-     3. **CTA (Chamada):** Convide para a ação com autoridade (ex: "Invista no futuro", "Lidere seu setor").
-   - **Estilo:** Inspire respeito e admiração. O texto deve parecer escrito por um CEO ou Especialista de Topo.
-   
-   **DIRETRIZES VISUAIS (IMAGE_PROMPT):**
-   - O prompt da imagem deve refletir "High-End", "Editorial", "Cinematic", "Premium Quality". Evite estéticas amadoras.
-   
-   **Formato de Saída OBRIGATÓRIO (use estas tags exatas):**
-   
-   [IMAGE_PROMPT]
-   (Seu prompt técnico e sofisticado em inglês aqui...)
-   
-   [COPY]
-   (Sua legenda poderosa em português aqui...)
+   [IMAGE_PROMPT] (Inglês técnico)
+   [COPY] (Português persuasivo, tom de autoridade).
 `;
 
 serve(async (req) => {
@@ -180,11 +139,7 @@ serve(async (req) => {
     
     // --- TEXT TO SPEECH MODE HANDLER ---
     if (mode === 'text_to_speech') {
-        // Vozes disponíveis: Puck, Charon, Fenrir (Masculinas); Kore, Aoede (Femininas).
-        // Se options.voice não for fornecido, usa Kore como padrão.
         const voiceName = options?.voice || 'Kore';
-        
-        // CORREÇÃO CRÍTICA: Limitação de caracteres para o modelo de áudio para evitar erros
         const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
 
         try {
@@ -221,13 +176,10 @@ serve(async (req) => {
         }
     }
 
-    // SAFETY LOCK:
-    // Ensure we don't fall through to text generation if we intended to generate audio but failed the condition above somehow
     if (mode === 'text_to_speech') {
         throw new Error("Erro interno: Falha ao processar modo de áudio (Fallthrough).");
     }
 
-    // Use the correct model for text/code
     const modelName = 'gemini-2.5-flash';
 
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
@@ -240,28 +192,25 @@ serve(async (req) => {
     if (mode === 'image_generation' && options) {
         fullPrompt += `
         CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
-        - Estilo Artístico Solicitado: ${options.imageStyle || 'Photorealistic'}
-        - Proporção (apenas para seu conhecimento de composição): ${options.aspectRatio || '1:1'}
-        Instrução Final: Crie o prompt em inglês perfeito para gerar esta imagem nesse estilo.
+        - Estilo Artístico: ${options.imageStyle || 'Photorealistic'}
+        - Proporção: ${options.aspectRatio || '1:1'}
         `;
     }
 
     if (mode === 'social_media_poster' && options) {
         fullPrompt += `
-        CONTEXTO PARA POSTER DE AUTORIDADE:
+        CONTEXTO PARA POSTER:
         - Plataforma: ${options.platform || 'Instagram'}
-        - Tema Visual: ${options.theme || 'Modern'}
-        - Objetivo: Criar um post que transmita LIDERANÇA DE MERCADO e AUTORIDADE INCONTESTÁVEL.
-        - Instrução Extra: O texto deve ser magnético. Use palavras fortes. Não seja morno.
+        - Tema: ${options.theme || 'Modern'}
         `;
     }
 
     if ((mode === 'landingpage_generator' || mode === 'institutional_website_generator') && options) {
         fullPrompt += `
         **DIRETRIZES VISUAIS ESPECÍFICAS:**
-        - **Tema/Estilo Visual**: ${options.theme || 'Moderno e Corporativo'}.
+        - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
         - **Cor Primária**: ${options.primaryColor || '#10B981'}.
-        - **Instrução Extra:** Use imagens da Pollinations.ai (com prompts em inglês na URL) para deixar o site visualmente rico.
+        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
         `;
     }
 
@@ -282,7 +231,6 @@ serve(async (req) => {
 
     let text = response.text;
     
-    // Grounding extraction
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         sources = response.candidates[0].groundingMetadata.groundingChunks
@@ -315,12 +263,7 @@ serve(async (req) => {
     let audioBase64 = null;
     if (generateAudio && mode === 'news_generator') {
         try {
-            // Se o usuário selecionou uma voz específica para a notícia, ela viria em options.voice
-            // Mas no caso de notícias, geralmente usamos uma voz padrão de "jornalista".
-            // Aqui podemos usar 'Kore' ou 'Puck' como padrão.
             const newsVoice = options?.voice || 'Kore';
-
-            // Limitação de caracteres: Trunca o texto se for muito longo para o TTS
             const textForAudio = text.length > MAX_TTS_CHARS ? text.substring(0, MAX_TTS_CHARS) + "..." : text;
 
             const audioResponse = await ai.models.generateContent({
@@ -339,7 +282,6 @@ serve(async (req) => {
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
         } catch (audioError) {
             console.error("Failed to generate audio on backend:", audioError);
-            // Non-fatal error, proceed with text
         }
     }
 
