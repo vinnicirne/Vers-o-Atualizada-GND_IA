@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -132,7 +131,11 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
     }
     
-    const { prompt, mode, userId, generateAudio, options, userMemory } = reqBody;
+    // Destructure using let so we can modify mode
+    let { prompt, mode, userId, generateAudio, options, userMemory } = reqBody;
+    
+    // Sanitize mode string to prevent mismatches due to whitespace
+    mode = mode?.trim();
     
     // 3. Get & Validate API Key
     const apiKey = Deno.env.get("GEMINI_API_KEY");
@@ -181,6 +184,12 @@ serve(async (req) => {
             console.error("TTS Error:", ttsError);
             throw new Error(`Falha na geração de áudio: ${ttsError.message}`);
         }
+    }
+
+    // SAFETY LOCK:
+    // Ensure we don't fall through to text generation if we intended to generate audio but failed the condition above somehow
+    if (mode === 'text_to_speech') {
+        throw new Error("Erro interno: Falha ao processar modo de áudio (Fallthrough).");
     }
 
     // Use the correct model for text/code
