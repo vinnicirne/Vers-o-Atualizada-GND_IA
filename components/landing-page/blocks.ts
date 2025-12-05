@@ -3,6 +3,90 @@ export const addBlocks = (editor: any) => {
     const bm = editor.BlockManager;
 
     // --- CONVERSÃO ---
+    bm.add('hero-capture', {
+        label: 'Hero com Captura',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-magnet' },
+        content: `
+          <section class="relative bg-gray-900 text-white py-24 px-6 md:px-12 flex flex-col md:flex-row items-center justify-between gap-12 font-sans overflow-hidden">
+            <div class="absolute inset-0 bg-gradient-to-r from-gray-900 via-gray-900 to-transparent z-0"></div>
+            <div class="absolute right-0 top-0 w-1/2 h-full opacity-30 z-[-1] bg-cover bg-center" style="background-image: url('https://placehold.co/800x600/333/666');"></div>
+            
+            <div class="relative z-10 max-w-2xl">
+                <span class="inline-block py-1 px-3 rounded-full bg-red-600 text-white text-xs font-bold uppercase tracking-wider mb-4 animate-pulse">Oferta Limitada</span>
+                <h1 class="text-4xl md:text-6xl font-extrabold leading-tight mb-6">Título da Promessa Irresistível</h1>
+                <p class="text-lg text-gray-300 mb-8 max-w-lg">Descreva a dor do cliente e como sua solução resolve isso em tempo recorde. Foco no benefício final.</p>
+                <div class="flex items-center gap-4 text-sm text-gray-400">
+                    <span class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Garantia de 30 dias</span>
+                    <span class="flex items-center"><i class="fas fa-check text-green-500 mr-2"></i> Acesso Imediato</span>
+                </div>
+            </div>
+
+            <div class="relative z-10 w-full max-w-md bg-white text-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-200">
+                <h3 class="text-2xl font-bold text-center mb-2">Comece Agora</h3>
+                <p class="text-center text-gray-500 text-sm mb-6">Preencha para liberar seu acesso.</p>
+                <form class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Seu Nome</label>
+                        <input type="text" placeholder="Digite seu nome" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Seu E-mail</label>
+                        <input type="email" placeholder="seu@email.com" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 outline-none" />
+                    </div>
+                    <button type="button" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-4 rounded-lg text-lg shadow-lg shadow-red-200 transition transform hover:-translate-y-1">
+                        QUERO MEU ACESSO
+                    </button>
+                </form>
+                <p class="text-xs text-center text-gray-400 mt-4"><i class="fas fa-lock"></i> Seus dados estão 100% seguros.</p>
+            </div>
+          </section>
+        `
+    });
+
+    bm.add('benefits-grid', {
+        label: 'Benefícios (Grid)',
+        category: 'Conversão',
+        attributes: { class: 'fas fa-th-large' },
+        content: `
+          <section class="py-20 bg-white font-sans">
+            <div class="max-w-6xl mx-auto px-6">
+                <div class="text-center mb-16">
+                    <h2 class="text-3xl md:text-4xl font-extrabold text-gray-900 mb-4">Por que escolher nossa solução?</h2>
+                    <p class="text-gray-500 max-w-2xl mx-auto">Não vendemos apenas uma ferramenta, entregamos resultados.</p>
+                </div>
+                
+                <div class="grid md:grid-cols-3 gap-10">
+                    <!-- Item 1 -->
+                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition">
+                        <div class="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-sm">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Economia de Tempo</h3>
+                        <p class="text-gray-600 leading-relaxed">Automatize tarefas repetitivas e ganhe horas livres no seu dia para focar no que importa.</p>
+                    </div>
+                    <!-- Item 2 -->
+                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition">
+                        <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-sm">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Resultados Comprovados</h3>
+                        <p class="text-gray-600 leading-relaxed">Metodologia validada por milhares de clientes que já atingiram seus objetivos.</p>
+                    </div>
+                    <!-- Item 3 -->
+                    <div class="flex flex-col items-center text-center p-6 rounded-xl hover:bg-gray-50 transition">
+                        <div class="w-16 h-16 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center text-3xl mb-6 shadow-sm">
+                            <i class="fas fa-headset"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-gray-900 mb-3">Suporte Premium</h3>
+                        <p class="text-gray-600 leading-relaxed">Time de especialistas pronto para te ajudar a qualquer momento via chat ou e-mail.</p>
+                    </div>
+                </div>
+            </div>
+          </section>
+        `
+    });
+
     bm.add('pricing-table', {
         label: 'Tabela de Preços',
         category: 'Conversão',
