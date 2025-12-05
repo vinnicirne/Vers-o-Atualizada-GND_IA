@@ -1,6 +1,7 @@
 
 
 
+
 export const TEMPLATES = {
   saas_dark: `
     <header class="bg-gray-900 text-white p-6 flex justify-between items-center border-b border-gray-800">

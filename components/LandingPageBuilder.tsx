@@ -15,33 +15,54 @@ const sanitizeHtml = (html: string): string => {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
         
-        // 1. Remove tags <nav> explicitamente
+        // 1. Remove tags <nav> explicitamente em todo o documento
         doc.querySelectorAll('nav').forEach(el => el.remove());
         
-        // 2. Remove tags <ul> dentro de <header> (padrão comum de menu)
-        doc.querySelectorAll('header ul').forEach(el => el.remove());
-        
-        // 3. Remove links soltos no header que NÃO sejam botões (CTAs)
-        // Heurística: Se não tem classe de botão, remove.
-        doc.querySelectorAll('header a').forEach(el => {
-            const className = el.className.toLowerCase();
-            // Mantém se parecer um botão (bg-, btn, button, rounded)
-            if (!className.includes('bg-') && !className.includes('btn') && !className.includes('button') && !className.includes('rounded')) {
-                el.remove();
-            }
-        });
+        // 2. Foco no Header
+        const headers = doc.querySelectorAll('header');
+        headers.forEach(header => {
+            // Remove listas UL/OL dentro do header (padrão de menu)
+            header.querySelectorAll('ul, ol').forEach(el => el.remove());
 
-        // 4. Remove links comuns de navegação pelo texto (Home, Sobre, etc) caso tenham escapado
-        const forbiddenTexts = ['home', 'sobre', 'serviços', 'contato', 'preços', 'blog', 'about', 'services', 'contact'];
-        doc.querySelectorAll('a').forEach(el => {
-            if (forbiddenTexts.includes(el.innerText.trim().toLowerCase())) {
-                // Verificação dupla: se não parece botão, remove
+            // Remove divs que parecem wrappers de menu (contêm muitos links)
+            header.querySelectorAll('div').forEach(div => {
+                const links = div.querySelectorAll('a');
+                // Se uma div tem mais de 2 links e não parece ser uma área de botões de ação, remove
+                if (links.length > 2) {
+                    let hasButton = false;
+                    links.forEach(l => {
+                        if (l.className.includes('bg-') || l.className.includes('btn')) hasButton = true;
+                    });
+                    if (!hasButton) div.remove();
+                }
+            });
+
+            // 3. Remove links individuais de navegação (Home, Sobre, etc)
+            const forbiddenTexts = [
+                'home', 'início', 'inicio', 'sobre', 'sobre nós', 'serviços', 
+                'recursos', 'preços', 'planos', 'blog', 'contato', 'fale conosco',
+                'about', 'services', 'features', 'pricing', 'contact', 'login', 'entrar'
+            ];
+
+            header.querySelectorAll('a').forEach(el => {
+                const text = el.innerText.trim().toLowerCase();
                 const className = el.className.toLowerCase();
-                if (!className.includes('bg-') && !className.includes('btn')) {
+                
+                // Se o texto for proibido e NÃO parecer um botão CTA explícito (bg- color), remove.
+                // Links de texto simples no header são removidos.
+                const isCtaButton = (className.includes('bg-') && !className.includes('bg-transparent')) || className.includes('btn-primary') || className.includes('button');
+                
+                if (forbiddenTexts.includes(text) && !isCtaButton) {
+                    el.remove();
+                } else if (!isCtaButton && el.getAttribute('href')?.startsWith('#') === false) {
+                    // Remove links externos que não sejam CTAs no header
                     el.remove();
                 }
-            }
+            });
         });
+
+        // 4. Fallback: Remove elementos com IDs ou Classes suspeitas
+        doc.querySelectorAll('#menu, .menu, .nav, .navigation, .navbar-nav').forEach(el => el.remove());
 
         return doc.body.innerHTML;
     } catch (e) {
@@ -123,7 +144,6 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 { name: 'Mobile', width: '375px', widthMedia: '480px' },
             ]
           },
-          // REMOVED custom richTextEditor config to prevent 'appendChild' error on invalid node creation
         });
 
         console.log("[LandingPageBuilder] GrapesJS init success.");
