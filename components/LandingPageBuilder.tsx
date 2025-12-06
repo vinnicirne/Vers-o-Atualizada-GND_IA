@@ -37,6 +37,9 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
   const [leftTab, setLeftTab] = useState<'blocks' | 'layers'>('blocks');
   const [rightTab, setRightTab] = useState<'styles' | 'traits'>('styles');
   
+  // Estado de Preview (Expansão)
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  
   const [activeDevice, setActiveDevice] = useState('Desktop');
   const [showTemplateModal, setShowTemplateModal] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -178,10 +181,6 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
             editorInstance.on('component:selected', () => {
                 const selected = editorInstance.getSelected();
                 if (selected) {
-                    if (selected.is('link') || selected.is('image') || selected.is('map')) {
-                        // Keep on styles but ensure traits are accessible
-                        // setRightTab('traits'); 
-                    }
                     // Sempre foca em estilos ao selecionar
                     setRightTab('styles');
                 }
@@ -256,8 +255,14 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       case 'undo': editor.runCommand('core:undo'); break;
       case 'redo': editor.runCommand('core:redo'); break;
       case 'view': 
-        const isPreview = editor.isPreview();
-        isPreview ? editor.stopCommand('preview') : editor.runCommand('preview');
+        // Toggle Preview Mode
+        const nextState = !isPreviewMode;
+        setIsPreviewMode(nextState);
+        if (nextState) {
+            editor.runCommand('preview');
+        } else {
+            editor.stopCommand('preview');
+        }
         break;
       case 'clear': 
         if(confirm('Limpar tudo?')) editor.runCommand('core:canvas-clear'); 
@@ -320,7 +325,13 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 <button onClick={() => handleAction('undo')} className="w-9 h-9 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition flex items-center justify-center" title="Desfazer"><i className="fas fa-undo"></i></button>
                 <button onClick={() => handleAction('redo')} className="w-9 h-9 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition flex items-center justify-center" title="Refazer"><i className="fas fa-redo"></i></button>
                 <div className="h-6 w-px bg-gray-800 mx-1"></div>
-                <button onClick={() => handleAction('view')} className="w-9 h-9 text-blue-400 hover:text-white hover:bg-blue-900/30 rounded-md transition flex items-center justify-center" title="Preview"><i className="fas fa-eye"></i></button>
+                <button 
+                    onClick={() => handleAction('view')} 
+                    className={`w-9 h-9 rounded-md transition flex items-center justify-center ${isPreviewMode ? 'bg-green-600 text-white shadow-lg shadow-green-900/50' : 'text-blue-400 hover:text-white hover:bg-blue-900/30'}`} 
+                    title={isPreviewMode ? "Sair do Preview" : "Visualizar (Preview)"}
+                >
+                    <i className={`fas ${isPreviewMode ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                </button>
                 <button onClick={() => handleAction('clear')} className="w-9 h-9 text-red-500 hover:text-white hover:bg-red-900/30 rounded-md transition flex items-center justify-center" title="Limpar Tudo"><i className="fas fa-trash-alt"></i></button>
             </div>
             
@@ -334,10 +345,10 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       </div>
 
       {/* 2. MAIN WORKSPACE (3 Columns) */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         
         {/* === COLUNA ESQUERDA: BLOCOS E LAYERS === */}
-        <div className="w-[280px] bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 z-10">
+        <div className={`w-[280px] bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 z-10 transition-all duration-300 ${isPreviewMode ? 'hidden' : 'flex'}`}>
             {/* Tabs Esquerda */}
             <div className="flex border-b border-gray-800 bg-gray-950">
                 <button 
@@ -373,7 +384,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         </div>
 
         {/* === COLUNA DIREITA: ESTILOS E CONFIGURAÇÕES === */}
-        <div className="w-[300px] bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 z-10">
+        <div className={`w-[300px] bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 z-10 transition-all duration-300 ${isPreviewMode ? 'hidden' : 'flex'}`}>
             {/* Tabs Direita */}
             <div className="flex border-b border-gray-800 bg-gray-950">
                 <button 
