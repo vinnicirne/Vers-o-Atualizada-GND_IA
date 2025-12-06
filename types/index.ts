@@ -265,6 +265,7 @@ export interface AppNotification {
 }
 
 // Global Tool Settings
+// FIX: Exported the ToolSetting interface to make it accessible in other modules.
 export interface ToolSetting {
   key: ServiceKey;
   enabled: boolean;

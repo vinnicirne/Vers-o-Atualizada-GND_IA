@@ -17,16 +17,46 @@ function ToggleSwitch({ enabled, onChange }: ToggleSwitchProps) {
         type="button"
         role="switch"
         aria-checked={enabled}
-        className={`${enabled ? 'bg-green-600' : 'bg-gray-300'} relative inline-flex items-center h-7 rounded-full w-14 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500`}
+        // Base button styling: larger, rounded-full
+        className={`
+            relative inline-flex h-8 w-16 rounded-full cursor-pointer
+            transition-colors duration-300 ease-in-out
+            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
+            ${enabled ? 'bg-green-600' : 'bg-gray-300'} // Green when ON, lighter gray when OFF
+        `}
         onClick={() => onChange(!enabled)}
     >
+        {/* Text "ON" - positioned to the left side of the track, visible when enabled */}
+        <span
+            className={`
+                absolute left-2 top-1/2 -translate-y-1/2
+                text-[10px] font-bold uppercase
+                transition-opacity duration-200 ease-in-out
+                ${enabled ? 'opacity-100 text-white' : 'opacity-0 text-white'} // ON text appears white on green
+            `}
+        >
+            ON
+        </span>
+        {/* Text "OFF" - positioned to the right side of the track, visible when disabled */}
+        <span
+            className={`
+                absolute right-2 top-1/2 -translate-y-1/2
+                text-[10px] font-bold uppercase
+                transition-opacity duration-200 ease-in-out
+                ${enabled ? 'opacity-0 text-gray-700' : 'opacity-100 text-gray-700'} // OFF text appears gray on gray
+            `}
+        >
+            OFF
+        </span>
+        {/* The sliding "thumb" */}
         <span
             aria-hidden="true"
-            className={`${enabled ? 'translate-x-7' : 'translate-x-1'} 
-                        inline-block w-6 h-6 transform bg-white rounded-full transition-transform shadow-md`}
+            className={`
+                pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-md
+                transform ring-0 transition-transform duration-300 ease-in-out
+                ${enabled ? 'translate-x-8' : 'translate-x-1'} // thumb from left-1 to left-8
+            `}
         />
-        <span className={`absolute left-2 text-[10px] font-bold text-white transition-opacity ${enabled ? 'opacity-0' : 'opacity-100'}`}>OFF</span>
-        <span className={`absolute right-2 text-[10px] font-bold text-white transition-opacity ${enabled ? 'opacity-100' : 'opacity-0'}`}>ON</span>
     </button>
 );
 }

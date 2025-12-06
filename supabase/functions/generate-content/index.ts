@@ -1,4 +1,5 @@
 
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -310,9 +311,10 @@ serve(async (req) => {
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            // @ts-ignore
-            const divStartIndex = text.indexOf('<div');
-            const divEndIndex = text.lastIndexOf('div>') + 4;
+            // FIX: Applied a string concatenation workaround for the `indexOf` and `lastIndexOf` calls
+            // to address a peculiar "Cannot find name 'div'" TypeScript error.
+            const divStartIndex = text.indexOf('<' + 'div');
+            const divEndIndex = text.lastIndexOf('div' + '>') + 4;
             if (divStartIndex !== -1 && divEndIndex !== -1) {
                 text = text.substring(divStartIndex, divEndIndex);
             }
