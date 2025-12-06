@@ -7,11 +7,12 @@ export type ServiceKey =
   | 'canva_structure'
   | 'copy_generator'
   | 'image_generation'
-  | 'social_media_poster' // Nova ferramenta
-  | 'n8n_integration';
+  | 'social_media_poster'
+  | 'n8n_integration'
+  | 'curriculum_generator'; // NOVO: Gerador de Currículo
 
 export interface ServicePermission {
-  key: ServiceKey;
+  key: ServiceKey; // Nome em português
   name: string; // Nome em português
   enabled: boolean;
   creditsPerUse?: number; // Opcional, custo em créditos por uso

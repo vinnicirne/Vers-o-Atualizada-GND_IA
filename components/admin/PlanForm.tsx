@@ -18,7 +18,8 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'canva_structure',
   'copy_generator',
   'image_generation',
-  'social_media_poster', // Novo
+  'social_media_poster', 
+  'curriculum_generator', // NOVO
   'n8n_integration',
 ];
 

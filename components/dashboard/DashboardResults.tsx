@@ -78,9 +78,9 @@ export function DashboardResults({
     return (
         <div className="mt-8 space-y-8 pb-12">
             
-            {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL */}
-            {/* FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type. */}
-            {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure') && results.text && (
+            {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL & CRIADOR DE CURRÍCULOS */}
+            {/* FIX: Removed redundant and unintentional type comparison with 'landingpage_generator' */}
+            {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && results.text && (
                 <LandingPageBuilder 
                     initialHtml={results.text} 
                     onClose={onCloseEditor}
@@ -107,10 +107,12 @@ export function DashboardResults({
             )}
 
             {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
+            {/* FIX: Removed redundant and unintentional type comparison with 'landingpage_generator' */}
             {currentMode !== 'landingpage_generator' && 
              currentMode !== 'image_generation' && 
              currentMode !== 'social_media_poster' &&
              currentMode !== 'canva_structure' && 
+             currentMode !== 'curriculum_generator' && // Hide for curriculum
              // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.
              // Se for TTS mas falhou (sem áudio), mostra o texto para debug.
              (currentMode !== 'text_to_speech' || !results.audioBase64) &&

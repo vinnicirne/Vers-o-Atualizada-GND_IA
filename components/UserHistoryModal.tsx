@@ -49,6 +49,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
     if(type === 'copy_generator') return 'COPY';
     if(type === 'text_to_speech') return 'ÁUDIO';
     if(type === 'prompt_generator') return 'PROMPT';
+    if(type === 'curriculum_generator') return 'CURRÍCULO (IA)'; // NOVO
     return type.toUpperCase().replace('_', ' ');
   };
 
@@ -61,6 +62,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
           case 'text_to_speech': return 'fa-microphone text-blue-600';
           case 'copy_generator': return 'fa-pen-nib text-yellow-600';
           case 'prompt_generator': return 'fa-terminal text-yellow-700';
+          case 'curriculum_generator': return 'fa-file-alt text-blue-600'; // NOVO ÍCONE
           default: return 'fa-file-alt text-gray-500';
       }
   };
@@ -95,6 +97,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
              <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'all' ? 'bg-[#263238] text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Todos</button>
              <button onClick={() => setFilterType('news_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'news_generator' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Notícias</button>
              <button onClick={() => setFilterType('landingpage_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'landingpage_generator' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Sites</button>
+             <button onClick={() => setFilterType('curriculum_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'curriculum_generator' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Currículos</button> {/* NOVO FILTRO */}
              <button onClick={() => setFilterType('image_generation')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'image_generation' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Imagens</button>
              <button onClick={() => setFilterType('prompt_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'prompt_generator' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Prompts</button>
              <button onClick={() => setFilterType('canva_structure')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'canva_structure' ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Social Media</button>

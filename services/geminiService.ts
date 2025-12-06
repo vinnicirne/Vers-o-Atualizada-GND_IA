@@ -4,12 +4,32 @@ import { Source } from '../types';
 import { supabase } from './supabaseClient';
 import { getUserPreferences, saveGenerationResult } from './memoryService';
 
+// Define a comprehensive type for all possible options for content generation
+export interface GenerateContentOptions {
+  theme?: string;
+  primaryColor?: string;
+  aspectRatio?: string;
+  imageStyle?: string;
+  platform?: string;
+  voice?: string;
+  // Curriculum options
+  template?: string;
+  personalInfo?: { name: string; email: string; phone: string; linkedin: string; portfolio: string };
+  summary?: string;
+  experience?: { title: string; company: string; dates: string; description: string }[];
+  education?: { degree: string; institution: string; dates: string; description: string }[];
+  skills?: string[];
+  projects?: { name: string; description: string; technologies: string }[];
+  certifications?: string[];
+}
+
 export const generateCreativeContent = async (
     prompt: string, 
     mode: ServiceKey,
     userId?: string,
     generateAudio?: boolean,
-    options?: { theme?: string; primaryColor?: string; aspectRatio?: string; imageStyle?: string; platform?: string }
+    // FIX: Updated the type of 'options' to the new comprehensive interface
+    options?: GenerateContentOptions
 ): Promise<{ text: string, audioBase64: string | null, sources?: Source[] }> => {
   
   let userMemory = '';

@@ -26,7 +26,12 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Gerador de Prompts',
     placeholder: 'Descreva a tarefa para a qual você precisa de um prompt. Ex: "um prompt para criar um carrossel de 5 posts no Instagram sobre produtividade".',
   },
-  // --- OPÇÕES PREMIUM / AVANÇADAS ---
+  // --- OPÇÕES PREMIUM / AVANÇADAS (REORDERED FOR VISIBILITY) ---
+  {
+    value: 'curriculum_generator',
+    label: 'Criador de Currículos (IA)', // NOVO
+    placeholder: 'Descreva seu perfil e objetivo (ex: "Currículo para Desenvolvedor Fullstack com 5 anos de experiência, focado em React e Node.js. Objetivo: vaga em startup de tecnologia.").',
+  },
   {
     value: 'social_media_poster',
     label: 'Criador de Posts Sociais',
@@ -65,6 +70,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   landingpage_generator: 25, // Custo maior para cobrir sites institucionais mais complexos
   image_generation: 5,
   social_media_poster: 5, // Custo similar à geração de imagem
+  curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
 };
 
@@ -91,6 +97,9 @@ const socialPosterService: ServicePermission = { key: 'social_media_poster', nam
 
 // Agora apenas um serviço para sites
 const siteBuilderService: ServicePermission = { key: 'landingpage_generator', name: 'Criador de Sites (Web)', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
+
+// Novo serviço de currículo
+const curriculumService: ServicePermission = { key: 'curriculum_generator', name: 'Criador de Currículos (IA)', enabled: true, creditsPerUse: TASK_COSTS.curriculum_generator };
 
 // Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
@@ -137,10 +146,11 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
-      ...artServices, // Agora contém apenas o Editor Visual
-      imageService, 
+      curriculumService, // Adicionado ao Standard
       socialPosterService, // Adicionado ao Standard
+      imageService, 
       siteBuilderService, // Usando o serviço unificado
+      ...artServices, // Agora contém apenas o Editor Visual
       n8nService 
     ]
   },
@@ -156,11 +166,40 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
-      ...artServices,
-      imageService,
+      curriculumService, // Adicionado ao Premium
       socialPosterService, // Adicionado ao Premium
+      imageService,
       siteBuilderService, // Usando o serviço unificado
+      ...artServices,
       n8nService 
     ]
   }
+};
+
+// Mapeamento de Ícones
+export const SERVICE_ICONS: Record<ServiceKey, string> = {
+    news_generator: 'fa-newspaper',
+    text_to_speech: 'fa-microphone-lines',
+    copy_generator: 'fa-pen-nib',
+    prompt_generator: 'fa-terminal',
+    landingpage_generator: 'fa-code', // Icone para Criador de Sites (Web)
+    canva_structure: 'fa-vector-square',
+    image_generation: 'fa-paint-brush',
+    social_media_poster: 'fa-share-alt',
+    curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
+    n8n_integration: 'fa-plug',
+};
+
+// Cores para os ícones
+export const SERVICE_COLORS: Record<ServiceKey, string> = {
+    news_generator: 'text-green-500 bg-green-50',
+    text_to_speech: 'text-blue-500 bg-blue-50',
+    copy_generator: 'text-purple-500 bg-purple-50',
+    prompt_generator: 'text-yellow-500 bg-yellow-50',
+    landingpage_generator: 'text-orange-500 bg-orange-50', // Cor para Criador de Sites (Web)
+    canva_structure: 'text-cyan-500 bg-cyan-50',
+    image_generation: 'text-rose-500 bg-rose-50',
+    social_media_poster: 'text-indigo-500 bg-indigo-50',
+    curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
+    n8n_integration: 'text-red-500 bg-red-50',
 };

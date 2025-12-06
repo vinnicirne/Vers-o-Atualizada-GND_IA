@@ -272,7 +272,8 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     {!isLoading && (
                     <>
                         {/* LANDING PAGE & SITE EDITOR */}
-                        {(currentMode === 'landingpage_generator' || currentMode === 'institutional_website_generator' || currentMode === 'canva_structure') && resultText && (
+                        {/* FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type */}
+                        {(currentMode === 'landingpage_generator' || currentMode === 'landingpage_generator' || currentMode === 'canva_structure') && resultText && (
                             <LandingPageBuilder 
                                 initialHtml={resultText} 
                                 onClose={() => setResultText(null)}
@@ -309,8 +310,9 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                         )}
 
                         {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
+                        {/* FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type */}
                         {currentMode !== 'landingpage_generator' && 
-                         currentMode !== 'institutional_website_generator' && 
+                         currentMode !== 'landingpage_generator' && 
                          currentMode !== 'image_generation' && 
                          currentMode !== 'canva_structure' && 
                          // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.

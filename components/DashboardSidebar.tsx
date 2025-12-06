@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { ServiceKey } from '../types/plan.types';
-import { CREATOR_SUITE_MODES } from '../constants';
+import { CREATOR_SUITE_MODES, SERVICE_ICONS, SERVICE_COLORS } from '../constants'; // Importe SERVICE_ICONS e SERVICE_COLORS
 import { User } from '../types';
 
 interface DashboardSidebarProps {
@@ -21,32 +21,6 @@ interface DashboardSidebarProps {
     onOpenManual: () => void;
     onNavigateFeedback: () => void;
 }
-
-// Mapeamento de Ícones
-const SERVICE_ICONS: Record<ServiceKey, string> = {
-    news_generator: 'fa-newspaper',
-    text_to_speech: 'fa-microphone-lines',
-    copy_generator: 'fa-pen-nib',
-    prompt_generator: 'fa-terminal',
-    landingpage_generator: 'fa-code', // Icone para Criador de Sites (Web)
-    canva_structure: 'fa-vector-square',
-    image_generation: 'fa-paint-brush',
-    social_media_poster: 'fa-share-alt',
-    n8n_integration: 'fa-plug',
-};
-
-// Cores para os ícones
-const SERVICE_COLORS: Record<ServiceKey, string> = {
-    news_generator: 'text-green-500 bg-green-50',
-    text_to_speech: 'text-blue-500 bg-blue-50',
-    copy_generator: 'text-purple-500 bg-purple-50',
-    prompt_generator: 'text-yellow-500 bg-yellow-50',
-    landingpage_generator: 'text-orange-500 bg-orange-50', // Cor para Criador de Sites (Web)
-    canva_structure: 'text-cyan-500 bg-cyan-50',
-    image_generation: 'text-rose-500 bg-rose-50',
-    social_media_poster: 'text-indigo-500 bg-indigo-50',
-    n8n_integration: 'text-red-500 bg-red-50',
-};
 
 export function DashboardSidebar({
     isOpen,

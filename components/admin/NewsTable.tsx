@@ -80,6 +80,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
       if(type === 'image_generation') return 'IMAGEM';
       if(type === 'landingpage_generator') return 'CRIADOR DE SITES (WEB)'; // Unificado
       if(type === 'canva_structure') return 'SOCIAL MEDIA';
+      if(type === 'curriculum_generator') return 'CURRÍCULO (IA)'; // NOVO
       return type.toUpperCase().replace('_', ' ');
   };
 
