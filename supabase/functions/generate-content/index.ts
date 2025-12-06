@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -315,10 +314,10 @@ serve(async (req) => {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
             // FIX: Use string literals for indexOf and lastIndexOf arguments.
-            const divStartIndex = text.indexOf('<div>');
-            const lastDivIndex = text.lastIndexOf('</div>');
+            const divStartIndex = text.indexOf(divOpenTag);
+            const lastDivIndex = text.lastIndexOf(divCloseTag);
             // Ensure lastDivIndex is not -1 before calculating divEndIndex
-            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + '</div>'.length; 
+            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
             if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
                 text = text.substring(divStartIndex, divEndIndex);
             }

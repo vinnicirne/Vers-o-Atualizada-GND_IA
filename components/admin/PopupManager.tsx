@@ -421,14 +421,4 @@ export function PopupManager() {
                                 <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 font-bold transition">
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow transition disabled:opacity-50">
-                                    {saving ? 'Salvando...' : 'Salvar Popup'}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            )}
-        </div>
-    );
-}
+                                <button type="submit" disabled={saving} className="px-6
