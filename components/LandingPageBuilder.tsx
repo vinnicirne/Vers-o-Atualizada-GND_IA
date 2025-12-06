@@ -1,4 +1,3 @@
-
 import React, { useRef, useEffect, useState } from 'react';
 import { Toast } from './admin/Toast';
 import { TEMPLATES } from './landing-page/templates';
@@ -111,11 +110,22 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                     name: 'Tipografia',
                     open: true, // Aberto por padrão
                     buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration'],
+                    properties: [
+                        { name: 'Cor do Texto', property: 'color', type: 'color' }
+                    ]
                 },
                 {
                     name: 'Decoração',
-                    open: false,
+                    open: true,
                     buildProps: ['background-color', 'background-image', 'border-radius', 'border', 'box-shadow'],
+                    properties: [
+                        { 
+                            name: 'Cor de Fundo', 
+                            property: 'background-color', 
+                            type: 'color', 
+                            defaults: 'none'
+                        }
+                    ]
                 },
                 {
                     name: 'Filtros & Efeitos',
