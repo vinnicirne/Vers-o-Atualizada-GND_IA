@@ -1,8 +1,9 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 // CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
 // FIX: Use GoogleGenAI as per guidelines
 import { GoogleGenAI } from "npm:@google/genai";
@@ -306,8 +307,8 @@ serve(async (req) => {
         
         // FIX: Explicitly define string literals to avoid potential Deno type checker quirks treating them as JSX.
         const bodyCloseTag = '</body>';
-        const divOpenTag = '<' + 'div>'; // Corrected to avoid JSX-like interpretation
-        const divCloseTag = '<' + '/div>'; // Corrected to avoid JSX-like interpretation
+        const divOpenTag = '<div>'; // Corrected to avoid JSX-like interpretation
+        const divCloseTag = '</div>'; // Corrected to avoid JSX-like interpretation
 
         const bodyStartIndex = text.indexOf('<body');
         const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
