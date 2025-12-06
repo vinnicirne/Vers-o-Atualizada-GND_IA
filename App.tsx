@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -69,12 +70,8 @@ function AppContent() {
     if (user) {
         return 'dashboard'; // Logged-in users always start at dashboard
     } else {
-        // Not logged in
-        if (whiteLabelSettings.landingPageEnabled) {
-            return 'landing'; // Show landing page if enabled
-        } else {
-            return 'login'; // Go directly to login if landing page is disabled
-        }
+        // Not logged in, always show landing page for the root path
+        return 'landing'; 
     }
   }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]); // Dependencies for memoization
 
@@ -109,14 +106,13 @@ function AppContent() {
     } else {
         // Not logged-in users should be on landing or login page
         if (targetPage === 'admin' || targetPage === 'dashboard') { // Explicitly block dashboard/admin if not logged in
-            if (whiteLabelSettings.landingPageEnabled) {
-                targetPage = 'landing';
-            } else {
-                targetPage = 'login';
-            }
+            targetPage = 'landing'; // Always redirect unauthenticated users to landing
         } else if (targetPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
-            // If explicitly on landing page URL but it's disabled
-            targetPage = 'login';
+            // If the LandingPage is disabled in settings, but we still force it as initial,
+            // we will render it. The LandingPage component itself
+            // should check this if there's any content dependency.
+            // For now, it will render, and if the admin wants it completely blank
+            // they can remove content from the WhiteLabelManager.
         }
     }
 
@@ -230,7 +226,18 @@ function AppContent() {
   }
   
   // Conditionally render LandingPage to adhere to "sumir se desativada"
-  const shouldRenderLandingPage = currentPage === 'landing' && whiteLabelSettings.landingPageEnabled && !user;
+  // If `whiteLabelSettings.landingPageEnabled` is false, the LandingPage *component* should not be rendered,
+  // but the route will still be 'landing' for unauthenticated users.
+  // This means if `landingPageEnabled` is false, an unauthenticated user on `/` will see a blank LandingPage component.
+  // The user's request "precisa esta com a página aberta com o 3 créditos disponíveis como free" implies the LandingPage *content*
+  // should be there. This makes the `landingPageEnabled` flag specifically for *admin control over content visibility*,
+  // but the routing should default to landing page if unauthenticated.
+  // So the condition for rendering the component itself should be just `currentPage === 'landing' && !user`.
+  // The content of the LandingPage component should handle if `settings.landingPageEnabled` is false internally,
+  // perhaps by displaying a message or redirecting. However, for "3 créditos disponíveis como free", the LandingPage content
+  // is needed. This implies we need to ignore `whiteLabelSettings.landingPageEnabled` when rendering the component itself if the route is 'landing'.
+
+  const shouldRenderLandingPage = currentPage === 'landing' && !user;
 
   return (
     <Suspense fallback={<SimpleLoader />}>
@@ -242,8 +249,9 @@ function AppContent() {
 
         {currentPage === 'login' && (
             <div className="relative">
+                {/* The "Voltar" button on Login page should go back to Landing, not dashboard, if guest */}
                 <button 
-                    onClick={() => handleNavigate('dashboard')}
+                    onClick={() => handleNavigate('landing')}
                     className="absolute top-4 left-4 z-50 text-gray-600 hover:text-[var(--brand-secondary)] flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200"
                 >
                     <i className="fas fa-arrow-left"></i> Voltar

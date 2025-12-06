@@ -1,6 +1,4 @@
 
-
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -23,9 +21,8 @@ import { ToolManager } from '../../components/admin/ToolManager';
 import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
 // FIX: Imported CreateUserPayload from adminService
-import { NewsArticle, AdminView, CreateUserPayload } from '../../types';
-// FIX: Imported createUser from adminService
-import { updateNewsArticle, createUser } from '../../services/adminService';
+import { NewsArticle, AdminView } from '../../types';
+import { CreateUserPayload, updateNewsArticle, createUser } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { useWhiteLabel } from '../../contexts/WhiteLabelContext'; // NOVO
 import { downloadSitemap } from '../../services/sitemapService'; 

@@ -1,13 +1,13 @@
 
 import React from 'react';
-import { Header } from './components/Header';
-import { DashboardSidebar } from './components/DashboardSidebar';
-import { ContentGenerator } from './components/ContentGenerator';
-import { Toast } from './components/admin/Toast';
-import { useDashboard } from './hooks/useDashboard';
-import { DashboardResults } from './components/dashboard/DashboardResults';
-import { DashboardModals } from './components/dashboard/DashboardModals';
-import { useWhiteLabel } from './contexts/WhiteLabelContext';
+import { Header } from '../components/Header';
+import { DashboardSidebar } from '../components/DashboardSidebar';
+import { ContentGenerator } from '../components/ContentGenerator';
+import { Toast } from '../components/admin/Toast';
+import { useDashboard } from '../hooks/useDashboard';
+import { DashboardResults } from '../components/dashboard/DashboardResults';
+import { DashboardModals } from '../components/dashboard/DashboardModals';
+import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -44,7 +44,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
     <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
       <Header
         userEmail={user?.email}
-        onLogout={user ? async () => { await import('./contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
+        onLogout={user ? async () => { await import('../contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
         isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onNavigateToLogin={!user ? onNavigateToLogin : undefined}

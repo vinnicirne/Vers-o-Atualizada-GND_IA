@@ -1,6 +1,4 @@
 
-
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -307,16 +305,18 @@ serve(async (req) => {
     if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
         
-        // Ensure only the content inside the <body> or main <div> is returned
+        // FIX: Explicitly define string literals for indexOf/lastIndexOf calls to avoid potential Deno type checker quirks.
+        const bodyCloseTag = '</body>';
+        const divOpenTag = '<div>';
+        const divCloseTag = '</div>';
+
         const bodyStartIndex = text.indexOf('<body');
-        const bodyEndIndex = text.lastIndexOf('</body>') + '</body>'.length; // FIX: Use string literal for '</body>'
+        const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            // FIX: Applied a string concatenation workaround for the `indexOf` and `lastIndexOf` calls
-            // to address a peculiar "Cannot find name 'div'" TypeScript error.
-            const divStartIndex = text.indexOf('<div>');
-            const divEndIndex = text.lastIndexOf('</div>') + '</div>'.length; // '</div>'.length is 6 // FIX: Use string literal for '</div>'
+            const divStartIndex = text.indexOf(divOpenTag);
+            const divEndIndex = text.lastIndexOf(divCloseTag) + divCloseTag.length;
             if (divStartIndex !== -1 && divEndIndex !== -1) {
                 text = text.substring(divStartIndex, divEndIndex);
             }
