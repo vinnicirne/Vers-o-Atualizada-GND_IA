@@ -1,6 +1,4 @@
 
-
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -313,13 +311,14 @@ serve(async (req) => {
 
         const bodyStartIndex = text.indexOf('<body');
         const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
-        if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
+        if (bodyStartIndex !== -1 && bodyEndIndex !== -1 && bodyEndIndex > bodyStartIndex) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
             const divStartIndex = text.indexOf(divOpenTag);
-            // FIX: Explicitly refer to the divCloseTag constant. Deno was having trouble with the direct string literal here.
-            const divEndIndex = text.lastIndexOf(divCloseTag) + divCloseTag.length; 
-            if (divStartIndex !== -1 && divEndIndex !== -1) {
+            const lastDivIndex = text.lastIndexOf(divCloseTag);
+            // Ensure lastDivIndex is not -1 before calculating divEndIndex
+            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
+            if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
                 text = text.substring(divStartIndex, divEndIndex);
             }
         }

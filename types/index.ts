@@ -290,10 +290,9 @@ export interface WhiteLabelSettings {
   wordpressPluginName: string;
   copyrightText: string;
   appVersion: string;
-  dashboardTitle: string; // Existing for the Dashboard header
+  dashboardTitle: string; 
   
-  // New Landing Page & Guest Footer Settings
-  landingPageEnabled: boolean; // NEW: To toggle the landing page visibility
+  landingPageEnabled: boolean; 
   heroSectionTitle: string;
   heroSectionSubtitle: string;
   heroCtaPrimaryText: string;
@@ -302,12 +301,11 @@ export interface WhiteLabelSettings {
   heroCtaSecondaryLink: string;
   featureSectionTitle: string;
   featureSectionSubtitle: string;
-  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>; // Added id
+  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>;
   pricingSectionTitle: string;
   pricingSectionSubtitle: string;
-  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>; // Added id
+  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>;
   
-  // Guest Footer (on Dashboard)
   guestMarketingFooterTitle: string;
   guestMarketingFooterSubtitle: string;
   guestMarketingFooterCtaText: string;

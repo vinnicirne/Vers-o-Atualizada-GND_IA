@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AllowedDomain, SecuritySettings } from '../../types';
 import { getAllowedDomains, addAllowedDomain, removeAllowedDomain, getSecuritySettings, updateSecuritySettings } from '../../services/adminService';
@@ -197,3 +196,49 @@ export function SecurityManager() {
               onChange={(e) => setNewDomain(e.target.value)}
               placeholder="ex: minhaempresa.com.br"
               className="w-full bg-white border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none shadow-sm"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={adding}
+            className="px-6 py-2.5 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+          >
+            {adding ? <><i className="fas fa-spinner fa-spin"></i> Adicionando...</> : <><i className="fas fa-plus"></i> Adicionar</>}
+          </button>
+        </form>
+
+        {/* Domains List */}
+        {loading ? (
+            <div className="text-center py-12 text-gray-500"><i className="fas fa-spinner fa-spin mr-2"></i> Carregando domínios...</div>
+        ) : domains.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-500">
+                Nenhum domínio permitido configurado.
+            </div>
+        ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table className="w-full text-sm text-left text-gray-600">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th className="px-6 py-3 font-semibold">Domínio</th>
+                            <th className="px-6 py-3 font-semibold">Adicionado Em</th>
+                            <th className="px-6 py-3 text-right font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {domains.map(domain => (
+                            <tr key={domain.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 font-mono text-[#263238] font-bold">{domain.domain}</td>
+                                <td className="px-6 py-4 text-gray-500">{new Date(domain.created_at).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <button onClick={() => handleRemove(domain.id, domain.domain)} className="font-medium text-red-600 hover:text-red-800 hover:underline">Remover</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        )}
+      </div>
+    </div>
+  );
+}
