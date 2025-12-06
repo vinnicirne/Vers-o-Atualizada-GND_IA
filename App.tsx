@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -70,6 +69,8 @@ function AppContent() {
         return 'dashboard'; // Logged-in users always start at dashboard
     } else {
         // Not logged-in users default to dashboard (guest mode) for the root path
+        // This overrides whiteLabelSettings.landingPageEnabled for the initial default route,
+        // making the dashboard the primary entry point for testing.
         return 'dashboard'; 
     }
   }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]);

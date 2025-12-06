@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Header } from '../components/Header';
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -10,6 +9,7 @@ import { DashboardResults } from '../components/dashboard/DashboardResults';
 import { DashboardModals } from '../components/dashboard/DashboardModals';
 import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
 import { WelcomeBanner } from '../components/dashboard/WelcomeBanner'; // NOVO
+import { useUser } from '../contexts/UserContext'; // Import useUser directly for signOut
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -19,6 +19,7 @@ interface DashboardPageProps {
 
 export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: DashboardPageProps) {
   const { settings: whiteLabelSettings } = useWhiteLabel(); // Use White Label settings
+  const { signOut } = useUser(); // Get signOut directly from useUser
   const {
       user,
       isGuest,
@@ -52,7 +53,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
     <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
       <Header
         userEmail={user?.email}
-        onLogout={user ? async () => { await import('../contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
+        onLogout={user ? async () => { await signOut(); window.location.reload(); } : undefined}
         isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onNavigateToLogin={!user ? onNavigateToLogin : undefined}

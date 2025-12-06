@@ -1,9 +1,9 @@
 
-
 import React from 'react';
 import { UserRole } from '../types';
 import { NotificationBell } from './NotificationBell';
 import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
+import { useUser } from '../contexts/UserContext'; // Import useUser directly for signOut
 
 interface HeaderProps {
   userEmail?: string;
@@ -47,6 +47,7 @@ export function Header({
     isGuest = false // Default para false
 }: HeaderProps) {
   const { settings } = useWhiteLabel(); // Use white label settings
+  const { signOut } = useUser(); // Get signOut directly from useUser
   const isAdminView = !!onNavigateToDashboard;
   const isLoggedIn = !!userEmail && !isGuest; // Um guest logado é um estado de transição, mas aqui consideramos 'logado' quando tem email e não é guest
 
