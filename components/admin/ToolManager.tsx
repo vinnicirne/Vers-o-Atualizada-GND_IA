@@ -15,10 +15,18 @@ function ToggleSwitch({ enabled, onChange }: ToggleSwitchProps) {
     return (
     <button
         type="button"
-        className={`${enabled ? 'bg-green-600' : 'bg-gray-300'} relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500`}
+        role="switch"
+        aria-checked={enabled}
+        className={`${enabled ? 'bg-green-600' : 'bg-gray-300'} relative inline-flex items-center h-7 rounded-full w-14 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500`}
         onClick={() => onChange(!enabled)}
     >
-        <span className={`${enabled ? 'translate-x-6' : 'translate-x-1'} inline-block w-4 h-4 transform bg-white rounded-full transition-transform shadow-sm`} />
+        <span
+            aria-hidden="true"
+            className={`${enabled ? 'translate-x-7' : 'translate-x-1'} 
+                        inline-block w-6 h-6 transform bg-white rounded-full transition-transform shadow-md`}
+        />
+        <span className={`absolute left-2 text-[10px] font-bold text-white transition-opacity ${enabled ? 'opacity-0' : 'opacity-100'}`}>OFF</span>
+        <span className={`absolute right-2 text-[10px] font-bold text-white transition-opacity ${enabled ? 'opacity-100' : 'opacity-0'}`}>ON</span>
     </button>
 );
 }

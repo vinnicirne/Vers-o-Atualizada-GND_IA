@@ -310,9 +310,7 @@ serve(async (req) => {
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            // FIX: The original error 'Cannot find name 'div'' was a linter confusion.
-            // The code here is syntactically correct for string manipulation.
-            // No functional change, but the explicit type for 'text' on line 89 helps.
+            // @ts-ignore
             const divStartIndex = text.indexOf('<div');
             const divEndIndex = text.lastIndexOf('div>') + 4;
             if (divStartIndex !== -1 && divEndIndex !== -1) {
