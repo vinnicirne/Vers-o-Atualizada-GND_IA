@@ -49,7 +49,8 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       if (editorInstanceRef.current) return;
 
       let processedHtml = initialHtml;
-      if (initialHtml && initialHtml.length > 50) {
+      // Se o HTML for curto (provavelmente vazio ou placeholder), mostra modal. Se for conteúdo real (ex: imagem gerada), esconde modal.
+      if (initialHtml && initialHtml.length > 100) {
           processedHtml = sanitizeHtml(initialHtml);
           setShowTemplateModal(false);
       }
@@ -68,7 +69,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           height: '100%',
           width: 'auto',
           fromElement: false,
-          components: processedHtml || '<body class="bg-gray-50"><div style="padding: 50px; text-align: center;">Arraste blocos aqui...</div></body>',
+          components: processedHtml || '<body class="bg-gray-900"><div style="padding: 50px; text-align: center; color: white;">Arraste blocos aqui...</div></body>',
           // Desativa a UI padrão para usarmos customizada
           panels: { defaults: [] },
           storageManager: false,
@@ -110,13 +111,46 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 },
                 {
                     name: 'Decoração',
-                    open: true, // Aberto para permitir trocar cor de fundo facilmente
+                    open: false,
                     buildProps: ['background-color', 'background-image', 'border-radius', 'border', 'box-shadow'],
+                },
+                {
+                    name: 'Filtros & Efeitos',
+                    open: true,
+                    buildProps: ['opacity', 'mix-blend-mode', 'cursor', 'filter', 'transform'],
+                    properties: [
+                        { 
+                            name: 'Filtros (CSS)', 
+                            property: 'filter', 
+                            type: 'text', 
+                            defaults: '', 
+                            placeholder: 'ex: brightness(1.2) contrast(1.5) blur(5px)' 
+                        },
+                        { 
+                            name: 'Blend Mode', 
+                            property: 'mix-blend-mode', 
+                            type: 'select', 
+                            defaults: 'normal', 
+                            list: [
+                                { value: 'normal', name: 'Normal' },
+                                { value: 'multiply', name: 'Multiply' },
+                                { value: 'screen', name: 'Screen' },
+                                { value: 'overlay', name: 'Overlay' },
+                                { value: 'darken', name: 'Darken' },
+                                { value: 'lighten', name: 'Lighten' },
+                                { value: 'difference', name: 'Difference' },
+                                { value: 'exclusion', name: 'Exclusion' },
+                                { value: 'hue', name: 'Hue' },
+                                { value: 'saturation', name: 'Saturation' },
+                                { value: 'luminosity', name: 'Luminosity' }
+                            ] 
+                        }
+                    ]
                 },
                 {
                     name: 'Extra',
                     open: false,
-                    buildProps: ['opacity', 'cursor', 'transition'],
+                    buildProps: ['transition', 'overflow'],
                 }
             ]
           },
@@ -145,10 +179,11 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 const selected = editorInstance.getSelected();
                 if (selected) {
                     if (selected.is('link') || selected.is('image') || selected.is('map')) {
-                        setRightTab('traits'); 
-                    } else {
-                        setRightTab('styles');
+                        // Keep on styles but ensure traits are accessible
+                        // setRightTab('traits'); 
                     }
+                    // Sempre foca em estilos ao selecionar
+                    setRightTab('styles');
                 }
             });
           } catch(e) {
@@ -188,7 +223,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
           const style = document.createElement('style');
           style.innerHTML = `
-            body { background-color: #f9fafb; color: #1f2937; overflow-x: hidden; font-family: sans-serif; }
+            body { background-color: #111827; color: #f3f4f6; overflow-x: hidden; font-family: sans-serif; }
             a { cursor: pointer; }
             /* Outline visual para facilitar edição */
             *:hover { outline: 1px dashed rgba(16, 185, 129, 0.3); }
@@ -240,7 +275,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `landing-page-${Date.now()}.html`;
+      a.download = `site-gdn-${Date.now()}.html`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -282,7 +317,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-white text-sm font-bold px-3">Sair</button>
             <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition">
-                <i className="fas fa-download"></i> Baixar
+                <i className="fas fa-download"></i> Baixar HTML
             </button>
         </div>
       </div>

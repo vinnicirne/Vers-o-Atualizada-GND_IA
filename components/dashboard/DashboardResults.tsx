@@ -4,7 +4,6 @@ import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
 import { AudioPlayer } from '../AudioPlayer';
 import { LandingPageBuilder } from '../LandingPageBuilder';
-import { ImageStudio } from '../ImageStudio';
 import { SeoScorecard } from '../SEO/SeoScorecard';
 import { FeedbackWidget } from '../FeedbackWidget';
 import { Loader } from '../Loader';
@@ -45,24 +44,45 @@ export function DashboardResults({
         return null;
     }
 
+    // --- LOGIC: Image Generation & Social Media Poster now use LandingPageBuilder ---
+    if ((currentMode === 'image_generation' || currentMode === 'social_media_poster') && results.imagePrompt) {
+        // Construct Image URL dynamically
+        const prompt = results.text || results.imagePrompt || '';
+        const encodedPrompt = encodeURIComponent(prompt);
+        const width = results.imageDimensions.width || 1024;
+        const height = results.imageDimensions.height || 1024;
+        
+        // Generating Pollinations URL
+        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`;
+
+        // Create HTML wrapper for the builder
+        const initialHtml = `
+            <div class="flex items-center justify-center min-h-screen bg-gray-900 p-8">
+                <div class="relative group">
+                    <img src="${imageUrl}" alt="AI Art" class="shadow-2xl rounded-lg max-w-full h-auto" />
+                    <div class="absolute inset-0 border-2 border-transparent hover:border-green-500 pointer-events-none transition-colors rounded-lg"></div>
+                </div>
+            </div>
+        `;
+
+        return (
+            <div className="mt-8 space-y-8 pb-12">
+                <LandingPageBuilder 
+                    initialHtml={initialHtml} 
+                    onClose={onCloseEditor}
+                />
+            </div>
+        );
+    }
+
     return (
         <div className="mt-8 space-y-8 pb-12">
             
-            {/* LANDING PAGE & SITE EDITOR */}
+            {/* LANDING PAGE & SITE EDITOR & VISUAL EDITOR */}
             {(currentMode === 'landingpage_generator' || currentMode === 'institutional_website_generator' || currentMode === 'canva_structure') && results.text && (
                 <LandingPageBuilder 
                     initialHtml={results.text} 
                     onClose={onCloseEditor}
-                />
-            )}
-
-            {/* IMAGE STUDIO */}
-            {(currentMode === 'image_generation' || currentMode === 'social_media_poster') && results.imagePrompt && (
-                <ImageStudio 
-                    prompt={results.text || ''} 
-                    originalPrompt={results.imagePrompt} 
-                    width={results.imageDimensions.width} 
-                    height={results.imageDimensions.height} 
                 />
             )}
 
@@ -89,10 +109,10 @@ export function DashboardResults({
             {currentMode !== 'landingpage_generator' && 
              currentMode !== 'institutional_website_generator' && 
              currentMode !== 'image_generation' && 
+             currentMode !== 'social_media_poster' &&
              currentMode !== 'canva_structure' && 
-             // CORREÇÃO: Esconde o texto SE o modo for TTS, independente de sucesso ou falha, 
-             // para evitar que a mensagem "Áudio gerado com sucesso" apareça como resultado.
-             currentMode !== 'text_to_speech' &&
+             // Oculta texto se TTS teve sucesso (tem áudio)
+             (currentMode !== 'text_to_speech' || !results.audioBase64) &&
              results.text && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
                     <div className="lg:col-span-2">
