@@ -42,6 +42,21 @@ export function DashboardSidebar({
 }: DashboardSidebarProps) {
 
     const handleModeSelection = (mode: ServiceKey) => {
+        // hasAccessToService agora considera a ativação global e o plano.
+        // guestAllowedModes ainda é usado para a lógica específica de guest que pode ter um comportamento diferente (ex: modal de feature lock)
+        if (isGuest && !guestAllowedModes.includes(mode)) {
+            // Este é o check específico para guests que atingem um recurso bloqueado
+            onModeChange(mode); // Chama onModeChange para que o hook useDashboard lide com o modal 'featureLock'
+            return;
+        }
+
+        // Para usuários logados, ou guests em modos permitidos, hasAccessToService deve ser a única fonte de verdade
+        if (!hasAccessToService(mode)) {
+            // Se for um usuário logado sem acesso, ou um guest em um modo bloqueado globalmente, o onModeChange vai tratar
+            onModeChange(mode); 
+            return;
+        }
+
         onModeChange(mode);
     };
 
@@ -71,7 +86,9 @@ export function DashboardSidebar({
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
                     {CREATOR_SUITE_MODES.map((svc) => {
                         const isSelected = currentMode === svc.value;
-                        const isLocked = (isGuest && !guestAllowedModes.includes(svc.value)) || (!isGuest && !hasAccessToService(svc.value));
+                        
+                        // hasAccessToService já considera o estado global da ferramenta e o plano do usuário
+                        const isLocked = !hasAccessToService(svc.value); 
                         
                         // Robust lookup for icon and color, with fallbacks
                         const iconClass = SERVICE_ICONS[svc.value] || 'fa-question'; 
@@ -87,8 +104,9 @@ export function DashboardSidebar({
                                         ? 'bg-gray-100 shadow-sm ring-1 ring-[#F39C12]' 
                                         : 'hover:bg-gray-50'
                                     }
-                                    ${isLocked ? 'opacity-60 grayscale' : ''}
+                                    ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}
                                 `}
+                                disabled={isLocked} // Desabilita o botão se a ferramenta estiver bloqueada (globalmente ou pelo plano)
                             >
                                 <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${bgColor} ${isSelected ? textColor : 'text-gray-500 bg-gray-100'}`}>
                                     <i className={`fas ${iconClass} text-sm`}></i>

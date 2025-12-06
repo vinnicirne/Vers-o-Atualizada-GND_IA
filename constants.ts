@@ -64,7 +64,7 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
 // Estes valores são a fonte da verdade. O Admin deve sincronizar os planos para aplicar mudanças no DB.
 export const TASK_COSTS: Record<ServiceKey, number> = {
   news_generator: 1,
-  text_to_speech: 2,
+  text_to_speech: 2, // Custo atualizado de 1 para 2 créditos
   copy_generator: 1,
   prompt_generator: 1,
   canva_structure: 3,

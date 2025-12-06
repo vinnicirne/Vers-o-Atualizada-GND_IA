@@ -1,9 +1,11 @@
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { Plan, ServiceKey, ServicePermission } from '../types/plan.types';
+import { ToolSetting } from '../types'; // Corrected import path for ToolSetting
 import { usePlans } from './usePlans'; // Importar o novo hook usePlans
 import { PLANS, TASK_COSTS } from '../constants'; // Importar constantes de planos
+import { getGlobalToolSettings } from '../services/adminService'; // NOVO: Importar serviço para settings globais
 
 interface UsePlanReturn {
   currentPlan: Plan;
@@ -18,6 +20,23 @@ interface UsePlanReturn {
 export function usePlan(): UsePlanReturn {
   const { user } = useUser();
   const { allPlans, loading: loadingPlans } = usePlans(); // Usar o hook usePlans
+  const [globalToolSettings, setGlobalToolSettings] = useState<ToolSetting[]>([]); // NOVO: Estado para configurações globais de ferramentas
+
+  // NOVO: Efeito para carregar as configurações globais das ferramentas
+  useEffect(() => {
+    const fetchGlobalSettings = async () => {
+      try {
+        const settings = await getGlobalToolSettings();
+        setGlobalToolSettings(settings);
+      } catch (e) {
+        console.error("Erro ao carregar configurações globais de ferramentas:", e);
+        // Fallback: assume que todas estão ativadas em caso de erro
+        setGlobalToolSettings(PLANS.free.services.map(s => ({ key: s.key, enabled: true }))); 
+      }
+    };
+    fetchGlobalSettings();
+  }, [user]); // Recarrega se o usuário mudar (para garantir contexto)
+
 
   const currentPlan = useMemo<Plan>(() => {
     // Se ainda estiver carregando os planos ou não houver planos, retorna um plano 'free' placeholder
@@ -43,6 +62,12 @@ export function usePlan(): UsePlanReturn {
   }, [currentPlan]);
 
   const hasAccessToService = useCallback((serviceKey: ServiceKey): boolean => {
+    // NOVO: Primeiro, verifica se a ferramenta está globalmente ativada
+    const globalSetting = globalToolSettings.find(s => s.key === serviceKey);
+    if (globalSetting && !globalSetting.enabled) {
+      return false; // Ferramenta desativada globalmente
+    }
+
     // Admins (credits === -1) sempre têm acesso a todos os serviços,
     // pois a intenção é que eles possam testar todas as funcionalidades.
     if (user?.credits === -1) {
@@ -50,7 +75,7 @@ export function usePlan(): UsePlanReturn {
     }
     const service = getServicePermission(serviceKey);
     return service?.enabled === true;
-  }, [user?.credits, getServicePermission]);
+  }, [user?.credits, getServicePermission, globalToolSettings]); // Adicionado globalToolSettings como dependência
 
   const getCreditsCostForService = useCallback((serviceKey: ServiceKey): number => {
     const service = getServicePermission(serviceKey);

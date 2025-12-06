@@ -1,8 +1,8 @@
 
 import { api } from './api';
 import { logger } from './loggerService';
-import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup } from '../types';
-import { GUEST_ID } from '../constants';
+import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting } from '../types';
+import { GUEST_ID, CREATOR_SUITE_MODES } from '../constants';
 import { supabase } from './supabaseClient'; // Import supabase directly for complex queries
 
 // Helper for client-side pagination since API might return all data
@@ -237,6 +237,38 @@ export const deletePopup = async (id: string, adminId: string) => {
     if (error) throw new Error(error);
     logger.warn(adminId, 'Sistema', 'delete_popup', { id });
 };
+
+// --- GLOBAL TOOL SETTINGS ---
+
+const DEFAULT_TOOL_SETTINGS: ToolSetting[] = CREATOR_SUITE_MODES.map(mode => ({
+    key: mode.value,
+    enabled: true, // Por padrão, todas as ferramentas estão ativadas
+}));
+
+export const getGlobalToolSettings = async (): Promise<ToolSetting[]> => {
+    let settings = await getConfig<ToolSetting[]>('tool_settings', DEFAULT_TOOL_SETTINGS);
+    
+    // Ensure all current modes are represented, even if newly added to CREATOR_SUITE_MODES
+    const currentModeKeys = new Set(CREATOR_SUITE_MODES.map(m => m.value));
+    const existingKeys = new Set(settings.map(s => s.key));
+
+    // Add new modes not present in saved settings
+    for (const mode of CREATOR_SUITE_MODES) {
+        if (!existingKeys.has(mode.value)) {
+            settings.push({ key: mode.value, enabled: true });
+        }
+    }
+    // Remove old modes that are no longer in CREATOR_SUITE_MODES
+    settings = settings.filter(s => currentModeKeys.has(s.key));
+
+    return settings;
+};
+
+export const updateGlobalToolSettings = async (settings: ToolSetting[], adminId: string) => {
+    await setConfig('tool_settings', settings, adminId);
+    logger.info(adminId, 'Planos', 'update_global_tool_settings', { tool_count: settings.length });
+};
+
 
 // --- USERS ---
 
@@ -516,7 +548,7 @@ export const getPaymentSettings = async (): Promise<PaymentSettings> => {
         packages: []
     };
     const saved = await getConfig<Partial<PaymentSettings>>('payment_settings', defaults);
-    return { ...defaults, ...saved, gateways: { ...defaults.gateways, ...(saved.gateways || {}) } };
+    return { ...defaults, ...saved, gateways: { ...defaults.gateways, ...(saved.gateways || {}) } } as PaymentSettings; // Cast para segurança
 };
 
 export const saveGatewaySettings = async (gateways: any, adminId: string) => {

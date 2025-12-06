@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -273,14 +274,15 @@ serve(async (req) => {
     }
 
     // 5. Call Generate Content
+    // FIX: The `contents` parameter accepts a string directly for single text prompts.
     const response = await ai.models.generateContent({
         model: modelName,
-        // FIX: The `contents` parameter accepts a string directly for single text prompts.
         contents: fullPrompt, 
         config: config,
     });
 
-    let text = response.text;
+    // Fix: Ensure `response.text` is always a string.
+    let text = response.text || '';
     
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
@@ -308,6 +310,7 @@ serve(async (req) => {
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
+            // Fix: Ensure text is valid before applying string methods
             const divStartIndex = text.indexOf('<div');
             const divEndIndex = text.lastIndexOf('div>') + 4;
             if (divStartIndex !== -1 && divEndIndex !== -1) {

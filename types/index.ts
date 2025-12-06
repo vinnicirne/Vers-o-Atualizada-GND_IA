@@ -1,6 +1,6 @@
 
 import { ReactNode } from 'react';
-import { Plan, ServiceKey, UserPlan } from './plan.types'; // Looks for sibling 'plan.types.ts'
+import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Looks for sibling 'plan.types.ts'
 
 export type { Plan, ServiceKey, UserPlan };
 
@@ -72,7 +72,7 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings';
 
 export interface AllowedDomain {
   id: string;
@@ -260,4 +260,10 @@ export interface AppNotification {
   is_read: boolean;
   action_link?: string;
   created_at: string;
+}
+
+// Global Tool Settings
+export interface ToolSetting {
+  key: ServiceKey;
+  enabled: boolean;
 }

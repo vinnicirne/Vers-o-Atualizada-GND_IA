@@ -17,6 +17,7 @@ import { DocumentationViewer } from '../../components/admin/DocumentationViewer'
 import { PopupManager } from '../../components/admin/PopupManager'; 
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
+import { ToolManager } from '../../components/admin/ToolManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -59,6 +60,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, refreshData) // NOVO: Monitorar system_config
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -142,6 +144,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
+      case 'tool_settings': // NOVO
+        return <ToolManager />;
       case 'popups': 
         return <PopupManager />;
       case 'feedbacks':
