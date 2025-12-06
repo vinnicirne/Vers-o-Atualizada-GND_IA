@@ -293,3 +293,6 @@ export interface WhiteLabelSettings {
   guestMarketingFooterCtaText: string;
   guestMarketingFooterCtaLink: string;
 }
+
+// Re-export all necessary types
+export type { ToolSetting, WhiteLabelSettings };

@@ -15,8 +15,10 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
     { key: 'news', label: 'Histórico', icon: 'fas fa-newspaper' },
     { key: 'payments', label: 'Pagamentos', icon: 'fas fa-credit-card' },
     { key: 'plans', label: 'Planos', icon: 'fas fa-layer-group' },
+    // FIX: Add 'tool_settings' to AdminView
     { key: 'tool_settings', label: 'Gerenciar Ferramentas', icon: 'fas fa-toggle-on' }, 
-    { key: 'white_label_settings', label: 'White Label', icon: 'fas fa-paint-roller' }, // NOVO
+    // FIX: Add 'white_label_settings' to AdminView
+    { key: 'white_label_settings', label: 'White Label', icon: 'fas fa-paint-roller' }, 
     { key: 'popups', label: 'Popups & Avisos', icon: 'fas fa-bullhorn' },
     { key: 'feedbacks', label: 'Depoimentos', icon: 'fas fa-comment-dots' },
     { key: 'multi_ia_system', label: 'Sistema Multi-IA', icon: 'fas fa-brain' },

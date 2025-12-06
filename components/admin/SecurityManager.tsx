@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { AllowedDomain, SecuritySettings } from '../../types';
 import { getAllowedDomains, addAllowedDomain, removeAllowedDomain, getSecuritySettings, updateSecuritySettings } from '../../services/adminService';
@@ -196,51 +197,3 @@ export function SecurityManager() {
               onChange={(e) => setNewDomain(e.target.value)}
               placeholder="ex: minhaempresa.com.br"
               className="w-full bg-white border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none shadow-sm"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={adding || !newDomain.trim()}
-            className="px-6 py-3 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition shadow-sm disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
-          >
-            {adding ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-plus"></i> Adicionar</>}
-          </button>
-        </form>
-
-        {/* List */}
-        {loading ? (
-          <div className="text-center py-12 text-gray-500"><i className="fas fa-spinner fa-spin mr-2 text-green-600 text-xl"></i> Carregando lista...</div>
-        ) : domains.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-gray-500">
-            <i className="fas fa-list mr-2 text-2xl mb-2 text-gray-400 block"></i>
-            A lista está vazia. 
-            {settings.validationMode === 'strict_allowlist' 
-                ? <span className="text-red-500 block mt-2 font-bold bg-red-50 inline-block px-3 py-1 rounded border border-red-100">ATENÇÃO: Em modo estrito, ninguém conseguirá se cadastrar!</span> 
-                : <span className="block mt-1 text-sm">Em modo DNS, isso significa que qualquer domínio válido pode entrar.</span>
-            }
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {domains.map((item) => (
-              <div key={item.id} className="bg-white border border-gray-200 p-4 rounded-lg flex justify-between items-center group hover:border-green-300 hover:shadow-md transition">
-                <div className="flex items-center gap-3">
-                  <div className="bg-green-50 p-2 rounded-full text-green-600 border border-green-100">
-                    <i className="fas fa-check-circle"></i>
-                  </div>
-                  <span className="font-mono text-[#263238] text-sm font-medium">@{item.domain}</span>
-                </div>
-                <button
-                  onClick={() => handleRemove(item.id, item.domain)}
-                  className="text-gray-400 hover:text-red-600 transition p-2 bg-gray-50 hover:bg-red-50 rounded-md"
-                  title="Remover permissão"
-                >
-                  <i className="fas fa-trash"></i>
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}

@@ -1,7 +1,9 @@
 
 
+
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { getWhiteLabelSettings, updateWhiteLabelSettings as saveWhiteLabelSettingsService } from '../services/adminService';
+// FIX: Imported WhiteLabelSettings from types
 import { WhiteLabelSettings } from '../types';
 import { useUser } from './UserContext'; // Para obter o ID do admin ao salvar
 

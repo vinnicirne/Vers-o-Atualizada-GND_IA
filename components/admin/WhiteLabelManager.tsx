@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWhiteLabel } from '../../contexts/WhiteLabelContext';
 import { useUser } from '../../contexts/UserContext';
@@ -288,7 +289,7 @@ export function WhiteLabelManager() {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="featureSectionSubtitle" className={labelClasses}>Subtítulo da Seção de Features</label>
-                                    <input type="text" id="featureSectionSubtitle" name="featureSectionSubtitle" value={formData.featureSectionSubtitle} onChange={handleChange} className={inputClasses} placeholder="Ex: Substitua dezenas de ferramentas..." />
+                                    <input type="text" id="featureSectionSubtitle" name="featureSectionSubtitle" value={formData.featureSectionSubtitle} onChange={handleChange} className={inputClasses} rows={2} placeholder="Ex: Substitua dezenas de ferramentas..." />
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className={labelClasses}>Cards de Features</label>
@@ -338,7 +339,7 @@ export function WhiteLabelManager() {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="pricingSectionSubtitle" className={labelClasses}>Subtítulo da Seção de Preços</label>
-                                    <input type="text" id="pricingSectionSubtitle" name="pricingSectionSubtitle" value={formData.pricingSectionSubtitle} onChange={handleChange} className={inputClasses} placeholder="Ex: Comece grátis e escale..." />
+                                    <input type="text" id="pricingSectionSubtitle" name="pricingSectionSubtitle" value={formData.pricingSectionSubtitle} onChange={handleChange} className={inputClasses} rows={2} placeholder="Ex: Comece grátis e escale..." />
                                 </div>
                             </div>
 

@@ -1,6 +1,8 @@
 
+
 import { api } from './api';
 import { logger } from './loggerService';
+// FIX: Imported ToolSetting and WhiteLabelSettings from types
 import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting, WhiteLabelSettings } from '../types';
 import { GUEST_ID, CREATOR_SUITE_MODES } from '../constants';
 import { supabase } from './supabaseClient'; // Import supabase directly for complex queries

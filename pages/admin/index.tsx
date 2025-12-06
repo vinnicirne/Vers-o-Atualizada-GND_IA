@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -85,7 +86,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     setEditingNews(null);
   };
 
-  const handleSaveNews = async (id: number, titulo: string, conteudo: string) => {
+  const handleSaveNews = async (id: number, titulo: string, conteudo: string, adminId: string) => {
     if (!user) {
         setToast({ message: "Sessão de administrador inválida.", type: 'error' });
         return;
@@ -146,9 +147,11 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
+      // FIX: Add 'tool_settings' to AdminView
       case 'tool_settings': 
         return <ToolManager />;
-      case 'white_label_settings': // NOVO
+      // FIX: Add 'white_label_settings' to AdminView
+      case 'white_label_settings': 
         return <WhiteLabelManager />;
       case 'popups': 
         return <PopupManager />;

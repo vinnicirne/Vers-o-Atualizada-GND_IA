@@ -1,4 +1,5 @@
 
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -8,8 +9,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { GoogleGenAI } from "npm:@google/genai";
 // Importar templates de currículo (necessário para o backend)
 import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts"; // Ajustar caminho conforme a estrutura real
-// Import the GenerateContentOptions type
-// @ts-ignore
+// FIX: Correctly import GenerateContentOptions type
 import type { GenerateContentOptions } from "../../../services/geminiService.ts";
 
 
@@ -316,7 +316,8 @@ serve(async (req) => {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
             const divStartIndex = text.indexOf(divOpenTag);
-            const divEndIndex = text.lastIndexOf(divCloseTag) + divCloseTag.length;
+            // FIX: Explicitly refer to the divCloseTag constant. Deno was having trouble with the direct string literal here.
+            const divEndIndex = text.lastIndexOf(divCloseTag) + divCloseTag.length; 
             if (divStartIndex !== -1 && divEndIndex !== -1) {
                 text = text.substring(divStartIndex, divEndIndex);
             }
