@@ -93,18 +93,16 @@ MODOS DISPONÍVEIS (roteie baseado na query):
        - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
        - **Tom de Voz:** Profissional, confiante e orientado a resultados.
 
-       **REGRAS ESTRUTURAIS HTML (Tailwind CSS):**
-       - Utilize a estrutura HTML fornecida pelo template.
-       - Não inclua tags <html>, <head> ou <body> externas. Apenas o conteúdo interno.
-       - Mantenha a semântica HTML (h1, h2, p, ul, li).
+       **REGRAS ESTRUTURAIS E DE PREENCHIMENTO HTML (Tailwind CSS):**
+       - Utilize o TEMPLATE HTML fornecido como base.
+       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: \`<span id="resume-name"></span>\`, \`<div id="experience-list"></div>\`).
+       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o `innerHTML`** do elemento com o ID.
+       - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
+       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu `innerHTML` vazio** ou remova o elemento se for mais limpo.
+       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere a estrutura HTML completa da lista e seus itens** (ex: `<div>...</div>` para cada experiência, `<span>...</span>` para cada skill) diretamente dentro do `div` de placeholder da lista.
+       - **NÃO inclua tags \`<html>\`, \`<head>\` ou \`<body>\` externas.** Apenas o conteúdo interno.
        - Use classes Tailwind CSS para todo o estilo.
        - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
-
-       **INSTRUÇÕES DE PREENCHIMENTO:**
-       - Adapte o summary (resumo profissional) com base no prompt do usuário (se fornecido) e nas informações de experiência.
-       - Para experience e education, reescreva as descriptions para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
-       - Para skills, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
-       - **NÃO use Markdown**. Apenas HTML puro com classes Tailwind.
        - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
 
     8. **Criador de Posts Sociais (Social Media Poster)**:
@@ -219,8 +217,6 @@ serve(async (req) => {
     }
 
     // --- CURRICULUM GENERATOR LOGIC ---
-    // FIX: Moved curriculumDataPrompt declaration to be `const` and before `fullPrompt` reassignment for clarity.
-    // Ensure all literal backticks are escaped.
     if (mode === 'curriculum_generator' && options) {
         const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
         const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
@@ -229,12 +225,10 @@ serve(async (req) => {
             throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
         }
 
-        // Prepare data for Handlebars-like replacement (simplified for direct insertion by LLM)
-        // The LLM will "fill in" these placeholders intelligently based on the structured data and prompt.
         const curriculumDataPromptContent = `
-        Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha TODOS os placeholders (ex: \`{{personalInfo.name}}\`, \`{{summary}}\`, \`{{#each experience}}\`, etc.) com as informações fornecidas. Otimize cada seção conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o seu objetivo de carreira.
+        Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha o conteúdo de cada elemento com IDs específicos com as informações fornecidas, otimizando conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o objetivo de carreira.
 
-        **TEMPLATE HTML A SER PREENCHIDO:**
+        **TEMPLATE HTML A SER PREENCHIDO (Não modifique a estrutura dos IDs, apenas o conteúdo interno):**
         ${selectedTemplate}
 
         **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
@@ -247,19 +241,25 @@ serve(async (req) => {
             Portfólio URL: ${options.personalInfo?.portfolio || ''}
         - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo e otimizado para ATS.'}
         - **Experiência Profissional:**
-            ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida. Se aplicável, adicione uma seção de experiência genérica com conselhos ATS.'}
+            ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
         - **Formação Acadêmica:**
             ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
         - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
         - **Projetos:**
-            ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido. Se for o caso, a IA pode sugerir a criação de um projeto fictício relevante.'}
+            ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
         - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
 
-        **LEMBRE-SE:**
-        - Retorne APENAS o código HTML preenchido, sem qualquer texto adicional ou explicação.
-        - Assegure-se de que todas as classes Tailwind CSS e a estrutura HTML do template original sejam mantidas.
-        - Onde houver \`{{#each}}\`, a IA deve iterar sobre os dados e gerar os itens HTML correspondentes.
-        - Onde houver \`{{#if}}\`, a IA deve incluir a seção apenas se houver dados.
+        **LEMBRE-SE DE CADA ETAPA:**
+        1.  Inicie com o template HTML fornecido.
+        2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
+        3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: \`<p>Seu resumo aqui</p>\` ou \`<div><h3>Cargo</h3><p>Empresa</p></div>\`)** e insira-o como o \`innerHTML\` desse elemento.
+        4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
+            -   Gere o HTML completo para todos os itens da lista.
+            -   Para experiência e educação, cada item deve ter um \`div\` ou \`p\` formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
+            -   Para habilidades e certificações, gere \`<span>\` ou \`<li>\` tags conforme o estilo do template e insira-as dentro do seu \`div\` ou \`ul\` de placeholder.
+        5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o \`innerHTML\` desse elemento vazio**.
+        6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
+        7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
         `;
         fullPrompt = curriculumDataPromptContent; // Override fullPrompt for curriculum mode
     }
@@ -275,8 +275,8 @@ serve(async (req) => {
     // 5. Call Generate Content
     const response = await ai.models.generateContent({
         model: modelName,
-        // FIX: The `contents` parameter accepts a string directly. Wrapping in `parts` for robustness.
-        contents: { parts: [{ text: fullPrompt }] }, 
+        // FIX: The `contents` parameter accepts a string directly for single text prompts.
+        contents: fullPrompt, 
         config: config,
     });
 
