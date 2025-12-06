@@ -19,6 +19,10 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
   const [sepia, setSepia] = useState(0);
   const [blur, setBlur] = useState(0);
 
+  // Ferramentas Inteligentes
+  const [bgTolerance, setBgTolerance] = useState(25);
+  const [isProcessing, setIsProcessing] = useState(false);
+
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -43,11 +47,79 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
     setSaturate(100);
     setSepia(0);
     setBlur(0);
+    // Recarrega a imagem original se o usuário quiser desfazer a remoção de fundo (re-triggering effect would be complex, simplified reload logic usually needed or store original blob)
+    // Para simplificar, o reset foca nos filtros CSS. Para desfazer BG, o ideal seria ter histórico, mas aqui vamos manter simples.
+  };
+
+  // Algoritmo de Remoção de Fundo (Chroma Key Baseado na Borda)
+  const handleRemoveBackground = () => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    
+    setIsProcessing(true);
+
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.crossOrigin = "Anonymous";
+    img.src = imageUrl;
+
+    img.onload = () => {
+        // Configura canvas
+        canvas.width = width;
+        canvas.height = height;
+        if (!ctx) return;
+
+        // Desenha a imagem atual (com filtros se necessário, mas idealmente raw para processar pixels)
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Obtém dados dos pixels
+        const imageData = ctx.getImageData(0, 0, width, height);
+        const data = imageData.data;
+
+        // Amostra a cor do canto superior esquerdo como referência de "Fundo"
+        // (Imagens de IA geralmente têm fundos uniformes ou degradês que começam nas bordas)
+        const bgPixelIndex = 0;
+        const bgR = data[bgPixelIndex];
+        const bgG = data[bgPixelIndex + 1];
+        const bgB = data[bgPixelIndex + 2];
+
+        // Tolerância (0 a 100 convertido para amplitude de cor)
+        // Multiplicador 3 para cobrir RGB (3 * 255)
+        const threshold = (bgTolerance / 100) * 441; // 441 é aprox sqrt(255^2 * 3)
+
+        for (let i = 0; i < data.length; i += 4) {
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+
+            // Distância Euclidiana de Cor
+            const distance = Math.sqrt(
+                Math.pow(r - bgR, 2) +
+                Math.pow(g - bgG, 2) +
+                Math.pow(b - bgB, 2)
+            );
+
+            if (distance < threshold) {
+                data[i + 3] = 0; // Define Alpha como 0 (Transparente)
+            }
+        }
+
+        // Coloca os pixels modificados de volta
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Atualiza a URL da imagem para o novo PNG transparente
+        setImageUrl(canvas.toDataURL('image/png'));
+        setIsProcessing(false);
+    };
+
+    img.onerror = () => {
+        alert("Erro ao processar imagem (CORS).");
+        setIsProcessing(false);
+    };
   };
 
   const handleDownload = () => {
-    // Para baixar com filtros, precisamos desenhar num canvas
-    // Nota: Pollinations pode ter CORS, então usamos fetch blob se possível, ou abrimos nova aba
+    // Para baixar com filtros CSS aplicados
     const canvas = canvasRef.current;
     if (!canvas) return;
     
@@ -60,6 +132,7 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
         canvas.width = width;
         canvas.height = height;
         if(ctx) {
+            // Aplica filtros CSS no contexto do canvas antes de desenhar
             ctx.filter = getFilterString();
             ctx.drawImage(img, 0, 0, width, height);
             
@@ -76,6 +149,8 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
       
       {/* Sidebar de Ferramentas */}
       <div className="w-full md:w-72 bg-gray-950 border-r border-green-900/30 p-6 flex flex-col gap-6 overflow-y-auto">
+        
+        {/* Seção Filtros */}
         <div>
             <h3 className="text-green-400 font-bold uppercase tracking-wider text-sm mb-4">
                 <i className="fas fa-sliders-h mr-2"></i>Ajustes
@@ -124,6 +199,40 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
             Resetar Filtros
         </button>
 
+        {/* Seção Ferramentas Inteligentes (Remover Fundo) */}
+        <div className="pt-4 border-t border-gray-800">
+            <h3 className="text-purple-400 font-bold uppercase tracking-wider text-sm mb-4">
+                <i className="fas fa-magic mr-2"></i>Ferramentas
+            </h3>
+            
+            <div className="space-y-4">
+                <div>
+                    <div className="flex justify-between text-xs text-gray-400 mb-1">
+                        <span>Tolerância do Fundo</span>
+                        <span>{bgTolerance}%</span>
+                    </div>
+                    <input 
+                        type="range" 
+                        min="1" 
+                        max="80" 
+                        value={bgTolerance} 
+                        onChange={e => setBgTolerance(Number(e.target.value))} 
+                        className="w-full h-2 bg-gray-800 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                    />
+                    <p className="text-[10px] text-gray-500 mt-1">Aumente se sobrar bordas, diminua se apagar o objeto.</p>
+                </div>
+
+                <button 
+                    onClick={handleRemoveBackground} 
+                    disabled={isProcessing}
+                    className="w-full py-3 bg-purple-600 hover:bg-purple-500 text-white rounded-md text-xs font-bold transition shadow-lg shadow-purple-900/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {isProcessing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-eraser"></i>}
+                    Remover Fundo (Auto)
+                </button>
+            </div>
+        </div>
+
         <div className="mt-auto pt-6 border-t border-gray-800">
              <h3 className="text-gray-500 font-bold uppercase tracking-wider text-xs mb-2">
                 Prompt Otimizado (IA)
@@ -135,7 +244,7 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
       </div>
 
       {/* Área Principal (Canvas) */}
-      <div className="flex-grow bg-black/80 flex flex-col relative">
+      <div className="flex-grow bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-gray-800 flex flex-col relative">
          {/* Toolbar Superior */}
          <div className="h-14 bg-gray-950 border-b border-green-900/20 flex items-center justify-between px-6">
             <div className="text-gray-400 text-xs font-mono">
@@ -161,13 +270,13 @@ export function ImageStudio({ prompt, originalPrompt, width, height }: ImageStud
             <img 
                 src={imageUrl} 
                 alt="AI Generated Art"
-                className="max-w-full max-h-full shadow-2xl border border-gray-800"
+                className="max-w-full max-h-full shadow-2xl border border-gray-800 bg-[url('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAOwgAADsIBFShKgAAAABp0RVh0U29mdHdhcmUAUGFpbnQuTkVUIHYzLjUuMTAw9HKhAAAAFElEQVQ4T2NzgID/YGRgYAGyJgAAgVsA9Z2D8p0AAAAASUVORK5CYII=')]" 
                 style={{ filter: getFilterString() }}
                 onLoad={handleImageLoad}
                 crossOrigin="anonymous"
             />
             
-            {/* Canvas oculto para processamento do download */}
+            {/* Canvas oculto para processamento do download e background removal */}
             <canvas ref={canvasRef} className="hidden"></canvas>
          </div>
       </div>

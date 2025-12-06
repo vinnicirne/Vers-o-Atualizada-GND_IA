@@ -287,38 +287,49 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
     <div className="fixed inset-0 z-[100] flex flex-col bg-gray-900 animate-fade-in font-sans h-screen w-screen overflow-hidden">
       
       {/* 1. TOP TOOLBAR */}
-      <div className="h-14 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-4 shadow-md z-20 shrink-0">
-        <div className="flex items-center gap-4">
-            <span className="text-green-500 font-bold flex items-center gap-2">
-                <i className="fas fa-layer-group"></i> <span className="hidden md:inline">Editor Pro</span>
+      <div className="h-16 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-6 shadow-md z-20 shrink-0">
+        
+        {/* Left: Branding & Templates */}
+        <div className="flex items-center gap-6">
+            <span className="text-green-500 font-bold flex items-center gap-2 text-lg tracking-tight">
+                <i className="fas fa-cubes"></i> <span className="hidden md:inline">Editor Pro</span>
             </span>
             <div className="h-6 w-px bg-gray-800"></div>
-            <button onClick={() => setShowTemplateModal(true)} className="text-gray-400 hover:text-white text-xs font-bold bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded transition">
-                <i className="fas fa-th-large mr-2"></i> Templates
+            <button onClick={() => setShowTemplateModal(true)} className="text-gray-400 hover:text-white text-xs font-bold bg-gray-800 hover:bg-gray-700 px-4 py-2 rounded-lg transition flex items-center gap-2">
+                <i className="fas fa-th-large"></i> Templates
             </button>
         </div>
 
-        {/* Device Switcher */}
+        {/* Center: Device Switcher */}
         <div className="flex bg-gray-800 rounded-lg p-1 gap-1">
             {['Desktop', 'Tablet', 'Mobile'].map(dev => (
-                <button key={dev} onClick={() => handleDeviceChange(dev)} className={`w-8 h-8 flex items-center justify-center rounded transition ${activeDevice === dev ? 'bg-gray-700 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}>
+                <button 
+                    key={dev} 
+                    onClick={() => handleDeviceChange(dev)} 
+                    className={`w-9 h-9 flex items-center justify-center rounded-md transition ${activeDevice === dev ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-500 hover:text-gray-300 hover:bg-gray-700/50'}`}
+                    title={dev}
+                >
                     <i className={`fas fa-${dev === 'Desktop' ? 'desktop' : dev === 'Tablet' ? 'tablet-alt' : 'mobile-alt'}`}></i>
                 </button>
             ))}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-3">
-            <div className="flex gap-1 mr-2 bg-gray-800 rounded p-1">
-                <button onClick={() => handleAction('undo')} className="w-8 h-8 text-gray-400 hover:text-white rounded transition"><i className="fas fa-undo"></i></button>
-                <button onClick={() => handleAction('redo')} className="w-8 h-8 text-gray-400 hover:text-white rounded transition"><i className="fas fa-redo"></i></button>
-                <button onClick={() => handleAction('view')} className="w-8 h-8 text-blue-400 hover:text-white rounded transition" title="Preview"><i className="fas fa-eye"></i></button>
-                <button onClick={() => handleAction('clear')} className="w-8 h-8 text-red-500 hover:bg-red-900/20 rounded transition"><i className="fas fa-trash-alt"></i></button>
+        {/* Right: Actions */}
+        <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+                <button onClick={() => handleAction('undo')} className="w-9 h-9 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition flex items-center justify-center" title="Desfazer"><i className="fas fa-undo"></i></button>
+                <button onClick={() => handleAction('redo')} className="w-9 h-9 text-gray-400 hover:text-white hover:bg-gray-800 rounded-md transition flex items-center justify-center" title="Refazer"><i className="fas fa-redo"></i></button>
+                <div className="h-6 w-px bg-gray-800 mx-1"></div>
+                <button onClick={() => handleAction('view')} className="w-9 h-9 text-blue-400 hover:text-white hover:bg-blue-900/30 rounded-md transition flex items-center justify-center" title="Preview"><i className="fas fa-eye"></i></button>
+                <button onClick={() => handleAction('clear')} className="w-9 h-9 text-red-500 hover:text-white hover:bg-red-900/30 rounded-md transition flex items-center justify-center" title="Limpar Tudo"><i className="fas fa-trash-alt"></i></button>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-sm font-bold px-3">Sair</button>
-            <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition">
-                <i className="fas fa-download"></i> Baixar HTML
-            </button>
+            
+            <div className="flex items-center gap-3 border-l border-gray-800 pl-4">
+                <button onClick={onClose} className="text-gray-500 hover:text-white text-xs font-bold px-2 py-2 rounded hover:bg-gray-800 transition">Sair</button>
+                <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-lg shadow-green-900/20 flex items-center gap-2 transition transform hover:-translate-y-0.5">
+                    <i className="fas fa-download"></i> Exportar
+                </button>
+            </div>
         </div>
       </div>
 
@@ -331,13 +342,13 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
             <div className="flex border-b border-gray-800 bg-gray-950">
                 <button 
                     onClick={() => setLeftTab('blocks')} 
-                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${leftTab === 'blocks' ? 'text-green-500 border-green-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                    className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition border-b-2 ${leftTab === 'blocks' ? 'text-green-500 border-green-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800/50'}`}
                 >
                     <i className="fas fa-th-large mr-2"></i> Blocos
                 </button>
                 <button 
                     onClick={() => setLeftTab('layers')} 
-                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${leftTab === 'layers' ? 'text-blue-500 border-blue-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                    className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition border-b-2 ${leftTab === 'layers' ? 'text-blue-500 border-blue-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800/50'}`}
                 >
                     <i className="fas fa-layer-group mr-2"></i> Camadas
                 </button>
@@ -355,10 +366,10 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
             {!isEditorReady && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-gray-500">
                     <i className="fas fa-circle-notch fa-spin text-3xl mb-2 text-green-500"></i>
-                    <p>Iniciando Motor Visual...</p>
+                    <p className="text-xs font-mono uppercase tracking-widest">Carregando Editor...</p>
                 </div>
             )}
-            <div ref={editorRef} className="h-full w-full" />
+            <div ref={editorRef} className="h-full w-full outline-none" />
         </div>
 
         {/* === COLUNA DIREITA: ESTILOS E CONFIGURAÇÕES === */}
@@ -367,13 +378,13 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
             <div className="flex border-b border-gray-800 bg-gray-950">
                 <button 
                     onClick={() => setRightTab('styles')} 
-                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${rightTab === 'styles' ? 'text-purple-500 border-purple-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                    className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition border-b-2 ${rightTab === 'styles' ? 'text-purple-500 border-purple-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800/50'}`}
                 >
                     <i className="fas fa-paint-brush mr-2"></i> Estilo
                 </button>
                 <button 
                     onClick={() => setRightTab('traits')} 
-                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${rightTab === 'traits' ? 'text-yellow-500 border-yellow-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                    className={`flex-1 py-3 text-[10px] font-bold uppercase tracking-wider transition border-b-2 ${rightTab === 'traits' ? 'text-yellow-500 border-yellow-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300 hover:bg-gray-800/50'}`}
                 >
                     <i className="fas fa-cog mr-2"></i> Config
                 </button>
@@ -389,8 +400,10 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
                 {/* Traits / Configs */}
                 <div className={rightTab === 'traits' ? 'block' : 'hidden'}>
-                    <div className="p-3 bg-gray-800/50 border-b border-gray-700 text-xs text-gray-400 mb-2">
-                        <i className="fas fa-info-circle mr-1"></i> Configurações do elemento (Links, IDs, Atributos).
+                    <div className="p-4 text-center">
+                        <div className="mb-4 text-gray-500 text-xs">
+                            <i className="fas fa-info-circle mr-1"></i> Selecione um elemento para configurar atributos (Links, IDs, etc).
+                        </div>
                     </div>
                     <div ref={traitsRef}></div>
                 </div>
@@ -402,28 +415,28 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       {/* Template Modal */}
       {showTemplateModal && isEditorReady && (
         <div className="absolute inset-0 z-50 bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-gray-800 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-700">
-                <div className="p-6 border-b border-gray-700 flex justify-between items-center bg-gray-900">
+            <div className="bg-gray-900 rounded-xl shadow-2xl w-full max-w-5xl max-h-[90vh] flex flex-col overflow-hidden border border-gray-700">
+                <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900">
                     <div>
                         <h3 className="text-xl font-bold text-white">Escolha um Template</h3>
                         <p className="text-sm text-gray-400">Comece com uma estrutura profissional de alta conversão.</p>
                     </div>
-                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white"><i className="fas fa-times text-xl"></i></button>
+                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-500 hover:text-white"><i className="fas fa-times text-xl"></i></button>
                 </div>
                 
-                <div className="p-8 overflow-y-auto bg-gray-900/50 grid md:grid-cols-3 gap-6">
+                <div className="p-8 overflow-y-auto bg-gray-900 grid md:grid-cols-3 gap-6">
                     {Object.keys(TEMPLATES).map((key) => (
-                        <div key={key} onClick={() => handleApplyTemplate(key as any)} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-green-500 transition shadow-lg relative h-48 flex items-center justify-center">
-                            <div className="text-center">
-                                <i className="fas fa-file-code text-4xl text-gray-600 group-hover:text-green-500 mb-2 transition"></i>
-                                <h4 className="text-gray-300 font-bold uppercase">{key.replace('_', ' ')}</h4>
+                        <div key={key} onClick={() => handleApplyTemplate(key as any)} className="group cursor-pointer bg-gray-800 rounded-lg overflow-hidden border border-gray-700 hover:border-green-500 transition shadow-lg relative h-48 flex items-center justify-center hover:shadow-green-900/20">
+                            <div className="text-center group-hover:-translate-y-1 transition duration-300">
+                                <i className="fas fa-file-code text-4xl text-gray-600 group-hover:text-green-500 mb-3 transition"></i>
+                                <h4 className="text-gray-300 group-hover:text-white font-bold uppercase text-sm tracking-wide">{key.replace('_', ' ')}</h4>
                             </div>
                         </div>
                     ))}
                 </div>
 
-                <div className="p-4 bg-gray-900 border-t border-gray-700 flex justify-end">
-                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">Começar do Zero</button>
+                <div className="p-4 bg-gray-900 border-t border-gray-800 flex justify-end">
+                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white font-bold text-xs uppercase tracking-wide">Pular / Começar do Zero</button>
                 </div>
             </div>
         </div>

@@ -93,35 +93,78 @@ body {
     color: #10b981; /* Hover color */
 }
 
-/* --- BLOCOS (Esquerda) --- */
-.gjs-block {
-    background-color: #374151 !important; /* gray-700 */
-    border: 1px solid #4b5563;
-    color: #f3f4f6;
-    border-radius: 6px;
-    padding: 15px 10px;
-    margin-bottom: 10px;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    transition: all 0.2s;
-    min-height: 80px;
-}
+/* --- BLOCOS (BLOCK MANAGER GRID) --- */
 
-.gjs-block:hover {
-    background-color: #4b5563 !important; /* gray-600 */
-    border-color: #10b981;
-    transform: translateY(-2px);
-    color: #fff;
-    cursor: grab;
+/* Category Containers */
+.gjs-block-category {
+    background-color: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid #374151 !important;
 }
 
 .gjs-block-category .gjs-title {
     background-color: #111827 !important;
-    border-bottom: 1px solid #374151;
+    border-bottom: none !important;
     color: #9ca3af;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 1px;
-    padding: 8px 10px;
+    padding: 12px 10px;
+    font-weight: 700;
+}
+
+/* Blocks Grid Container */
+.gjs-blocks-c {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 Colunas */
+    gap: 8px !important;
+    padding: 10px !important;
+}
+
+/* Individual Block Card */
+.gjs-block {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    
+    background-color: #1f2937 !important; /* gray-800 */
+    border: 1px solid #374151 !important; /* gray-700 */
+    border-radius: 8px !important;
+    
+    width: 100% !important;
+    min-height: 90px !important;
+    padding: 16px 8px !important;
+    margin: 0 !important;
+    
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    color: #9ca3af !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: grab !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.gjs-block:hover {
+    background-color: #374151 !important; /* gray-700 */
+    border-color: #10b981 !important; /* green-500 */
+    color: #fff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+    z-index: 10;
+}
+
+.gjs-block:active {
+    cursor: grabbing !important;
+}
+
+/* Internal Elements of Block (Handled via HTML in label mostly, but defaults here) */
+.gjs-block-label {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
 }
 
 /* --- ESTILOS & INPUTS (Direita) --- */

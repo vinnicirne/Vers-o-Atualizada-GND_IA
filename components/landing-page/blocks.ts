@@ -2,14 +2,21 @@
 export const addBlocks = (editor: any) => {
     const bm = editor.BlockManager;
 
+    // Helper para ícones grandes
+    const icon = (cls: string, label: string) => `
+        <div class="flex flex-col items-center justify-center w-full h-full">
+            <i class="${cls} text-2xl mb-2"></i>
+            <div class="text-[10px] uppercase font-bold tracking-wide">${label}</div>
+        </div>
+    `;
+
     // =========================================
     // CATEGORIA: SOCIAL MEDIA
     // =========================================
     
     bm.add('social-post-square', {
-        label: 'Post Quadrado (1:1)',
+        label: icon('fab fa-instagram', 'Post 1:1'),
         category: 'Social Media',
-        attributes: { class: 'fab fa-instagram' },
         content: `
             <div class="w-[600px] h-[600px] bg-white relative overflow-hidden flex flex-col items-center justify-center shadow-lg mx-auto my-4 text-center p-8" style="aspect-ratio: 1/1; max-width: 100%;">
                 <h2 class="text-4xl font-bold text-gray-900 mb-4 z-10 relative">Título do Post</h2>
@@ -20,9 +27,8 @@ export const addBlocks = (editor: any) => {
     });
 
     bm.add('social-story', {
-        label: 'Story (9:16)',
+        label: icon('fas fa-mobile-alt', 'Story 9:16'),
         category: 'Social Media',
-        attributes: { class: 'fas fa-mobile-alt' },
         content: `
             <div class="w-[360px] h-[640px] bg-gradient-to-b from-purple-600 to-blue-500 relative overflow-hidden flex flex-col items-center justify-center shadow-lg mx-auto my-4 text-center p-6 text-white" style="aspect-ratio: 9/16; max-width: 100%;">
                 <h2 class="text-3xl font-bold mb-6 z-10 relative">Novidade!</h2>
@@ -32,9 +38,8 @@ export const addBlocks = (editor: any) => {
     });
 
     bm.add('youtube-thumb', {
-        label: 'Capa YouTube (16:9)',
+        label: icon('fab fa-youtube', 'Capa YT'),
         category: 'Social Media',
-        attributes: { class: 'fab fa-youtube' },
         content: `
             <div class="w-[640px] h-[360px] bg-gray-900 relative overflow-hidden flex items-center justify-center shadow-lg mx-auto my-4 text-center p-8 text-white" style="aspect-ratio: 16/9; max-width: 100%;">
                 <h1 class="text-5xl font-extrabold text-yellow-400 uppercase tracking-tighter drop-shadow-lg z-10 relative">TÍTULO CHAMATIVO</h1>
@@ -47,20 +52,30 @@ export const addBlocks = (editor: any) => {
     // CATEGORIA: ESTRUTURA
     // =========================================
     bm.add('section-block', {
-        label: 'Seção Vazia',
+        label: icon('far fa-square', 'Seção'),
         category: 'Estrutura',
-        attributes: { class: 'fas fa-square' },
-        content: `<section class="py-12 px-4 bg-transparent min-h-[100px]"></section>`
+        content: `<section class="py-12 px-4 bg-transparent min-h-[100px] border-2 border-dashed border-gray-300/50 flex items-center justify-center text-gray-400">Arraste conteúdo aqui</section>`
     });
 
     bm.add('grid-2', {
-        label: '2 Colunas',
+        label: icon('fas fa-columns', '2 Colunas'),
         category: 'Estrutura',
-        attributes: { class: 'fas fa-columns' },
         content: `
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-                <div class="min-h-[100px] border border-dashed border-gray-400 p-2">Coluna 1</div>
-                <div class="min-h-[100px] border border-dashed border-gray-400 p-2">Coluna 2</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 w-full">
+                <div class="min-h-[100px] border-2 border-dashed border-gray-300/50 p-4 flex items-center justify-center text-gray-400">Coluna 1</div>
+                <div class="min-h-[100px] border-2 border-dashed border-gray-300/50 p-4 flex items-center justify-center text-gray-400">Coluna 2</div>
+            </div>
+        `
+    });
+
+    bm.add('grid-3', {
+        label: icon('fas fa-table', '3 Colunas'),
+        category: 'Estrutura',
+        content: `
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 w-full">
+                <div class="min-h-[100px] border-2 border-dashed border-gray-300/50 p-4">1</div>
+                <div class="min-h-[100px] border-2 border-dashed border-gray-300/50 p-4">2</div>
+                <div class="min-h-[100px] border-2 border-dashed border-gray-300/50 p-4">3</div>
             </div>
         `
     });
@@ -70,11 +85,10 @@ export const addBlocks = (editor: any) => {
     // =========================================
 
     bm.add('navbar-simple', {
-        label: 'Menu / Navbar',
+        label: icon('fas fa-bars', 'Navbar'),
         category: 'Institucional',
-        attributes: { class: 'fas fa-bars' },
         content: `
-          <header class="bg-white border-b border-gray-200 sticky top-0 z-50 font-sans">
+          <header class="bg-white border-b border-gray-200 sticky top-0 z-50 font-sans w-full">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between h-16 items-center">
                     <div class="flex-shrink-0 flex items-center gap-2">
@@ -94,11 +108,10 @@ export const addBlocks = (editor: any) => {
     });
 
     bm.add('hero-section', {
-        label: 'Hero Section',
+        label: icon('fas fa-star', 'Hero'),
         category: 'Institucional',
-        attributes: { class: 'fas fa-heading' },
         content: `
-          <section class="relative bg-gray-900 text-white py-32 px-6 text-center font-sans">
+          <section class="relative bg-gray-900 text-white py-32 px-6 text-center font-sans w-full">
             <div class="max-w-4xl mx-auto">
               <h1 class="text-5xl md:text-6xl font-extrabold mb-6 leading-tight">Título Impactante Aqui</h1>
               <p class="text-xl text-gray-300 mb-10 max-w-2xl mx-auto leading-relaxed">Uma subheadline persuasiva que explica o valor do seu produto em poucas palavras.</p>
@@ -111,11 +124,10 @@ export const addBlocks = (editor: any) => {
     });
 
     bm.add('about-section', {
-        label: 'Sobre Nós',
+        label: icon('fas fa-info-circle', 'Sobre'),
         category: 'Institucional',
-        attributes: { class: 'fas fa-info-circle' },
         content: `
-          <section id="sobre" class="py-20 bg-white font-sans overflow-hidden">
+          <section id="sobre" class="py-20 bg-white font-sans overflow-hidden w-full">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="lg:grid lg:grid-cols-2 lg:gap-16 items-center">
                     <div class="relative mb-12 lg:mb-0">
@@ -140,11 +152,10 @@ export const addBlocks = (editor: any) => {
     // =========================================
 
     bm.add('feature-split-right', {
-        label: 'Texto + Imagem (Dir)',
+        label: icon('fas fa-images', 'Feature'),
         category: 'Conteúdo',
-        attributes: { class: 'fas fa-images' },
         content: `
-            <section class="py-16 bg-white">
+            <section class="py-16 bg-white w-full">
                 <div class="max-w-7xl mx-auto px-4 grid md:grid-cols-2 gap-12 items-center">
                     <div>
                         <h3 class="text-3xl font-bold text-gray-900 mb-4">Título do Recurso</h3>
@@ -163,15 +174,14 @@ export const addBlocks = (editor: any) => {
     });
 
     bm.add('cta-banner', {
-        label: 'Banner CTA',
-        category: 'Conversão',
-        attributes: { class: 'fas fa-bullhorn' },
+        label: icon('fas fa-bullhorn', 'Banner CTA'),
+        category: 'Conteúdo',
         content: `
-            <section class="py-12 bg-blue-600 text-white">
+            <section class="py-12 bg-blue-600 text-white w-full">
                 <div class="max-w-5xl mx-auto px-4 text-center">
                     <h2 class="text-3xl font-bold mb-4">Pronto para começar?</h2>
                     <p class="text-blue-100 mb-8 text-lg">Junte-se a milhares de clientes satisfeitos hoje mesmo.</p>
-                    <a href="#" class="bg-white text-blue-600 px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition shadow-lg">Inscrever-se Agora</a>
+                    <a href="#" class="bg-white text-blue-600 px-8 py-3 rounded-full font-bold text-lg hover:bg-gray-100 transition shadow-lg inline-block">Inscrever-se Agora</a>
                 </div>
             </section>
         `
@@ -182,23 +192,20 @@ export const addBlocks = (editor: any) => {
     // =========================================
 
     bm.add('text-block', {
-        label: 'Texto Simples',
+        label: icon('fas fa-font', 'Texto'),
         category: 'Básico',
-        attributes: { class: 'fas fa-font' },
         content: '<div class="p-4 text-gray-600 font-sans"><p>Clique duas vezes para editar este texto.</p></div>'
     });
     
     bm.add('image-block', {
-        label: 'Imagem',
+        label: icon('fas fa-image', 'Imagem'),
         category: 'Básico',
-        attributes: { class: 'fas fa-image' },
         content: '<img src="https://via.placeholder.com/600x400" class="w-full h-auto rounded-lg shadow-md" alt="Imagem Exemplo" />'
     });
 
     bm.add('button-block', {
-        label: 'Botão',
+        label: icon('fas fa-mouse-pointer', 'Botão'),
         category: 'Básico',
-        attributes: { class: 'fas fa-mouse-pointer' },
         content: '<a href="#" class="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition text-center">Clique Aqui</a>'
     });
 };
