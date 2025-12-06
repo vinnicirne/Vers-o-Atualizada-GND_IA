@@ -65,87 +65,136 @@ body {
 }
 
 /* =========================================
-    GrapesJS UI Overrides - Sidebar Customizada
+    GrapesJS UI Overrides - Dark Theme PRO
    ========================================= */
 
-/* Limpa o background padrão do GrapesJS nos containers injetados */
-.gjs-block-category, .gjs-blocks-c, .gjs-sm-sectors, .gjs-sm-sector, .gjs-traits-c, .gjs-layers-c {
+/* Containers Gerais */
+.gjs-cv-canvas {
+    background-color: #111827 !important; /* Fundo do Canvas (Cinza muito escuro) */
+    width: 100%;
+    height: 100%;
+    top: 0;
+}
+
+.gjs-one-bg {
+    background-color: #1f2937; /* Combinar com Tailwind gray-800 */
+}
+
+.gjs-two-color {
+    color: #e5e7eb; /* Texto claro */
+}
+
+.gjs-three-bg {
+    background-color: #10b981; /* Cor primária (Verde) */
+    color: white;
+}
+
+.gjs-four-color, .gjs-four-color-h:hover {
+    color: #10b981; /* Hover color */
+}
+
+/* --- BLOCOS (Esquerda) --- */
+.gjs-block {
+    background-color: #374151 !important; /* gray-700 */
+    border: 1px solid #4b5563;
+    color: #f3f4f6;
+    border-radius: 6px;
+    padding: 15px 10px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    transition: all 0.2s;
+    min-height: 80px;
+}
+
+.gjs-block:hover {
+    background-color: #4b5563 !important; /* gray-600 */
+    border-color: #10b981;
+    transform: translateY(-2px);
+    color: #fff;
+    cursor: grab;
+}
+
+.gjs-block-category .gjs-title {
+    background-color: #111827 !important;
+    border-bottom: 1px solid #374151;
+    color: #9ca3af;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 8px 10px;
+}
+
+/* --- ESTILOS & INPUTS (Direita) --- */
+
+/* Setores (Categorias de Estilo) */
+.gjs-sm-sector .gjs-sm-title {
+    background-color: #1f2937 !important;
+    border-bottom: 1px solid #374151;
+    color: #e5e7eb;
+    font-weight: 600;
+}
+
+/* Inputs Gerais */
+.gjs-field {
+    background-color: #111827 !important;
+    border: 1px solid #374151;
+    border-radius: 4px;
+}
+
+.gjs-field input, .gjs-field select {
+    color: #f3f4f6 !important;
     background-color: transparent !important;
 }
 
-/* Títulos das Categorias/Setores */
-.gjs-block-category .gjs-title, .gjs-sm-sector .gjs-sm-title, .gjs-layer-title {
-    background-color: #1f2937 !important; /* Gray-800 */
-    color: #e5e7eb !important; /* Gray-200 */
-    border-bottom: 1px solid #374151;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 10px !important;
+.gjs-field-color-picker {
+    border-right: 1px solid #374151;
 }
 
-/* Blocos Individuais */
-.gjs-block {
-    background-color: #374151 !important; /* Gray-700 */
-    color: #e5e7eb !important;
-    border: 1px solid #4b5563;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    min-height: 80px;
-}
-.gjs-block:hover {
-    background-color: #4b5563 !important; /* Gray-600 */
-    border-color: #10b981 !important; /* Green-500 */
-    color: #fff !important;
+/* Color Picker Específico */
+.gjs-input-holder {
+    color: #f3f4f6 !important;
 }
 
-/* Campos de Input (Style Manager & Traits) */
-.gjs-field, .gjs-field-color, .gjs-field-integer, .gjs-field-select {
-    background-color: #111827 !important; /* Gray-900 */
-    color: #fff !important;
-    border: 1px solid #374151 !important;
-    border-radius: 4px;
-}
-.gjs-field:focus-within {
-    border-color: #10b981 !important;
+.gjs-field-color {
+    background-image: none !important;
+    background-color: #111827 !important;
 }
 
-/* Labels */
-.gjs-label, .gjs-sm-label, .gjs-trt-label {
-    color: #9ca3af !important; /* Gray-400 */
-    font-size: 0.7rem;
-}
-
-/* Ícones */
-.gjs-pn-btn, .gjs-block-category .gjs-caret-icon {
+/* Select Arrows */
+.gjs-field-select .gjs-sel-arrow {
     color: #9ca3af !important;
 }
 
-/* Checkboxes */
-.gjs-chk-icon {
-    border-color: #6b7280;
+/* Labels de Propriedade */
+.gjs-sm-label {
+    color: #9ca3af !important;
+    font-size: 11px;
 }
 
-/* Inputs de Cor */
-.gjs-input-holder {
-    color: white !important;
-}
-
-/* Canvas background */
-.gjs-cv-canvas {
-    background-color: #111827 !important; /* Fundo escuro atrás do canvas */
+/* Checkboxes & Radios */
+.gjs-radio-item input:checked + .gjs-radio-item-label {
+    background-color: #10b981;
+    color: white;
 }
 
 /* Scrollbars na sidebar */
 .gjs-blocks-c::-webkit-scrollbar,
-.gjs-sm-sectors::-webkit-scrollbar {
+.gjs-sm-sectors::-webkit-scrollbar,
+.gjs-layers-c::-webkit-scrollbar {
     width: 6px;
 }
 .gjs-blocks-c::-webkit-scrollbar-thumb,
-.gjs-sm-sectors::-webkit-scrollbar-thumb {
+.gjs-sm-sectors::-webkit-scrollbar-thumb,
+.gjs-layers-c::-webkit-scrollbar-thumb {
     background-color: #4b5563;
     border-radius: 3px;
+}
+
+/* Ícones de Toolbar no Canvas */
+.gjs-toolbar {
+    background-color: #10b981 !important;
+    color: white !important;
+    border-radius: 4px;
 }
 
 .fa {

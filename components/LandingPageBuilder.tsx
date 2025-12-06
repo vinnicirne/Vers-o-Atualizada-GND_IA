@@ -9,12 +9,10 @@ interface LandingPageBuilderProps {
   onClose: () => void;
 }
 
-// Function to clean HTML from unwanted navigation menus
 const sanitizeHtml = (html: string): string => {
     try {
         const parser = new DOMParser();
         const doc = parser.parseFromString(html, 'text/html');
-        // Sanitização básica para remover menus antigos gerados pela IA que não sejam blocos
         doc.querySelectorAll('nav').forEach(el => el.remove());
         return doc.body.innerHTML;
     } catch (e) {
@@ -23,22 +21,26 @@ const sanitizeHtml = (html: string): string => {
 };
 
 export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
-  // Refs para containers do GrapesJS
   const editorRef = useRef<HTMLDivElement>(null);
+  
+  // Refs para os Containers de UI
   const blocksRef = useRef<HTMLDivElement>(null);
+  const layersRef = useRef<HTMLDivElement>(null);
   const stylesRef = useRef<HTMLDivElement>(null);
   const traitsRef = useRef<HTMLDivElement>(null);
-  const layersRef = useRef<HTMLDivElement>(null);
   
   const editorInstanceRef = useRef<any>(null);
   const [editor, setEditor] = useState<any>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
-  const [activeTab, setActiveTab] = useState<'blocks' | 'styles' | 'traits' | 'layers'>('blocks');
+  
+  // Controle de Abas
+  const [leftTab, setLeftTab] = useState<'blocks' | 'layers'>('blocks');
+  const [rightTab, setRightTab] = useState<'styles' | 'traits'>('styles');
+  
   const [activeDevice, setActiveDevice] = useState('Desktop');
   const [showTemplateModal, setShowTemplateModal] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Inicialização
   useEffect(() => {
     let isMounted = true;
 
@@ -67,30 +69,56 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           width: 'auto',
           fromElement: false,
           components: processedHtml || '<body class="bg-gray-50"><div style="padding: 50px; text-align: center;">Arraste blocos aqui...</div></body>',
-          // Desativa painéis padrão para usarmos os nossos customizados
+          // Desativa a UI padrão para usarmos customizada
           panels: { defaults: [] },
           storageManager: false,
-          // Gerenciadores injetados nos nossos DIVs React
+          
+          // Configuração dos Painéis
           blockManager: {
             appendTo: blocksRef.current,
-          },
-          styleManager: {
-            appendTo: stylesRef.current,
-            sectors: [
-                { name: 'Dimensões', open: false, buildProps: ['width', 'min-height', 'padding', 'margin'] },
-                { name: 'Tipografia', open: false, buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align'] },
-                { name: 'Decoração', open: false, buildProps: ['background-color', 'border-radius', 'border', 'box-shadow', 'background'] },
-                { name: 'Extra', open: false, buildProps: ['opacity', 'cursor', 'display'] }
-            ]
-          },
-          traitManager: {
-            appendTo: traitsRef.current,
           },
           layerManager: {
             appendTo: layersRef.current,
           },
+          traitManager: {
+            appendTo: traitsRef.current,
+          },
           selectorManager: {
-            componentFirst: true, // Seleciona o componente ao invés da classe primeiro
+            appendTo: '#selectors-container', // Container auxiliar se necessário
+            componentFirst: true,
+          },
+          styleManager: {
+            appendTo: stylesRef.current,
+            sectors: [
+                {
+                    name: 'Layout',
+                    open: false,
+                    buildProps: ['display', 'flex-direction', 'flex-wrap', 'justify-content', 'align-items', 'gap'],
+                    properties: [
+                        { name: 'Display', property: 'display', type: 'select', defaults: 'block', list: [ { value: 'block', name: 'Bloco' }, { value: 'flex', name: 'Flex' }, { value: 'grid', name: 'Grid' }, { value: 'inline-block', name: 'Inline' } ] }
+                    ]
+                },
+                {
+                    name: 'Dimensões',
+                    open: false,
+                    buildProps: ['width', 'height', 'min-height', 'margin', 'padding'],
+                },
+                {
+                    name: 'Tipografia',
+                    open: true, // Aberto por padrão
+                    buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration'],
+                },
+                {
+                    name: 'Decoração',
+                    open: true, // Aberto para permitir trocar cor de fundo facilmente
+                    buildProps: ['background-color', 'background-image', 'border-radius', 'border', 'box-shadow'],
+                },
+                {
+                    name: 'Extra',
+                    open: false,
+                    buildProps: ['opacity', 'cursor', 'transition'],
+                }
+            ]
           },
           deviceManager: {
             devices: [
@@ -108,30 +136,28 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           if (!isMounted) return;
           setIsEditorReady(true);
           
-          // Configurações e Blocos
           try {
             addBlocks(editorInstance);
             injectTailwind(editorInstance);
             
-            // Evento: Ao selecionar um componente, mudar para aba de Estilos ou Configuração
+            // Auto-seleção de aba
             editorInstance.on('component:selected', () => {
                 const selected = editorInstance.getSelected();
                 if (selected) {
-                    // Se for um link ou imagem, talvez o usuário queira ver os Traits (href, src)
                     if (selected.is('link') || selected.is('image') || selected.is('map')) {
-                        setActiveTab('traits'); 
+                        setRightTab('traits'); 
                     } else {
-                        setActiveTab('styles');
+                        setRightTab('styles');
                     }
                 }
             });
           } catch(e) {
-            console.warn("Erro ao configurar editor:", e);
+            console.warn("Erro config editor:", e);
           }
         });
 
       } catch (error: any) {
-        console.error('Erro ao iniciar GrapesJS:', error);
+        console.error('Erro GrapesJS:', error);
         setToast({ message: "Falha ao carregar editor.", type: 'error' });
       }
     };
@@ -155,7 +181,6 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           script.src = "https://cdn.tailwindcss.com";
           head.appendChild(script);
           
-          // FontAwesome e Fontes
           const link = document.createElement('link');
           link.rel = 'stylesheet';
           link.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css';
@@ -165,8 +190,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           style.innerHTML = `
             body { background-color: #f9fafb; color: #1f2937; overflow-x: hidden; font-family: sans-serif; }
             a { cursor: pointer; }
-            section { position: relative; }
-            /* Highlight outline para visualizar elementos */
+            /* Outline visual para facilitar edição */
             *:hover { outline: 1px dashed rgba(16, 185, 129, 0.3); }
             .gjs-selected { outline: 2px solid #10b981 !important; outline-offset: -2px; }
           `;
@@ -174,7 +198,6 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       }
   };
 
-  // Actions
   const handleDeviceChange = (device: string) => {
     if (!editor) return;
     setActiveDevice(device);
@@ -226,10 +249,10 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex flex-col bg-gray-900 animate-fade-in font-sans">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-gray-900 animate-fade-in font-sans h-screen w-screen overflow-hidden">
       
       {/* 1. TOP TOOLBAR */}
-      <div className="h-16 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-4 shadow-md z-20 shrink-0">
+      <div className="h-14 bg-gray-950 border-b border-gray-800 flex justify-between items-center px-4 shadow-md z-20 shrink-0">
         <div className="flex items-center gap-4">
             <span className="text-green-500 font-bold flex items-center gap-2">
                 <i className="fas fa-layer-group"></i> <span className="hidden md:inline">Editor Pro</span>
@@ -240,14 +263,16 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
             </button>
         </div>
 
+        {/* Device Switcher */}
         <div className="flex bg-gray-800 rounded-lg p-1 gap-1">
             {['Desktop', 'Tablet', 'Mobile'].map(dev => (
-                <button key={dev} onClick={() => handleDeviceChange(dev)} className={`w-8 h-8 flex items-center justify-center rounded transition ${activeDevice === dev ? 'bg-gray-700 text-white' : 'text-gray-500 hover:text-gray-300'}`}>
+                <button key={dev} onClick={() => handleDeviceChange(dev)} className={`w-8 h-8 flex items-center justify-center rounded transition ${activeDevice === dev ? 'bg-gray-700 text-white shadow' : 'text-gray-500 hover:text-gray-300'}`}>
                     <i className={`fas fa-${dev === 'Desktop' ? 'desktop' : dev === 'Tablet' ? 'tablet-alt' : 'mobile-alt'}`}></i>
                 </button>
             ))}
         </div>
 
+        {/* Actions */}
         <div className="flex items-center gap-3">
             <div className="flex gap-1 mr-2 bg-gray-800 rounded p-1">
                 <button onClick={() => handleAction('undo')} className="w-8 h-8 text-gray-400 hover:text-white rounded transition"><i className="fas fa-undo"></i></button>
@@ -256,73 +281,87 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 <button onClick={() => handleAction('clear')} className="w-8 h-8 text-red-500 hover:bg-red-900/20 rounded transition"><i className="fas fa-trash-alt"></i></button>
             </div>
             <button onClick={onClose} className="text-gray-400 hover:text-white text-sm font-bold px-3">Sair</button>
-            <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition">
+            <button onClick={handleDownload} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded-lg text-sm font-bold shadow-lg flex items-center gap-2 transition">
                 <i className="fas fa-download"></i> Baixar
             </button>
         </div>
       </div>
 
-      {/* 2. MAIN WORKSPACE */}
+      {/* 2. MAIN WORKSPACE (3 Columns) */}
       <div className="flex-1 flex overflow-hidden">
         
-        {/* Canvas Area (Esquerda/Centro) */}
-        <div className="flex-1 relative bg-[#111827] overflow-hidden flex flex-col justify-center">
+        {/* === COLUNA ESQUERDA: BLOCOS E LAYERS === */}
+        <div className="w-[280px] bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 z-10">
+            {/* Tabs Esquerda */}
+            <div className="flex border-b border-gray-800 bg-gray-950">
+                <button 
+                    onClick={() => setLeftTab('blocks')} 
+                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${leftTab === 'blocks' ? 'text-green-500 border-green-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                >
+                    <i className="fas fa-th-large mr-2"></i> Blocos
+                </button>
+                <button 
+                    onClick={() => setLeftTab('layers')} 
+                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${leftTab === 'layers' ? 'text-blue-500 border-blue-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                >
+                    <i className="fas fa-layer-group mr-2"></i> Camadas
+                </button>
+            </div>
+            
+            {/* Conteúdo Esquerda */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative p-2">
+                <div ref={blocksRef} className={leftTab === 'blocks' ? 'block' : 'hidden'}></div>
+                <div ref={layersRef} className={leftTab === 'layers' ? 'block' : 'hidden'}></div>
+            </div>
+        </div>
+
+        {/* === COLUNA CENTRAL: CANVAS === */}
+        <div className="flex-1 relative bg-[#111827] overflow-hidden flex flex-col justify-center shadow-inner">
             {!isEditorReady && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center z-10 text-gray-500">
                     <i className="fas fa-circle-notch fa-spin text-3xl mb-2 text-green-500"></i>
                     <p>Iniciando Motor Visual...</p>
                 </div>
             )}
-            {/* O GrapesJS monta o iframe aqui */}
             <div ref={editorRef} className="h-full w-full" />
         </div>
 
-        {/* Sidebar de Ferramentas (Direita) */}
-        <div className="w-80 bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 z-30 shadow-xl">
-            
-            {/* Abas */}
+        {/* === COLUNA DIREITA: ESTILOS E CONFIGURAÇÕES === */}
+        <div className="w-[300px] bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 z-10">
+            {/* Tabs Direita */}
             <div className="flex border-b border-gray-800 bg-gray-950">
-                <button onClick={() => setActiveTab('blocks')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'blocks' ? 'text-green-500 border-green-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
-                    <i className="fas fa-th-large mb-1 block text-sm"></i> Blocos
+                <button 
+                    onClick={() => setRightTab('styles')} 
+                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${rightTab === 'styles' ? 'text-purple-500 border-purple-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                >
+                    <i className="fas fa-paint-brush mr-2"></i> Estilo
                 </button>
-                <button onClick={() => setActiveTab('styles')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'styles' ? 'text-blue-500 border-blue-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
-                    <i className="fas fa-paint-brush mb-1 block text-sm"></i> Estilo
-                </button>
-                <button onClick={() => setActiveTab('traits')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'traits' ? 'text-yellow-500 border-yellow-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
-                    <i className="fas fa-cog mb-1 block text-sm"></i> Config
-                </button>
-                <button onClick={() => setActiveTab('layers')} className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${activeTab === 'layers' ? 'text-purple-500 border-purple-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}>
-                    <i className="fas fa-layer-group mb-1 block text-sm"></i> Camadas
+                <button 
+                    onClick={() => setRightTab('traits')} 
+                    className={`flex-1 py-3 text-xs font-bold uppercase transition border-b-2 ${rightTab === 'traits' ? 'text-yellow-500 border-yellow-500 bg-gray-900' : 'text-gray-500 border-transparent hover:text-gray-300'}`}
+                >
+                    <i className="fas fa-cog mr-2"></i> Config
                 </button>
             </div>
 
-            {/* Conteúdo das Abas */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar relative p-1">
-                
-                {/* 1. Blocos */}
-                <div ref={blocksRef} className={activeTab === 'blocks' ? 'block' : 'hidden'}></div>
-                
-                {/* 2. Estilos */}
-                <div className={activeTab === 'styles' ? 'block' : 'hidden'}>
-                    <div className="p-3 bg-gray-800/50 border-b border-gray-700 text-xs text-gray-400 mb-2">
-                        <i className="fas fa-info-circle mr-1"></i> Selecione um elemento no canvas para editar.
-                    </div>
+            {/* Conteúdo Direita */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                {/* Estilos */}
+                <div className={rightTab === 'styles' ? 'block' : 'hidden'}>
+                    <div id="selectors-container" className="p-2 border-b border-gray-800"></div>
                     <div ref={stylesRef}></div>
                 </div>
 
-                {/* 3. Traits (Configurações do Elemento: href, src, etc) */}
-                <div className={activeTab === 'traits' ? 'block' : 'hidden'}>
+                {/* Traits / Configs */}
+                <div className={rightTab === 'traits' ? 'block' : 'hidden'}>
                     <div className="p-3 bg-gray-800/50 border-b border-gray-700 text-xs text-gray-400 mb-2">
-                        <i className="fas fa-link mr-1"></i> Edite links, IDs e atributos.
+                        <i className="fas fa-info-circle mr-1"></i> Configurações do elemento (Links, IDs, Atributos).
                     </div>
                     <div ref={traitsRef}></div>
                 </div>
-
-                {/* 4. Camadas */}
-                <div ref={layersRef} className={activeTab === 'layers' ? 'block' : 'hidden'}></div>
-
             </div>
         </div>
+
       </div>
 
       {/* Template Modal */}
@@ -338,45 +377,18 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 </div>
                 
                 <div className="p-8 overflow-y-auto bg-gray-900/50 grid md:grid-cols-3 gap-6">
-                    {/* Card 1 */}
-                    <div onClick={() => handleApplyTemplate('saas_dark')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-blue-500 transition shadow-lg relative h-64">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
-                        <div className="absolute bottom-4 left-4">
-                            <span className="text-xs font-bold text-blue-400 uppercase tracking-wider bg-blue-900/30 px-2 py-1 rounded">SaaS / Tech</span>
-                            <h4 className="text-white font-bold text-lg mt-1">SaaS Dark Pro</h4>
+                    {Object.keys(TEMPLATES).map((key) => (
+                        <div key={key} onClick={() => handleApplyTemplate(key as any)} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-green-500 transition shadow-lg relative h-48 flex items-center justify-center">
+                            <div className="text-center">
+                                <i className="fas fa-file-code text-4xl text-gray-600 group-hover:text-green-500 mb-2 transition"></i>
+                                <h4 className="text-gray-300 font-bold uppercase">{key.replace('_', ' ')}</h4>
+                            </div>
                         </div>
-                        <div className="p-4 text-center mt-10">
-                            <i className="fas fa-layer-group text-6xl text-gray-700 group-hover:text-blue-500 transition duration-500"></i>
-                        </div>
-                    </div>
-
-                    {/* Card 2 */}
-                    <div onClick={() => handleApplyTemplate('ebook_sales')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-amber-500 transition shadow-lg relative h-64">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
-                        <div className="absolute bottom-4 left-4">
-                            <span className="text-xs font-bold text-amber-400 uppercase tracking-wider bg-amber-900/30 px-2 py-1 rounded">Infoproduto</span>
-                            <h4 className="text-white font-bold text-lg mt-1">Venda de Ebook</h4>
-                        </div>
-                        <div className="p-4 text-center mt-10">
-                            <i className="fas fa-book-open text-6xl text-gray-700 group-hover:text-amber-500 transition duration-500"></i>
-                        </div>
-                    </div>
-
-                    {/* Card 3 */}
-                    <div onClick={() => handleApplyTemplate('webinar')} className="group cursor-pointer bg-gray-900 rounded-lg overflow-hidden border border-gray-700 hover:border-indigo-400 transition shadow-lg relative h-64">
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-80"></div>
-                        <div className="absolute bottom-4 left-4">
-                            <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider bg-indigo-900/30 px-2 py-1 rounded">Lead Magnet</span>
-                            <h4 className="text-white font-bold text-lg mt-1">Webinar / Aula</h4>
-                        </div>
-                        <div className="p-4 text-center mt-10">
-                            <i className="fas fa-microphone text-6xl text-gray-700 group-hover:text-indigo-400 transition duration-500"></i>
-                        </div>
-                    </div>
+                    ))}
                 </div>
 
                 <div className="p-4 bg-gray-900 border-t border-gray-700 flex justify-end">
-                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">Começar do Zero (ou com conteúdo da IA)</button>
+                    <button onClick={() => setShowTemplateModal(false)} className="text-gray-400 hover:text-white font-bold text-sm">Começar do Zero</button>
                 </div>
             </div>
         </div>
