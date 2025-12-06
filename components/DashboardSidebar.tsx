@@ -5,6 +5,7 @@ import React from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { CREATOR_SUITE_MODES, SERVICE_ICONS } from '../constants'; // SERVICE_COLORS não será mais usado diretamente
 import { User } from '../types';
+import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // NOVO: Para usar cores de White Label
 
 interface DashboardSidebarProps {
     isOpen: boolean;
@@ -41,9 +42,10 @@ export function DashboardSidebar({
     onOpenManual,
     onNavigateFeedback
 }: DashboardSidebarProps) {
+    const { settings: whiteLabelSettings } = useWhiteLabel(); // NOVO: Obtém configurações de White Label
 
     const handleModeSelection = (mode: ServiceKey) => {
-        // hasAccessToService agora considera a ativação global e o plano.
+        // hasAccessToService já considera a ativação global e o plano.
         // guestAllowedModes ainda é usado para a lógica específica de guest que pode ter um comportamento diferente (ex: modal de feature lock)
         if (isGuest && !guestAllowedModes.includes(mode)) {
             // Este é o check específico para guests que atingem um recurso bloqueado
@@ -141,6 +143,25 @@ export function DashboardSidebar({
                         );
                     })}
                 </div>
+
+                {/* Marketing CTA for Guests */}
+                {isGuest && (
+                    <div className="p-4 border-t border-gray-200 bg-gradient-to-r from-[var(--brand-primary)]/[0.1] to-transparent animate-fade-in-up">
+                        <div className="bg-white p-4 rounded-lg border border-gray-200 text-center shadow-sm">
+                            <i className="fas fa-rocket text-xl text-[var(--brand-tertiary)] mb-2"></i>
+                            <p className="text-sm font-bold text-[var(--brand-secondary)] mb-3">Desbloqueie todas as ferramentas!</p>
+                            <p className="text-xs text-gray-500 mb-4">
+                                Crie artigos ilimitados, imagens, sites e muito mais.
+                            </p>
+                            <button 
+                                onClick={() => setIsOpen(false)} // Fecha a sidebar e o modal será acionado pelo DashboardPage
+                                className="w-full bg-[var(--brand-tertiary)] hover:bg-green-600 text-white font-bold py-2 rounded-lg text-sm transition-all shadow-md flex items-center justify-center gap-2"
+                            >
+                                <i className="fas fa-arrow-right"></i> Criar Conta Grátis
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Menu Extra (Mobile Only) */}
                 <div className={`p-3 border-t border-gray-200 bg-white space-y-2 md:hidden ${!user ? 'hidden' : ''}`}>

@@ -23,6 +23,7 @@ interface HeaderProps {
   userRole?: UserRole;
   realtimeStatus?: string;
   onToggleSidebar?: () => void;
+  isGuest?: boolean; // NOVO: Prop para indicar se é convidado
 }
 
 export function Header({ 
@@ -42,11 +43,12 @@ export function Header({
     userCredits, 
     userRole, 
     realtimeStatus,
-    onToggleSidebar
+    onToggleSidebar,
+    isGuest = false // Default para false
 }: HeaderProps) {
   const { settings } = useWhiteLabel(); // Use white label settings
   const isAdminView = !!onNavigateToDashboard;
-  const isLoggedIn = !!userEmail;
+  const isLoggedIn = !!userEmail && !isGuest; // Um guest logado é um estado de transição, mas aqui consideramos 'logado' quando tem email e não é guest
 
   // Helper to determine status color and label
   const getRealtimeBadge = (status?: string) => {
@@ -221,13 +223,14 @@ export function Header({
              <div 
                 onClick={onOpenPlans} 
                 className="cursor-pointer hidden md:flex items-center space-x-2 border border-gray-200 bg-gray-50 px-3 py-1.5 rounded-full text-sm hover:bg-gray-100 transition shadow-sm"
-                title="Gerenciar Plano e Créditos"
+                title={isGuest ? "Créditos de teste para experimentar as ferramentas básicas" : "Gerenciar Plano e Créditos"} // TOOLTIP NOVO
              >
               <i className="fas fa-coins text-[var(--brand-primary)]"></i>
               <span className="font-bold text-[var(--brand-secondary)]">
                 {userCredits === -1 ? '∞' : userCredits}
               </span>
-              <span className="text-gray-400 text-xs hover:text-gray-600">+</span>
+              {isGuest && <span className="text-xs text-green-600 font-bold ml-1">(Grátis)</span>}
+              {!isGuest && <span className="text-gray-400 text-xs hover:text-gray-600">+</span>}
             </div>
           )}
           

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { Header } from '../components/Header';
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -8,6 +9,7 @@ import { useDashboard } from '../hooks/useDashboard';
 import { DashboardResults } from '../components/dashboard/DashboardResults';
 import { DashboardModals } from '../components/dashboard/DashboardModals';
 import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
+import { WelcomeBanner } from '../components/dashboard/WelcomeBanner'; // NOVO
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -40,6 +42,12 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
       hasAccessToService
   } = useDashboard();
 
+  // State para controlar se o WelcomeBanner já foi exibido nesta sessão
+  const [showWelcomeBanner, setShowWelcomeBanner] = React.useState<boolean>(() => {
+    // Só mostra se for guest e ainda não foi mostrado nesta sessão
+    return isGuest && localStorage.getItem('gdn_guest_welcome_shown') !== 'true';
+  });
+
   return (
     <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
       <Header
@@ -56,6 +64,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         userCredits={isGuest ? guestCredits : user?.credits}
         pageTitle={whiteLabelSettings.dashboardTitle} // Use dynamic dashboard title
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        isGuest={isGuest} // Passa a prop isGuest para o Header
       />
 
       <div className="flex h-[calc(100vh-64px)] overflow-hidden">
@@ -82,6 +91,15 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar bg-[#F5F7FA]">
             <div className="max-w-5xl mx-auto">
+                {isGuest && showWelcomeBanner && (
+                    <div className="mb-6">
+                        <WelcomeBanner 
+                            onClose={() => setShowWelcomeBanner(false)}
+                            onNavigateToLogin={onNavigateToLogin}
+                            guestCredits={guestCredits}
+                        />
+                    </div>
+                )}
                 
                 {/* GENERATOR INPUT */}
                 <ContentGenerator 

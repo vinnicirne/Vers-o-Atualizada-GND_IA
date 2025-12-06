@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -48,9 +49,8 @@ function AppContent() {
       initGA4();
   }, []);
   
-  // Memoize getInitialPage to react to user and whiteLabelSettings changes
   const getInitialPage = useMemo((): PageRoute => {
-    if (typeof window === 'undefined') return 'dashboard'; // Default for SSR or initial phase
+    if (typeof window === 'undefined') return 'dashboard';
 
     const params = new URLSearchParams(window.location.search);
     const pageParam = params.get('page');
@@ -61,23 +61,21 @@ function AppContent() {
         return pageParam as PageRoute;
     }
 
-    // 2. Determine default route based on authentication and white label settings for the root '/' path
+    // 2. Determine default route for root '/' path
     if (userLoading || whiteLabelLoading) {
-        // If still loading, return a neutral default. Actual redirect happens in useEffect.
         return 'dashboard'; 
     }
 
     if (user) {
         return 'dashboard'; // Logged-in users always start at dashboard
     } else {
-        // Not logged in, always show dashboard for the root path (Guest mode with free credits)
+        // Not logged-in users default to dashboard (guest mode) for the root path
         return 'dashboard'; 
     }
-  }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]); // Dependencies for memoization
+  }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]);
 
   const [currentPage, setCurrentPage] = useState<PageRoute>('dashboard'); // Initial state set to a temporary default
 
-  // Update currentPage once initial data is loaded
   useEffect(() => {
       if (!userLoading && !whiteLabelLoading) {
           setCurrentPage(getInitialPage);
@@ -90,13 +88,12 @@ function AppContent() {
       window.scrollTo(0, 0);
   }, []);
 
-  // Refined useEffect for enforcing navigation logic
   useEffect(() => {
     if (userLoading || whiteLabelLoading || !currentPage) {
-        return; // Wait for data to load and currentPage to be set
+        return; 
     }
 
-    let targetPage: PageRoute = currentPage; // Start with current page
+    let targetPage: PageRoute = currentPage; 
 
     if (user) {
         // Logged-in users should always be on dashboard (unless explicitly on admin/legal pages)
@@ -104,17 +101,12 @@ function AppContent() {
             targetPage = 'dashboard';
         }
     } else {
-        // Not logged-in users should be on landing or login page
-        // For unauthenticated users, the default root path is 'dashboard' (guest mode).
-        // If they explicitly navigate to 'admin' (which they shouldn't be able to do anyway),
-        // or if somehow they land on 'dashboard' while being unauthenticated but not from root,
-        // we keep them on 'dashboard' to enable the guest experience.
-        // The only explicit redirection for unauthenticated users is if they try to access 'admin'.
+        // Not logged-in users default to dashboard (guest mode) for the root path.
+        // If they explicitly try to access 'admin', redirect to guest dashboard.
+        // If they navigate to 'landing' but it's disabled, also redirect to guest dashboard.
         if (targetPage === 'admin') {
-            targetPage = 'dashboard'; // Redirect admin attempts to guest dashboard
+            targetPage = 'dashboard'; 
         } else if (targetPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
-            // If the LandingPage is explicitly disabled in WhiteLabel settings,
-            // then even if a user tries to navigate to it, redirect them to the guest dashboard.
             targetPage = 'dashboard';
         }
     }
@@ -127,7 +119,6 @@ function AppContent() {
 
   useEffect(() => {
     const handlePopState = () => {
-       // When popstate occurs, re-evaluate the initial page based on current URL
        setCurrentPage(prev => { 
            const newInitialPage = getInitialPage; 
            if (prev !== newInitialPage) return newInitialPage;
@@ -224,12 +215,12 @@ function AppContent() {
     );
   }
 
-  if (userLoading || whiteLabelLoading || !currentPage) { // Added !currentPage here
+  if (userLoading || whiteLabelLoading || !currentPage) { 
     return <SimpleLoader />;
   }
   
   // Conditionally render LandingPage to adhere to "sumir se desativada"
-  const shouldRenderLandingPage = currentPage === 'landing' && !user;
+  const shouldRenderLandingPage = currentPage === 'landing' && whiteLabelSettings.landingPageEnabled && !user;
 
   return (
     <Suspense fallback={<SimpleLoader />}>
@@ -241,7 +232,7 @@ function AppContent() {
 
         {currentPage === 'login' && (
             <div className="relative">
-                {/* The "Voltar" button on Login page should go back to Dashboard (guest mode) */}
+                {/* O botão "Voltar" na página de Login agora sempre direciona para o Dashboard (modo convidado) */}
                 <button 
                     onClick={() => handleNavigate('dashboard')}
                     className="absolute top-4 left-4 z-50 text-gray-600 hover:text-[var(--brand-secondary)] flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200"

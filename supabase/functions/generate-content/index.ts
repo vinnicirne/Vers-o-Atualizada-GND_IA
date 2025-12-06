@@ -314,10 +314,11 @@ serve(async (req) => {
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1 && bodyEndIndex > bodyStartIndex) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            const divStartIndex = text.indexOf(divOpenTag);
-            const lastDivIndex = text.lastIndexOf(divCloseTag);
+            // FIX: Use string literals for indexOf and lastIndexOf arguments.
+            const divStartIndex = text.indexOf('<div>');
+            const lastDivIndex = text.lastIndexOf('</div>');
             // Ensure lastDivIndex is not -1 before calculating divEndIndex
-            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
+            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + '</div>'.length; 
             if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
                 text = text.substring(divStartIndex, divEndIndex);
             }

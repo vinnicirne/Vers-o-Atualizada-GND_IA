@@ -1,4 +1,5 @@
 
+
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './plan.types';
 
@@ -72,7 +73,6 @@ export interface Log {
   user_email?: string;
 }
 
-// FIX: Added 'tool_settings' and 'white_label_settings' to AdminView
 export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
 
 export interface AllowedDomain {
