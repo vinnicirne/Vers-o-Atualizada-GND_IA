@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import LoginPage from './LoginPage';
@@ -21,7 +20,7 @@ import { PopupRenderer } from './components/PopupRenderer';
 type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
 
 const SimpleLoader = () => {
-  const { settings, loading: wlLoading } = useWhiteLabel(); // Use the hook to get appName
+  const { settings, loading: wlLoading } = useWhiteLabel(); 
   
   if (wlLoading) {
     return (
@@ -41,77 +40,113 @@ const SimpleLoader = () => {
 
 
 function AppContent() {
-  const { user, loading, error } = useUser();
-  const { settings: whiteLabelSettings, loading: whiteLabelLoading } = useWhiteLabel(); // Access white label settings
+  const { user, loading: userLoading, error: userError } = useUser();
+  const { settings: whiteLabelSettings, loading: whiteLabelLoading } = useWhiteLabel();
   
   useEffect(() => {
       initGA4();
   }, []);
   
-  const getInitialPage = (): PageRoute => {
-    if (typeof window !== 'undefined' && window.location.search) {
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const page = params.get('page');
-            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
-            if (page && validPages.includes(page as PageRoute)) {
-                return page as PageRoute;
-            }
-            return 'dashboard'; 
-        } catch (e) {
-            console.warn('Erro ao ler URLSearchParams:', e);
-            return 'dashboard';
-        }
-    }
-    return 'dashboard';
-  };
+  // Memoize getInitialPage to react to user and whiteLabelSettings changes
+  const getInitialPage = useMemo((): PageRoute => {
+    if (typeof window === 'undefined') return 'dashboard'; // Default for SSR or initial phase
 
-  const [currentPage, setCurrentPage] = useState<PageRoute>(getInitialPage);
+    const params = new URLSearchParams(window.location.search);
+    const pageParam = params.get('page');
+    const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
 
-  // Redirecionamento inteligente baseado em autenticação e landingPageEnabled
-  useEffect(() => {
-    if (loading || whiteLabelLoading) {
-        return; // Wait for both user and white label settings to load
+    // 1. Prioritize explicit page parameter if valid
+    if (pageParam && validPages.includes(pageParam as PageRoute)) {
+        return pageParam as PageRoute;
     }
 
-    // Handle landing page redirection based on settings
-    if (currentPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
-        handleNavigate('login');
-        return;
+    // 2. Determine default route based on authentication and white label settings for the root '/' path
+    if (userLoading || whiteLabelLoading) {
+        // If still loading, return a neutral default. Actual redirect happens in useEffect.
+        return 'dashboard'; 
     }
 
     if (user) {
-        // If logged in and on landing or login page, redirect to dashboard
-        if (currentPage === 'landing' || currentPage === 'login') {
-            handleNavigate('dashboard');
-        }
+        return 'dashboard'; // Logged-in users always start at dashboard
     } else {
-        // If not logged in and not on landing or login page, redirect to landing or login
-        if (currentPage !== 'landing' && currentPage !== 'login') {
-            if (whiteLabelSettings.landingPageEnabled) {
-                handleNavigate('landing');
-            } else {
-                handleNavigate('login');
-            }
+        // Not logged in
+        if (whiteLabelSettings.landingPageEnabled) {
+            return 'landing'; // Show landing page if enabled
+        } else {
+            return 'login'; // Go directly to login if landing page is disabled
         }
     }
-  }, [user, loading, currentPage, whiteLabelLoading, whiteLabelSettings.landingPageEnabled]);
+  }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]); // Dependencies for memoization
+
+  const [currentPage, setCurrentPage] = useState<PageRoute>('dashboard'); // Initial state set to a temporary default
+
+  // Update currentPage once initial data is loaded
+  useEffect(() => {
+      if (!userLoading && !whiteLabelLoading) {
+          setCurrentPage(getInitialPage);
+      }
+  }, [userLoading, whiteLabelLoading, getInitialPage]);
+
+
+  const handleNavigate = useCallback((page: PageRoute) => {
+      setCurrentPage(page);
+      window.scrollTo(0, 0);
+  }, []);
+
+  // Refined useEffect for enforcing navigation logic
+  useEffect(() => {
+    if (userLoading || whiteLabelLoading || !currentPage) {
+        return; // Wait for data to load and currentPage to be set
+    }
+
+    let targetPage: PageRoute = currentPage; // Start with current page
+
+    if (user) {
+        // Logged-in users should always be on dashboard (unless explicitly on admin/legal pages)
+        if (targetPage === 'landing' || targetPage === 'login') {
+            targetPage = 'dashboard';
+        }
+    } else {
+        // Not logged-in users should be on landing or login page
+        if (targetPage === 'admin' || targetPage === 'dashboard') { // Explicitly block dashboard/admin if not logged in
+            if (whiteLabelSettings.landingPageEnabled) {
+                targetPage = 'landing';
+            } else {
+                targetPage = 'login';
+            }
+        } else if (targetPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
+            // If explicitly on landing page URL but it's disabled
+            targetPage = 'login';
+        }
+    }
+
+    if (targetPage !== currentPage) {
+        handleNavigate(targetPage);
+    }
+  }, [user, userLoading, currentPage, whiteLabelSettings, whiteLabelLoading, handleNavigate]);
+
 
   useEffect(() => {
     const handlePopState = () => {
-       setCurrentPage(getInitialPage());
+       // When popstate occurs, re-evaluate the initial page based on current URL
+       setCurrentPage(prev => { 
+           const newInitialPage = getInitialPage; 
+           if (prev !== newInitialPage) return newInitialPage;
+           return prev; 
+       });
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [getInitialPage]); 
 
+  // URL sync logic
   useEffect(() => {
     try {
-        if (typeof window === 'undefined' || !window.location) return;
+        if (typeof window === 'undefined' || !window.location || !currentPage) return;
 
         const params = new URLSearchParams(window.location.search);
         if (currentPage === 'dashboard') {
-          params.delete('page'); // Root URL for dashboard/home
+          params.delete('page'); 
         } else {
           params.set('page', currentPage);
         }
@@ -137,19 +172,15 @@ function AppContent() {
     }
   }, [currentPage]);
 
-  const handleNavigate = (page: PageRoute) => {
-      setCurrentPage(page);
-      window.scrollTo(0, 0);
-  };
-
-  const handleNavigateToAdmin = () => {
+  const handleNavigateToAdmin = useCallback(() => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
       handleNavigate('admin');
     }
-  };
+  }, [user, handleNavigate]);
 
-  if (error) {
-    const errorString = typeof error === 'string' ? error : JSON.stringify(error, null, 2);
+
+  if (userError) {
+    const errorString = typeof userError === 'string' ? userError : JSON.stringify(userError, null, 2);
     const isSqlConfigError = errorString.startsWith('SQL_CONFIG_ERROR:');
     const instructions = isSqlConfigError ? errorString.replace('SQL_CONFIG_ERROR:', '').trim() : '';
     
@@ -194,17 +225,19 @@ function AppContent() {
     );
   }
 
-  if (loading || whiteLabelLoading) {
+  if (userLoading || whiteLabelLoading || !currentPage) { // Added !currentPage here
     return <SimpleLoader />;
   }
+  
+  // Conditionally render LandingPage to adhere to "sumir se desativada"
+  const shouldRenderLandingPage = currentPage === 'landing' && whiteLabelSettings.landingPageEnabled && !user;
 
   return (
     <Suspense fallback={<SimpleLoader />}>
         <PopupRenderer />
 
-        {/* Landing Page Route (Still available if needed directly, but dashboard is default) */}
-        {currentPage === 'landing' && (
-            <LandingPage onNavigate={(page) => handleNavigate(page as PageRoute)} />
+        {shouldRenderLandingPage && (
+            <LandingPage onNavigate={handleNavigate} />
         )}
 
         {currentPage === 'login' && (
@@ -223,7 +256,7 @@ function AppContent() {
             <DashboardPage 
                 onNavigateToAdmin={handleNavigateToAdmin}
                 onNavigateToLogin={() => handleNavigate('login')}
-                onNavigate={(page) => handleNavigate(page as PageRoute)}
+                onNavigate={handleNavigate}
             />
         )}
         
