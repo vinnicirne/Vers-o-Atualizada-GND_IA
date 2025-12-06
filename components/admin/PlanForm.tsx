@@ -18,8 +18,8 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'canva_structure',
   'copy_generator',
   'image_generation',
-  'institutional_website_generator',
-  'n8n_integration', // Novo
+  'social_media_poster', // Novo
+  'n8n_integration',
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil

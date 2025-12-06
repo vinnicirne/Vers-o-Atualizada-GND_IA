@@ -38,73 +38,45 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 
 2. **Gerador de Prompts**: Gere prompts otimizados para IAs como Gemini/ChatGPT, detalhando persona, tarefa, contexto e formato de saída.
 
-3. **Gerador de Landing Page (WORLD-CLASS DESIGN)**:
+3. **Criador de Sites (Web)**:
    Você é um **Diretor de Arte Premiado** e um **Copywriter de Resposta Direta**.
-   Sua tarefa é criar uma Landing Page que pareça ter custado $10.000.
-   
-   **ESTRUTURA DE ALTA CONVERSÃO (Obrigatória):**
+   Sua tarefa é criar um site responsivo e profissional usando HTML e Tailwind CSS.
 
-   1. **HEADER (Minimalista & Focado):**
-      - **NUNCA** use tags de navegação (<nav>, <ul>, <li>) no topo.
-      - Apenas: Uma <div> com o Logo (texto estilizado, ex: font-extrabold tracking-tighter) à esquerda e um botão CTA (ex: "Falar com Consultor") à direita.
+   **LÓGICA INTELIGENTE (Decida o tipo de site com base no prompt):**
+   - **SE** o prompt do usuário solicitar um "site institucional", "site corporativo", "site para empresa", ou mencionar múltiplas seções como "sobre nós", "serviços", "contato", etc., então crie uma estrutura de **Site Institucional** com:
+     - **HEADER:** Inclua um menu de navegação responsivo (pelo menos 3 links).
+     - Múltiplas **SECTIONS** para Home, Sobre, Serviços, Contato.
+     - Design limpo, profissional e elegante.
+   - **CASO CONTRÁRIO (se o foco é produto/venda)**, crie uma **Landing Page de Alta Conversão** com:
+     - **HEADER (Minimalista & Focado):**
+       - **NUNCA** use tags de navegação (<nav>, <ul>, <li>) no topo.
+       - Apenas: Uma <div> com o Logo (texto estilizado, ex: font-extrabold tracking-tighter) à esquerda e um botão CTA (ex: "Falar com Consultor") à direita.
+     - **HERO SECTION (Impacto Visual):** Headline grande com gradientes, CTA principal.
+     - **PROVA SOCIAL (Autoridade):** Faixa discreta "Empresas que confiam em nós".
+     - **BENEFÍCIOS (Não Features):** Use GRID, cards com Glassmorphism.
+     - **OFERTA & GARANTIA (Risco Zero):** Seção destacada com selo visual.
+     - **FAQ (Quebra de Objeções):** Use tags HTML nativas <details> e <summary>.
+     - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
-   2. **HERO SECTION (Impacto Visual):**
-      - Use **GRADIENTES** sutis no fundo (ex: bg-gradient-to-r from-slate-900 to-slate-800).
-      - **Headline (H1):** Grande (text-5xl ou 6xl), negrito, com palavras coloridas usando 'text-transparent bg-clip-text bg-gradient-to-r'.
-      - **Subheadline:** Texto cinza claro, max-width controlado para leitura fácil.
-      - **CTA Principal:** Botão grande, com sombra colorida (shadow-lg shadow-blue-500/50), bordas arredondadas (rounded-xl) e hover effect (scale-105).
-
-   3. **PROVA SOCIAL (Autoridade):**
-      - Faixa discreta "Empresas que confiam em nós". Use nomes de empresas em cinza (opacity-50) para simular logos.
-
-   4. **BENEFÍCIOS (Não Features):**
-      - Use **GRID** (grid-cols-1 md:grid-cols-3).
-      - Cards com **Glassmorphism** (bg-white/5 backdrop-blur-sm border border-white/10) se o fundo for escuro.
-      - Ícones grandes e coloridos (FontAwesome).
-      - Foque na transformação: "Economize 20h/semana" em vez de "Automação rápida".
-
-   5. **OFERTA & GARANTIA (Risco Zero):**
-      - Seção destacada.
-      - Inclua um selo visual de "Garantia de 30 Dias" (ícone check-circle).
-      - Use gatilhos de **Urgência** ("Oferta por tempo limitado").
-
-   6. **FAQ (Quebra de Objeções):**
-      - Use a tag HTML nativa ${"`<details>`"} e ${"`<summary>`"} para criar acordeões interativos sem Javascript. Estilize-os para parecerem modernos.
-
-   7. **CAPTURA FINAL (CTA):**
-      - Fundo contrastante.
-      - Formulário simples: Apenas E-mail.
-      - Botão de ação massiva.
-
-   8. **FOOTER:**
-      - Copyright e Links de Termos/Privacidade (pequenos e discretos).
-
-   **REGRAS TÉCNICAS (Tailwind CSS):**
+   **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
    - Use \`font-sans\` (padrão moderno).
    - Espaçamento generoso (\`py-20\`, \`gap-8\`).
    - Sombras sofisticadas (\`shadow-2xl\`, \`shadow-inner\`).
-   - **IMPORTANTE:** Mantenha a estrutura limpa em tags <section> para que o editor visual possa arrastar e soltar blocos facilmente depois.
+   - Use \`<section>\` tags distintas para cada bloco de conteúdo para facilitar a edição visual.
    - Retorne APENAS o HTML do \`<body>\`.
 
-4. **Site Institucional (Institutional Website)**:
-   Gere um site completo (Home, Sobre, Serviços, Contato).
-   - Use navegação completa no header.
-   - Design corporativo, confiável e limpo (Azul, Cinza, Branco).
-   - Seções bem definidas com fundos alternados (Branco / Cinza Claro).
-   - **IMPORTANTE:** Use tags <section> distintas para cada parte (Hero, Sobre, Serviços) para facilitar a edição.
-
-5. **Studio de Arte IA (Image Generation)**:
+4. **Studio de Arte IA (Image Generation)**:
    Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
    - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
    - Retorne APENAS o prompt em inglês.
 
-6. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
+5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
 
-7. **Editor Visual (Social Media)**:
+6. **Editor Visual (Social Media)**:
    Gere APENAS o código HTML de uma \`<div>\` (1080x1080px) com Tailwind CSS.
    - Design vibrante, tipografia grande, contraste alto.
 
-8. **Criador de Posts Sociais (Social Media Poster)**:
+7. **Criador de Posts Sociais (Social Media Poster)**:
    [IMAGE_PROMPT] (Inglês técnico)
    [COPY] (Português persuasivo, tom de autoridade).
 `;
@@ -207,7 +179,7 @@ serve(async (req) => {
         `;
     }
 
-    if ((mode === 'landingpage_generator' || mode === 'institutional_website_generator') && options) {
+    if (mode === 'landingpage_generator' && options) { // Agora unificado
         fullPrompt += `
         **DIRETRIZES VISUAIS ESPECÍFICAS:**
         - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
@@ -250,7 +222,7 @@ serve(async (req) => {
     }
 
     // Cleanup Logic
-    if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'institutional_website_generator') {
+    if (mode === 'landingpage_generator' || mode === 'canva_structure') { // landingpage_generator agora cobre o sitebuilder
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
         
         const divStartIndex = text.indexOf('<div');

@@ -78,8 +78,7 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
       if(!type) return 'GERAL';
       if(type === 'news_generator') return 'NOTÍCIA';
       if(type === 'image_generation') return 'IMAGEM';
-      if(type === 'landingpage_generator') return 'LANDING PAGE';
-      if(type === 'institutional_website_generator') return 'SITE INSTITUCIONAL';
+      if(type === 'landingpage_generator') return 'CRIADOR DE SITES (WEB)'; // Unificado
       if(type === 'canva_structure') return 'SOCIAL MEDIA';
       return type.toUpperCase().replace('_', ' ');
   };

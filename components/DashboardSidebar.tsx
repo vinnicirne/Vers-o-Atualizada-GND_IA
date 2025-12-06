@@ -28,8 +28,7 @@ const SERVICE_ICONS: Record<ServiceKey, string> = {
     text_to_speech: 'fa-microphone-lines',
     copy_generator: 'fa-pen-nib',
     prompt_generator: 'fa-terminal',
-    landingpage_generator: 'fa-code',
-    institutional_website_generator: 'fa-building',
+    landingpage_generator: 'fa-code', // Icone para Criador de Sites (Web)
     canva_structure: 'fa-vector-square',
     image_generation: 'fa-paint-brush',
     social_media_poster: 'fa-share-alt',
@@ -42,8 +41,7 @@ const SERVICE_COLORS: Record<ServiceKey, string> = {
     text_to_speech: 'text-blue-500 bg-blue-50',
     copy_generator: 'text-purple-500 bg-purple-50',
     prompt_generator: 'text-yellow-500 bg-yellow-50',
-    landingpage_generator: 'text-pink-500 bg-pink-50',
-    institutional_website_generator: 'text-orange-500 bg-orange-50',
+    landingpage_generator: 'text-orange-500 bg-orange-50', // Cor para Criador de Sites (Web)
     canva_structure: 'text-cyan-500 bg-cyan-50',
     image_generation: 'text-rose-500 bg-rose-50',
     social_media_poster: 'text-indigo-500 bg-indigo-50',

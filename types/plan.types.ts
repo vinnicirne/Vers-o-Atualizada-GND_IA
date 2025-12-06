@@ -8,7 +8,6 @@ export type ServiceKey =
   | 'copy_generator'
   | 'image_generation'
   | 'social_media_poster' // Nova ferramenta
-  | 'institutional_website_generator'
   | 'n8n_integration';
 
 export interface ServicePermission {

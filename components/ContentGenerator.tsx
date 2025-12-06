@@ -96,7 +96,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
     e.preventDefault();
     let options: any = undefined;
     
-    if (mode === 'landingpage_generator' || mode === 'institutional_website_generator') {
+    if (mode === 'landingpage_generator') { // Agora unificado para "Criador de Sites (Web)"
         options = { theme, primaryColor };
     } else if (mode === 'image_generation') {
         options = { aspectRatio, imageStyle };
@@ -124,8 +124,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
 
       <form onSubmit={handleSubmit} className="space-y-6">
         
-        {/* Opções Extras para Landing Page e Site Institucional */}
-        {(mode === 'landingpage_generator' || mode === 'institutional_website_generator') && !isModeLocked(mode) && (
+        {/* Opções Extras para Criador de Sites (Web) */}
+        {mode === 'landingpage_generator' && !isModeLocked(mode) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
             <div>
               <label htmlFor="theme" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
@@ -218,7 +218,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
         
         <div>
           <label htmlFor="prompt" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
-            {mode === 'image_generation' || mode === 'social_media_poster' ? 'Descreva sua Imagem / Post' : (mode === 'institutional_website_generator' ? 'Dados da Empresa' : 'Seu Pedido')}
+            {mode === 'image_generation' || mode === 'social_media_poster' ? 'Descreva sua Imagem / Post' : (mode === 'landingpage_generator' ? 'Seu Pedido (Ex: Nome da Empresa, Produto, Seções)' : 'Seu Pedido')}
           </label>
           <textarea
             id="prompt"

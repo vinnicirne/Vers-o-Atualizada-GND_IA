@@ -33,19 +33,14 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     placeholder: 'Descreva o post. Ex: "Promoção de Black Friday para loja de sapatos, fundo preto e dourado, foto do produto".',
   },
   {
-    value: 'institutional_website_generator',
-    label: 'Site Institucional',
-    placeholder: 'Nome da Empresa, Ramo de Atuação e Diferenciais. Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".',
-  },
-  {
     value: 'image_generation',
     label: 'Studio de Arte IA',
     placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
   },
   {
     value: 'landingpage_generator',
-    label: 'Gerador de Landing Page',
-    placeholder: 'Descreva o produto ou serviço e o público-alvo. Ex: "Página de vendas para um e-book de receitas veganas para iniciantes".',
+    label: 'Criador de Sites (Web)', // Unificado: Landing Page e Site Institucional
+    placeholder: 'Descreva o site (empresa, produto, público, seções). Ex: "Site institucional para uma consultoria de TI focada em segurança cibernética" ou "Landing Page de vendas para um e-book de receitas veganas".',
   },
   {
     value: 'canva_structure',
@@ -67,8 +62,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   copy_generator: 1,
   prompt_generator: 1,
   canva_structure: 3,
-  landingpage_generator: 15,
-  institutional_website_generator: 25,
+  landingpage_generator: 25, // Custo maior para cobrir sites institucionais mais complexos
   image_generation: 5,
   social_media_poster: 5, // Custo similar à geração de imagem
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
@@ -95,9 +89,8 @@ const imageService: ServicePermission = { key: 'image_generation', name: 'Studio
 // Nova feature de Social Media Poster
 const socialPosterService: ServicePermission = { key: 'social_media_poster', name: 'Criador de Posts Sociais', enabled: true, creditsPerUse: TASK_COSTS.social_media_poster };
 
-const landingPageService: ServicePermission = { key: 'landingpage_generator', name: 'Gerador de Landing Page', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
-
-const institutionalSiteService: ServicePermission = { key: 'institutional_website_generator', name: 'Site Institucional', enabled: true, creditsPerUse: TASK_COSTS.institutional_website_generator };
+// Agora apenas um serviço para sites
+const siteBuilderService: ServicePermission = { key: 'landingpage_generator', name: 'Criador de Sites (Web)', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
 
 // Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
@@ -147,7 +140,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       ...artServices, // Agora contém apenas o Editor Visual
       imageService, 
       socialPosterService, // Adicionado ao Standard
-      institutionalSiteService, 
+      siteBuilderService, // Usando o serviço unificado
       n8nService 
     ]
   },
@@ -166,8 +159,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       ...artServices,
       imageService,
       socialPosterService, // Adicionado ao Premium
-      landingPageService,
-      institutionalSiteService, 
+      siteBuilderService, // Usando o serviço unificado
       n8nService 
     ]
   }

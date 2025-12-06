@@ -44,8 +44,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
     if(!type) return 'GERAL';
     if(type === 'news_generator') return 'NOTÍCIA';
     if(type === 'image_generation') return 'IMAGEM';
-    if(type === 'landingpage_generator') return 'LANDING PAGE';
-    if(type === 'institutional_website_generator') return 'SITE INSTITUCIONAL';
+    if(type === 'landingpage_generator') return 'CRIADOR DE SITES (WEB)'; // Unificado
     if(type === 'canva_structure') return 'SOCIAL MEDIA';
     if(type === 'copy_generator') return 'COPY';
     if(type === 'text_to_speech') return 'ÁUDIO';
@@ -57,8 +56,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
       switch(type) {
           case 'news_generator': return 'fa-newspaper text-green-600';
           case 'image_generation': return 'fa-paint-brush text-purple-600';
-          case 'landingpage_generator': return 'fa-code text-pink-600';
-          case 'institutional_website_generator': return 'fa-building text-orange-600';
+          case 'landingpage_generator': return 'fa-code text-orange-600'; // Ícone unificado e cor
           case 'canva_structure': return 'fa-vector-square text-cyan-600';
           case 'text_to_speech': return 'fa-microphone text-blue-600';
           case 'copy_generator': return 'fa-pen-nib text-yellow-600';
@@ -96,8 +94,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
           <div className="px-6 py-4 border-b border-gray-200 flex gap-2 overflow-x-auto custom-scrollbar bg-white">
              <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'all' ? 'bg-[#263238] text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Todos</button>
              <button onClick={() => setFilterType('news_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'news_generator' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Notícias</button>
-             <button onClick={() => setFilterType('institutional_website_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'institutional_website_generator' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Sites</button>
-             <button onClick={() => setFilterType('landingpage_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'landingpage_generator' ? 'bg-pink-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Landing Pages</button>
+             <button onClick={() => setFilterType('landingpage_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'landingpage_generator' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Sites</button>
              <button onClick={() => setFilterType('image_generation')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'image_generation' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Imagens</button>
              <button onClick={() => setFilterType('prompt_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'prompt_generator' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Prompts</button>
              <button onClick={() => setFilterType('canva_structure')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'canva_structure' ? 'bg-cyan-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Social Media</button>

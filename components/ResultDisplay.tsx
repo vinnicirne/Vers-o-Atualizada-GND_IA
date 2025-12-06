@@ -118,7 +118,8 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
   };
 
   const getContentLabel = () => {
-      if (mode === 'landingpage_generator' || mode === 'institutional_website_generator') return 'Código HTML Gerado';
+      // FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type.
+      if (mode === 'landingpage_generator') return 'Código HTML Gerado';
       if (mode === 'news_generator') return 'Corpo da Matéria';
       if (mode === 'copy_generator') return 'Corpo do Texto';
       return 'Conteúdo Gerado';

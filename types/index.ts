@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './plan.types'; // Looks for sibling 'plan.types.ts'
 
@@ -21,7 +22,7 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: string;
+  tipo?: string; // This type allows for flexibility, will be 'landingpage_generator' for all sites
   author_id?: string;
   criado_em?: string;
   author?: {
