@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
@@ -79,7 +80,6 @@ export function DashboardResults({
         <div className="mt-8 space-y-8 pb-12">
             
             {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL & CRIADOR DE CURRÍCULOS */}
-            {/* FIX: Removed redundant and unintentional type comparison with 'landingpage_generator' */}
             {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && results.text && (
                 <LandingPageBuilder 
                     initialHtml={results.text} 
@@ -107,7 +107,6 @@ export function DashboardResults({
             )}
 
             {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
-            {/* FIX: Removed redundant and unintentional type comparison with 'landingpage_generator' */}
             {currentMode !== 'landingpage_generator' && 
              currentMode !== 'image_generation' && 
              currentMode !== 'social_media_poster' &&

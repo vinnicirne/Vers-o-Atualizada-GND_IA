@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -65,53 +64,53 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
-   - Use `font-sans` (padrão moderno).
-   - Espaçamento generoso (`py-20`, `gap-8`).
-   - Sombras sofisticadas (`shadow-2xl`, `shadow-inner`).
-   - Use `<section>` tags distintas para cada bloco de conteúdo para facilitar a edição visual.
-   - Retorne APENAS o HTML do `<body>`.
+   - Use font-sans (padrão moderno).
+   - Espaçamento generoso (py-20, gap-8).
+   - Sombras sofisticadas (shadow-2xl, shadow-inner).
+   - Use <section> tags distintas para cada bloco de conteúdo para facilitar a edição visual.
+   - Retorne APENAS o HTML do <body>.
 
-4. **Studio de Arte IA (Image Generation)**:
-   Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
-   - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
-   - Retorne APENAS o prompt em inglês.
+    4. **Studio de Arte IA (Image Generation)**:
+       Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
+       - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
+       - Retorne APENAS o prompt em inglês.
 
-5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
+    5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
 
-6. **Editor Visual (Social Media)**:
-   Gere APENAS o código HTML de uma `<div>` (1080x1080px) com Tailwind CSS.
-   - Design vibrante, tipografia grande, contraste alto.
+    6. **Editor Visual (Social Media)**:
+       Gere APENAS o código HTML de uma <div> (1080x1080px) com Tailwind CSS.
+       - Design vibrante, tipografia grande, contraste alto.
 
-7. **Criador de Currículos (IA)**:
-   Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
-   Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
+    7. **Criador de Currículos (IA)**:
+       Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
+       Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
 
-   **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
-   - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
-   - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
-   - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
-   - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
-   - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
-   - **Tom de Voz:** Profissional, confiante e orientado a resultados.
+       **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
+       - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
+       - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
+       - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
+       - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
+       - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
+       - **Tom de Voz:** Profissional, confiante e orientado a resultados.
 
-   **REGRAS ESTRUTURAIS HTML (Tailwind CSS):**
-   - Utilize a estrutura HTML fornecida pelo template.
-   - Não inclua tags `<html>`, `<head>` ou `<body>` externas. Apenas o conteúdo interno.
-   - Mantenha a semântica HTML (h1, h2, p, ul, li).
-   - Use classes Tailwind CSS para todo o estilo.
-   - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
+       **REGRAS ESTRUTURAIS HTML (Tailwind CSS):**
+       - Utilize a estrutura HTML fornecida pelo template.
+       - Não inclua tags <html>, <head> ou <body> externas. Apenas o conteúdo interno.
+       - Mantenha a semântica HTML (h1, h2, p, ul, li).
+       - Use classes Tailwind CSS para todo o estilo.
+       - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
 
-   **INSTRUÇÕES DE PREENCHIMENTO:**
-   - Adapte o `summary` (resumo profissional) com base no `prompt` do usuário (se fornecido) e nas informações de experiência.
-   - Para `experience` e `education`, reescreva as `descriptions` para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
-   - Para `skills`, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
-   - **NÃO use Markdown**. Apenas HTML puro com classes Tailwind.
-   - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+       **INSTRUÇÕES DE PREENCHIMENTO:**
+       - Adapte o summary (resumo profissional) com base no prompt do usuário (se fornecido) e nas informações de experiência.
+       - Para experience e education, reescreva as descriptions para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
+       - Para skills, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
+       - **NÃO use Markdown**. Apenas HTML puro com classes Tailwind.
+       - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
 
-8. **Criador de Posts Sociais (Social Media Poster)**:
-   [IMAGE_PROMPT] (Inglês técnico)
-   [COPY] (Português persuasivo, tom de autoridade).
-`;
+    8. **Criador de Posts Sociais (Social Media Poster)**:
+       [IMAGE_PROMPT] (Inglês técnico)
+       [COPY] (Português persuasivo, tom de autoridade).
+    `;
 
 serve(async (req) => {
   // 1. Handle Preflight Requests (CORS)
@@ -143,7 +142,8 @@ serve(async (req) => {
     }
 
     // 4. Initialize Gemini (GoogleGenAI SDK)
-    const ai = new GoogleGenAI({ apiKey });
+    // FIX: Use the correct class for Google GenAI SDK.
+    const ai = new GoogleGenAI({ apiKey: apiKey as string });
     
     // --- TEXT TO SPEECH MODE HANDLER ---
     if (mode === 'text_to_speech') {
@@ -219,6 +219,8 @@ serve(async (req) => {
     }
 
     // --- CURRICULUM GENERATOR LOGIC ---
+    // FIX: Moved curriculumDataPrompt declaration to be `const` and before `fullPrompt` reassignment for clarity.
+    // Ensure all literal backticks are escaped.
     if (mode === 'curriculum_generator' && options) {
         const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
         const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
@@ -229,38 +231,38 @@ serve(async (req) => {
 
         // Prepare data for Handlebars-like replacement (simplified for direct insertion by LLM)
         // The LLM will "fill in" these placeholders intelligently based on the structured data and prompt.
-        // FIX: Corrected variable access for curriculum data within the prompt and added optional chaining.
-        const curriculumDataPrompt = `
-        Por favor, gere um currículo HTML com Tailwind CSS usando o template a seguir. Preencha os placeholders com as informações fornecidas e otimize cada seção conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis).
+        const curriculumDataPromptContent = `
+        Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha TODOS os placeholders (ex: \`{{personalInfo.name}}\`, \`{{summary}}\`, \`{{#each experience}}\`, etc.) com as informações fornecidas. Otimize cada seção conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o seu objetivo de carreira.
 
-        **Template de Currículo Escolhido:**
-        \`\`\`html
+        **TEMPLATE HTML A SER PREENCHIDO:**
         ${selectedTemplate}
-        \`\`\`
 
-        **Informações do Usuário:**
-        - **Objetivo de Carreira (Prompt Geral):** ${prompt || 'Não fornecido, crie um objetivo padrão.'}
+        **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
+        - **Objetivo de Carreira (Prompt Geral para Resumo):** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
         - **Dados Pessoais:**
             Nome: ${options.personalInfo?.name || ''}
             Email: ${options.personalInfo?.email || ''}
             Telefone: ${options.personalInfo?.phone || ''}
-            LinkedIn: ${options.personalInfo?.linkedin || ''}
-            Portfólio: ${options.personalInfo?.portfolio || ''}
-        - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo.'}
+            LinkedIn URL: ${options.personalInfo?.linkedin || ''}
+            Portfólio URL: ${options.personalInfo?.portfolio || ''}
+        - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo e otimizado para ATS.'}
         - **Experiência Profissional:**
-            ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
+            ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida. Se aplicável, adicione uma seção de experiência genérica com conselhos ATS.'}
         - **Formação Acadêmica:**
             ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
-        - **Habilidades:** ${options.skills?.join(', ') || 'Não fornecido, a IA pode sugerir habilidades comuns.'}
+        - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
         - **Projetos:**
-            ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
-        - **Certificações:** ${options.certifications?.join(', ') || 'Nenhuma.'}
+            ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido. Se for o caso, a IA pode sugerir a criação de um projeto fictício relevante.'}
+        - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
 
-        **Lembre-se das Regras do Modo "Criador de Currículos (IA)" para ATS e HTML puro.**
+        **LEMBRE-SE:**
+        - Retorne APENAS o código HTML preenchido, sem qualquer texto adicional ou explicação.
+        - Assegure-se de que todas as classes Tailwind CSS e a estrutura HTML do template original sejam mantidas.
+        - Onde houver \`{{#each}}\`, a IA deve iterar sobre os dados e gerar os itens HTML correspondentes.
+        - Onde houver \`{{#if}}\`, a IA deve incluir a seção apenas se houver dados.
         `;
-        fullPrompt = curriculumDataPrompt; // Override fullPrompt for curriculum mode
+        fullPrompt = curriculumDataPromptContent; // Override fullPrompt for curriculum mode
     }
-
 
     let config: any = {
         systemInstruction: systemPromptWithMemory
