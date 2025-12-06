@@ -1,7 +1,7 @@
 
 import { api } from './api';
 import { logger } from './loggerService';
-import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting } from '../types';
+import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting, WhiteLabelSettings } from '../types';
 import { GUEST_ID, CREATOR_SUITE_MODES } from '../constants';
 import { supabase } from './supabaseClient'; // Import supabase directly for complex queries
 
@@ -157,7 +157,7 @@ export const getAffiliateStats = async (userId: string) => {
              if(users) {
                  users.forEach((u:any) => {
                      userMap.set(u.id, u.email);
-                 });
+                 );
              }
         }
 
@@ -267,6 +267,32 @@ export const getGlobalToolSettings = async (): Promise<ToolSetting[]> => {
 export const updateGlobalToolSettings = async (settings: ToolSetting[], adminId: string) => {
     await setConfig('tool_settings', settings, adminId);
     logger.info(adminId, 'Planos', 'update_global_tool_settings', { tool_count: settings.length });
+};
+
+// --- WHITE LABEL SETTINGS ---
+const DEFAULT_WHITE_LABEL_SETTINGS: WhiteLabelSettings = {
+    appName: "GDN_IA",
+    appTagline: "Creator Suite",
+    logoTextPart1: "GDN",
+    logoTextPart2: "_IA",
+    primaryColorHex: "#F39C12",
+    secondaryColorHex: "#263238",
+    tertiaryColorHex: "#10B981",
+    faviconUrl: "https://cdn-icons-png.flaticon.com/512/16806/16806607.png",
+    ogImageUrl: "https://gdn.ia/default-og.jpg",
+    wordpressPluginName: "GDN_IA - Poster Pro",
+    copyrightText: "GDN_IA",
+    appVersion: "1.0.9",
+    dashboardTitle: "Creator Suite",
+};
+
+export const getWhiteLabelSettings = async (): Promise<WhiteLabelSettings> => {
+    return getConfig<WhiteLabelSettings>('white_label_settings', DEFAULT_WHITE_LABEL_SETTINGS);
+};
+
+export const updateWhiteLabelSettings = async (settings: WhiteLabelSettings, adminId: string) => {
+    await setConfig('white_label_settings', settings, adminId);
+    logger.info(adminId, 'Sistema', 'update_white_label_settings', settings);
 };
 
 

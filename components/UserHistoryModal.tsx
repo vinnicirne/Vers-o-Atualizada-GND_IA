@@ -1,8 +1,10 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { getUserHistory } from '../services/userService';
 import { NewsArticle } from '../types';
 import { NewsViewModal } from './admin/NewsViewModal'; // Reuse existing view modal logic
+import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // NOVO
 
 interface UserHistoryModalProps {
   userId: string;
@@ -10,6 +12,7 @@ interface UserHistoryModalProps {
 }
 
 export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
+  const { settings: whiteLabelSettings } = useWhiteLabel(); // NOVO
   const [history, setHistory] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +58,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
 
   const getTypeIcon = (type?: string) => {
       switch(type) {
-          case 'news_generator': return 'fa-newspaper text-green-600';
+          case 'news_generator': return 'fa-newspaper text-[var(--brand-tertiary)]';
           case 'image_generation': return 'fa-paint-brush text-purple-600';
           case 'landingpage_generator': return 'fa-code text-orange-600'; // Ícone unificado e cor
           case 'canva_structure': return 'fa-vector-square text-cyan-600';
@@ -80,23 +83,23 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
           <div className="p-6 border-b border-gray-200 flex justify-between items-center sticky top-0 bg-white z-10 rounded-t-xl">
             <div className="flex items-center gap-3">
               <div className="bg-green-50 p-2 rounded-full border border-green-100">
-                  <i className="fas fa-history text-green-600 text-xl"></i>
+                  <i className="fas fa-history text-[var(--brand-tertiary)] text-xl"></i>
               </div>
               <div>
-                  <h2 className="text-2xl font-bold text-[#263238]">Meu Histórico</h2>
+                  <h2 className="text-2xl font-bold text-[var(--brand-secondary)]">Meu Histórico</h2>
                   <p className="text-sm text-gray-500">Suas gerações passadas salvas na nuvem.</p>
               </div>
             </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-[#263238] transition bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center">
+            <button onClick={onClose} className="text-gray-400 hover:text-[var(--brand-secondary)] transition bg-gray-100 w-10 h-10 rounded-full flex items-center justify-center">
               <i className="fas fa-times text-xl"></i>
             </button>
           </div>
 
           {/* Filters */}
           <div className="px-6 py-4 border-b border-gray-200 flex gap-2 overflow-x-auto custom-scrollbar bg-white">
-             <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'all' ? 'bg-[#263238] text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Todos</button>
-             <button onClick={() => setFilterType('news_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'news_generator' ? 'bg-green-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Notícias</button>
-             <button onClick={() => setFilterType('landingpage_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'landingpage_generator' ? 'bg-orange-500 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Sites</button>
+             <button onClick={() => setFilterType('all')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'all' ? 'bg-[var(--brand-secondary)] text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Todos</button>
+             <button onClick={() => setFilterType('news_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'news_generator' ? 'bg-[var(--brand-tertiary)] text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Notícias</button>
+             <button onClick={() => setFilterType('landingpage_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'landingpage_generator' ? 'bg-[var(--brand-primary)] text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Sites</button>
              <button onClick={() => setFilterType('curriculum_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'curriculum_generator' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Currículos</button> {/* NOVO FILTRO */}
              <button onClick={() => setFilterType('image_generation')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'image_generation' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Imagens</button>
              <button onClick={() => setFilterType('prompt_generator')} className={`px-3 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap ${filterType === 'prompt_generator' ? 'bg-yellow-600 text-white' : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'}`}>Prompts</button>
@@ -128,7 +131,7 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
                      <div 
                         key={item.id} 
                         onClick={() => setSelectedItem(item)}
-                        className="bg-white border border-gray-200 hover:border-green-500/50 hover:shadow-md p-5 rounded-xl cursor-pointer transition-all group"
+                        className="bg-white border border-gray-200 hover:border-[var(--brand-tertiary)]/[0.5] hover:shadow-md p-5 rounded-xl cursor-pointer transition-all group"
                      >
                         <div className="flex justify-between items-start mb-2">
                              <div className="flex items-center gap-2">
@@ -138,9 +141,9 @@ export function UserHistoryModal({ userId, onClose }: UserHistoryModalProps) {
                                  </span>
                                  <span className="text-xs text-gray-400">{new Date(item.criado_em || '').toLocaleString('pt-BR')}</span>
                              </div>
-                             <i className="fas fa-chevron-right text-gray-300 group-hover:text-green-500 transition"></i>
+                             <i className="fas fa-chevron-right text-gray-300 group-hover:text-[var(--brand-tertiary)] transition"></i>
                         </div>
-                        <h4 className="font-bold text-[#263238] text-md mb-1 line-clamp-1">{item.titulo}</h4>
+                        <h4 className="font-bold text-[var(--brand-secondary)] text-md mb-1 line-clamp-1">{item.titulo}</h4>
                         <p className="text-xs text-gray-500 line-clamp-2 font-mono">{item.conteudo.substring(0, 150)}...</p>
                      </div>
                  ))}

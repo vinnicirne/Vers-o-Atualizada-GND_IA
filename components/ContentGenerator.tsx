@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { CREATOR_SUITE_MODES } from '../constants';
 import { ServiceKey } from '../types/plan.types';
@@ -152,13 +153,13 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
   };
   
   // Updated Styles for Light Theme
-  const selectClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[#F39C12] focus:outline-none focus:ring-1 focus:ring-[#F39C12] transition duration-300";
-  const inputClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[#F39C12] focus:outline-none focus:ring-1 focus:ring-[#F39C12] transition duration-300";
+  const selectClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
+  const inputClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
       <div className="mb-6 pb-4 border-b border-gray-100">
-          <h2 className="text-xl font-bold text-[#263238]">
+          <h2 className="text-xl font-bold text-[var(--brand-secondary)]">
               {CREATOR_SUITE_MODES.find(m => m.value === mode)?.label}
           </h2>
           <p className="text-sm text-gray-500">Preencha os detalhes abaixo para gerar seu conteúdo.</p>
@@ -441,7 +442,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={placeholder}
                 rows={5}
-                className="w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-4 text-sm rounded-md focus:border-[#F39C12] focus:outline-none focus:ring-1 focus:ring-[#F39C12] transition duration-300 placeholder-gray-400 disabled:opacity-50 disabled:bg-gray-50 resize-y"
+                className="w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-4 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300 placeholder-gray-400 disabled:opacity-50 disabled:bg-gray-50 resize-y"
                 disabled={isLoading || isModeLocked(mode)}
             />
             </div>
@@ -457,7 +458,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                     onChange={(e) => setPrompt(e.target.value)}
                     placeholder="Ex: 'Busco uma posição desafiadora em uma empresa inovadora onde possa aplicar minhas habilidades em IA e Machine Learning para impulsionar o crescimento do produto.'"
                     rows={3}
-                    className="w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-4 text-sm rounded-md focus:border-[#F39C12] focus:outline-none focus:ring-1 focus:ring-[#F39C12] transition duration-300 placeholder-gray-400 disabled:opacity-50 disabled:bg-gray-50 resize-y"
+                    className="w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-4 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300 placeholder-gray-400 disabled:opacity-50 disabled:bg-gray-50 resize-y"
                     disabled={isLoading || isModeLocked(mode)}
                 />
             </div>
@@ -473,11 +474,11 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                     type="checkbox"
                     checked={generateAudio}
                     onChange={(e) => setGenerateAudio(e.target.checked)}
-                    className="h-5 w-5 bg-white border border-gray-300 rounded text-[#F39C12] focus:ring-[#F39C12] transition duration-200"
+                    className="h-5 w-5 bg-white border border-gray-300 rounded text-[var(--brand-primary)] focus:ring-[var(--brand-primary)] transition duration-200"
                     disabled={isLoading}
                 />
                 <span className="ml-3 font-medium">Gerar áudio da matéria</span>
-                <span className="text-xs text-[#F39C12] font-bold ml-2 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">+{ttsCost} créditos</span>
+                <span className="text-xs text-[var(--brand-primary)] font-bold ml-2 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">+{ttsCost} créditos</span>
                 </label>
             </div>
           )
@@ -485,7 +486,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
 
         <button
           type="submit"
-          className="w-full bg-[#F39C12] hover:bg-orange-500 text-white font-bold py-4 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-orange-100 transition-all duration-300 disabled:opacity-50 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md transform hover:-translate-y-0.5"
+          className="w-full bg-[var(--brand-primary)] hover:bg-orange-500 text-white font-bold py-4 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-orange-100 transition-all duration-300 disabled:opacity-50 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md transform hover:-translate-y-0.5"
           disabled={isLoading || isModeLocked(mode) || (mode === 'curriculum_generator' && (!personalInfo.name || !personalInfo.email))} 
         >
           {isLoading ? (

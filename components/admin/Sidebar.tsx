@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { AdminView } from '../../types';
 
@@ -15,7 +16,8 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
     { key: 'news', label: 'Histórico', icon: 'fas fa-newspaper' },
     { key: 'payments', label: 'Pagamentos', icon: 'fas fa-credit-card' },
     { key: 'plans', label: 'Planos', icon: 'fas fa-layer-group' },
-    { key: 'tool_settings', label: 'Gerenciar Ferramentas', icon: 'fas fa-toggle-on' }, // NOVO
+    { key: 'tool_settings', label: 'Gerenciar Ferramentas', icon: 'fas fa-toggle-on' }, 
+    { key: 'white_label_settings', label: 'White Label', icon: 'fas fa-paint-roller' }, // NOVO
     { key: 'popups', label: 'Popups & Avisos', icon: 'fas fa-bullhorn' },
     { key: 'feedbacks', label: 'Depoimentos', icon: 'fas fa-comment-dots' },
     { key: 'multi_ia_system', label: 'Sistema Multi-IA', icon: 'fas fa-brain' },

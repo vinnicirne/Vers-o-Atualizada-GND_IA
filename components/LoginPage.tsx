@@ -1,8 +1,8 @@
 
 
 import React from 'react';
-import { LoginForm } from './components/auth/LoginForm'; // Import the new form component
-import { useWhiteLabel } from './contexts/WhiteLabelContext'; // Import useWhiteLabel
+import { LoginForm } from './auth/LoginForm'; // Import the new form component
+import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
 
 function LoginPage() {
   const { settings } = useWhiteLabel(); // Use white label settings

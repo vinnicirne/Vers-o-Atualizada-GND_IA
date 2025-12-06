@@ -1,9 +1,11 @@
 
+
 import React, { useState, useEffect, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import LoginPage from './LoginPage';
 import DashboardPage from './DashboardPage';
+import { WhiteLabelProvider, useWhiteLabel } from './contexts/WhiteLabelContext'; // Import WhiteLabelContext
 // Lazy Load Pages
 const AdminPage = React.lazy(() => import('./pages/admin'));
 const PrivacyPage = React.lazy(() => import('./pages/legal/PrivacyPage'));
@@ -17,16 +19,30 @@ import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
 import { PopupRenderer } from './components/PopupRenderer'; 
 
-const SimpleLoader = () => (
-  <div className="min-h-screen bg-[#ECEFF1] flex flex-col items-center justify-center space-y-4">
-    <i className="fas fa-circle-notch fa-spin text-4xl text-[#F39C12]"></i>
-  </div>
-);
+const SimpleLoader = () => {
+  const { settings, loading: wlLoading } = useWhiteLabel(); // Use the hook to get appName
+  
+  if (wlLoading) {
+    return (
+      <div className="min-h-screen bg-[#ECEFF1] flex flex-col items-center justify-center space-y-4">
+        <i className="fas fa-circle-notch fa-spin text-4xl text-[var(--brand-primary)]"></i>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#ECEFF1] flex flex-col items-center justify-center space-y-4">
+      <i className="fas fa-circle-notch fa-spin text-4xl text-[var(--brand-primary)]"></i>
+      <p className="text-[var(--brand-secondary)] font-medium animate-pulse">Iniciando {settings.appName}...</p>
+    </div>
+  );
+};
 
 type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
 
 function AppContent() {
   const { user, loading, error } = useUser();
+  const { settings: whiteLabelSettings } = useWhiteLabel(); // Access white label settings
   
   useEffect(() => {
       initGA4();
@@ -183,7 +199,7 @@ function AppContent() {
             <div className="relative">
                 <button 
                     onClick={() => handleNavigate('dashboard')}
-                    className="absolute top-4 left-4 z-50 text-gray-600 hover:text-[#263238] flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200"
+                    className="absolute top-4 left-4 z-50 text-gray-600 hover:text-[var(--brand-secondary)] flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200"
                 >
                     <i className="fas fa-arrow-left"></i> Voltar
                 </button>
@@ -222,7 +238,9 @@ function AppContent() {
 export default function App() {
   return (
     <UserProvider>
-      <AppContent />
+      <WhiteLabelProvider>
+        <AppContent />
+      </WhiteLabelProvider>
     </UserProvider>
   );
 }

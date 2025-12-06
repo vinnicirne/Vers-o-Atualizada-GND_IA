@@ -1,6 +1,6 @@
 
+
 import { ReactNode } from 'react';
-// FIX: Corrected the import path for plan types from './types/plan.types' to './plan.types'
 import { Plan, ServiceKey, UserPlan } from './plan.types';
 
 export type { Plan, ServiceKey, UserPlan };
@@ -73,8 +73,7 @@ export interface Log {
   user_email?: string;
 }
 
-// FIX: Added 'tool_settings' to the AdminView type to resolve type errors
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
 
 export interface AllowedDomain {
   id: string;
@@ -265,8 +264,24 @@ export interface AppNotification {
 }
 
 // Global Tool Settings
-// FIX: Exported the ToolSetting interface to make it accessible in other modules.
 export interface ToolSetting {
   key: ServiceKey;
   enabled: boolean;
+}
+
+// White Label Settings
+export interface WhiteLabelSettings {
+  appName: string;
+  appTagline: string;
+  logoTextPart1: string;
+  logoTextPart2: string;
+  primaryColorHex: string;
+  secondaryColorHex: string;
+  tertiaryColorHex: string;
+  faviconUrl: string;
+  ogImageUrl: string;
+  wordpressPluginName: string;
+  copyrightText: string;
+  appVersion: string;
+  dashboardTitle: string;
 }
