@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -63,7 +62,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **BENEFÍCIOS (Não Features):** Use GRID, cards com Glassmorphism.
      - **OFERTA & GARANTIA (Risco Zero):** Seção destacada com selo visual.
      - **FAQ (Quebra de Objeções):** Use tags HTML nativas <details> e <summary>.
-     - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
+     - **CAPTURA FINAL (CTA):):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
    - Use font-sans (padrão moderno).
@@ -186,7 +185,7 @@ serve(async (req) => {
 
     const modelName = 'gemini-2.5-flash';
 
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    const systemPromptWithMemory = `${systemInstruction}: ${systemPromptWithMemory}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
     let fullPrompt = `
       Query do usuário: ${prompt}

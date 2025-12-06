@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPopups, createPopup, updatePopup, deletePopup } from '../../services/adminService';
 import { Popup } from '../../types';
