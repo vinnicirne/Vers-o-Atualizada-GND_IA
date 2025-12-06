@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { CREATOR_SUITE_MODES, SERVICE_ICONS, SERVICE_COLORS } from '../constants'; // Importe SERVICE_ICONS e SERVICE_COLORS
@@ -72,6 +73,8 @@ export function DashboardSidebar({
                         const isSelected = currentMode === svc.value;
                         const isLocked = (isGuest && !guestAllowedModes.includes(svc.value)) || (!isGuest && !hasAccessToService(svc.value));
                         
+                        // Robust lookup for icon and color, with fallbacks
+                        const iconClass = SERVICE_ICONS[svc.value] || 'fa-question'; 
                         const colorClasses = SERVICE_COLORS[svc.value] || 'text-gray-600 bg-gray-100';
                         const [textColor, bgColor] = colorClasses.split(' ');
 
@@ -88,13 +91,15 @@ export function DashboardSidebar({
                                 `}
                             >
                                 <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${bgColor} ${isSelected ? textColor : 'text-gray-500 bg-gray-100'}`}>
-                                    <i className={`fas ${SERVICE_ICONS[svc.value]} text-sm`}></i>
+                                    <i className={`fas ${iconClass} text-sm`}></i>
                                 </div>
                                 
                                 <div className="flex-1 min-w-0">
                                     <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[#263238]' : 'text-gray-600 group-hover:text-[#263238]'}`}>
                                         {svc.label}
                                     </p>
+                                    {/* Adicionado o placeholder para melhor descrição */}
+                                    <p className="text-xs text-gray-400 mt-0.5 truncate">{svc.placeholder}</p>
                                 </div>
 
                                 {isLocked && <i className="fas fa-lock text-xs text-gray-400 ml-2"></i>}

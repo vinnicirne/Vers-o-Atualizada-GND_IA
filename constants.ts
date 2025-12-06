@@ -1,4 +1,5 @@
 
+
 import { ServiceKey, Plan, ServicePermission, UserPlan } from './types/plan.types'; // Importar os novos tipos de plano e serviço
 
 interface CreatorSuiteModeConfig {
@@ -38,14 +39,14 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     placeholder: 'Descreva o post. Ex: "Promoção de Black Friday para loja de sapatos, fundo preto e dourado, foto do produto".',
   },
   {
-    value: 'image_generation',
-    label: 'Studio de Arte IA',
-    placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
-  },
-  {
     value: 'landingpage_generator',
     label: 'Criador de Sites (Web)', // Unificado: Landing Page e Site Institucional
     placeholder: 'Descreva o site (empresa, produto, público, seções). Ex: "Site institucional para uma consultoria de TI focada em segurança cibernética" ou "Landing Page de vendas para um e-book de receitas veganas".',
+  },
+  {
+    value: 'image_generation',
+    label: 'Studio de Arte IA',
+    placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
   },
   {
     value: 'canva_structure',
