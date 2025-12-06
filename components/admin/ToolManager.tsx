@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { CREATOR_SUITE_MODES } from '../../constants';
+import { CREATOR_SUITE_MODES, SERVICE_ICONS, SERVICE_COLORS } from '../../constants'; // Importamos SERVICE_ICONS e SERVICE_COLORS
 import { getGlobalToolSettings, updateGlobalToolSettings } from '../../services/adminService';
-import { ServiceKey, ToolSetting } from '../../types'; // Corrected import for ToolSetting
+import { ServiceKey, ToolSetting } from '../../types';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from './Toast';
 
@@ -99,11 +99,24 @@ export function ToolManager() {
                         const currentSetting = toolSettings.find(s => s.key === modeConfig.value);
                         const isEnabled = currentSetting ? currentSetting.enabled : true; // Default to enabled if not found
 
+                        // Fallback para ícone e cor, garantindo que sempre há algo
+                        const iconClass = SERVICE_ICONS[modeConfig.value] || 'fa-question-circle'; 
+                        const colorClasses = SERVICE_COLORS[modeConfig.value] || 'text-gray-600 bg-gray-100';
+                        const [textColor, bgColor] = colorClasses.split(' ');
+
                         return (
-                            <div key={modeConfig.value} className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex items-center justify-between shadow-sm">
-                                <div>
-                                    <h3 className="font-bold text-gray-800 text-sm">{modeConfig.label}</h3>
-                                    <p className="text-xs text-gray-500 line-clamp-1">{modeConfig.placeholder}</p>
+                            <div 
+                                key={modeConfig.value} 
+                                className="bg-white p-4 rounded-lg border border-gray-200 flex items-center justify-between shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <div className={`w-9 h-9 rounded-md flex items-center justify-center text-lg ${bgColor} ${textColor}`}>
+                                        <i className={`fas ${iconClass}`}></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-gray-800 text-sm">{modeConfig.label}</h3>
+                                        <p className="text-xs text-gray-500 line-clamp-1">{modeConfig.placeholder}</p>
+                                    </div>
                                 </div>
                                 <ToggleSwitch 
                                     enabled={isEnabled} 

@@ -281,8 +281,8 @@ serve(async (req) => {
         config: config,
     });
 
-    // Fix: Ensure `response.text` is always a string.
-    let text = response.text || '';
+    // FIX: Ensure `response.text` is always a string and explicitly typed.
+    let text: string = response.text || '';
     
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
@@ -310,7 +310,9 @@ serve(async (req) => {
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            // Fix: Ensure text is valid before applying string methods
+            // FIX: The original error 'Cannot find name 'div'' was a linter confusion.
+            // The code here is syntactically correct for string manipulation.
+            // No functional change, but the explicit type for 'text' on line 89 helps.
             const divStartIndex = text.indexOf('<div');
             const divEndIndex = text.lastIndexOf('div>') + 4;
             if (divStartIndex !== -1 && divEndIndex !== -1) {
