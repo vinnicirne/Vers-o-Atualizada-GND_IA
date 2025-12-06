@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -86,7 +85,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     setEditingNews(null);
   };
 
-  const handleSaveNews = async (id: number, titulo: string, conteudo: string, adminId: string) => {
+  // FIX: Removed adminId from parameters, it will be captured from the closure
+  const handleSaveNews = async (id: number, titulo: string, conteudo: string) => {
     if (!user) {
         setToast({ message: "Sessão de administrador inválida.", type: 'error' });
         return;

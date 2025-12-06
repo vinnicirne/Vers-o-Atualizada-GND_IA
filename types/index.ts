@@ -72,6 +72,7 @@ export interface Log {
   user_email?: string;
 }
 
+// FIX: Added 'tool_settings' and 'white_label_settings' to AdminView
 export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
 
 export interface AllowedDomain {
@@ -168,11 +169,25 @@ export interface MultiAISettings {
   models: AIModel[];
 }
 
+export interface AILog {
+  id: number;
+  usuario_id: string;
+  modelo_id: string;
+  tokens: number;
+  custo: number;
+  data: string;
+  user?: { 
+    email: string;
+  };
+}
+
+// --- FEEDBACK TYPES ---
 export interface FeedbackData {
   rating: number;
   comment: string;
 }
 
+// Nova interface para Feedbacks do Sistema (Depoimentos)
 export interface SystemFeedback {
   id: string;
   user_id: string;
@@ -186,6 +201,7 @@ export interface SystemFeedback {
   };
 }
 
+// --- WORDPRESS INTEGRATION ---
 export interface WordPressConfig {
   siteUrl: string;
   username: string;
@@ -193,17 +209,20 @@ export interface WordPressConfig {
   isConnected: boolean;
 }
 
+// --- ANALYTICS INTEGRATION ---
 export interface AnalyticsConfig {
-  measurementId: string;
+  measurementId: string; // G-XXXXXXXXXX
   isConnected: boolean;
 }
 
+// --- N8N / WEBHOOK INTEGRATION ---
 export interface N8nConfig {
   webhookUrl: string;
-  autoSend: boolean;
+  autoSend: boolean; // Se true, envia automaticamente após gerar
   isConnected: boolean;
 }
 
+// --- POPUP SYSTEM ---
 export interface Popup {
   id: string;
   title: string;
@@ -218,27 +237,28 @@ export interface Popup {
     theme?: 'default' | 'dark_gold';
   };
   trigger_settings: {
-    delay: number;
+    delay: number; // segundos
     frequency: 'once' | 'always' | 'daily';
-    button_link?: string;
-    button_text?: string;
+    button_link?: string; // Link do botão de ação
+    button_text?: string; // Texto do botão
   };
   is_active: boolean;
   created_at?: string;
 }
 
+// --- DEVELOPER API ---
 export interface ApiKey {
   id: string;
   user_id?: string;
   name: string;
-  key_prefix: string;
-  full_key?: string;
+  key_prefix: string; // Mostramos apenas o começo ou fim
+  full_key?: string; // Usado apenas na criação para mostrar uma vez
   created_at: string;
   last_used_at?: string;
   status: 'active' | 'revoked';
 }
 
-// Notification System
+// --- NOTIFICATION SYSTEM ---
 export interface AppNotification {
   id: string;
   user_id: string;
@@ -250,13 +270,13 @@ export interface AppNotification {
   created_at: string;
 }
 
-// Global Tool Settings
+// --- GLOBAL TOOL SETTINGS ---
 export interface ToolSetting {
   key: ServiceKey;
   enabled: boolean;
 }
 
-// White Label Settings
+// --- WHITE LABEL SETTINGS ---
 export interface WhiteLabelSettings {
   appName: string;
   appTagline: string;
@@ -293,6 +313,3 @@ export interface WhiteLabelSettings {
   guestMarketingFooterCtaText: string;
   guestMarketingFooterCtaLink: string;
 }
-
-// Re-export all necessary types
-export type { ToolSetting, WhiteLabelSettings };

@@ -256,10 +256,12 @@ export function WhiteLabelManager() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div className="md:col-span-2">
                                     <label htmlFor="heroSectionTitle" className={labelClasses}>Título Principal (Hero)</label>
+                                    {/* FIX: Changed input to textarea and set rows to 3 */}
                                     <textarea id="heroSectionTitle" name="heroSectionTitle" value={formData.heroSectionTitle} onChange={handleChange} className={inputClasses} rows={3} placeholder="Ex: Crie Notícias, Imagens e Sites..." />
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="heroSectionSubtitle" className={labelClasses}>Subtítulo / Descrição (Hero)</label>
+                                    {/* FIX: Changed input to textarea and set rows to 4 */}
                                     <textarea id="heroSectionSubtitle" name="heroSectionSubtitle" value={formData.heroSectionSubtitle} onChange={handleChange} className={inputClasses} rows={4} placeholder="Ex: A plataforma completa para criadores..." />
                                 </div>
                                 <div>
@@ -289,7 +291,7 @@ export function WhiteLabelManager() {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="featureSectionSubtitle" className={labelClasses}>Subtítulo da Seção de Features</label>
-                                    <input type="text" id="featureSectionSubtitle" name="featureSectionSubtitle" value={formData.featureSectionSubtitle} onChange={handleChange} className={inputClasses} rows={2} placeholder="Ex: Substitua dezenas de ferramentas..." />
+                                    <textarea id="featureSectionSubtitle" name="featureSectionSubtitle" value={formData.featureSectionSubtitle} onChange={handleChange} className={inputClasses} rows={2} placeholder="Ex: Substitua dezenas de ferramentas..." />
                                 </div>
                                 <div className="md:col-span-2">
                                     <label className={labelClasses}>Cards de Features</label>
@@ -309,6 +311,7 @@ export function WhiteLabelManager() {
                                                 </div>
                                                 <div>
                                                     <label className="block text-xs text-gray-500 mb-1">Descrição</label>
+                                                    {/* FIX: Changed input to textarea and set rows to 2 */}
                                                     <textarea value={feature.description} onChange={e => handleFeatureChange(index, 'description', e.target.value)} className={inputClasses} rows={2} placeholder="Ex: Artigos jornalísticos completos..." />
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
@@ -339,7 +342,7 @@ export function WhiteLabelManager() {
                                 </div>
                                 <div className="md:col-span-2">
                                     <label htmlFor="pricingSectionSubtitle" className={labelClasses}>Subtítulo da Seção de Preços</label>
-                                    <input type="text" id="pricingSectionSubtitle" name="pricingSectionSubtitle" value={formData.pricingSectionSubtitle} onChange={handleChange} className={inputClasses} rows={2} placeholder="Ex: Comece grátis e escale..." />
+                                    <textarea id="pricingSectionSubtitle" name="pricingSectionSubtitle" value={formData.pricingSectionSubtitle} onChange={handleChange} className={inputClasses} rows={2} placeholder="Ex: Comece grátis e escale..." />
                                 </div>
                             </div>
 
