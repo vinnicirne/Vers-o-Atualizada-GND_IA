@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Header } from './components/Header';
 import { DashboardSidebar } from './components/DashboardSidebar';
@@ -8,7 +7,7 @@ import { Toast } from './components/admin/Toast';
 import { useDashboard } from './hooks/useDashboard';
 import { DashboardResults } from './components/dashboard/DashboardResults';
 import { DashboardModals } from './components/dashboard/DashboardModals';
-import { useWhiteLabel } from './contexts/WhiteLabelContext'; // Import useWhiteLabel
+import { useWhiteLabel } from './contexts/WhiteLabelContext';
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -116,13 +115,13 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                 {/* MARKETING FOOTER FOR GUESTS */}
                 {isGuest && (
                     <div className="mt-12 p-6 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl text-center text-white shadow-xl animate-fade-in">
-                        <h3 className="text-xl font-bold mb-2">Gostou do teste?</h3>
-                        <p className="text-gray-300 mb-6 text-sm">Crie sua conta gratuita agora e desbloqueie ferramentas avançadas como <strong>Geração de Imagens</strong> e <strong>Sites Completos</strong>.</p>
+                        <h3 className="text-xl font-bold mb-2">{whiteLabelSettings.guestMarketingFooterTitle}</h3>
+                        <p className="text-gray-300 mb-6 text-sm">{whiteLabelSettings.guestMarketingFooterSubtitle}</p>
                         <button 
                             onClick={onNavigateToLogin}
                             className="bg-[var(--brand-tertiary)] hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition transform hover:-translate-y-1 shadow-lg shadow-[var(--brand-tertiary)]/30"
                         >
-                            Criar Conta Grátis
+                            {whiteLabelSettings.guestMarketingFooterCtaText}
                         </button>
                     </div>
                 )}

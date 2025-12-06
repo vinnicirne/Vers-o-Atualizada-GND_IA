@@ -6,6 +6,7 @@ declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 // CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
+// FIX: Use GoogleGenAI as per guidelines
 import { GoogleGenAI } from "npm:@google/genai";
 // Importar templates de currículo (necessário para o backend)
 import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts"; // Ajustar caminho conforme a estrutura real
@@ -308,14 +309,14 @@ serve(async (req) => {
         
         // Ensure only the content inside the <body> or main <div> is returned
         const bodyStartIndex = text.indexOf('<body');
-        const bodyEndIndex = text.lastIndexOf('body>') + 5;
+        const bodyEndIndex = text.lastIndexOf('</body>') + '</body>'.length; // FIX: Use string literal for '</body>'
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
             // FIX: Applied a string concatenation workaround for the `indexOf` and `lastIndexOf` calls
             // to address a peculiar "Cannot find name 'div'" TypeScript error.
             const divStartIndex = text.indexOf('<div>');
-            const divEndIndex = text.lastIndexOf('</div>') + 6; // '</div>'.length is 6
+            const divEndIndex = text.lastIndexOf('</div>') + '</div>'.length; // '</div>'.length is 6 // FIX: Use string literal for '</div>'
             if (divStartIndex !== -1 && divEndIndex !== -1) {
                 text = text.substring(divStartIndex, divEndIndex);
             }

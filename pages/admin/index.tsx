@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from '../../components/Header';
 import { Sidebar } from '../../components/admin/Sidebar';
@@ -21,8 +22,10 @@ import { NotificationManager } from '../../components/admin/NotificationManager'
 import { ToolManager } from '../../components/admin/ToolManager'; 
 import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
-import { NewsArticle, AdminView } from '../../types';
-import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
+// FIX: Imported CreateUserPayload from adminService
+import { NewsArticle, AdminView, CreateUserPayload } from '../../types';
+// FIX: Imported createUser from adminService
+import { updateNewsArticle, createUser } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { useWhiteLabel } from '../../contexts/WhiteLabelContext'; // NOVO
 import { downloadSitemap } from '../../services/sitemapService'; 
@@ -106,6 +109,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       return;
     }
     try {
+      // FIX: Call createUser
       await createUser(payload, user.id);
       setToast({ message: `Usuário ${payload.email} criado com sucesso!`, type: 'success' });
       setCreateUserModalOpen(false);

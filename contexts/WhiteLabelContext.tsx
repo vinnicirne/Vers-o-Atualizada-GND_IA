@@ -1,4 +1,5 @@
 
+
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { getWhiteLabelSettings, updateWhiteLabelSettings as saveWhiteLabelSettingsService } from '../services/adminService';
 import { WhiteLabelSettings } from '../types';
@@ -18,6 +19,35 @@ const DEFAULT_WHITE_LABEL_SETTINGS: WhiteLabelSettings = {
   copyrightText: "GDN_IA",
   appVersion: "1.0.9", // Initial default from metadata.json
   dashboardTitle: "Creator Suite",
+  // New defaults for landing page and guest footer
+  landingPageEnabled: true,
+  heroSectionTitle: "Crie Notícias, Imagens e Sites 10x Mais Rápido com IA.",
+  heroSectionSubtitle: "A plataforma completa para criadores, jornalistas e agências. Esqueça o bloqueio criativo e produza conteúdo profissional em segundos.",
+  heroCtaPrimaryText: "Começar Agora",
+  heroCtaPrimaryLink: "dashboard",
+  heroCtaSecondaryText: "Ver Demo",
+  heroCtaSecondaryLink: "login",
+  featureSectionTitle: "Tudo o que você precisa em um só lugar",
+  featureSectionSubtitle: "Substitua dezenas de ferramentas caras por uma única suíte inteligente.",
+  landingPageFeatures: [
+      { id: '1', icon: "fa-newspaper", color: "text-green-600", bgColor: "bg-green-100", title: "Gerador de Notícias", description: "Artigos jornalísticos completos, imparciais e otimizados para SEO, baseados em fatos reais e recentes." },
+      { id: '2', icon: "fa-paint-brush", color: "text-purple-600", bgColor: "bg-purple-100", title: "Studio de Arte IA", description: "Crie imagens ultra-realistas, logotipos e ilustrações apenas descrevendo o que você imagina." },
+      { id: '3', icon: "fa-laptop-code", color: "text-blue-600", bgColor: "bg-blue-100", title: "Criador de Sites", description: "Gere Landing Pages e Sites Institucionais completos com código HTML/Tailwind pronto para uso." },
+      { id: '4', icon: "fa-microphone-lines", color: "text-orange-600", bgColor: "bg-orange-100", title: "Texto para Voz", description: "Narre seus artigos e vídeos com vozes neurais ultra-realistas em português." },
+      { id: '5', icon: "fa-bolt", color: "text-yellow-600", bgColor: "bg-yellow-100", title: "Automação N8N", description: "Conecte seu conteúdo diretamente ao seu WordPress, redes sociais ou planilhas via Webhooks." },
+      { id: '6', icon: "fa-search", color: "text-pink-600", bgColor: "bg-pink-100", title: "SEO Automático", description: "Nossa IA analisa e otimiza seu texto para rankear no topo do Google automaticamente." },
+  ],
+  pricingSectionTitle: "Planos acessíveis para todos",
+  pricingSectionSubtitle: "Comece grátis e escale conforme sua necessidade.",
+  landingPageFooterLinks: [
+      { id: '1', text: "Termos", link: "terms" },
+      { id: '2', text: "Privacidade", link: "privacy" },
+      { id: '3', text: "Sobre", link: "about" },
+  ],
+  guestMarketingFooterTitle: "Gostou do teste?",
+  guestMarketingFooterSubtitle: "Crie sua conta gratuita agora e desbloqueie ferramentas avançadas como Geração de Imagens e Sites Completos.",
+  guestMarketingFooterCtaText: "Criar Conta Grátis",
+  guestMarketingFooterCtaLink: "login",
 };
 
 interface WhiteLabelContextType {

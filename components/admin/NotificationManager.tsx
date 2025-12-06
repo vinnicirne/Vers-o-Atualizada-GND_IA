@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
+// FIX: Imported searchUsers from adminService
 import { sendSystemNotification, searchUsers } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from './Toast';
@@ -31,6 +32,7 @@ export function NotificationManager() {
             if (searchTerm.length >= 3 && !selectedUser) {
                 setIsSearching(true);
                 try {
+                    // FIX: Call searchUsers
                     const results = await searchUsers(searchTerm);
                     setSearchResults(results);
                     setShowDropdown(true);

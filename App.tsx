@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -18,6 +17,8 @@ const LandingPage = React.lazy(() => import('./pages/LandingPage'));
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
 import { PopupRenderer } from './components/PopupRenderer'; 
+
+type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
 
 const SimpleLoader = () => {
   const { settings, loading: wlLoading } = useWhiteLabel(); // Use the hook to get appName
@@ -38,11 +39,10 @@ const SimpleLoader = () => {
   );
 };
 
-type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
 
 function AppContent() {
   const { user, loading, error } = useUser();
-  const { settings: whiteLabelSettings } = useWhiteLabel(); // Access white label settings
+  const { settings: whiteLabelSettings, loading: whiteLabelLoading } = useWhiteLabel(); // Access white label settings
   
   useEffect(() => {
       initGA4();
@@ -68,18 +68,34 @@ function AppContent() {
 
   const [currentPage, setCurrentPage] = useState<PageRoute>(getInitialPage);
 
-  // Redirecionamento inteligente baseado em autenticação
+  // Redirecionamento inteligente baseado em autenticação e landingPageEnabled
   useEffect(() => {
-    if (!loading) {
-        if (user) {
-            // Se logado e está na landing ou login, vai pro dashboard
-            if (currentPage === 'landing' || currentPage === 'login') {
-                setCurrentPage('dashboard');
+    if (loading || whiteLabelLoading) {
+        return; // Wait for both user and white label settings to load
+    }
+
+    // Handle landing page redirection based on settings
+    if (currentPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
+        handleNavigate('login');
+        return;
+    }
+
+    if (user) {
+        // If logged in and on landing or login page, redirect to dashboard
+        if (currentPage === 'landing' || currentPage === 'login') {
+            handleNavigate('dashboard');
+        }
+    } else {
+        // If not logged in and not on landing or login page, redirect to landing or login
+        if (currentPage !== 'landing' && currentPage !== 'login') {
+            if (whiteLabelSettings.landingPageEnabled) {
+                handleNavigate('landing');
+            } else {
+                handleNavigate('login');
             }
         }
-        // Se não logado, PERMITE ficar no dashboard (Modo Híbrido/Landing)
     }
-  }, [user, loading, currentPage]);
+  }, [user, loading, currentPage, whiteLabelLoading, whiteLabelSettings.landingPageEnabled]);
 
   useEffect(() => {
     const handlePopState = () => {
@@ -178,12 +194,8 @@ function AppContent() {
     );
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#ECEFF1] flex items-center justify-center">
-        <p className="text-[#263238] font-medium animate-pulse">Iniciando sistema...</p>
-      </div>
-    );
+  if (loading || whiteLabelLoading) {
+    return <SimpleLoader />;
   }
 
   return (

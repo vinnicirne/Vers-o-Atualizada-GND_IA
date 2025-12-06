@@ -1,5 +1,4 @@
 
-
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './plan.types';
 
@@ -169,18 +168,6 @@ export interface MultiAISettings {
   models: AIModel[];
 }
 
-export interface AILog {
-  id: number;
-  usuario_id: string;
-  modelo_id: string;
-  tokens: number;
-  custo: number;
-  data: string;
-  user?: { 
-    email: string;
-  };
-}
-
 export interface FeedbackData {
   rating: number;
   comment: string;
@@ -283,5 +270,26 @@ export interface WhiteLabelSettings {
   wordpressPluginName: string;
   copyrightText: string;
   appVersion: string;
-  dashboardTitle: string;
+  dashboardTitle: string; // Existing for the Dashboard header
+  
+  // New Landing Page & Guest Footer Settings
+  landingPageEnabled: boolean; // NEW: To toggle the landing page visibility
+  heroSectionTitle: string;
+  heroSectionSubtitle: string;
+  heroCtaPrimaryText: string;
+  heroCtaPrimaryLink: string;
+  heroCtaSecondaryText: string;
+  heroCtaSecondaryLink: string;
+  featureSectionTitle: string;
+  featureSectionSubtitle: string;
+  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>; // Added id
+  pricingSectionTitle: string;
+  pricingSectionSubtitle: string;
+  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>; // Added id
+  
+  // Guest Footer (on Dashboard)
+  guestMarketingFooterTitle: string;
+  guestMarketingFooterSubtitle: string;
+  guestMarketingFooterCtaText: string;
+  guestMarketingFooterCtaLink: string;
 }

@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { CREATOR_SUITE_MODES, SERVICE_ICONS, SERVICE_COLORS } from '../../constants'; // Importamos SERVICE_ICONS e SERVICE_COLORS
 import { getGlobalToolSettings, updateGlobalToolSettings } from '../../services/adminService';
