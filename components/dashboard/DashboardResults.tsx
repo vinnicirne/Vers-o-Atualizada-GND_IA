@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
@@ -42,7 +40,7 @@ export function DashboardResults({
     const AUDIO_ERROR_FALLBACK_PREFIX = '[AUDIO_ERROR_FALLBACK]';
 
     // Checa se o erro é de chave Gemini faltando na Edge Function
-    const isGeminiKeyMissing = currentError?.includes('GEMINI_KEY_MISSING_EDGE_FUNCTION');
+    const isGeminiKeyMissingFromEdgeFunction = currentError?.includes('GEMINI_KEY_MISSING_EDGE_FUNCTION');
 
     // Checa se houve um erro na geração de áudio (seja via currentError ou pela tag de fallback no texto)
     const isAudioGenerationFailed = 
@@ -51,18 +49,19 @@ export function DashboardResults({
         results.text?.includes(TTS_FAILED_PREFIX);
 
     let audioErrorMessage = "O áudio não pôde ser gerado.";
-    if (isGeminiKeyMissing) {
-        audioErrorMessage = "Erro de Configuração: Chave GEMINI_API_KEY faltando na Edge Function do Supabase.";
+    let audioErrorDetails = "Tente novamente ou verifique seus créditos e permissões da API Gemini.";
+
+    if (isGeminiKeyMissingFromEdgeFunction) {
+        audioErrorMessage = "Erro de Configuração no Servidor:";
+        audioErrorDetails = "A chave `GEMINI_API_KEY` não está configurada na Edge Function do Supabase.";
     } else if (isAudioGenerationFailed && currentError) {
-        // Se houver um erro específico no currentError, usa-o
-        audioErrorMessage = `Falha ao gerar áudio: ${currentError
+        audioErrorMessage = "Falha ao gerar áudio:";
+        audioErrorDetails = currentError
             .replace('AUDIO_GENERATION_FAILED: ', '')
-            .replace('AUDIO_GENERATION_FAILED_NEWS: ', '')}`;
+            .replace('AUDIO_GENERATION_FAILED_NEWS: ', '');
     } else if (isAudioGenerationFailed) {
-        // Mensagem genérica se o erro não veio no currentError, mas a tag de fallback está presente
-        audioErrorMessage = "O sistema não conseguiu gerar o áudio. O texto foi retornado como fallback.";
-    } else {
-        audioErrorMessage = "O sistema retornou texto como fallback. Tente novamente ou verifique os créditos.";
+        audioErrorMessage = "Falha ao gerar áudio:";
+        audioErrorDetails = "O modelo não conseguiu sintetizar o texto em voz. O texto original foi retornado como fallback.";
     }
 
 
@@ -106,7 +105,7 @@ export function DashboardResults({
     }
 
     // Determine if an audio-related warning should be shown
-    const shouldShowAudioWarning = isAudioGenerationFailed || isGeminiKeyMissing;
+    const shouldShowAudioWarning = isAudioGenerationFailed || isGeminiKeyMissingFromEdgeFunction;
 
     // Clean text by removing fallback prefixes
     const cleanedText = results.text
@@ -136,12 +135,12 @@ export function DashboardResults({
                         </div>
                         <div className="ml-3">
                             <p className="text-sm text-yellow-700 font-bold">
-                                Aviso: {audioErrorMessage.split(':')[0]}
+                                Aviso: {audioErrorMessage}
                             </p>
                             <p className="text-xs text-yellow-600 mt-1">
-                                {audioErrorMessage.split(':')[1] || audioErrorMessage}
+                                {audioErrorDetails}
                             </p>
-                            {isGeminiKeyMissing && (
+                            {isGeminiKeyMissingFromEdgeFunction && (
                                 <p className="text-xs text-blue-700 mt-2">
                                     <i className="fas fa-info-circle mr-1"></i> Por favor, configure a variável de ambiente `GEMINI_API_KEY` nas configurações da sua Edge Function no Supabase.
                                 </p>

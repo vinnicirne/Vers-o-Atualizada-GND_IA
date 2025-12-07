@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
@@ -29,7 +28,7 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
 };
 
 export function useDashboard() {
-    const { user, refresh, signOut } = useUser(); // Captura signOut aqui
+    const { user, refresh, signOut } = useUser();
     const { currentPlan, hasAccessToService, hasEnoughCredits, getCreditsCostForService } = usePlan();
 
     // UI Control
@@ -65,7 +64,8 @@ export function useDashboard() {
         affiliate: false,
         integrations: false,
         guestLimit: false,
-        featureLock: false
+        featureLock: false,
+        apiKeySelection: false, // NOVO: Modal para seleção de API Key
     });
 
     // Guest Logic
@@ -87,10 +87,8 @@ export function useDashboard() {
         setModals(prev => ({ ...prev, [modal]: value }));
     };
 
-    const handleModeChange = (mode: ServiceKey) => {
+    const handleModeChange = async (mode: ServiceKey) => {
         // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
-        // Se a ferramenta não estiver acessível (seja por plano ou por desativação global),
-        // o modal de 'plans' (para logados) ou 'featureLock' (para guests) será acionado.
         if (!hasAccessToService(mode)) {
             if (isGuest) {
                 toggleModal('featureLock', true);
@@ -98,6 +96,15 @@ export function useDashboard() {
                 toggleModal('plans', true);
             }
             return;
+        }
+
+        // NOVO: Verificação de API Key para Text-to-Speech
+        if (mode === 'text_to_speech' && window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+            const hasKey = await window.aistudio.hasSelectedApiKey();
+            if (!hasKey) {
+                toggleModal('apiKeySelection', true);
+                return;
+            }
         }
         
         setCurrentMode(mode);
@@ -127,6 +134,15 @@ export function useDashboard() {
         setError(null);
         setResults(prev => ({ ...prev, text: null, title: null, audioBase64: null, imagePrompt: null }));
         setShowFeedback(false);
+
+        // NOVO: Verificação de API Key para Text-to-Speech antes de gerar
+        if (mode === 'text_to_speech' && window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
+            const hasKey = await window.aistudio.hasSelectedApiKey();
+            if (!hasKey) {
+                toggleModal('apiKeySelection', true);
+                return;
+            }
+        }
 
         // Validation
         const cost = getCreditsCostForService(mode) + (generateAudio ? getCreditsCostForService('text_to_speech') : 0);
@@ -198,8 +214,13 @@ export function useDashboard() {
 
         } catch (err: any) {
             console.error("Erro na geração:", err);
-            // Propaga o erro para o estado do Dashboard
-            setError(err.message || 'Erro ao gerar conteúdo.');
+            // Se o erro for "Requested entity was not found." após aistudio.openSelectKey, reabrir modal
+            if (err.message && typeof err.message === 'string' && err.message.includes("Requested entity was not found.") && mode === 'text_to_speech') {
+                setToast({ message: "Sua chave de API pode não estar configurada para este modelo. Por favor, selecione-a novamente.", type: 'error' });
+                toggleModal('apiKeySelection', true);
+            } else {
+                 setError(err.message || 'Erro ao gerar conteúdo.');
+            }
         } finally {
             setIsLoading(false);
         }
@@ -212,7 +233,7 @@ export function useDashboard() {
 
     return {
         user,
-        signOut: handleLogout, // Expõe a função de logout corrigida
+        signOut: handleLogout,
         isGuest,
         guestCredits,
         GUEST_ALLOWED_MODES,
@@ -220,11 +241,11 @@ export function useDashboard() {
         setSidebarOpen,
         currentMode,
         isLoading,
-        error, // Retorna o erro principal
+        error,
         toast,
         setToast,
         results,
-        updateResultText, // Exposed setter for text clearing
+        updateResultText,
         showFeedback,
         setShowFeedback,
         modals,

@@ -3,14 +3,9 @@
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
-// FIX: Use GoogleGenAI as per guidelines
 import { GoogleGenAI } from "npm:@google/genai";
-// Importar templates de currículo (necessário para o backend)
-import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts"; // Ajustar caminho conforme a estrutura real
-// FIX: Correctly import GenerateContentOptions type
+import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts";
 import type { GenerateContentOptions } from "../../../services/geminiService.ts";
-
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -19,6 +14,8 @@ const corsHeaders = {
 
 // Limite seguro de caracteres para o modelo de áudio (TTS)
 const MAX_TTS_CHARS = 2800;
+const TTS_FAILED_PREFIX = '[TTS_FAILED_TEXT_FALLBACK]';
+const AUDIO_ERROR_FALLBACK_PREFIX = '[AUDIO_ERROR_FALLBACK]';
 
 const CREATOR_SUITE_SYSTEM_PROMPT = `
 Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
@@ -109,198 +106,109 @@ MODOS DISPONÍVEIS (roteie baseado na query):
     8. **Criador de Posts Sociais (Social Media Poster)**:
        [IMAGE_PROMPT] (Inglês técnico)
        [COPY] (Português persuasivo, tom de autoridade).
-    `;
+`;
 
-serve(async (req) => {
-  // 1. Handle Preflight Requests (CORS)
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+// FIX: Refactored cleanHtmlContent to use DOMParser more reliably
+const cleanHtmlContent = (rawText: string): string => {
+    let text = rawText.replace(/```html/g, '').replace(/```/g, '').trim();
 
-  try {
-    // 2. Parse Body
-    let reqBody;
     try {
-        reqBody = await req.json();
+        // Deno's DOMParser is available.
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'text/html');
+        
+        // If the parsed body has actual content (not just default empty body from parser)
+        if (doc.body && (doc.body.children.length > 0 || doc.body.textContent.trim() !== '')) {
+            return doc.body.innerHTML;
+        }
     } catch (e) {
-        return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
-    }
-    
-    // Destructure using let so we can modify mode
-    let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory } = reqBody;
-    // FIX: Explicitly cast rawOptions to the comprehensive type
-    const options: GenerateContentOptions = rawOptions || {};
-
-    // Sanitize mode string to prevent mismatches due to whitespace
-    mode = mode?.trim();
-    
-    // 3. Get & Validate API Key - IMPORTANT FOR EDGE FUNCTION
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) {
-        console.error("ERRO CRÍTICO (Edge Function): Variável de ambiente GEMINI_API_KEY não definida.");
-        throw new Error("GEMINI_KEY_MISSING_EDGE_FUNCTION: A chave da API Gemini não está configurada na Edge Function. Contate o administrador.");
+        console.warn("Failed to parse HTML in cleanHtmlContent using DOMParser, falling back to string methods:", e);
+        // Fallback to simpler string extraction if DOMParser fails or provides an empty body
     }
 
-    // 4. Initialize Gemini (GoogleGenAI SDK)
-    // FIX: Use the correct class for Google GenAI SDK.
-    const ai = new GoogleGenAI({ apiKey: apiKey as string });
-    
-    // --- TEXT TO SPEECH MODE HANDLER ---
-    if (mode === 'text_to_speech') {
-        const voiceName = options?.voice || 'Kore';
-        const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
+    // Fallback logic if DOMParser failed or returned an empty body
+    // Try to find a major <div> if it seems to be the primary content
+    const divOpenTag = '<div';
+    const divCloseTag = '</div>';
+    const divStartIndex = text.indexOf(divOpenTag);
+    const divEndIndex = text.lastIndexOf(divCloseTag);
 
-        try {
-            const audioResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash-preview-tts",
-                contents: [{ parts: [{ text: safePrompt }] }],
-                config: {
-                    responseModalities: ["AUDIO"],
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: voiceName },
-                        },
+    if (divStartIndex !== -1 && divEndIndex !== -1 && divEndIndex > divStartIndex) {
+        // Check if it's truly a single wrapping div to avoid returning partial HTML
+        const preamble = text.substring(0, divStartIndex).trim();
+        const postamble = text.substring(divEndIndex + divCloseTag.length).trim();
+        if (preamble === '' && postamble === '') {
+            return text; // Return the whole div content including tags if it's the only thing
+        }
+    }
+
+    return text; // Return original text if no clear HTML structure found
+};
+
+// --- HANDLERS DE MODO ---
+
+async function handleTextToSpeechGeneration(ai: GoogleGenAI, prompt: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
+    const voiceName = options?.voice || 'Kore';
+    const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
+
+    try {
+        const audioResponse = await ai.models.generateContent({
+            model: "gemini-2.5-flash-preview-tts",
+            contents: [{ parts: [{ text: safePrompt }] }],
+            config: {
+                responseModalities: ["AUDIO"],
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: { voiceName: voiceName },
                     },
                 },
-            });
-            
-            const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-            
-            if (!audioBase64) {
-                // Se o áudio falhou, retorna o texto original como fallback, com uma flag
-                console.warn("TTS Falha (Edge Function): Modelo respondeu sem áudio. Retornando texto como fallback.");
-                return new Response(JSON.stringify({ 
-                    text: `[TTS_FAILED_TEXT_FALLBACK] ${safePrompt}`, // Adiciona a tag de fallback
-                    audioBase64: null, 
-                    sources: [] 
-                }), {
-                    headers: { ...corsHeaders, "Content-Type": "application/json" },
-                });
-            }
+            },
+        });
+        
+        console.log("Resposta completa do TTS da API Gemini:", JSON.stringify(audioResponse, null, 2));
 
-            return new Response(JSON.stringify({ 
-                text: "Áudio gerado com sucesso.", 
-                audioBase64, 
-                sources: [] 
-            }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-
-        } catch (ttsError: any) {
-            console.error("TTS Error (Edge Function):", ttsError);
-            // Em caso de erro na chamada da API, retorna o texto original como fallback
-            return new Response(JSON.stringify({ 
-                text: `[TTS_FAILED_TEXT_FALLBACK] ${safePrompt}`, // Retorna o prompt original como fallback
+        const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+        
+        if (!audioBase64) {
+            console.warn("TTS Falha (Edge Function): Modelo respondeu sem áudio. Retornando texto como fallback.");
+            return { 
+                text: `${TTS_FAILED_PREFIX} ${safePrompt}`,
                 audioBase64: null, 
-                sources: [],
-                error: `Falha na geração de áudio: ${ttsError.message || "Erro desconhecido da API Gemini."}`
-            }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+                sources: [] 
+            };
         }
-    }
 
+        return { 
+            text: "Áudio gerado com sucesso.", 
+            audioBase64, 
+            sources: [] 
+        };
+
+    } catch (ttsError: any) {
+        console.error("TTS Error (Edge Function):", ttsError);
+        // FIX: Removed 'error' property from return type, throw instead.
+        throw new Error(`Falha na geração de áudio: ${ttsError.message || "Erro desconhecido da API Gemini."}`);
+    }
+}
+
+async function handleNewsGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, generateAudio: boolean, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
     const modelName = 'gemini-2.5-flash';
-
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-
-    let fullPrompt = `
-      Query do usuário: ${prompt}
-      Modo de Geração: ${mode}
-    `;
-
-    if (mode === 'image_generation' && options) {
-        fullPrompt += `
-        CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
-        - Estilo Artístico: ${options.imageStyle || 'Photorealistic'}
-        - Proporção: ${options.aspectRatio || '1:1'}
-        `;
-    }
-
-    if (mode === 'social_media_poster' && options) {
-        fullPrompt += `
-        CONTEXTO PARA POSTER:
-        - Plataforma: ${options.platform || 'Instagram'}
-        - Tema: ${options.theme || 'Modern'}
-        `;
-    }
-
-    if (mode === 'landingpage_generator' && options) { // Agora unificado
-        fullPrompt += `
-        **DIRETRIZES VISUAIS ESPECÍFICAS:**
-        - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
-        - **Cor Primária**: ${options.primaryColor || '#10B981'}.
-        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
-        `;
-    }
-
-    // --- CURRICULUM GENERATOR LOGIC ---
-    if (mode === 'curriculum_generator' && options) {
-        const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
-        const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
-
-        if (!selectedTemplate) {
-            throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
-        }
-
-        const curriculumDataPromptContent = `
-        Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha o conteúdo de cada elemento com IDs específicos com as informações fornecidas, otimizando conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o objetivo de carreira.
-
-        **TEMPLATE HTML A SER PREENCHIDO (Não modifique a estrutura dos IDs, apenas o conteúdo interno):**
-        ${selectedTemplate}
-
-        **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
-        - **Objetivo de Carreira (Prompt Geral para Resumo):** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
-        - **Dados Pessoais:**
-            Nome: ${options.personalInfo?.name || ''}
-            Email: ${options.personalInfo?.email || ''}
-            Telefone: ${options.personalInfo?.phone || ''}
-            LinkedIn URL: ${options.personalInfo?.linkedin || ''}
-            Portfólio URL: ${options.personalInfo?.portfolio || ''}
-        - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo e otimizado para ATS.'}
-        - **Experiência Profissional:**
-            ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
-        - **Formação Acadêmica:**
-            ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
-        - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
-        - **Projetos:**
-            ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
-        - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
-
-        **LEMBRE-SE DE CADA ETAPA:**
-        1.  Inicie com o template HTML fornecido.
-        2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
-        3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: \`<p>Seu resumo aqui</p>\` ou \`<div><h3>Cargo</h3><p>Empresa</p></div>\`)** e insira-o como o \`innerHTML\` desse elemento.
-        4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
-            -   Gere o HTML completo para todos os itens da lista.
-            -   Para experiência e educação, cada item deve ter um \`div\` ou \`p\` formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
-            -   Para habilidades e certificações, gere \`<span>\` ou \`<li>\` tags conforme o estilo do template e insira-as dentro do seu \`div\` ou \`ul\` de placeholder.
-        5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o \`innerHTML\` desse elemento vazio**.
-        6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
-        7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
-        `;
-        fullPrompt = curriculumDataPromptContent; // Override fullPrompt for curriculum mode
-    }
-
-    let config: any = {
-        systemInstruction: systemPromptWithMemory
-    };
     
-    if (mode === 'news_generator') {
-        config.tools = [{ googleSearch: {} }];
-    }
+    const fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: news_generator`;
 
-    // 5. Call Generate Content
-    // FIX: The `contents` parameter accepts a string directly for single text prompts.
+    const config: any = {
+        systemInstruction: systemPromptWithMemory,
+        tools: [{ googleSearch: {} }]
+    };
+
     const response = await ai.models.generateContent({
         model: modelName,
         contents: fullPrompt, 
         config: config,
     });
 
-    // FIX: Ensure `response.text` is always a string and explicitly typed.
     let text: string = response.text || '';
-    
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         sources = response.candidates[0].groundingMetadata.groundingChunks
@@ -317,38 +225,8 @@ serve(async (req) => {
         throw new Error('A API não retornou conteúdo de texto.');
     }
 
-    // Cleanup Logic
-    if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
-        text = text.replace(/```html/g, '').replace(/```/g, '').trim();
-        
-        // FIX: Explicitly define string literals for indexOf/lastIndexOf calls to avoid potential Deno type checker quirks.
-        const bodyCloseTag: string = '</body>';
-        const divOpenTag: string = '<div>'; 
-        const divCloseTag: string = '</div>'; 
-
-        const bodyStartIndex = text.indexOf('<body');
-        const bodyEndIndex = text.lastIndexOf(bodyCloseTag); // lastIndexOf returns -1 if not found
-        
-        if (bodyStartIndex !== -1 && bodyEndIndex !== -1 && bodyEndIndex > bodyStartIndex) {
-            text = text.substring(bodyStartIndex, bodyEndIndex + bodyCloseTag.length);
-        } else {
-            const divStartIndex = text.indexOf(divOpenTag);
-            const divEndIndex = text.lastIndexOf(divCloseTag);
-            
-            if (divStartIndex !== -1 && divEndIndex !== -1 && divEndIndex > divStartIndex) {
-                text = text.substring(divStartIndex, divEndIndex + divCloseTag.length);
-            } else if (text.startsWith('<div') && text.endsWith('</div>')) { // Basic check if it's already just a div
-                // Assume it's already the desired div content
-            } else {
-                // If no <body> or <div> tags found, return as is or handle as error
-                console.warn("HTML cleanup: No <body> or <div> tags found to extract content.");
-            }
-        }
-    }
-
-    // Audio Generation (Optional for News mode only)
     let audioBase64 = null;
-    if (generateAudio && mode === 'news_generator') {
+    if (generateAudio) {
         try {
             const newsVoice = options?.voice || 'Kore';
             const textForAudio = text.length > MAX_TTS_CHARS ? text.substring(0, MAX_TTS_CHARS) + "..." : text;
@@ -369,21 +247,243 @@ serve(async (req) => {
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
 
             if (!audioBase64) {
-                 // Warn and prepend a specific fallback tag, but don't re-throw the main function.
                 console.warn("TTS Falha para Notícia: Modelo respondeu sem áudio, caindo para fallback de texto.");
-                text = `[AUDIO_ERROR_FALLBACK] ${text}`; // Prepend error to text for client-side detection
-                audioBase64 = null; // Ensure audio is null if it failed
+                text = `${AUDIO_ERROR_FALLBACK_PREFIX} ${text}`;
+                audioBase64 = null;
             }
 
         } catch (audioError: any) {
             console.error("Failed to generate audio for news on backend:", audioError);
-            // Catch, log, but don't re-throw to allow text to be returned as fallback
-            text = `[AUDIO_ERROR_FALLBACK] ${text}`; // Prepend error to text for client-side detection
-            audioBase64 = null; // Ensure audio is null if it failed
+            text = `${AUDIO_ERROR_FALLBACK_PREFIX} ${text}`;
+            audioBase64 = null;
         }
     }
 
-    return new Response(JSON.stringify({ text, audioBase64, sources }), {
+    return { text, audioBase64, sources };
+}
+
+async function handleCurriculumGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
+    const modelName = 'gemini-2.5-flash';
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    
+    const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
+    const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
+
+    if (!selectedTemplate) {
+        throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
+    }
+
+    const curriculumDataPromptContent = `
+    Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha o conteúdo de cada elemento com IDs específicos com as informações fornecidas, otimizando conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o objetivo de carreira.
+
+    **TEMPLATE HTML A SER PREENCHIDO (Não modifique a estrutura dos IDs, apenas o conteúdo interno):**
+    ${selectedTemplate}
+
+    **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
+    - **Objetivo de Carreira (Prompt Geral para Resumo):** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
+    - **Dados Pessoais:**
+        Nome: ${options.personalInfo?.name || ''}
+        Email: ${options.personalInfo?.email || ''}
+        Telefone: ${options.personalInfo?.phone || ''}
+        LinkedIn URL: ${options.personalInfo?.linkedin || ''}
+        Portfólio URL: ${options.personalInfo?.portfolio || ''}
+    - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo e otimizado para ATS.'}
+    - **Experiência Profissional:**
+        ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
+    - **Formação Acadêmica:**
+        ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
+    - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
+    - **Projetos:**
+        ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
+    - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
+
+    **LEMBRE-SE DE CADA ETAPA:**
+    1.  Inicie com o template HTML fornecido.
+    2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
+    3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: \`<p>Seu resumo aqui</p>\` ou \`<div><h3>Cargo</h3><p>Empresa</p></div>\`)** e insira-o como o \`innerHTML\` desse elemento.
+    4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
+        -   Gere o HTML completo para todos os itens da lista.
+        -   Para experiência e educação, cada item deve ter um \`div\` ou \`p\` formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
+        -   Para habilidades e certificações, gere \`<span>\` ou \`<li>\` tags conforme o estilo do template e insira-as dentro do seu \`div\` ou \`ul\` de placeholder.
+    5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o \`innerHTML\` desse elemento vazio**.
+    6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
+    7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
+    `;
+    
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: curriculumDataPromptContent, 
+        config: { systemInstruction: systemPromptWithMemory },
+    });
+
+    let text: string = response.text || '';
+    if (!text) {
+        throw new Error('A API não retornou conteúdo de texto para o currículo.');
+    }
+    
+    text = cleanHtmlContent(text);
+    return { text, audioBase64: null, sources: [] };
+}
+
+async function handleImageGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
+    const modelName = 'gemini-2.5-flash';
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    
+    const fullPrompt = `
+      Query do usuário: ${prompt}
+      Modo de Geração: Studio de Arte IA
+      CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
+      - Estilo Artístico: ${options.imageStyle || 'Photorealistic'}
+      - Proporção: ${options.aspectRatio || '1:1'}
+    `;
+
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: fullPrompt, 
+        config: { systemInstruction: systemPromptWithMemory },
+    });
+
+    let text: string = response.text || '';
+    if (!text) {
+        throw new Error('A API não retornou conteúdo de texto para a geração de imagem.');
+    }
+    
+    // Para image_generation, o "text" retornado é o prompt otimizado em inglês
+    return { text, audioBase64: null, sources: [] };
+}
+
+async function handleSocialMediaPoster(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
+    const modelName = 'gemini-2.5-flash';
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    
+    const fullPrompt = `
+        Query do usuário: ${prompt}
+        Modo de Geração: Editor Visual (Social Media)
+        CONTEXTO PARA POSTER:
+        - Plataforma: ${options.platform || 'Instagram'}
+        - Tema: ${options.theme || 'Modern'}
+    `;
+
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: fullPrompt, 
+        config: { systemInstruction: systemPromptWithMemory },
+    });
+
+    let text: string = response.text || '';
+    if (!text) {
+        throw new Error('A API não retornou conteúdo de texto para o poster de mídia social.');
+    }
+    
+    text = cleanHtmlContent(text);
+    return { text, audioBase64: null, sources: [] };
+}
+
+async function handleLandingPageGenerator(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
+    const modelName = 'gemini-2.5-flash';
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    
+    const fullPrompt = `
+        Query do usuário: ${prompt}
+        Modo de Geração: Criador de Sites (Web)
+        **DIRETRIZES VISUAIS ESPECÍFICAS:**
+        - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
+        - **Cor Primária**: ${options.primaryColor || '#10B981'}.
+        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
+    `;
+
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: fullPrompt, 
+        config: { systemInstruction: systemPromptWithMemory },
+    });
+
+    let text: string = response.text || '';
+    if (!text) {
+        throw new Error('A API não retornou conteúdo de texto para a landing page.');
+    }
+    
+    text = cleanHtmlContent(text);
+    return { text, audioBase64: null, sources: [] };
+}
+
+async function handleDefaultTextGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, mode: string): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
+    const modelName = 'gemini-2.5-flash';
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    
+    const fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: ${mode}`;
+
+    const response = await ai.models.generateContent({
+        model: modelName,
+        contents: fullPrompt, 
+        config: { systemInstruction: systemPromptWithMemory },
+    });
+
+    let text: string = response.text || '';
+    if (!text) {
+        throw new Error(`A API não retornou conteúdo de texto para o modo ${mode}.`);
+    }
+    return { text, audioBase64: null, sources: [] };
+}
+
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
+  try {
+    let reqBody;
+    try {
+        reqBody = await req.json();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
+    }
+    
+    let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory } = reqBody;
+    const options: GenerateContentOptions = rawOptions || {};
+
+    mode = mode?.trim();
+    
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) {
+        console.error("ERRO CRÍTICO (Edge Function): Variável de ambiente GEMINI_API_KEY não definida.");
+        throw new Error("GEMINI_KEY_MISSING_EDGE_FUNCTION: A chave da API Gemini não está configurada na Edge Function. Contate o administrador.");
+    }
+
+    const ai = new GoogleGenAI({ apiKey: apiKey as string });
+    
+    let result: { text: string, audioBase64: string | null, sources: any[] };
+
+    switch (mode) {
+        case 'text_to_speech':
+            result = await handleTextToSpeechGeneration(ai, prompt, options);
+            break;
+        case 'news_generator':
+            result = await handleNewsGeneration(ai, prompt, userMemory, generateAudio, options);
+            break;
+        case 'curriculum_generator':
+            result = await handleCurriculumGeneration(ai, prompt, userMemory, options);
+            break;
+        case 'image_generation':
+            result = await handleImageGeneration(ai, prompt, userMemory, options);
+            break;
+        case 'social_media_poster':
+            result = await handleSocialMediaPoster(ai, prompt, userMemory, options);
+            break;
+        case 'landingpage_generator':
+            result = await handleLandingPageGenerator(ai, prompt, userMemory, options);
+            break;
+        default:
+            result = await handleDefaultTextGeneration(ai, prompt, userMemory, mode);
+            break;
+    }
+
+    return new Response(JSON.stringify({ 
+        text: result.text, 
+        audioBase64: result.audioBase64, 
+        sources: result.sources 
+    }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

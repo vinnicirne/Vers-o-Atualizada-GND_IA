@@ -3,7 +3,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useUser } from '../contexts/UserContext';
 import { Plan, ServiceKey, ServicePermission } from '../types/plan.types';
 // FIX: Corrected import path for ToolSetting
-import { ToolSetting } from '../../types'; 
+import { ToolSetting } from '../types'; 
 import { usePlans } from './usePlans'; // Importar o novo hook usePlans
 import { PLANS, TASK_COSTS } from '../constants'; // Importar constantes de planos
 import { getGlobalToolSettings } from '../services/adminService'; // NOVO: Importar serviço para settings globais
