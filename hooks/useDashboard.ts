@@ -88,16 +88,18 @@ export function useDashboard() {
     };
 
     const handleModeChange = (mode: ServiceKey) => {
-        if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
-            toggleModal('featureLock', true);
+        // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
+        // Se a ferramenta não estiver acessível (seja por plano ou por desativação global),
+        // o modal de 'plans' (para logados) ou 'featureLock' (para guests) será acionado.
+        if (!hasAccessToService(mode)) {
+            if (isGuest) {
+                toggleModal('featureLock', true);
+            } else {
+                toggleModal('plans', true);
+            }
             return;
         }
         
-        if (!isGuest && !hasAccessToService(mode)) {
-            toggleModal('plans', true);
-            return;
-        }
-
         setCurrentMode(mode);
         // Clear results
         setResults(prev => ({
@@ -127,15 +129,15 @@ export function useDashboard() {
         setShowFeedback(false);
 
         // Validation
-        const cost = isGuest ? 1 : getCreditsCostForService(mode) + (generateAudio ? 2 : 0);
+        const cost = getCreditsCostForService(mode) + (generateAudio ? getCreditsCostForService('text_to_speech') : 0);
         
         if (isGuest) {
-            if (guestCredits < 1) {
+            if (guestCredits < cost) {
                 toggleModal('guestLimit', true);
                 return;
             }
         } else {
-            if (!hasEnoughCredits(mode)) {
+            if (!hasEnoughCredits(mode)) { // hasEnoughCredits agora também verifica o custo correto
                 setToast({ message: "Saldo insuficiente.", type: 'error' });
                 toggleModal('plans', true);
                 return;
@@ -179,13 +181,13 @@ export function useDashboard() {
                 imagePrompt: newImagePrompt,
                 imageDimensions: imgDims,
                 metadata: isGuest 
-                    ? { plan: 'Visitante', credits: guestCredits - 1 }
+                    ? { plan: 'Visitante', credits: guestCredits - cost } // Deduz o custo total para guest
                     : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
             });
 
             // Consume Credits
             if (isGuest) {
-                const newCredits = guestCredits - 1;
+                const newCredits = guestCredits - cost; // Deduz o custo total para guest
                 setGuestCredits(newCredits);
                 localStorage.setItem('gdn_guest_credits', newCredits.toString());
             } else {

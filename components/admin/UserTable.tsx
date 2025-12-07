@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
+// FIX: Imported getUsers, updateUser, deleteUser from adminService
 import { getUsers, updateUser, deleteUser } from '../../services/adminService';
 import { User, UserRole, UserStatus } from '../../types';
 import { Pagination } from './Pagination';
@@ -38,6 +39,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
     try {
       setLoading(true);
       setError(null);
+      // FIX: Correctly access the 'users' property from the result of getUsers
       const { users: userList, count } = await getUsers({ 
           page: currentPage, 
           limit: USERS_PER_PAGE,
@@ -77,6 +79,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
 
     try {
         setIsDeleting(true);
+        // FIX: Call deleteUser
         await deleteUser(userToDelete.id, adminUser.id);
         setToast({ message: "Usuário excluído com sucesso!", type: 'success' });
         // Fecha modal
@@ -108,6 +111,7 @@ export function UserTable({ dataVersion }: UserTableProps) {
     }
     try {
         setIsSaving(true);
+        // FIX: Call updateUser
         await updateUser(userId, updates, adminUser.id);
         setToast({ message: "Usuário atualizado com sucesso!", type: 'success' });
         handleCloseEditModal();
