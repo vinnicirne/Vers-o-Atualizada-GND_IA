@@ -1,15 +1,14 @@
-
 import React from 'react';
-import { Header } from '../components/Header';
-import { DashboardSidebar } from '../components/DashboardSidebar';
-import { ContentGenerator } from '../components/ContentGenerator';
-import { Toast } from '../components/admin/Toast';
-import { useDashboard } from '../hooks/useDashboard';
-import { DashboardResults } from '../components/dashboard/DashboardResults';
-import { DashboardModals } from '../components/dashboard/DashboardModals';
-import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
-import { WelcomeBanner } from '../components/dashboard/WelcomeBanner'; // NOVO
-import { useUser } from '../contexts/UserContext'; // Import useUser directly for signOut
+import { Header } from './components/Header';
+import { DashboardSidebar } from './components/DashboardSidebar';
+import { ContentGenerator } from './components/ContentGenerator';
+import { Toast } from './components/admin/Toast';
+import { useDashboard } from './hooks/useDashboard';
+import { DashboardResults } from './components/dashboard/DashboardResults';
+import { DashboardModals } from './components/dashboard/DashboardModals';
+import { useWhiteLabel } from './contexts/WhiteLabelContext'; // Import useWhiteLabel
+import { WelcomeBanner } from './components/dashboard/WelcomeBanner'; // NOVO
+import { useUser } from './contexts/UserContext'; // Import useUser directly for signOut
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;

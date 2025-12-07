@@ -20,6 +20,7 @@ const corsHeaders = {
 // Limite seguro de caracteres para o modelo de áudio (TTS)
 const MAX_TTS_CHARS = 2800;
 
+// Base system prompt defined as a constant
 const CREATOR_SUITE_SYSTEM_PROMPT = `
 Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
 
@@ -185,7 +186,9 @@ serve(async (req) => {
 
     const modelName = 'gemini-2.5-flash';
 
-    const systemPromptWithMemory = `${systemInstruction}: ${systemPromptWithMemory}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    // FIX: Use CREATOR_SUITE_SYSTEM_PROMPT as the base and correctly append userMemory.
+    const baseSystemInstruction = CREATOR_SUITE_SYSTEM_PROMPT;
+    const systemInstructionWithMemory = `${baseSystemInstruction}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
     let fullPrompt = `
       Query do usuário: ${prompt}
@@ -266,7 +269,8 @@ serve(async (req) => {
     }
 
     let config: any = {
-        systemInstruction: systemPromptWithMemory
+        // FIX: Use the correctly declared variable here
+        systemInstruction: systemInstructionWithMemory
     };
     
     if (mode === 'news_generator') {
@@ -306,8 +310,8 @@ serve(async (req) => {
         
         // FIX: Explicitly define string literals to avoid potential Deno type checker quirks treating them as JSX.
         const bodyCloseTag = '</body>';
-        const divOpenTag = '<div>'; // Corrected to avoid JSX-like interpretation
-        const divCloseTag = '</div>'; // Corrected to avoid JSX-like interpretation
+        const divOpenTag = '<div>'; // Corrected to use single quotes
+        const divCloseTag = '</div>'; // Corrected to use single quotes
 
         const bodyStartIndex = text.indexOf('<body');
         const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
@@ -315,7 +319,7 @@ serve(async (req) => {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
             // FIX: Use string literals for indexOf and lastIndexOf arguments.
-            const divStartIndex = text.indexOf(divOpenTag);
+            const divStartIndex = text.indexOf(divOpenTag); 
             const lastDivIndex = text.lastIndexOf(divCloseTag);
             // Ensure lastDivIndex is not -1 before calculating divEndIndex
             const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
