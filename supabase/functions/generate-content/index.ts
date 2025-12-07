@@ -134,10 +134,11 @@ serve(async (req) => {
     // Sanitize mode string to prevent mismatches due to whitespace
     mode = mode?.trim();
     
-    // 3. Get & Validate API Key
+    // 3. Get & Validate API Key - IMPORTANT FOR EDGE FUNCTION
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
-        throw new Error("Erro de Configuração: GEMINI_API_KEY não encontrada no servidor.");
+        console.error("ERRO CRÍTICO (Edge Function): Variável de ambiente GEMINI_API_KEY não definida.");
+        throw new Error("GEMINI_KEY_MISSING_EDGE_FUNCTION: A chave da API Gemini não está configurada na Edge Function. Contate o administrador.");
     }
 
     // 4. Initialize Gemini (GoogleGenAI SDK)
@@ -166,7 +167,8 @@ serve(async (req) => {
             const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
             
             if (!audioBase64) {
-                throw new Error("O modelo não retornou áudio.");
+                // Return a specific error if the model responded but didn't generate audio
+                throw new Error("AUDIO_GENERATION_FAILED: O modelo não retornou dados de áudio. O texto pode ter sido rejeitado.");
             }
 
             return new Response(JSON.stringify({ 
@@ -178,8 +180,8 @@ serve(async (req) => {
             });
 
         } catch (ttsError: any) {
-            console.error("TTS Error:", ttsError);
-            throw new Error(`Falha na geração de áudio: ${ttsError.message}`);
+            console.error("TTS Error (Edge Function):", ttsError);
+            throw new Error(`AUDIO_GENERATION_FAILED: Falha na geração de áudio. Erro detalhado: ${ttsError.message || "Erro desconhecido da API Gemini."}`);
         }
     }
 
@@ -305,9 +307,9 @@ serve(async (req) => {
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
         
         // FIX: Explicitly define string literals for indexOf/lastIndexOf calls to avoid potential Deno type checker quirks.
-        const bodyCloseTag = '</body>';
-        const divOpenTag = '<div>';
-        const divCloseTag = '</div>';
+        const bodyCloseTag: string = '</body>';
+        const divOpenTag: string = '<div>';
+        const divCloseTag: string = '</div>';
 
         const bodyStartIndex = text.indexOf('<body');
         const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
@@ -347,8 +349,18 @@ serve(async (req) => {
             });
             
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+
+            if (!audioBase64) {
+                 // Throw specific error if audio generation for news fails
+                throw new Error("AUDIO_GENERATION_FAILED_NEWS: O modelo não retornou dados de áudio para a notícia.");
+            }
+
         } catch (audioError: any) {
-            console.error("Failed to generate audio on backend:", audioError);
+            console.error("Failed to generate audio for news on backend:", audioError);
+            // Catch, log, but don't re-throw to allow text to be returned as fallback
+            // Propagate a specific message through the response body.
+            text = `[AUDIO_ERROR_FALLBACK] ${text}`; // Prepend error to text for client-side detection
+            audioBase64 = null; // Ensure audio is null if it failed
         }
     }
 

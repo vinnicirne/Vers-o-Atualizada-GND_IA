@@ -1,22 +1,23 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// Carrega as variáveis de ambiente injetadas pelo Vite (Vercel)
-// Usa optional chaining (?) para evitar erro se import.meta.env estiver indefinido durante a inicialização
-const supabaseUrlEnv = import.meta.env?.VITE_SUPABASE_URL || '';
-const supabaseAnonKeyEnv = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
+const supabaseUrlEnv = import.meta.env?.VITE_SUPABASE_URL;
+const supabaseAnonKeyEnv = import.meta.env?.VITE_SUPABASE_ANON_KEY;
 
 if (!supabaseUrlEnv || !supabaseAnonKeyEnv) {
-  console.warn(
-    'ATENÇÃO: VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY não foram detectadas. ' +
-    'Verifique seu arquivo .env ou as configurações de ambiente da Vercel.'
-  );
+  const errorMessage = 
+    'SUPABASE_CONFIG_ERROR: As variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY são obrigatórias.\n' +
+    'Verifique o arquivo .env na raiz do projeto e/ou as configurações de ambiente na sua plataforma de deploy (ex: Vercel).\n' +
+    'Exemplo no .env:\n' +
+    'VITE_SUPABASE_URL="https://seu_projeto_id.supabase.co"\n' +
+    'VITE_SUPABASE_ANON_KEY="sua_chave_anonima_publica"';
+  console.error(errorMessage);
+  throw new Error(errorMessage);
 }
 
 export const supabaseUrl = supabaseUrlEnv;
 export const supabaseAnonKey = supabaseAnonKeyEnv;
 
-// Cliente Supabase para acesso direto ao banco de dados e autenticação
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,

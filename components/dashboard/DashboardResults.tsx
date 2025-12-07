@@ -1,6 +1,6 @@
 
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
 import { AudioPlayer } from '../AudioPlayer';
@@ -25,6 +25,7 @@ interface DashboardResultsProps {
     onCloseEditor: () => void;
     showFeedback: boolean;
     onCloseFeedback: () => void;
+    currentError: string | null; // Adicionado para receber o erro principal
 }
 
 export function DashboardResults({ 
@@ -34,7 +35,8 @@ export function DashboardResults({
     user, 
     onCloseEditor,
     showFeedback,
-    onCloseFeedback
+    onCloseFeedback,
+    currentError // Recebe o erro principal
 }: DashboardResultsProps) {
 
     if (isLoading) {
@@ -76,6 +78,72 @@ export function DashboardResults({
         );
     }
 
+    // Verifica erros específicos para geração de áudio
+    const isAudioError = currentError?.includes('AUDIO_GENERATION_FAILED') || results.text?.includes('[AUDIO_ERROR_FALLBACK]');
+    const isGeminiKeyMissing = currentError?.includes('GEMINI_KEY_MISSING_EDGE_FUNCTION');
+
+    let audioErrorMessage = "O áudio não pôde ser gerado.";
+    if (isGeminiKeyMissing) {
+        audioErrorMessage = "Erro de Configuração: Chave GEMINI_API_KEY faltando na Edge Function do Supabase.";
+    } else if (isAudioError && currentError) {
+        audioErrorMessage = `Falha ao gerar áudio: ${currentError.replace('AUDIO_GENERATION_FAILED: ', '').replace('AUDIO_GENERATION_FAILED_NEWS: ', '')}`;
+    } else {
+        audioErrorMessage = "O sistema retornou texto como fallback. Tente novamente ou verifique os créditos.";
+    }
+
+
+    // DIAGNOSTIC ALERT FOR TTS FAILURE
+    if (currentMode === 'text_to_speech' && results.text && !results.audioBase64) {
+        return (
+             <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r shadow-sm animate-fade-in">
+                <div className="flex">
+                    <div className="flex-shrink-0">
+                        <i className="fas fa-exclamation-triangle text-yellow-400"></i>
+                    </div>
+                    <div className="ml-3">
+                        <p className="text-sm text-yellow-700 font-bold">
+                            Aviso: {audioErrorMessage.split(':')[0]}
+                        </p>
+                        <p className="text-xs text-yellow-600 mt-1">
+                            {audioErrorMessage.split(':')[1] || audioErrorMessage}
+                        </p>
+                        {isGeminiKeyMissing && (
+                            <p className="text-xs text-blue-700 mt-2">
+                                <i className="fas fa-info-circle mr-1"></i> Por favor, configure a variável de ambiente `GEMINI_API_KEY` nas configurações da sua Edge Function no Supabase.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+    // Specific alert for news_generator if audio failed
+    if (currentMode === 'news_generator' && isAudioError && results.text?.includes('[AUDIO_ERROR_FALLBACK]')) {
+        return (
+            <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r shadow-sm animate-fade-in">
+                <div className="flex">
+                    <div className="flex-shrink-0">
+                        <i className="fas fa-exclamation-triangle text-yellow-400"></i>
+                    </div>
+                    <div className="ml-3">
+                        <p className="text-sm text-yellow-700 font-bold">
+                            Aviso: O áudio para esta notícia não pôde ser gerado.
+                        </p>
+                        <p className="text-xs text-yellow-600 mt-1">
+                            O texto foi gerado normalmente. Erro de áudio: {currentError?.replace('AUDIO_GENERATION_FAILED_NEWS: ', '') || "Verifique a chave Gemini da Edge Function."}
+                        </p>
+                        {isGeminiKeyMissing && (
+                            <p className="text-xs text-blue-700 mt-2">
+                                <i className="fas fa-info-circle mr-1"></i> Configure `GEMINI_API_KEY` na Edge Function do Supabase.
+                            </p>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+
     return (
         <div className="mt-8 space-y-8 pb-12">
             
@@ -85,25 +153,6 @@ export function DashboardResults({
                     initialHtml={results.text} 
                     onClose={onCloseEditor}
                 />
-            )}
-
-            {/* DIAGNOSTIC ALERT FOR TTS FAILURE */}
-            {currentMode === 'text_to_speech' && results.text && !results.audioBase64 && (
-                <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r shadow-sm animate-fade-in">
-                    <div className="flex">
-                        <div className="flex-shrink-0">
-                            <i className="fas fa-exclamation-triangle text-yellow-400"></i>
-                        </div>
-                        <div className="ml-3">
-                            <p className="text-sm text-yellow-700 font-bold">
-                                Aviso: O áudio não pôde ser gerado.
-                            </p>
-                            <p className="text-xs text-yellow-600 mt-1">
-                                O sistema retornou texto como fallback. Tente novamente ou verifique os créditos.
-                            </p>
-                        </div>
-                    </div>
-                </div>
             )}
 
             {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
@@ -120,7 +169,7 @@ export function DashboardResults({
                     <div className="lg:col-span-2">
                         <ResultDisplay 
                             title={results.title} 
-                            text={results.text} 
+                            text={results.text.replace('[AUDIO_ERROR_FALLBACK]', '').trim()} // Remove a flag de erro de áudio
                             mode={currentMode} 
                             metadata={results.metadata || undefined}
                         />
@@ -131,7 +180,7 @@ export function DashboardResults({
                         <div className="lg:col-span-1">
                             <SeoScorecard 
                                 title={results.title || "Sem Título"} 
-                                content={results.text} 
+                                content={results.text.replace('[AUDIO_ERROR_FALLBACK]', '').trim()} 
                             />
                         </div>
                     )}

@@ -181,25 +181,29 @@ function AppContent() {
   if (userError) {
     const errorString = typeof userError === 'string' ? userError : JSON.stringify(userError, null, 2);
     const isSqlConfigError = errorString.startsWith('SQL_CONFIG_ERROR:');
-    const instructions = isSqlConfigError ? errorString.replace('SQL_CONFIG_ERROR:', '').trim() : '';
+    const isSupabaseConfigError = errorString.startsWith('SUPABASE_CONFIG_ERROR:'); // Novo tipo de erro
+    const instructions = isSqlConfigError || isSupabaseConfigError ? errorString.replace('SQL_CONFIG_ERROR:', '').replace('SUPABASE_CONFIG_ERROR:', '').trim() : '';
     
     const modalRoot = document.getElementById('modal-root');
     if (!modalRoot) return null;
 
     return createPortal(
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
-        <div className={`w-full ${isSqlConfigError ? 'max-w-2xl' : 'max-w-lg'} bg-white rounded-xl shadow-2xl border border-red-200`}>
+        <div className={`w-full ${isSqlConfigError || isSupabaseConfigError ? 'max-w-2xl' : 'max-w-lg'} bg-white rounded-xl shadow-2xl border border-red-200`}>
           <div className="p-6 border-b border-gray-100 text-center">
             <i className="fas fa-exclamation-triangle text-red-500 text-4xl mb-3"></i>
-            <h1 className="text-xl font-bold text-red-600">{isSqlConfigError ? 'Ação Necessária: Configurar Banco de Dados' : 'Erro Crítico do Sistema'}</h1>
+            <h1 className="text-xl font-bold text-red-600">
+                {isSupabaseConfigError ? 'Ação Necessária: Configurar Supabase' : 
+                 (isSqlConfigError ? 'Ação Necessária: Configurar Banco de Dados' : 'Erro Crítico do Sistema')}
+            </h1>
           </div>
           <div className="p-6">
-            {isSqlConfigError ? (
+            {(isSqlConfigError || isSupabaseConfigError) ? (
                 <div className="text-left text-sm space-y-4">
                     <p className="text-gray-700">
-                        Ocorreu um erro de configuração do banco de dados.
+                        Ocorreu um erro de configuração no seu ambiente ou banco de dados.
                     </p>
-                    <p className="text-gray-900 font-semibold">Para corrigir, execute o SQL abaixo:</p>
+                    <p className="text-gray-900 font-semibold">Para corrigir, siga as instruções abaixo:</p>
                     <div className="relative">
                         <pre className="bg-gray-50 border border-gray-200 text-gray-800 p-4 rounded-md text-xs whitespace-pre-wrap overflow-x-auto max-h-60">
                             <code>{instructions}</code>

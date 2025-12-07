@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
@@ -35,7 +36,7 @@ export function useDashboard() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null); // Erro principal do Dashboard
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Results State
@@ -197,6 +198,7 @@ export function useDashboard() {
 
         } catch (err: any) {
             console.error("Erro na geração:", err);
+            // Propaga o erro para o estado do Dashboard
             setError(err.message || 'Erro ao gerar conteúdo.');
         } finally {
             setIsLoading(false);
@@ -218,7 +220,7 @@ export function useDashboard() {
         setSidebarOpen,
         currentMode,
         isLoading,
-        error,
+        error, // Retorna o erro principal
         toast,
         setToast,
         results,

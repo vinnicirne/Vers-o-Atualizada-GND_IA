@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Header } from '../components/Header';
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -26,7 +27,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
       setSidebarOpen,
       currentMode,
       isLoading,
-      error,
+      error, // Agora pegamos o erro do useDashboard
       toast,
       setToast,
       results,
@@ -110,6 +111,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     onCloseEditor={() => updateResultText(null)}
                     showFeedback={showFeedback}
                     onCloseFeedback={() => setShowFeedback(false)}
+                    currentError={error} // Passa o erro principal para DashboardResults
                 />
 
                 {/* MARKETING FOOTER FOR GUESTS */}

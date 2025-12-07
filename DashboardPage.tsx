@@ -19,6 +19,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
   const { settings: whiteLabelSettings } = useWhiteLabel(); // Use White Label settings
   const {
       user,
+      signOut, // Captura signOut do hook
       isGuest,
       guestCredits,
       GUEST_ALLOWED_MODES,
@@ -26,7 +27,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
       setSidebarOpen,
       currentMode,
       isLoading,
-      error,
+      error, // Agora pegamos o erro do useDashboard
       toast,
       setToast,
       results,
@@ -44,7 +45,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
     <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
       <Header
         userEmail={user?.email}
-        onLogout={user ? async () => { await import('../contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
+        onLogout={user ? signOut : undefined} // Passa signOut diretamente
         isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onNavigateToLogin={!user ? onNavigateToLogin : undefined}
@@ -110,6 +111,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     onCloseEditor={() => updateResultText(null)}
                     showFeedback={showFeedback}
                     onCloseFeedback={() => setShowFeedback(false)}
+                    currentError={error} // Passa o erro principal para DashboardResults
                 />
 
                 {/* MARKETING FOOTER FOR GUESTS */}
