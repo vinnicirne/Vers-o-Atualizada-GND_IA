@@ -271,12 +271,14 @@ export interface AppNotification {
 }
 
 // --- GLOBAL TOOL SETTINGS ---
+// FIX: Exported ToolSetting
 export interface ToolSetting {
   key: ServiceKey;
   enabled: boolean;
 }
 
 // --- WHITE LABEL SETTINGS ---
+// FIX: Exported WhiteLabelSettings
 export interface WhiteLabelSettings {
   appName: string;
   appTagline: string;

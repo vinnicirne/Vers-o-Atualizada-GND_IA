@@ -316,8 +316,10 @@ serve(async (req) => {
         } else {
             const divStartIndex = text.indexOf(divOpenTag);
             const lastDivIndex = text.lastIndexOf(divCloseTag);
+            // FIX: Assign divCloseTag.length to a variable to prevent potential Deno type checker confusion
+            const divTagLength = divCloseTag.length;
             // Ensure lastDivIndex is not -1 before calculating divEndIndex
-            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
+            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divTagLength; 
             if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
                 text = text.substring(divStartIndex, divEndIndex);
             }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
@@ -29,7 +28,7 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
 };
 
 export function useDashboard() {
-    const { user, refresh } = useUser();
+    const { user, refresh, signOut } = useUser(); // Captura signOut aqui
     const { currentPlan, hasAccessToService, hasEnoughCredits, getCreditsCostForService } = usePlan();
 
     // UI Control
@@ -204,8 +203,14 @@ export function useDashboard() {
         }
     };
 
+    const handleLogout = async () => {
+        await signOut();
+        window.location.reload();
+    };
+
     return {
         user,
+        signOut: handleLogout, // Expõe a função de logout corrigida
         isGuest,
         guestCredits,
         GUEST_ALLOWED_MODES,
