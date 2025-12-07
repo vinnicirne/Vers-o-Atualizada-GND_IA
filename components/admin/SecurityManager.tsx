@@ -1,248 +1,243 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getSecuritySettings, updateSecuritySettings, getAllowedDomains, addAllowedDomain, removeAllowedDomain } from '../../services/adminService';
-import { SecuritySettings, AllowedDomain } from '../../types';
+import { AllowedDomain, SecuritySettings } from '../../types';
+import { getAllowedDomains, addAllowedDomain, removeAllowedDomain, getSecuritySettings, updateSecuritySettings } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from './Toast';
 
-// Helper component
-interface ToggleSwitchProps {
-  enabled: boolean;
-  onChange: (enabled: boolean) => void;
-}
-function ToggleSwitch({ enabled, onChange }: ToggleSwitchProps) {
-    return (
-    <button
-        type="button"
-        role="switch"
-        aria-checked={enabled}
-        className={`
-            relative inline-flex h-8 w-16 rounded-full cursor-pointer
-            transition-colors duration-300 ease-in-out
-            focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500
-            ${enabled ? 'bg-green-600' : 'bg-gray-300'}
-        `}
-        onClick={() => onChange(!enabled)}
-    >
-        <span
-            className={`
-                absolute left-2 top-1/2 -translate-y-1/2
-                text-[10px] font-bold uppercase
-                transition-opacity duration-200 ease-in-out
-                ${enabled ? 'opacity-100 text-white' : 'opacity-0 text-white'}
-            `}
-        >
-            ON
-        </span>
-        <span
-            className={`
-                absolute right-2 top-1/2 -translate-y-1/2
-                text-[10px] font-bold uppercase
-                transition-opacity duration-200 ease-in-out
-                ${enabled ? 'opacity-0 text-gray-700' : 'opacity-100 text-gray-700'}
-            `}
-        >
-            OFF
-        </span>
-        <span
-            aria-hidden="true"
-            className={`
-                pointer-events-none inline-block h-6 w-6 rounded-full bg-white shadow-md
-                transform ring-0 transition-transform duration-300 ease-in-out
-                ${enabled ? 'translate-x-8' : 'translate-x-1'}
-            `}
-        />
-    </button>
-);
-}
+const COMMON_DOMAINS = [
+  'gmail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'yahoo.com',
+  'yahoo.com.br',
+  'uol.com.br',
+  'bol.com.br',
+  'terra.com.br',
+  'icloud.com',
+  'protonmail.com'
+];
 
 export function SecurityManager() {
   const { user: adminUser } = useUser();
-  const [settings, setSettings] = useState<SecuritySettings | null>(null);
-  const [allowedDomains, setAllowedDomains] = useState<AllowedDomain[]>([]);
-  const [newDomain, setNewDomain] = useState('');
+  const [domains, setDomains] = useState<AllowedDomain[]>([]);
+  const [settings, setSettings] = useState<SecuritySettings>({ validationMode: 'strict_allowlist' });
   
+  const [newDomain, setNewDomain] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [savingConfig, setSavingConfig] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  const fetchSettings = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const securitySettings = await getSecuritySettings();
-      setSettings(securitySettings);
-      const domains = await getAllowedDomains();
-      setAllowedDomains(domains);
-    } catch (error: any) {
-      setToast({ message: error.message || 'Falha ao carregar configurações de segurança.', type: 'error' });
+      const [domainsData, settingsData] = await Promise.all([
+          getAllowedDomains(),
+          getSecuritySettings()
+      ]);
+      setDomains(domainsData);
+      setSettings(settingsData);
+    } catch (err: any) {
+      setToast({ message: err.message || "Erro ao carregar dados de segurança.", type: 'error' });
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    fetchAll();
+  }, [fetchAll]);
 
-  const handleSettingsChange = (field: keyof SecuritySettings, value: any) => {
-    setSettings(prev => prev ? { ...prev, [field]: value } : null);
+  const handleValidationModeChange = async (mode: 'strict_allowlist' | 'dns_validation') => {
+      if (!adminUser) return;
+      setSavingConfig(true);
+      try {
+          const newSettings: SecuritySettings = { ...settings, validationMode: mode };
+          await updateSecuritySettings(newSettings, adminUser.id);
+          setSettings(newSettings);
+          setToast({ message: "Modo de segurança atualizado com sucesso!", type: 'success' });
+      } catch (err: any) {
+          setToast({ message: "Erro ao atualizar configuração.", type: 'error' });
+      } finally {
+          setSavingConfig(false);
+      }
   };
 
-  const handleSaveSettings = async () => {
-    if (!adminUser || !settings) return;
-    setSaving(true);
-    try {
-      await updateSecuritySettings(settings, adminUser.id);
-      setToast({ message: 'Configurações de segurança salvas!', type: 'success' });
-    } catch (error: any) {
-      setToast({ message: error.message || 'Falha ao salvar configurações.', type: 'error' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAddDomain = async (e: React.FormEvent) => {
+  const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!adminUser || !newDomain.trim()) return;
-    setSaving(true);
+    if (!newDomain.trim() || !adminUser) return;
+
+    setAdding(true);
     try {
-      await addAllowedDomain(newDomain, adminUser.id);
+      await addAllowedDomain(newDomain.trim(), adminUser.id);
+      setToast({ message: "Domínio adicionado com sucesso!", type: 'success' });
       setNewDomain('');
-      await fetchSettings(); // Refresh list
-      setToast({ message: 'Domínio adicionado com sucesso!', type: 'success' });
-    } catch (error: any) {
-      setToast({ message: error.message || 'Falha ao adicionar domínio.', type: 'error' });
+      fetchAll();
+    } catch (err: any) {
+      setToast({ message: err.message || "Erro ao adicionar domínio.", type: 'error' });
     } finally {
-      setSaving(false);
+      setAdding(false);
     }
   };
 
-  const handleRemoveDomain = async (id: string, domain: string) => {
-    if (!adminUser || !window.confirm(`Tem certeza que deseja remover ${domain}?`)) return;
-    setSaving(true);
+  const handleQuickAdd = async (domain: string) => {
+      if (!adminUser) return;
+      setAdding(true);
+      try {
+        await addAllowedDomain(domain, adminUser.id);
+        setToast({ message: `${domain} liberado com sucesso!`, type: 'success' });
+        fetchAll();
+      } catch (err: any) {
+        setToast({ message: err.message || `Erro ao adicionar ${domain}.`, type: 'error' });
+      } finally {
+        setAdding(false);
+      }
+    };
+
+  const handleRemove = async (id: string, domain: string) => {
+    if (!adminUser) return;
+    if (!window.confirm(`Tem certeza que deseja remover ${domain} da lista de permitidos?`)) return;
+
     try {
       await removeAllowedDomain(id, domain, adminUser.id);
-      await fetchSettings(); // Refresh list
-      setToast({ message: 'Domínio removido!', type: 'success' });
-    } catch (error: any) {
-      setToast({ message: error.message || 'Falha ao remover domínio.', type: 'error' });
-    } finally {
-      setSaving(false);
+      setToast({ message: "Domínio removido com sucesso.", type: 'success' });
+      fetchAll();
+    } catch (err: any) {
+      setToast({ message: err.message || "Erro ao remover domínio.", type: 'error' });
     }
   };
 
-  if (loading) {
-    return (
-      <div className="text-center p-8">
-        <i className="fas fa-spinner fa-spin text-2xl text-green-600"></i>
-        <p className="mt-2 text-gray-500">Carregando configurações de segurança...</p>
-      </div>
-    );
-  }
-
-  if (!settings) {
-    return (
-      <div className="text-center p-4 text-red-600 bg-red-50 border border-red-200 rounded-md">
-        <strong>Erro:</strong> Não foi possível carregar as configurações de segurança.
-      </div>
-    );
-  }
-
-  const inputClasses = "w-full bg-white border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-green-500 focus:outline-none focus:ring-1 focus:ring-green-500 transition duration-300";
-  const labelClasses = "block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500";
-  const sectionTitleClasses = "text-xl font-bold text-[#263238] mb-4 border-b border-gray-200 pb-2";
+  const suggestions = COMMON_DOMAINS.filter(d => !domains.some(existing => existing.domain === d));
 
   return (
     <div className="space-y-6">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-          <div>
-            <h2 className="text-2xl font-bold text-[#263238]">Gerenciar Segurança</h2>
-            <p className="text-sm text-gray-500">Configure o acesso e permissões de registro.</p>
+        <div className="mb-8 pb-6 border-b border-gray-100">
+            <h2 className="text-2xl font-bold text-[#263238] mb-2">Segurança & Acesso</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Gerencie como os usuários podem se cadastrar na plataforma.
+            </p>
+
+            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h3 className="text-xs font-bold text-gray-500 mb-4 uppercase tracking-wider">Modo de Validação de Domínio</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                    <button
+                        onClick={() => handleValidationModeChange('strict_allowlist')}
+                        disabled={savingConfig}
+                        className={`p-5 rounded-lg border text-left transition-all relative ${
+                            settings.validationMode === 'strict_allowlist' 
+                            ? 'bg-green-50 border-green-500 text-green-800 shadow-sm ring-1 ring-green-500/20' 
+                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
+                    >
+                        {settings.validationMode === 'strict_allowlist' && <div className="absolute top-3 right-3 text-green-600"><i className="fas fa-check-circle"></i></div>}
+                        <div className="font-bold mb-2 flex items-center text-sm"><i className="fas fa-list-alt mr-2"></i>Lista Estrita (Allowlist)</div>
+                        <div className="text-xs leading-relaxed opacity-90">Apenas e-mails cujos domínios estejam explicitamente listados abaixo podem se cadastrar. Todos os outros são bloqueados.</div>
+                    </button>
+
+                    <button
+                        onClick={() => handleValidationModeChange('dns_validation')}
+                        disabled={savingConfig}
+                        className={`p-5 rounded-lg border text-left transition-all relative ${
+                            settings.validationMode === 'dns_validation' 
+                            ? 'bg-blue-50 border-blue-500 text-blue-800 shadow-sm ring-1 ring-blue-500/20' 
+                            : 'bg-white border-gray-300 text-gray-600 hover:border-gray-400 hover:bg-gray-50'
+                        }`}
+                    >
+                        {settings.validationMode === 'dns_validation' && <div className="absolute top-3 right-3 text-blue-600"><i className="fas fa-check-circle"></i></div>}
+                        <div className="font-bold mb-2 flex items-center text-sm"><i className="fas fa-globe mr-2"></i>Validação Automática (DNS)</div>
+                        <div className="text-xs leading-relaxed opacity-90">Qualquer domínio real e ativo (com registros MX verificados) pode se cadastrar. A lista abaixo serve como "VIP/Garantido".</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        {/* List Header */}
+        <h3 className="text-lg font-bold text-[#263238] mb-4 flex items-center">
+            <i className="fas fa-shield-alt mr-2 text-green-600"></i> Domínios Permitidos (Allowlist)
+        </h3>
+
+        {/* Quick Add Section */}
+        {suggestions.length > 0 && (
+            <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 flex items-center">
+                    <i className="fas fa-magic mr-2 text-green-600"></i> Adição Rápida (Provedores Comuns)
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                    {suggestions.map(domain => (
+                        <button
+                            key={domain}
+                            onClick={() => handleQuickAdd(domain)}
+                            disabled={adding}
+                            className="px-3 py-1.5 rounded-full bg-white hover:bg-green-50 border border-gray-300 hover:border-green-300 text-sm text-gray-600 hover:text-green-700 transition flex items-center disabled:opacity-50 shadow-sm"
+                        >
+                            <i className="fas fa-plus mr-2 text-xs"></i>
+                            {domain}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* Manual Add Form */}
+        <form onSubmit={handleAdd} className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-8 flex gap-4 items-end shadow-inner">
+          <div className="flex-grow">
+            <label htmlFor="newDomain" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
+              Adicionar Domínio Personalizado
+            </label>
+            <input
+              id="newDomain"
+              type="text"
+              value={newDomain}
+              onChange={(e) => setNewDomain(e.target.value)}
+              placeholder="ex: minhaempresa.com.br"
+              className="w-full bg-white border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-green-500 focus:ring-1 focus:ring-green-500 focus:outline-none shadow-sm"
+            />
           </div>
           <button
-            onClick={handleSaveSettings}
-            disabled={saving}
-            className="px-6 py-2 font-bold text-sm text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
+            type="submit"
+            disabled={adding}
+            className="px-6 py-2.5 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition shadow-sm disabled:opacity-50 flex items-center gap-2"
           >
-            {saving ? <><i className="fas fa-spinner fa-spin"></i>Salvando...</> : <><i className="fas fa-save"></i>Salvar Configurações</>}
+            {adding ? <><i className="fas fa-spinner fa-spin"></i> Adicionando...</> : <><i className="fas fa-plus"></i> Adicionar</>}
           </button>
-        </div>
+        </form>
 
-        <div className="space-y-8">
-          {/* Modo de Validação de Domínio */}
-          <div>
-            <h3 className={sectionTitleClasses}>Validação de Domínio no Cadastro</h3>
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 space-y-4">
-              <div>
-                <label htmlFor="validationMode" className={labelClasses}>Modo de Validação</label>
-                <select
-                  id="validationMode"
-                  name="validationMode"
-                  value={settings.validationMode}
-                  onChange={e => handleSettingsChange('validationMode', e.target.value)}
-                  className={inputClasses}
-                  disabled={saving}
-                >
-                  <option value="strict_allowlist">Lista de Permissão Estrita (apenas domínios na lista)</option>
-                  <option value="dns_validation">Validação DNS (permite qualquer domínio com DNS válido)</option>
-                </select>
-                <p className="text-xs text-gray-500 mt-2">
-                  <strong>Strict Allowlist:</strong> Apenas e-mails de domínios explicitamente listados abaixo podem se registrar. <br/>
-                  <strong>DNS Validation:</strong> Qualquer e-mail pode se registrar, desde que o domínio tenha um registro DNS válido (previne e-mails falsos/temporários).
-                </p>
-              </div>
+        {/* Domains List */}
+        {loading ? (
+            <div className="text-center py-12 text-gray-500"><i className="fas fa-spinner fa-spin mr-2"></i> Carregando domínios...</div>
+        ) : domains.length === 0 ? (
+            <div className="text-center py-12 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-500">
+                Nenhum domínio permitido configurado.
             </div>
-          </div>
-
-          {/* Domínios Permitidos (Allowlist) */}
-          <div>
-            <h3 className={sectionTitleClasses}>Domínios Permitidos (Allowlist)</h3>
-            <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 space-y-4">
-              <form onSubmit={handleAddDomain} className="flex gap-4">
-                <input
-                  type="text"
-                  placeholder="novo-dominio.com"
-                  value={newDomain}
-                  onChange={e => setNewDomain(e.target.value)}
-                  className={inputClasses}
-                  required
-                  disabled={saving}
-                />
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-6 py-2 font-bold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-all shadow-sm disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
-                >
-                  <i className="fas fa-plus"></i> Adicionar
-                </button>
-              </form>
-
-              <div className="mt-4 max-h-60 overflow-y-auto custom-scrollbar">
-                {allowedDomains.length === 0 ? (
-                  <p className="text-sm text-gray-500 text-center py-4">Nenhum domínio na allowlist.</p>
-                ) : (
-                  <div className="space-y-2">
-                    {allowedDomains.map(domain => (
-                      <div key={domain.id} className="flex items-center justify-between bg-white p-3 rounded-md border border-gray-100 shadow-sm">
-                        <span className="font-mono text-sm text-gray-700">{domain.domain}</span>
-                        <button
-                          onClick={() => handleRemoveDomain(domain.id, domain.domain)}
-                          disabled={saving}
-                          className="text-red-500 hover:text-red-700 transition-colors disabled:opacity-50"
-                        >
-                          <i className="fas fa-trash-alt"></i>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+        ) : (
+            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table className="w-full text-sm text-left text-gray-600">
+                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
+                        <tr>
+                            <th className="px-6 py-3 font-semibold">Domínio</th>
+                            <th className="px-6 py-3 font-semibold">Adicionado Em</th>
+                            <th className="px-6 py-3 text-right font-semibold">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {domains.map(domain => (
+                            <tr key={domain.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                                <td className="px-6 py-4 font-mono text-[#263238] font-bold">{domain.domain}</td>
+                                <td className="px-6 py-4 text-gray-500">{new Date(domain.created_at).toLocaleDateString('pt-BR')}</td>
+                                <td className="px-6 py-4 text-right">
+                                    <button onClick={() => handleRemove(domain.id, domain.domain)} className="font-medium text-red-600 hover:text-red-800 hover:underline">Remover</button>
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

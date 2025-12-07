@@ -2,7 +2,7 @@
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } "https://esm.sh/@supabase/supabase-js@2";
 // CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
 // FIX: Use GoogleGenAI as per guidelines
 import { GoogleGenAI } from "npm:@google/genai";
@@ -20,7 +20,6 @@ const corsHeaders = {
 // Limite seguro de caracteres para o modelo de áudio (TTS)
 const MAX_TTS_CHARS = 2800;
 
-// Base system prompt defined as a constant
 const CREATOR_SUITE_SYSTEM_PROMPT = `
 Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
 
@@ -63,7 +62,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **BENEFÍCIOS (Não Features):** Use GRID, cards com Glassmorphism.
      - **OFERTA & GARANTIA (Risco Zero):** Seção destacada com selo visual.
      - **FAQ (Quebra de Objeções):** Use tags HTML nativas <details> e <summary>.
-     - **CAPTURA FINAL (CTA):):** Formulário simples (apenas E-mail).
+     - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
    - Use font-sans (padrão moderno).
@@ -186,9 +185,7 @@ serve(async (req) => {
 
     const modelName = 'gemini-2.5-flash';
 
-    // FIX: Use CREATOR_SUITE_SYSTEM_PROMPT as the base and correctly append userMemory.
-    const baseSystemInstruction = CREATOR_SUITE_SYSTEM_PROMPT;
-    const systemInstructionWithMemory = `${baseSystemInstruction}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
     let fullPrompt = `
       Query do usuário: ${prompt}
@@ -269,8 +266,7 @@ serve(async (req) => {
     }
 
     let config: any = {
-        // FIX: Use the correctly declared variable here
-        systemInstruction: systemInstructionWithMemory
+        systemInstruction: systemPromptWithMemory
     };
     
     if (mode === 'news_generator') {
@@ -310,8 +306,8 @@ serve(async (req) => {
         
         // FIX: Explicitly define string literals to avoid potential Deno type checker quirks treating them as JSX.
         const bodyCloseTag = '</body>';
-        const divOpenTag = '<div>'; // Corrected to use single quotes
-        const divCloseTag = '</div>'; // Corrected to use single quotes
+        const divOpenTag = '<' + 'div>'; // Corrected to avoid JSX-like interpretation
+        const divCloseTag = '<' + '/div>'; // Corrected to avoid JSX-like interpretation
 
         const bodyStartIndex = text.indexOf('<body');
         const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
@@ -319,7 +315,7 @@ serve(async (req) => {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
             // FIX: Use string literals for indexOf and lastIndexOf arguments.
-            const divStartIndex = text.indexOf(divOpenTag); 
+            const divStartIndex = text.indexOf(divOpenTag);
             const lastDivIndex = text.lastIndexOf(divCloseTag);
             // Ensure lastDivIndex is not -1 before calculating divEndIndex
             const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 

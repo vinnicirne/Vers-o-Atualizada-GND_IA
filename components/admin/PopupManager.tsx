@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPopups, createPopup, updatePopup, deletePopup } from '../../services/adminService';
 import { Popup } from '../../types';
@@ -420,24 +421,4 @@ export function PopupManager() {
                                 <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 font-bold transition">
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={saving} className="px-6 py-2 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-wait flex items-center gap-2">
-                                    {saving ? (
-                                        <>
-                                            <i className="fas fa-spinner fa-spin"></i>
-                                            Salvando...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <i className="fas fa-save"></i>
-                                            Salvar Popup
-                                        </>
-                                    )}
-                                </button>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-            )}
-        </div>
-    );
-}
+                                <button type="submit" disabled={saving} className="px-6
