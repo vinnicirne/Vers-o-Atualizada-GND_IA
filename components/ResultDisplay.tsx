@@ -108,15 +108,17 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       setSendingToN8n(false);
   };
 
-  // CORREÇÃO: Oculta a caixa de texto no modo de áudio para focar no player
-  if (mode === 'text_to_speech') {
-      return null;
-  }
+  // LÓGICA DE CORREÇÃO: Removida a condição que ocultava a caixa de texto no modo de áudio
+  // Agora, o DashboardResults controlará a exibição com base no sucesso/falha do áudio.
+  // if (mode === 'text_to_speech') {
+  //     return null;
+  // }
 
   const getTitleLabel = () => {
       if (mode === 'news_generator') return 'Título / Manchete';
       if (mode === 'prompt_generator') return 'Prompt Otimizado';
       if (mode === 'copy_generator') return 'Headline / Título';
+      if (mode === 'text_to_speech') return 'Texto do Áudio (Prompt)'; // Novo label para TTS fallback
       return 'Título Principal';
   };
 
@@ -125,6 +127,7 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       if (mode === 'landingpage_generator') return 'Código HTML Gerado';
       if (mode === 'news_generator') return 'Corpo da Matéria';
       if (mode === 'copy_generator') return 'Corpo do Texto';
+      if (mode === 'text_to_speech') return 'Texto Original'; // Novo label para TTS fallback
       return 'Conteúdo Gerado';
   };
 

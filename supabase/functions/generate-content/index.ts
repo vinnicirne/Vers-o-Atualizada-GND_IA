@@ -38,7 +38,7 @@ Ao gerar notícias, artigos ou copy:
 MODOS DISPONÍVEIS (roteie baseado na query):
 
 1. **GDN Notícias**: 
-   - Escreva uma notícia completa baseada nos dados fornecidos ou em seu conhecimento.
+   - Escreva uma matéria aprofundada baseada nos dados fornecidos ou em seu conhecimento.
    - **OBRIGATÓRIO:** O primeiro parágrafo deve conter a palavra-chave principal do assunto (ex: se é sobre Flamengo, a palavra "Flamengo" deve estar na primeira linha).
    - Use formatação Markdown (Negrito para ênfase).
 
@@ -167,9 +167,15 @@ serve(async (req) => {
             const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
             
             if (!audioBase64) {
-                // Adicionado log detalhado da resposta do modelo
-                console.error("TTS Falha (Edge Function): Modelo respondeu sem áudio. Resposta completa:", JSON.stringify(audioResponse, null, 2));
-                throw new Error("AUDIO_GENERATION_FAILED: O modelo não retornou dados de áudio. O texto pode ter sido rejeitado.");
+                // Se o áudio falhou, retorna o texto original como fallback, com uma flag
+                console.warn("TTS Falha (Edge Function): Modelo respondeu sem áudio. Retornando texto como fallback.");
+                return new Response(JSON.stringify({ 
+                    text: `[TTS_FAILED_TEXT_FALLBACK] ${safePrompt}`, // Adiciona a tag de fallback
+                    audioBase64: null, 
+                    sources: [] 
+                }), {
+                    headers: { ...corsHeaders, "Content-Type": "application/json" },
+                });
             }
 
             return new Response(JSON.stringify({ 
@@ -182,7 +188,15 @@ serve(async (req) => {
 
         } catch (ttsError: any) {
             console.error("TTS Error (Edge Function):", ttsError);
-            throw new Error(`AUDIO_GENERATION_FAILED: Falha na geração de áudio. Erro detalhado: ${ttsError.message || "Erro desconhecido da API Gemini."}`);
+            // Em caso de erro na chamada da API, retorna o texto original como fallback
+            return new Response(JSON.stringify({ 
+                text: `[TTS_FAILED_TEXT_FALLBACK] ${safePrompt}`, // Retorna o prompt original como fallback
+                audioBase64: null, 
+                sources: [],
+                error: `Falha na geração de áudio: ${ttsError.message || "Erro desconhecido da API Gemini."}`
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
         }
     }
 
@@ -309,22 +323,25 @@ serve(async (req) => {
         
         // FIX: Explicitly define string literals for indexOf/lastIndexOf calls to avoid potential Deno type checker quirks.
         const bodyCloseTag: string = '</body>';
-        const divOpenTag = '<div>'; // Removed explicit ': string'
-        const divCloseTag = '</div>'; // Removed explicit ': string'
+        const divOpenTag: string = '<div>'; 
+        const divCloseTag: string = '</div>'; 
 
         const bodyStartIndex = text.indexOf('<body');
-        const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
+        const bodyEndIndex = text.lastIndexOf(bodyCloseTag); // lastIndexOf returns -1 if not found
+        
         if (bodyStartIndex !== -1 && bodyEndIndex !== -1 && bodyEndIndex > bodyStartIndex) {
-            text = text.substring(bodyStartIndex, bodyEndIndex);
+            text = text.substring(bodyStartIndex, bodyEndIndex + bodyCloseTag.length);
         } else {
             const divStartIndex = text.indexOf(divOpenTag);
-            const lastDivIndex = text.lastIndexOf(divCloseTag);
-            // FIX: Assign divCloseTag.length to a variable to prevent potential Deno type checker confusion
-            const divTagLength = divCloseTag.length;
-            // Ensure lastDivIndex is not -1 before calculating divEndIndex
-            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divTagLength; 
-            if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
-                text = text.substring(divStartIndex, divEndIndex);
+            const divEndIndex = text.lastIndexOf(divCloseTag);
+            
+            if (divStartIndex !== -1 && divEndIndex !== -1 && divEndIndex > divStartIndex) {
+                text = text.substring(divStartIndex, divEndIndex + divCloseTag.length);
+            } else if (text.startsWith('<div') && text.endsWith('</div>')) { // Basic check if it's already just a div
+                // Assume it's already the desired div content
+            } else {
+                // If no <body> or <div> tags found, return as is or handle as error
+                console.warn("HTML cleanup: No <body> or <div> tags found to extract content.");
             }
         }
     }
@@ -352,15 +369,15 @@ serve(async (req) => {
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
 
             if (!audioBase64) {
-                 // Throw specific error if audio generation for news fails
-                console.error("TTS Falha para Notícia (Edge Function): Modelo respondeu sem áudio. Resposta completa:", JSON.stringify(audioResponse, null, 2));
-                throw new Error("AUDIO_GENERATION_FAILED_NEWS: O modelo não retornou dados de áudio para a notícia.");
+                 // Warn and prepend a specific fallback tag, but don't re-throw the main function.
+                console.warn("TTS Falha para Notícia: Modelo respondeu sem áudio, caindo para fallback de texto.");
+                text = `[AUDIO_ERROR_FALLBACK] ${text}`; // Prepend error to text for client-side detection
+                audioBase64 = null; // Ensure audio is null if it failed
             }
 
         } catch (audioError: any) {
             console.error("Failed to generate audio for news on backend:", audioError);
             // Catch, log, but don't re-throw to allow text to be returned as fallback
-            // Propagate a specific message through the response body.
             text = `[AUDIO_ERROR_FALLBACK] ${text}`; // Prepend error to text for client-side detection
             audioBase64 = null; // Ensure audio is null if it failed
         }
