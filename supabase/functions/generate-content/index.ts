@@ -130,7 +130,8 @@ const cleanHtmlContent = (rawText: string): string => {
     // Replace any remaining leading/trailing common HTML block tags that might enclose the main content
     // This is a heuristic and might need adjustment based on typical model output
     // A more aggressive regex to remove any outer tags if they look like simple wrappers.
-    text = text.replace(/^<(p|div|span|h[1-6]|ul|ol|li)[^>]*>\s*/i, '').replace(/\s*<\/(p|div|span|h[1-6]|ul|ol|li)>$/i, '').trim();
+    // FIX: Added explicit type cast to (text as string) to resolve "Cannot find name 'div'" error.
+    text = (text as string).replace(/^<(p|div|span|h[1-6]|ul|ol|li)[^>]*>\s*/i, '').replace(/\s*<\/(p|div|span|h[1-6]|ul|ol|li)>$/i, '').trim();
 
     return text;
 };
@@ -191,7 +192,8 @@ async function handleNewsGeneration(ai: GoogleGenAI, prompt: string, userMemory:
     
     const fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: news_generator`;
 
-    const config: any = {
+    // FIX: Removed explicit 'any' type to allow proper type inference for config
+    const config = {
         systemInstruction: systemPromptWithMemory,
         tools: [{ googleSearch: {} }]
     };

@@ -510,7 +510,7 @@ grant select, insert on public.logs to anon;
         {activeTab === 'user_manual' && (
           <div className="prose prose-slate max-w-none">
             <h1 className="text-3xl font-bold text-[#263238] mb-4">🚀 Guia Oficial do Usuário - GDN_IA</h1>
-            <p className="text-gray-600 mb-6 leading-relaxed">
+            <p className="text-gray-600 mb-4">
               Bem-vindo ao <strong>GDN_IA</strong>!
             </p>
             <p className="text-sm text-gray-500">Consulte o arquivo <code>MANUAL_DO_USUARIO.md</code> para o conteúdo completo.</p>

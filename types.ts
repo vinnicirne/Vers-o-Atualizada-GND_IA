@@ -22,8 +22,8 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: string; // Tipo do conteúdo (news, image, landing_page, etc)
-  author_id?: string; // ID do autor
+  tipo?: string; // This type allows for flexibility, will be 'landingpage_generator' for all sites
+  author_id?: string;
   criado_em?: string;
   author?: {
     email: string;
@@ -43,14 +43,12 @@ export interface User {
   plan: UserPlan; 
   created_at?: string;
   last_login?: string;
-  // Affiliate System
   affiliate_code?: string;
   referred_by?: string;
   affiliate_balance?: number;
-  asaas_customer_id?: string; // Novo campo para Asaas Customer ID
-  // Subscription System
-  subscription_id?: string; // ID da assinatura recorrente (Asaas)
-  subscription_status?: string; // ACTIVE, EXPIRED, etc.
+  asaas_customer_id?: string;
+  subscription_id?: string;
+  subscription_status?: string;
   mercadopago_customer_id?: string;
 }
 
@@ -61,7 +59,7 @@ export interface AffiliateLog {
   amount: number;
   description: string;
   created_at: string;
-  source_email?: string; // Enriched field
+  source_email?: string;
 }
 
 export interface Log {
@@ -69,13 +67,13 @@ export interface Log {
   usuario_id: string;
   acao: string;
   modulo: string;
-  // FIX: Replaced 'jsonb' with 'any' as 'jsonb' is a PostgreSQL type, not a TypeScript type.
   detalhes?: any;
   data: string;
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
+// FIX: Added 'tool_settings' and 'white_label_settings' to AdminView
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
 
 export interface AllowedDomain {
   id: string;
@@ -97,22 +95,19 @@ export interface Transaction {
   metodo: PaymentMethod;
   status: TransactionStatus;
   data: string;
-  external_id?: string; // Mercado Pago ID, Asaas ID
-  metadata?: { // Dados extras
+  external_id?: string;
+  metadata?: {
     item_type?: 'plan' | 'credits';
-    item_id?: string; // ID do plano ou pacote de créditos
-    provider?: string; // Ex: 'mercado_pago', 'asaas'
-    description?: string; // Descrição do item comprado
-    plan_id?: string; // ID do plano, se for compra de plano
-    credits_amount?: number; // Quantidade de créditos, se for compra de créditos
-    // Mercado Pago specific
-    payment_method_id?: string; // e.g., 'visa'
-    issuer_id?: string; // e.g., '24' for Visa
+    item_id?: string;
+    provider?: string;
+    description?: string;
+    plan_id?: string;
+    credits_amount?: number;
+    payment_method_id?: string;
+    issuer_id?: string;
     installments?: number;
-    // Asaas specific
     card_token_id?: string;
-    customer_id?: string; // Asaas customer ID
-    // Any other relevant data
+    customer_id?: string;
     [key: string]: any;
   };
   user?: {
@@ -123,6 +118,7 @@ export interface Transaction {
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string; 
+  // secretKey removed for security
 }
 
 export interface CreditPackage {
@@ -272,4 +268,48 @@ export interface AppNotification {
   is_read: boolean;
   action_link?: string;
   created_at: string;
+}
+
+// --- GLOBAL TOOL SETTINGS ---
+// FIX: Exported ToolSetting
+export interface ToolSetting {
+  key: ServiceKey;
+  enabled: boolean;
+}
+
+// --- WHITE LABEL SETTINGS ---
+// FIX: Exported WhiteLabelSettings
+export interface WhiteLabelSettings {
+  appName: string;
+  appTagline: string;
+  logoTextPart1: string;
+  logoTextPart2: string;
+  primaryColorHex: string;
+  secondaryColorHex: string;
+  tertiaryColorHex: string;
+  faviconUrl: string;
+  ogImageUrl: string;
+  wordpressPluginName: string;
+  copyrightText: string;
+  appVersion: string;
+  dashboardTitle: string; 
+  
+  landingPageEnabled: boolean; 
+  heroSectionTitle: string;
+  heroSectionSubtitle: string;
+  heroCtaPrimaryText: string;
+  heroCtaPrimaryLink: string;
+  heroCtaSecondaryText: string;
+  heroCtaSecondaryLink: string;
+  featureSectionTitle: string;
+  featureSectionSubtitle: string;
+  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>;
+  pricingSectionTitle: string;
+  pricingSectionSubtitle: string;
+  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>;
+  
+  guestMarketingFooterTitle: string;
+  guestMarketingFooterSubtitle: string;
+  guestMarketingFooterCtaText: string;
+  guestMarketingFooterCtaLink: string;
 }

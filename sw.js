@@ -1,4 +1,5 @@
 
+
 const CACHE_NAME = 'gdn-ia-v2';
 const urlsToCache = [
   '/',
