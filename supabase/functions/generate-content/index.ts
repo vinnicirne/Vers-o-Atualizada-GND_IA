@@ -24,7 +24,7 @@ const CREATOR_SUITE_SYSTEM_PROMPT = `
 Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
 
 ## PROCESSO DE APRENDIZADO E EVOLUÇÃO (RAG)
-Você possui uma memória persistente das preferências do usuário. Antes de gerar qualquer coisa, analise a seção "Histórico de Aprendizado do Usuário" abaixo.
+Você possui uma memória persistente das preferências do usuário. Antes de gerar qualquer coisa, analyze a seção "Histórico de Aprendizado do Usuário" abaixo.
 1. Se houver feedbacks com "✅ [PADRÃO DE SUCESSO]", tente replicar o estilo, tom ou estrutura que agradou.
 2. Se houver feedbacks com "❌ [PADRÃO DE ERRO]", EVITE cometer os mesmos erros.
 3. A cada nova geração, você deve tentar superar a anterior baseada nesses feedbacks.
@@ -167,7 +167,8 @@ serve(async (req) => {
             const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
             
             if (!audioBase64) {
-                // Return a specific error if the model responded but didn't generate audio
+                // Adicionado log detalhado da resposta do modelo
+                console.error("TTS Falha (Edge Function): Modelo respondeu sem áudio. Resposta completa:", JSON.stringify(audioResponse, null, 2));
                 throw new Error("AUDIO_GENERATION_FAILED: O modelo não retornou dados de áudio. O texto pode ter sido rejeitado.");
             }
 
@@ -308,8 +309,8 @@ serve(async (req) => {
         
         // FIX: Explicitly define string literals for indexOf/lastIndexOf calls to avoid potential Deno type checker quirks.
         const bodyCloseTag: string = '</body>';
-        const divOpenTag: string = '<div>';
-        const divCloseTag: string = '</div>';
+        const divOpenTag = '<div>'; // Removed explicit ': string'
+        const divCloseTag = '</div>'; // Removed explicit ': string'
 
         const bodyStartIndex = text.indexOf('<body');
         const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
@@ -352,6 +353,7 @@ serve(async (req) => {
 
             if (!audioBase64) {
                  // Throw specific error if audio generation for news fails
+                console.error("TTS Falha para Notícia (Edge Function): Modelo respondeu sem áudio. Resposta completa:", JSON.stringify(audioResponse, null, 2));
                 throw new Error("AUDIO_GENERATION_FAILED_NEWS: O modelo não retornou dados de áudio para a notícia.");
             }
 

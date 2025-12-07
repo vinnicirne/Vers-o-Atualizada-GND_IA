@@ -1,8 +1,8 @@
 
 import { ReactNode } from 'react';
-import { Plan, ServiceKey, UserPlan } from './plan.types';
+import { Plan, ServiceKey, UserPlan } from './plan.types'; // Importar os novos tipos
 
-export type { Plan, ServiceKey, UserPlan };
+export type { Plan, ServiceKey, UserPlan }; // Re-exportar para uso em outros arquivos
 
 export interface BaseComponentProps {
   children?: ReactNode;
