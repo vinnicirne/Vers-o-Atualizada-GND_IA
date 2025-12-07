@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
 import LoginPage from './LoginPage';
-import { WhiteLabelProvider, useWhiteLabel } from './contexts/WhiteLabelContext'; // Import WhiteLabelContext
+import DashboardPage from './DashboardPage';
 // Lazy Load Pages
 const AdminPage = React.lazy(() => import('./pages/admin'));
 const PrivacyPage = React.lazy(() => import('./pages/legal/PrivacyPage'));
@@ -12,132 +12,74 @@ const CookiesPage = React.lazy(() => import('./pages/legal/CookiesPage'));
 const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
 const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage'));
 const LandingPage = React.lazy(() => import('./pages/LandingPage')); 
-const DashboardPage = React.lazy(() => import('./pages/DashboardPage')); // Corrected import path
 
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
 import { PopupRenderer } from './components/PopupRenderer'; 
 
+const SimpleLoader = () => (
+  <div className="min-h-screen bg-[#ECEFF1] flex flex-col items-center justify-center space-y-4">
+    <i className="fas fa-circle-notch fa-spin text-4xl text-[#F39C12]"></i>
+  </div>
+);
+
 type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
 
-const SimpleLoader = () => {
-  const { settings, loading: wlLoading } = useWhiteLabel(); 
-  
-  if (wlLoading) {
-    return (
-      <div className="min-h-screen bg-[#ECEFF1] flex flex-col items-center justify-center space-y-4">
-        <i className="fas fa-circle-notch fa-spin text-4xl text-[var(--brand-primary)]"></i>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-[#ECEFF1] flex flex-col items-center justify-center space-y-4">
-      <i className="fas fa-circle-notch fa-spin text-4xl text-[var(--brand-primary)]"></i>
-      <p className="text-[var(--brand-secondary)] font-medium animate-pulse">Iniciando {settings.appName}...</p>
-    </div>
-  );
-};
-
-
 function AppContent() {
-  const { user, loading: userLoading, error: userError } = useUser();
-  const { settings: whiteLabelSettings, loading: whiteLabelLoading } = useWhiteLabel();
+  const { user, loading, error } = useUser();
   
   useEffect(() => {
       initGA4();
   }, []);
   
-  const getInitialPage = useMemo((): PageRoute => {
-    if (typeof window === 'undefined') return 'dashboard';
-
-    const params = new URLSearchParams(window.location.search);
-    const pageParam = params.get('page');
-    const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
-
-    // 1. Prioritize explicit page parameter if valid
-    if (pageParam && validPages.includes(pageParam as PageRoute)) {
-        return pageParam as PageRoute;
-    }
-
-    // 2. Determine default route for root '/' path
-    if (userLoading || whiteLabelLoading) {
-        return 'dashboard'; 
-    }
-
-    if (user) {
-        return 'dashboard'; // Logged-in users always start at dashboard
-    } else {
-        // Not logged-in users default to dashboard (guest mode) for the root path
-        // This overrides whiteLabelSettings.landingPageEnabled for the initial default route,
-        // making the dashboard the primary entry point for testing.
-        return 'dashboard'; 
-    }
-  }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]);
-
-  const [currentPage, setCurrentPage] = useState<PageRoute>('dashboard'); // Initial state set to a temporary default
-
-  useEffect(() => {
-      if (!userLoading && !whiteLabelLoading) {
-          setCurrentPage(getInitialPage);
-      }
-  }, [userLoading, whiteLabelLoading, getInitialPage]);
-
-
-  const handleNavigate = useCallback((page: PageRoute) => {
-      setCurrentPage(page);
-      window.scrollTo(0, 0);
-  }, []);
-
-  useEffect(() => {
-    if (userLoading || whiteLabelLoading || !currentPage) {
-        return; 
-    }
-
-    let targetPage: PageRoute = currentPage; 
-
-    if (user) {
-        // Logged-in users should always be on dashboard (unless explicitly on admin/legal pages)
-        if (targetPage === 'landing' || targetPage === 'login') {
-            targetPage = 'dashboard';
-        }
-    } else {
-        // Not logged-in users default to dashboard (guest mode) for the root path.
-        // If they explicitly try to access 'admin', redirect to guest dashboard.
-        // If they navigate to 'landing' but it's disabled, also redirect to guest dashboard.
-        if (targetPage === 'admin') {
-            targetPage = 'dashboard'; 
-        } else if (targetPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
-            targetPage = 'dashboard';
+  const getInitialPage = (): PageRoute => {
+    if (typeof window !== 'undefined' && window.location.search) {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const page = params.get('page');
+            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
+            if (page && validPages.includes(page as PageRoute)) {
+                return page as PageRoute;
+            }
+            return 'dashboard'; 
+        } catch (e) {
+            console.warn('Erro ao ler URLSearchParams:', e);
+            return 'dashboard';
         }
     }
+    return 'dashboard';
+  };
 
-    if (targetPage !== currentPage) {
-        handleNavigate(targetPage);
+  const [currentPage, setCurrentPage] = useState<PageRoute>(getInitialPage);
+
+  // Redirecionamento inteligente baseado em autenticação
+  useEffect(() => {
+    if (!loading) {
+        if (user) {
+            // Se logado e está na landing ou login, vai pro dashboard
+            if (currentPage === 'landing' || currentPage === 'login') {
+                setCurrentPage('dashboard');
+            }
+        }
+        // Se não logado, PERMITE ficar no dashboard (Modo Híbrido/Landing)
     }
-  }, [user, userLoading, currentPage, whiteLabelSettings, whiteLabelLoading, handleNavigate]);
-
+  }, [user, loading, currentPage]);
 
   useEffect(() => {
     const handlePopState = () => {
-       setCurrentPage(prev => { 
-           const newInitialPage = getInitialPage; 
-           if (prev !== newInitialPage) return newInitialPage;
-           return prev; 
-       });
+       setCurrentPage(getInitialPage());
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, [getInitialPage]); 
+  }, []);
 
-  // URL sync logic
   useEffect(() => {
     try {
-        if (typeof window === 'undefined' || !window.location || !currentPage) return;
+        if (typeof window === 'undefined' || !window.location) return;
 
         const params = new URLSearchParams(window.location.search);
         if (currentPage === 'dashboard') {
-          params.delete('page'); 
+          params.delete('page'); // Root URL for dashboard/home
         } else {
           params.set('page', currentPage);
         }
@@ -163,15 +105,19 @@ function AppContent() {
     }
   }, [currentPage]);
 
-  const handleNavigateToAdmin = useCallback(() => {
+  const handleNavigate = (page: PageRoute) => {
+      setCurrentPage(page);
+      window.scrollTo(0, 0);
+  };
+
+  const handleNavigateToAdmin = () => {
     if (user && (user.role === 'admin' || user.role === 'super_admin')) {
       handleNavigate('admin');
     }
-  }, [user, handleNavigate]);
+  };
 
-
-  if (userError) {
-    const errorString = typeof userError === 'string' ? userError : JSON.stringify(userError, null, 2);
+  if (error) {
+    const errorString = typeof error === 'string' ? error : JSON.stringify(error, null, 2);
     const isSqlConfigError = errorString.startsWith('SQL_CONFIG_ERROR:');
     const instructions = isSqlConfigError ? errorString.replace('SQL_CONFIG_ERROR:', '').trim() : '';
     
@@ -216,27 +162,28 @@ function AppContent() {
     );
   }
 
-  if (userLoading || whiteLabelLoading || !currentPage) { 
-    return <SimpleLoader />;
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#ECEFF1] flex items-center justify-center">
+        <p className="text-[#263238] font-medium animate-pulse">Iniciando sistema...</p>
+      </div>
+    );
   }
-  
-  // Conditionally render LandingPage to adhere to "sumir se desativada"
-  const shouldRenderLandingPage = currentPage === 'landing' && whiteLabelSettings.landingPageEnabled && !user;
 
   return (
     <Suspense fallback={<SimpleLoader />}>
         <PopupRenderer />
 
-        {shouldRenderLandingPage && (
-            <LandingPage onNavigate={handleNavigate} />
+        {/* Landing Page Route (Still available if needed directly, but dashboard is default) */}
+        {currentPage === 'landing' && (
+            <LandingPage onNavigate={(page) => handleNavigate(page as PageRoute)} />
         )}
 
         {currentPage === 'login' && (
             <div className="relative">
-                {/* O botão "Voltar" na página de Login agora sempre direciona para o Dashboard (modo convidado) */}
                 <button 
                     onClick={() => handleNavigate('dashboard')}
-                    className="absolute top-4 left-4 z-50 text-gray-600 hover:text-[var(--brand-secondary)] flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200"
+                    className="absolute top-4 left-4 z-50 text-gray-600 hover:text-[#263238] flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm rounded-lg shadow-sm border border-gray-200"
                 >
                     <i className="fas fa-arrow-left"></i> Voltar
                 </button>
@@ -248,7 +195,7 @@ function AppContent() {
             <DashboardPage 
                 onNavigateToAdmin={handleNavigateToAdmin}
                 onNavigateToLogin={() => handleNavigate('login')}
-                onNavigate={handleNavigate}
+                onNavigate={(page) => handleNavigate(page as PageRoute)}
             />
         )}
         
@@ -275,9 +222,7 @@ function AppContent() {
 export default function App() {
   return (
     <UserProvider>
-      <WhiteLabelProvider>
-        <AppContent />
-      </WhiteLabelProvider>
+      <AppContent />
     </UserProvider>
   );
 }

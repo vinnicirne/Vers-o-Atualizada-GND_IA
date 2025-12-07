@@ -17,14 +17,10 @@ import { DocumentationViewer } from '../../components/admin/DocumentationViewer'
 import { PopupManager } from '../../components/admin/PopupManager'; 
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
-import { ToolManager } from '../../components/admin/ToolManager'; 
-import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
-// FIX: Imported CreateUserPayload from adminService
 import { NewsArticle, AdminView } from '../../types';
-import { CreateUserPayload, updateNewsArticle, createUser } from '../../services/adminService';
+import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
-import { useWhiteLabel } from '../../contexts/WhiteLabelContext'; // NOVO
 import { downloadSitemap } from '../../services/sitemapService'; 
 import { supabase } from '../../services/supabaseClient';
 
@@ -34,7 +30,6 @@ interface AdminPageProps {
 
 function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const { user, signOut } = useUser();
-  const { settings: whiteLabelSettings } = useWhiteLabel(); // Use White Label settings
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
@@ -45,6 +40,9 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Removido useEffect que fazia fetch('/metadata.json') causando erro.
+  // A versão agora é importada diretamente dentro do Header.
 
   const refreshData = () => {
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
@@ -61,7 +59,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, refreshData) // Monitorar system_config
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -85,7 +82,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     setEditingNews(null);
   };
 
-  // FIX: Removed adminId from parameters, it will be captured from the closure
   const handleSaveNews = async (id: number, titulo: string, conteudo: string) => {
     if (!user) {
         setToast({ message: "Sessão de administrador inválida.", type: 'error' });
@@ -107,7 +103,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       return;
     }
     try {
-      // FIX: Call createUser
       await createUser(payload, user.id);
       setToast({ message: `Usuário ${payload.email} criado com sucesso!`, type: 'success' });
       setCreateUserModalOpen(false);
@@ -132,7 +127,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
                     onClick={handleDownloadSitemap}
                     className="bg-white hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm border border-gray-200 shadow-sm flex items-center gap-2 transition-colors"
                 >
-                    <i className="fas fa-sitemap text-[var(--brand-primary)]"></i> Download Sitemap.xml
+                    <i className="fas fa-sitemap text-[#F39C12]"></i> Download Sitemap.xml
                 </button>
             </div>
             <MetricsCards dataVersion={dataVersion} />
@@ -147,12 +142,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
-      // FIX: Add 'tool_settings' to AdminView
-      case 'tool_settings': 
-        return <ToolManager />;
-      // FIX: Add 'white_label_settings' to AdminView
-      case 'white_label_settings': 
-        return <WhiteLabelManager />;
       case 'popups': 
         return <PopupManager />;
       case 'feedbacks':
@@ -188,7 +177,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         onLogout={handleLogout}
         onNavigateToDashboard={onNavigateToDashboard}
         onNewUserClick={() => setCreateUserModalOpen(true)}
-        pageTitle={whiteLabelSettings.appName + " Admin"} // Dynamic page title
+        pageTitle="Painel Administrativo"
         userCredits={user.credits}
         userRole={user.role}
         realtimeStatus={realtimeStatus} 

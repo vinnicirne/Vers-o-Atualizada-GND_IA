@@ -1,6 +1,4 @@
 
-
-
 import React from 'react';
 import { ServiceKey } from '../types/plan.types';
 
@@ -32,14 +30,22 @@ export function Loader({ mode }: LoaderProps) {
   };
 
   const message = getLoadingMessage(mode);
-  // Add a return statement to render the loading UI
+
   return (
-    <div className="mt-8 p-6 bg-white rounded-xl shadow-md border border-gray-200 text-center animate-fade-in">
-        <div className="flex items-center justify-center mb-4">
-            <i className="fas fa-spinner fa-spin text-4xl text-[var(--brand-primary)]"></i>
+    <div className="flex flex-col items-center justify-center p-8 text-center text-green-400 animate-fade-in">
+      <div className="relative mb-4">
+        <svg className="animate-spin h-12 w-12 text-green-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        {/* Ícone central pulsante dependendo do modo */}
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-xs text-white opacity-80">
+            <i className={`fas ${mode === 'image_generation' ? 'fa-paint-brush' : 'fa-brain'} animate-pulse`}></i>
         </div>
-        <h3 className="text-xl font-bold text-[var(--brand-secondary)] mb-2">{message.title}</h3>
-        <p className="text-gray-500 text-sm">{message.subtitle}</p>
+      </div>
+      
+      <p className="text-xl font-bold tracking-wide mb-2 text-green-400">{message.title}</p>
+      <p className="text-sm text-gray-500 font-mono">{message.subtitle}</p>
     </div>
   );
-}
+};

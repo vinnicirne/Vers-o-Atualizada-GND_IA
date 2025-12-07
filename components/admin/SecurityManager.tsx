@@ -200,43 +200,45 @@ export function SecurityManager() {
           </div>
           <button
             type="submit"
-            disabled={adding}
-            className="px-6 py-2.5 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition shadow-sm disabled:opacity-50 flex items-center gap-2"
+            disabled={adding || !newDomain.trim()}
+            className="px-6 py-3 font-bold text-white bg-green-600 rounded-lg hover:bg-green-700 transition shadow-sm disabled:opacity-50 disabled:cursor-wait flex items-center gap-2"
           >
-            {adding ? <><i className="fas fa-spinner fa-spin"></i> Adicionando...</> : <><i className="fas fa-plus"></i> Adicionar</>}
+            {adding ? <i className="fas fa-spinner fa-spin"></i> : <><i className="fas fa-plus"></i> Adicionar</>}
           </button>
         </form>
 
-        {/* Domains List */}
+        {/* List */}
         {loading ? (
-            <div className="text-center py-12 text-gray-500"><i className="fas fa-spinner fa-spin mr-2"></i> Carregando domínios...</div>
+          <div className="text-center py-12 text-gray-500"><i className="fas fa-spinner fa-spin mr-2 text-green-600 text-xl"></i> Carregando lista...</div>
         ) : domains.length === 0 ? (
-            <div className="text-center py-12 bg-gray-50 rounded border border-dashed border-gray-300 text-gray-500">
-                Nenhum domínio permitido configurado.
-            </div>
+          <div className="text-center py-12 bg-gray-50 border border-dashed border-gray-300 rounded-lg text-gray-500">
+            <i className="fas fa-list mr-2 text-2xl mb-2 text-gray-400 block"></i>
+            A lista está vazia. 
+            {settings.validationMode === 'strict_allowlist' 
+                ? <span className="text-red-500 block mt-2 font-bold bg-red-50 inline-block px-3 py-1 rounded border border-red-100">ATENÇÃO: Em modo estrito, ninguém conseguirá se cadastrar!</span> 
+                : <span className="block mt-1 text-sm">Em modo DNS, isso significa que qualquer domínio válido pode entrar.</span>
+            }
+          </div>
         ) : (
-            <div className="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                <table className="w-full text-sm text-left text-gray-600">
-                    <thead className="text-xs text-gray-500 uppercase bg-gray-50 border-b border-gray-200">
-                        <tr>
-                            <th className="px-6 py-3 font-semibold">Domínio</th>
-                            <th className="px-6 py-3 font-semibold">Adicionado Em</th>
-                            <th className="px-6 py-3 text-right font-semibold">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {domains.map(domain => (
-                            <tr key={domain.id} className="bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 font-mono text-[#263238] font-bold">{domain.domain}</td>
-                                <td className="px-6 py-4 text-gray-500">{new Date(domain.created_at).toLocaleDateString('pt-BR')}</td>
-                                <td className="px-6 py-4 text-right">
-                                    <button onClick={() => handleRemove(domain.id, domain.domain)} className="font-medium text-red-600 hover:text-red-800 hover:underline">Remover</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {domains.map((item) => (
+              <div key={item.id} className="bg-white border border-gray-200 p-4 rounded-lg flex justify-between items-center group hover:border-green-300 hover:shadow-md transition">
+                <div className="flex items-center gap-3">
+                  <div className="bg-green-50 p-2 rounded-full text-green-600 border border-green-100">
+                    <i className="fas fa-check-circle"></i>
+                  </div>
+                  <span className="font-mono text-[#263238] text-sm font-medium">@{item.domain}</span>
+                </div>
+                <button
+                  onClick={() => handleRemove(item.id, item.domain)}
+                  className="text-gray-400 hover:text-red-600 transition p-2 bg-gray-50 hover:bg-red-50 rounded-md"
+                  title="Remover permissão"
+                >
+                  <i className="fas fa-trash"></i>
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
     </div>

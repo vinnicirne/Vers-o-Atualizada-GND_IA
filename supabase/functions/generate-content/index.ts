@@ -1,14 +1,14 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } "https://esm.sh/@supabase/supabase-js@2";
 // CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
-// FIX: Use GoogleGenAI as per guidelines
 import { GoogleGenAI } from "npm:@google/genai";
 // Importar templates de currículo (necessário para o backend)
 import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts"; // Ajustar caminho conforme a estrutura real
-// FIX: Correctly import GenerateContentOptions type
+// Import the GenerateContentOptions type
+// @ts-ignore
 import type { GenerateContentOptions } from "../../../services/geminiService.ts";
 
 
@@ -65,51 +65,53 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
-   - Use font-sans (padrão moderno).
-   - Espaçamento generoso (py-20, gap-8).
-   - Sombras sofisticadas (shadow-2xl, shadow-inner).
-   - Use <section> tags distintas para cada bloco de conteúdo para facilitar a edição visual.
-   - Retorne APENAS o HTML do <body>.
+   - Use `font-sans` (padrão moderno).
+   - Espaçamento generoso (`py-20`, `gap-8`).
+   - Sombras sofisticadas (`shadow-2xl`, `shadow-inner`).
+   - Use `<section>` tags distintas para cada bloco de conteúdo para facilitar a edição visual.
+   - Retorne APENAS o HTML do `<body>`.
 
-    4. **Studio de Arte IA (Image Generation)**:
-       Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
-       - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
-       - Retorne APENAS o prompt em inglês.
+4. **Studio de Arte IA (Image Generation)**:
+   Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
+   - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
+   - Retorne APENAS o prompt em inglês.
 
-    5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
+5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
 
-    6. **Editor Visual (Social Media)**:
-       Gere APENAS o código HTML de uma <div> (1080x1080px) com Tailwind CSS.
-       - Design vibrante, tipografia grande, contraste alto.
+6. **Editor Visual (Social Media)**:
+   Gere APENAS o código HTML de uma `<div>` (1080x1080px) com Tailwind CSS.
+   - Design vibrante, tipografia grande, contraste alto.
 
-    7. **Criador de Currículos (IA)**:
-       Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
-       Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
+7. **Criador de Currículos (IA)**:
+   Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
+   Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
 
-       **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
-       - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
-       - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
-       - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
-       - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
-       - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
-       - **Tom de Voz:** Profissional, confiante e orientado a resultados.
+   **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
+   - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
+   - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
+   - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
+   - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
+   - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
+   - **Tom de Voz:** Profissional, confiante e orientado a resultados.
 
-       **REGRAS ESTRUTURAIS E DE PREENCHIMENTO HTML (Tailwind CSS):**
-       - Utilize o TEMPLATE HTML fornecido como base.
-       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: \`<span id="resume-name"></span>\`, \`<div id="experience-list"></div>\`).
-       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o `innerHTML`** do elemento com o ID.
-       - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
-       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu `innerHTML` vazio** ou remova o elemento se for mais limpo.
-       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere a estrutura HTML completa da lista e seus itens** (ex: `<div>...</div>` para cada experiência, `<span>...</span>` para cada skill) diretamente dentro do `div` de placeholder da lista.
-       - **NÃO inclua tags \`<html>\`, \`<head>\` ou \`<body>\` externas.** Apenas o conteúdo interno.
-       - Use classes Tailwind CSS para todo o estilo.
-       - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
-       - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+   **REGRAS ESTRUTURAIS HTML (Tailwind CSS):**
+   - Utilize a estrutura HTML fornecida pelo template.
+   - Não inclua tags `<html>`, `<head>` ou `<body>` externas. Apenas o conteúdo interno.
+   - Mantenha a semântica HTML (h1, h2, p, ul, li).
+   - Use classes Tailwind CSS para todo o estilo.
+   - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
 
-    8. **Criador de Posts Sociais (Social Media Poster)**:
-       [IMAGE_PROMPT] (Inglês técnico)
-       [COPY] (Português persuasivo, tom de autoridade).
-    `;
+   **INSTRUÇÕES DE PREENCHIMENTO:**
+   - Adapte o `summary` (resumo profissional) com base no `prompt` do usuário (se fornecido) e nas informações de experiência.
+   - Para `experience` e `education`, reescreva as `descriptions` para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
+   - Para `skills`, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
+   - **NÃO use Markdown**. Apenas HTML puro com classes Tailwind.
+   - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+
+8. **Criador de Posts Sociais (Social Media Poster)**:
+   [IMAGE_PROMPT] (Inglês técnico)
+   [COPY] (Português persuasivo, tom de autoridade).
+`;
 
 serve(async (req) => {
   // 1. Handle Preflight Requests (CORS)
@@ -141,8 +143,7 @@ serve(async (req) => {
     }
 
     // 4. Initialize Gemini (GoogleGenAI SDK)
-    // FIX: Use the correct class for Google GenAI SDK.
-    const ai = new GoogleGenAI({ apiKey: apiKey as string });
+    const ai = new GoogleGenAI({ apiKey });
     
     // --- TEXT TO SPEECH MODE HANDLER ---
     if (mode === 'text_to_speech') {
@@ -226,44 +227,40 @@ serve(async (req) => {
             throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
         }
 
-        const curriculumDataPromptContent = `
-        Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha o conteúdo de cada elemento com IDs específicos com as informações fornecidas, otimizando conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o objetivo de carreira.
+        // Prepare data for Handlebars-like replacement (simplified for direct insertion by LLM)
+        // The LLM will "fill in" these placeholders intelligently based on the structured data and prompt.
+        // FIX: Corrected variable access for curriculum data within the prompt and added optional chaining.
+        const curriculumDataPrompt = `
+        Por favor, gere um currículo HTML com Tailwind CSS usando o template a seguir. Preencha os placeholders com as informações fornecidas e otimize cada seção conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis).
 
-        **TEMPLATE HTML A SER PREENCHIDO (Não modifique a estrutura dos IDs, apenas o conteúdo interno):**
+        **Template de Currículo Escolhido:**
+        \`\`\`html
         ${selectedTemplate}
+        \`\`\`
 
-        **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
-        - **Objetivo de Carreira (Prompt Geral para Resumo):** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
+        **Informações do Usuário:**
+        - **Objetivo de Carreira (Prompt Geral):** ${prompt || 'Não fornecido, crie um objetivo padrão.'}
         - **Dados Pessoais:**
             Nome: ${options.personalInfo?.name || ''}
             Email: ${options.personalInfo?.email || ''}
             Telefone: ${options.personalInfo?.phone || ''}
-            LinkedIn URL: ${options.personalInfo?.linkedin || ''}
-            Portfólio URL: ${options.personalInfo?.portfolio || ''}
-        - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo e otimizado para ATS.'}
+            LinkedIn: ${options.personalInfo?.linkedin || ''}
+            Portfólio: ${options.personalInfo?.portfolio || ''}
+        - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo.'}
         - **Experiência Profissional:**
             ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
         - **Formação Acadêmica:**
             ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
-        - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
+        - **Habilidades:** ${options.skills?.join(', ') || 'Não fornecido, a IA pode sugerir habilidades comuns.'}
         - **Projetos:**
             ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
-        - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
+        - **Certificações:** ${options.certifications?.join(', ') || 'Nenhuma.'}
 
-        **LEMBRE-SE DE CADA ETAPA:**
-        1.  Inicie com o template HTML fornecido.
-        2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
-        3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: \`<p>Seu resumo aqui</p>\` ou \`<div><h3>Cargo</h3><p>Empresa</p></div>\`)** e insira-o como o \`innerHTML\` desse elemento.
-        4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
-            -   Gere o HTML completo para todos os itens da lista.
-            -   Para experiência e educação, cada item deve ter um \`div\` ou \`p\` formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
-            -   Para habilidades e certificações, gere \`<span>\` ou \`<li>\` tags conforme o estilo do template e insira-as dentro do seu \`div\` ou \`ul\` de placeholder.
-        5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o \`innerHTML\` desse elemento vazio**.
-        6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
-        7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
+        **Lembre-se das Regras do Modo "Criador de Currículos (IA)" para ATS e HTML puro.**
         `;
-        fullPrompt = curriculumDataPromptContent; // Override fullPrompt for curriculum mode
+        fullPrompt = curriculumDataPrompt; // Override fullPrompt for curriculum mode
     }
+
 
     let config: any = {
         systemInstruction: systemPromptWithMemory
@@ -274,15 +271,14 @@ serve(async (req) => {
     }
 
     // 5. Call Generate Content
-    // FIX: The `contents` parameter accepts a string directly for single text prompts.
     const response = await ai.models.generateContent({
         model: modelName,
-        contents: fullPrompt, 
+        // FIX: The `contents` parameter accepts a string directly. Wrapping in `parts` for robustness.
+        contents: { parts: [{ text: fullPrompt }] }, 
         config: config,
     });
 
-    // FIX: Ensure `response.text` is always a string and explicitly typed.
-    let text: string = response.text || '';
+    let text = response.text;
     
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
@@ -304,22 +300,15 @@ serve(async (req) => {
     if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
         
-        // FIX: Explicitly define string literals to avoid potential Deno type checker quirks treating them as JSX.
-        const bodyCloseTag = '</body>';
-        const divOpenTag = '<' + 'div>'; // Corrected to avoid JSX-like interpretation
-        const divCloseTag = '<' + '/div>'; // Corrected to avoid JSX-like interpretation
-
+        // Ensure only the content inside the <body> or main <div> is returned
         const bodyStartIndex = text.indexOf('<body');
-        const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
-        if (bodyStartIndex !== -1 && bodyEndIndex !== -1 && bodyEndIndex > bodyStartIndex) {
+        const bodyEndIndex = text.lastIndexOf('body>') + 5;
+        if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
             text = text.substring(bodyStartIndex, bodyEndIndex);
         } else {
-            // FIX: Use string literals for indexOf and lastIndexOf arguments.
-            const divStartIndex = text.indexOf(divOpenTag);
-            const lastDivIndex = text.lastIndexOf(divCloseTag);
-            // Ensure lastDivIndex is not -1 before calculating divEndIndex
-            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
-            if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
+            const divStartIndex = text.indexOf('<div');
+            const divEndIndex = text.lastIndexOf('div>') + 4;
+            if (divStartIndex !== -1 && divEndIndex !== -1) {
                 text = text.substring(divStartIndex, divEndIndex);
             }
         }

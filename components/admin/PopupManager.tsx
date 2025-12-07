@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPopups, createPopup, updatePopup, deletePopup } from '../../services/adminService';
 import { Popup } from '../../types';
@@ -82,36 +81,10 @@ export function PopupManager() {
     const fetchPopups = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await getPopups(true); // Fetch only active
-            
-            // Filter logic based on localStorage/frequency
-            const validPopups = data.filter(popup => {
-                const lastShown = localStorage.getItem(`gdn_popup_${popup.id}`);
-                
-                if (popup.trigger_settings.frequency === 'always') return true;
-                
-                if (popup.trigger_settings.frequency === 'once') {
-                    return !lastShown;
-                }
-                
-                if (popup.trigger_settings.frequency === 'daily') {
-                    if (!lastShown) return true;
-                    const lastDate = new Date(lastShown);
-                    const now = new Date();
-                    return now.toDateString() !== lastDate.toDateString();
-                }
-                
-                return true;
-            });
-
-            if (validPopups.length > 0) {
-                // Show the first eligible popup
-                // schedulePopup(validPopups[0]); // This is client-side in PopupRenderer
-            }
-
-            setPopups(data); // Set all popups for admin to view
-        } catch (e) {
-            console.warn("Failed to load popups:", e);
+            const data = await getPopups();
+            setPopups(data);
+        } catch (error: any) {
+            setToast({ message: "Erro ao carregar popups. Execute o SQL na aba Updates.", type: 'error' });
         } finally {
             setLoading(false);
         }
@@ -421,4 +394,14 @@ export function PopupManager() {
                                 <button type="button" onClick={() => setIsFormOpen(false)} className="px-4 py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 font-bold transition">
                                     Cancelar
                                 </button>
-                                <button type="submit" disabled={saving} className="px-6
+                                <button type="submit" disabled={saving} className="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 font-bold shadow transition disabled:opacity-50">
+                                    {saving ? 'Salvando...' : 'Salvar Popup'}
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
+}

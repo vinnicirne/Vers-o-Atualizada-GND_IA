@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { PlansModal } from '../PlansModal';
 import { UserHistoryModal } from '../UserHistoryModal';
@@ -7,7 +6,6 @@ import { ManualModal } from '../ManualModal';
 import { AffiliateModal } from '../AffiliateModal';
 import { IntegrationsModal } from '../integrations/IntegrationsModal';
 import { User } from '../../types';
-import { useWhiteLabel } from '../../contexts/WhiteLabelContext'; // NOVO
 
 interface DashboardModalsProps {
     modals: {
@@ -30,8 +28,6 @@ export function DashboardModals({
     user, 
     onNavigateToLogin 
 }: DashboardModalsProps) {
-    const { settings: whiteLabelSettings } = useWhiteLabel(); // NOVO
-
     return (
         <>
             {modals.plans && (
@@ -97,14 +93,14 @@ export function DashboardModals({
                         </div>
                         <h3 className="text-2xl font-bold text-gray-800 mb-2">Recurso Exclusivo</h3>
                         <p className="text-gray-600 mb-6">
-                            Esta ferramenta é exclusiva para usuários registrados. Crie sua conta gratuita agora e desbloqueie o poder total do <strong>{whiteLabelSettings.appName}</strong>, incluindo todas as ferramentas avançadas!
+                            Esta ferramenta está disponível apenas para usuários cadastrados. Crie sua conta grátis para desbloquear!
                         </p>
                         <div className="space-y-3">
                             <button 
                                 onClick={onNavigateToLogin}
                                 className="w-full bg-[#F39C12] hover:bg-orange-600 text-white font-bold py-3 rounded-lg transition"
                             >
-                                Criar Conta Grátis e Desbloquear
+                                Desbloquear Agora
                             </button>
                             <button 
                                 onClick={() => toggleModal('featureLock', false)}

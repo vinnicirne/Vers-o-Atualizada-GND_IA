@@ -1,5 +1,4 @@
 
-
 import React, { useEffect } from 'react';
 import { NewsArticle } from '../../types';
 
