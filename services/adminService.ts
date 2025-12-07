@@ -167,7 +167,7 @@ export const getAffiliateStats = async (userId: string) => {
              if(users) {
                  users.forEach((u:any) => {
                      userMap.set(u.id, u.email);
-                 });
+                 );
              }
         }
 

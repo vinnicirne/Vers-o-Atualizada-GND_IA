@@ -108,41 +108,31 @@ MODOS DISPONÍVEIS (roteie baseado na query):
        [COPY] (Português persuasivo, tom de autoridade).
 `;
 
-// FIX: Refactored cleanHtmlContent to use DOMParser more reliably
 const cleanHtmlContent = (rawText: string): string => {
-    let text = rawText.replace(/```html/g, '').replace(/```/g, '').trim();
+    let text = rawText.replace(/```html\n?/g, '').replace(/```/g, '').trim();
 
-    try {
-        // Deno's DOMParser is available.
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(text, 'text/html');
-        
-        // If the parsed body has actual content (not just default empty body from parser)
-        if (doc.body && (doc.body.children.length > 0 || doc.body.textContent.trim() !== '')) {
-            return doc.body.innerHTML;
-        }
-    } catch (e) {
-        console.warn("Failed to parse HTML in cleanHtmlContent using DOMParser, falling back to string methods:", e);
-        // Fallback to simpler string extraction if DOMParser fails or provides an empty body
+    // Try to extract content within <body>...</body> tags
+    // FIX: Explicitly cast 'text' to string before regex match to resolve potential type inference issues in Deno.
+    const bodyMatch = (text as string).match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    if (bodyMatch && bodyMatch[1]) {
+        text = bodyMatch[1].trim();
+    }
+    
+    // If it's still wrapped in a single <div>...</div>, extract that
+    // FIX: Explicitly cast 'text' to string before regex match and string methods.
+    const divMatch = (text as string).match(/^<div[^>]*>([\s\S]*)<\/div>$/i);
+    // Add an extra check to ensure it's not a partial div, and to avoid capturing too much if multiple divs are present.
+    // This is a heuristic. A full HTML parser is ideal but disallowed.
+    if (divMatch && divMatch[1] && (text as string).startsWith('<div') && (text as string).endsWith('</div>')) {
+        text = divMatch[1].trim();
     }
 
-    // Fallback logic if DOMParser failed or returned an empty body
-    // Try to find a major <div> if it seems to be the primary content
-    const divOpenTag = '<div';
-    const divCloseTag = '</div>';
-    const divStartIndex = text.indexOf(divOpenTag);
-    const divEndIndex = text.lastIndexOf(divCloseTag);
+    // Replace any remaining leading/trailing common HTML block tags that might enclose the main content
+    // This is a heuristic and might need adjustment based on typical model output
+    // A more aggressive regex to remove any outer tags if they look like simple wrappers.
+    text = text.replace(/^<(p|div|span|h[1-6]|ul|ol|li)[^>]*>\s*/i, '').replace(/\s*<\/(p|div|span|h[1-6]|ul|ol|li)>$/i, '').trim();
 
-    if (divStartIndex !== -1 && divEndIndex !== -1 && divEndIndex > divStartIndex) {
-        // Check if it's truly a single wrapping div to avoid returning partial HTML
-        const preamble = text.substring(0, divStartIndex).trim();
-        const postamble = text.substring(divEndIndex + divCloseTag.length).trim();
-        if (preamble === '' && postamble === '') {
-            return text; // Return the whole div content including tags if it's the only thing
-        }
-    }
-
-    return text; // Return original text if no clear HTML structure found
+    return text;
 };
 
 // --- HANDLERS DE MODO ---
@@ -150,6 +140,10 @@ const cleanHtmlContent = (rawText: string): string => {
 async function handleTextToSpeechGeneration(ai: GoogleGenAI, prompt: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
     const voiceName = options?.voice || 'Kore';
     const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
+
+    // NOVO: Log de parâmetros de entrada para depuração
+    console.log("Prompt para TTS:", safePrompt);
+    console.log("Opções para TTS:", JSON.stringify(options));
 
     try {
         const audioResponse = await ai.models.generateContent({
@@ -237,9 +231,7 @@ async function handleNewsGeneration(ai: GoogleGenAI, prompt: string, userMemory:
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: { voiceName: newsVoice },
-                        },
+                        prebuiltVoiceConfig: { voiceName: newsVoice },
                     },
                 },
             });
@@ -443,8 +435,15 @@ serve(async (req) => {
     let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory } = reqBody;
     const options: GenerateContentOptions = rawOptions || {};
 
-    mode = mode?.trim();
+    // NOVO: Log do modo ANTES da limpeza
+    console.log("Mode (raw):", mode);
+
+    // NOVO: Limpeza mais robusta da string 'mode'
+    mode = mode?.trim().replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\u202F\u205F\uFEFF]/g, '') || '';
     
+    // NOVO: Log do modo DEPOIS da limpeza
+    console.log("Mode (cleaned):", mode);
+
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) {
         console.error("ERRO CRÍTICO (Edge Function): Variável de ambiente GEMINI_API_KEY não definida.");
@@ -474,9 +473,27 @@ serve(async (req) => {
         case 'landingpage_generator':
             result = await handleLandingPageGenerator(ai, prompt, userMemory, options);
             break;
-        default:
+        case 'copy_generator': // Adicionado caso para copy_generator
+        case 'prompt_generator': // Adicionado caso para prompt_generator
             result = await handleDefaultTextGeneration(ai, prompt, userMemory, mode);
             break;
+        default:
+            const availableModes = [
+                'GDN Notícias',
+                'Gerador de Prompts',
+                'Criador de Sites (Web)',
+                'Studio de Arte IA',
+                'Gerador de Copy',
+                'Editor Visual (Social Media)',
+                'Criador de Currículos (IA)',
+                'Texto para Voz'
+            ].map((m, i) => `${i + 1}. **${m}**`).join('\n');
+
+            return new Response(JSON.stringify({ 
+                text: `O modo '${mode}' não é um modo de geração válido. Por favor, escolha um dos modos disponíveis:\n${availableModes}\n\n(Mode recebido: '${mode}')`
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
     }
 
     return new Response(JSON.stringify({ 

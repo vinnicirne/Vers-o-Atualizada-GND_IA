@@ -18,7 +18,7 @@ import { PopupManager } from '../../components/admin/PopupManager';
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
 import { ToolManager } from '../../components/admin/ToolManager'; 
-import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager'; // NOVO
+import { WhiteLabelManager } '../../components/admin/WhiteLabelManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
 // FIX: Imported CreateUserPayload from adminService
 import { NewsArticle, AdminView } from '../../types';
