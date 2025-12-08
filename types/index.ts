@@ -261,3 +261,48 @@ export interface AppNotification {
   action_link?: string;
   created_at: string;
 }
+
+// --- CHAT SYSTEM TYPES ---
+export interface WhatsAppInstance {
+    id: string;
+    user_id: string;
+    name: string;
+    phone_number?: string;
+    status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready';
+    qr_code?: string;
+    api_url?: string;
+    api_token?: string;
+    created_at: string;
+}
+
+export interface ChatContact {
+    id: string;
+    phone: string;
+    name: string;
+    profile_pic_url?: string;
+    tags?: string[];
+}
+
+export interface ChatConversation {
+    id: string;
+    instance_id: string;
+    contact_id: string;
+    contact: ChatContact;
+    last_message?: string;
+    last_message_at: string;
+    unread_count: number;
+    status: 'open' | 'closed' | 'pending';
+    assigned_agent_id?: string;
+}
+
+export interface ChatMessage {
+    id: string;
+    conversation_id: string;
+    sender_type: 'agent' | 'contact' | 'system';
+    sender_id?: string; // agent_id or contact_id
+    content: string;
+    media_url?: string;
+    media_type?: 'image' | 'video' | 'audio' | 'document';
+    status: 'sent' | 'delivered' | 'read' | 'failed';
+    created_at: string;
+}

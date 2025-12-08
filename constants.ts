@@ -28,6 +28,11 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
   },
   // --- OPÇÕES PREMIUM / AVANÇADAS (REORDERED FOR VISIBILITY) ---
   {
+    value: 'multi_chat',
+    label: 'Chat Multi-Atendimento',
+    placeholder: '',
+  },
+  {
     value: 'curriculum_generator',
     label: 'Criador de Currículos (IA)', // NOVO
     placeholder: 'Descreva seu perfil e objetivo (ex: "Currículo para Desenvolvedor Fullstack com 5 anos de experiência, focado em React e Node.js. Objetivo: vaga em startup de tecnologia.").',
@@ -72,6 +77,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   social_media_poster: 5, // Custo similar à geração de imagem
   curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
+  multi_chat: 0, // Recurso mensal, não consome crédito por uso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -104,6 +110,9 @@ const curriculumService: ServicePermission = { key: 'curriculum_generator', name
 // Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
 
+// Serviço de Chat (WhatsApp)
+const chatService: ServicePermission = { key: 'multi_chat', name: 'Chat Multi-Atendimento', enabled: true, creditsPerUse: 0 };
+
 
 export const PLANS: Record<UserPlan, Plan> = {
   free: {
@@ -115,6 +124,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     isActive: true,
     expressCreditPrice: 15.00,
     color: 'gray', // Cor Tailwind
+    limits: { whatsapp_instances: 0, agents: 0 },
     services: [
       ...commonServices,
       promptService // Adicionado ao Free
@@ -129,9 +139,11 @@ export const PLANS: Record<UserPlan, Plan> = {
     isActive: true,
     expressCreditPrice: 9.00,
     color: 'blue', // Cor Tailwind
+    limits: { whatsapp_instances: 1, agents: 1 },
     services: [
       ...commonServices,
       promptService,
+      chatService
     ]
   },
   standard: {
@@ -143,6 +155,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     isActive: true,
     expressCreditPrice: 7.00,
     color: 'green', // Cor Tailwind
+    limits: { whatsapp_instances: 3, agents: 5 },
     services: [
       ...commonServices,
       promptService,
@@ -151,7 +164,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       imageService, 
       siteBuilderService, // Usando o serviço unificado
       ...artServices, // Agora contém apenas o Editor Visual
-      n8nService 
+      n8nService,
+      chatService
     ]
   },
   premium: {
@@ -163,6 +177,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     isActive: true,
     expressCreditPrice: 5.00,
     color: 'purple', // Cor Tailwind
+    limits: { whatsapp_instances: 10, agents: 99 },
     services: [
       ...commonServices,
       promptService,
@@ -171,7 +186,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       imageService,
       siteBuilderService, // Usando o serviço unificado
       ...artServices,
-      n8nService 
+      n8nService,
+      chatService
     ]
   }
 };
@@ -188,6 +204,7 @@ export const SERVICE_ICONS: Record<ServiceKey, string> = {
     social_media_poster: 'fa-share-alt',
     curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
     n8n_integration: 'fa-plug',
+    multi_chat: 'fa-comments',
 };
 
 // Cores para os ícones
@@ -202,4 +219,5 @@ export const SERVICE_COLORS: Record<ServiceKey, string> = {
     social_media_poster: 'text-indigo-500 bg-indigo-50',
     curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
     n8n_integration: 'text-red-500 bg-red-50',
+    multi_chat: 'text-teal-600 bg-teal-50',
 };

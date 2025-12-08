@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { DashboardSidebar } from './components/DashboardSidebar';
@@ -20,6 +21,7 @@ import { useUser } from './contexts/UserContext';
 import { usePlan } from './hooks/usePlan';
 import { ServiceKey } from './types/plan.types';
 import { CREATOR_SUITE_MODES } from './constants';
+import { MultiChatLayout } from './components/chat/MultiChatLayout'; // NOVO
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -243,9 +245,16 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
             onNavigateFeedback={() => onNavigate('feedback')}
         />
 
-        {/* MAIN CONTENT */}
-        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar bg-[#F5F7FA]">
-            <div className="max-w-5xl mx-auto">
+        {/* MAIN CONTENT AREA SWITCHER */}
+        <main className="flex-1 overflow-y-auto relative custom-scrollbar bg-[#F5F7FA]">
+            
+            {/* VIEW: CHAT MULTI-ATENDIMENTO */}
+            {currentMode === 'multi_chat' ? (
+                <MultiChatLayout user={user} />
+            ) : (
+            
+            /* VIEW: CONTENT GENERATOR (Padrão) */
+            <div className="p-4 md:p-8 max-w-5xl mx-auto">
                 
                 {/* GENERATOR INPUT */}
                 <ContentGenerator 
@@ -273,7 +282,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     <>
                         {/* LANDING PAGE & SITE EDITOR */}
                         {/* FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type */}
-                        {(currentMode === 'landingpage_generator' || currentMode === 'landingpage_generator' || currentMode === 'canva_structure') && resultText && (
+                        {(currentMode === 'landingpage_generator' || currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && resultText && (
                             <LandingPageBuilder 
                                 initialHtml={resultText} 
                                 onClose={() => setResultText(null)}
@@ -315,6 +324,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                          currentMode !== 'landingpage_generator' && 
                          currentMode !== 'image_generation' && 
                          currentMode !== 'canva_structure' && 
+                         currentMode !== 'curriculum_generator' &&
                          // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.
                          // Se for TTS mas falhou (sem áudio), mostra o texto para debug.
                          (currentMode !== 'text_to_speech' || !audioBase64) &&
@@ -369,6 +379,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     </div>
                 )}
             </div>
+            )}
         </main>
       </div>
 
