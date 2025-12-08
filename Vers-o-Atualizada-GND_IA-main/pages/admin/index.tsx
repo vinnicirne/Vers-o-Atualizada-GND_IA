@@ -17,7 +17,7 @@ import { DocumentationViewer } from '../../components/admin/DocumentationViewer'
 import { PopupManager } from '../../components/admin/PopupManager'; 
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
-import { CRMManager } from '../../components/admin/CRMManager'; // NOVO
+import { CRMManager } from '../../components/admin/CRMManager'; // IMPORT CRM MANAGER
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -42,9 +42,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Removido useEffect que fazia fetch('/metadata.json') causando erro.
-  // A versão agora é importada diretamente dentro do Header.
-
   const refreshData = () => {
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
       refreshTimeout.current = setTimeout(() => {
@@ -60,7 +57,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, refreshData) // Listen to leads
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, refreshData) // Listen to leads changes
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -138,7 +135,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         );
       case 'users':
         return <UserTable dataVersion={dataVersion} />;
-      case 'crm': // NOVO CASE
+      case 'crm': // Rota para o CRM
         return <CRMManager />;
       case 'news':
         return <NewsManager onEdit={handleOpenEditModal} dataVersion={dataVersion} />;

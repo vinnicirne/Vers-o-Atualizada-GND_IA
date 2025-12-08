@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { createLead } from '../services/adminService';
 import { trackEvent } from '../services/trackingService';
 import { useWhiteLabel } from '../contexts/WhiteLabelContext';
@@ -51,7 +51,7 @@ export function LeadForm({
       setLoading(true);
       try {
           // 1. Rastreamento de Tentativa
-          trackEvent('submit_form', undefined, { step: 'start', form: source });
+          await trackEvent('submit_form', undefined, { step: 'start', form: source });
 
           // 2. Criação do Lead (Supabase + Envio de Email via Edge Function)
           const lead = await createLead({
@@ -64,7 +64,7 @@ export function LeadForm({
 
           // 3. Rastreamento de Sucesso
           if(lead) {
-              trackEvent('submit_form', lead.id, { step: 'success', form: source });
+              await trackEvent('submit_form', lead.id, { step: 'success', form: source });
           }
 
           // 4. Redirecionamento ou Callback
