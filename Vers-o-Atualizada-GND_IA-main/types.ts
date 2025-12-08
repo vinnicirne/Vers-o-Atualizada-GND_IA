@@ -75,7 +75,7 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'crm';
 
 export interface AllowedDomain {
   id: string;
@@ -327,4 +327,45 @@ export interface WhiteLabelSettings {
   guestMarketingFooterSubtitle: string;
   guestMarketingFooterCtaText: string;
   guestMarketingFooterCtaLink: string;
+}
+
+// --- CRM / LEAD SYSTEM ---
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+export type DealStatus = 'won' | 'lost' | 'pending';
+export type MarketingEventType = 'view_landing' | 'submit_form' | 'email_open' | 'email_click' | 'checkout_view' | 'purchase';
+
+export interface Lead {
+  id: string;
+  email: string;
+  nome?: string;
+  telefone?: string;
+  empresa?: string;
+  fonte?: string;
+  utm_campaign?: string;
+  utm_medium?: string;
+  utm_source?: string;
+  status_funil: LeadStatus;
+  score: number;
+  tags?: string[]; // Array of strings in Supabase (text[])
+  consentimento: boolean;
+  created_at: string;
+  notes?: string;
+}
+
+export interface MarketingEvent {
+  id: number;
+  lead_id: string;
+  tipo_evento: MarketingEventType;
+  metadata?: any;
+  created_at: string;
+}
+
+export interface Deal {
+  id: string;
+  lead_id: string;
+  plano: string;
+  valor: number;
+  status: DealStatus;
+  gateway_ref?: string;
+  created_at: string;
 }
