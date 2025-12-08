@@ -17,6 +17,7 @@ import { DocumentationViewer } from '../../components/admin/DocumentationViewer'
 import { PopupManager } from '../../components/admin/PopupManager'; 
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
+import { CRMManager } from '../../components/admin/CRMManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
@@ -59,6 +60,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, refreshData) // Listen to leads
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -136,6 +138,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         );
       case 'users':
         return <UserTable dataVersion={dataVersion} />;
+      case 'crm': // NOVO CASE
+        return <CRMManager />;
       case 'news':
         return <NewsManager onEdit={handleOpenEditModal} dataVersion={dataVersion} />;
       case 'payments':

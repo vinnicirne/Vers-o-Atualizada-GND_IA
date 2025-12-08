@@ -1,7 +1,7 @@
 
 import { api } from './api';
 import { logger } from './loggerService';
-import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting, WhiteLabelSettings, Lead, LeadStatus } from '../types';
+import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting, WhiteLabelSettings } from '../types';
 import { GUEST_ID, CREATOR_SUITE_MODES } from '../constants';
 import { supabase } from './supabaseClient'; // Import supabase directly for complex queries
 
@@ -27,84 +27,6 @@ const DOMAIN_BLACKLIST = [
     'yopmail.com',
     'throwawaymail.com'
 ];
-
-// --- LEAD GENERATION & CRM SYSTEM ---
-
-export const createLead = async (leadData: Partial<Lead>) => {
-    // 1. Salva o Lead no Banco de Dados
-    const { data, error } = await api.insert('leads', {
-        email: leadData.email,
-        nome: leadData.nome,
-        telefone: leadData.telefone,
-        empresa: leadData.empresa,
-        utm_source: leadData.utm_source,
-        utm_medium: leadData.utm_medium,
-        utm_campaign: leadData.utm_campaign,
-        status_funil: 'new',
-        score: 10, // Score inicial por cadastro
-        tags: ['lead_magnet', 'ebook_prompts'], // Tags padrão
-        consentimento: leadData.consentimento,
-        created_at: new Date().toISOString()
-    });
-    
-    if (error) throw new Error(typeof error === 'string' ? error : error.message);
-    
-    // 2. Dispara a Automação de E-mail (Lead Magnet)
-    // Usamos 'invoke' do supabase client diretamente, sem await para não travar a UI (Fire-and-forget)
-    if (leadData.email) {
-        supabase.functions.invoke('deliver-lead-magnet', {
-            body: { 
-                email: leadData.email, 
-                nome: leadData.nome 
-            }
-        }).then(({ error }) => {
-            if (error) console.error("Falha na automação de e-mail:", error);
-            else console.log("Automação de e-mail disparada com sucesso.");
-        });
-    }
-
-    return data ? data[0] : null;
-};
-
-export const getLeads = async ({ status }: { status?: LeadStatus | 'all' } = {}): Promise<Lead[]> => {
-    const filters: any = {};
-    if (status && status !== 'all') filters.status_funil = status;
-    
-    const { data, error } = await api.select('leads', filters);
-    
-    if (error) {
-        if (typeof error === 'string' && error.includes('does not exist')) {
-            console.warn("Tabela 'leads' não encontrada. Admin deve criar.");
-            return [];
-        }
-        throw new Error(typeof error === 'string' ? error : error.message);
-    }
-    
-    return (data || []).sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-};
-
-export const updateLeadStatus = async (id: string, status: LeadStatus, adminId: string) => {
-    const { error } = await api.update('leads', { status_funil: status }, { id });
-    if (error) throw new Error(typeof error === 'string' ? error : error.message);
-    logger.info(adminId, 'Sistema', 'update_lead_status', { leadId: id, status });
-};
-
-export const deleteLead = async (id: string, adminId: string) => {
-    const { error } = await api.delete('leads', { id });
-    if (error) throw new Error(typeof error === 'string' ? error : error.message);
-    logger.warn(adminId, 'Sistema', 'delete_lead', { leadId: id });
-};
-
-export const testEmailIntegration = async (email: string) => {
-    const { data, error } = await supabase.functions.invoke('deliver-lead-magnet', {
-        body: { email, nome: 'Teste Admin' }
-    });
-
-    if (error) throw new Error(error.message);
-    if (data?.error) throw new Error(data.error);
-    
-    return data;
-};
 
 // --- NOTIFICATIONS SYSTEM (ADMIN) ---
 
@@ -138,6 +60,7 @@ export const sendSystemNotification = async (
             }));
 
             // 3. Insere em lote (Supabase suporta insert de array)
+            // Nota: Se a lista for muito grande (>1000), ideal seria quebrar em chunks, mas para MVP está ok.
             const { error } = await api.insert('notifications', notifications);
             if (error) throw new Error(error);
 

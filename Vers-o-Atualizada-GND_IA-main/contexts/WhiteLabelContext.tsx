@@ -68,9 +68,9 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
 
   const applyCssVariables = useCallback((newSettings: WhiteLabelSettings) => {
     const root = document.documentElement;
-    root.style.setProperty('--brand-primary', newSettings.primaryColorHex || DEFAULT_WHITE_LABEL_SETTINGS.primaryColorHex);
-    root.style.setProperty('--brand-secondary', newSettings.secondaryColorHex || DEFAULT_WHITE_LABEL_SETTINGS.secondaryColorHex);
-    root.style.setProperty('--brand-tertiary', newSettings.tertiaryColorHex || DEFAULT_WHITE_LABEL_SETTINGS.tertiaryColorHex);
+    root.style.setProperty('--brand-primary', newSettings.primaryColorHex);
+    root.style.setProperty('--brand-secondary', newSettings.secondaryColorHex);
+    root.style.setProperty('--brand-tertiary', newSettings.tertiaryColorHex);
   }, []);
 
   const fetchSettings = useCallback(async () => {
@@ -78,13 +78,8 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const data = await getWhiteLabelSettings();
-      // CRITICAL FIX: Merge fetched settings with default settings.
-      // This ensures that if new keys (like landingPageFeatures) are added to the code but missing in the DB,
-      // the app won't crash with undefined errors.
-      const mergedSettings = { ...DEFAULT_WHITE_LABEL_SETTINGS, ...data };
-      
-      setSettings(mergedSettings);
-      applyCssVariables(mergedSettings);
+      setSettings(data);
+      applyCssVariables(data);
     } catch (err: any) {
       console.error("Erro ao carregar configurações de White Label:", err);
       setError(err.message || "Falha ao carregar configurações de White Label.");
@@ -126,7 +121,7 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
       link.rel = 'icon';
       document.head.appendChild(link);
     }
-    link.href = settings.faviconUrl || DEFAULT_WHITE_LABEL_SETTINGS.faviconUrl;
+    link.href = settings.faviconUrl;
 
     let appleTouchLink = document.querySelector<HTMLLinkElement>("link[rel='apple-touch-icon']");
     if (!appleTouchLink) {
@@ -134,7 +129,7 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
       appleTouchLink.rel = 'apple-touch-icon';
       document.head.appendChild(appleTouchLink);
     }
-    appleTouchLink.href = settings.faviconUrl || DEFAULT_WHITE_LABEL_SETTINGS.faviconUrl; // Usa a mesma URL para apple-touch-icon
+    appleTouchLink.href = settings.faviconUrl; // Usa a mesma URL para apple-touch-icon
 
     // Theme Color
     let themeMeta = document.querySelector<HTMLMetaElement>("meta[name='theme-color']");
@@ -143,7 +138,7 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
       themeMeta.name = 'theme-color';
       document.head.appendChild(themeMeta);
     }
-    themeMeta.content = settings.primaryColorHex || DEFAULT_WHITE_LABEL_SETTINGS.primaryColorHex;
+    themeMeta.content = settings.primaryColorHex;
 
     // Manifest (apenas nome e short_name - o arquivo manifest.json ainda é estático mas com valores genéricos)
     let manifestLink = document.querySelector<HTMLLinkElement>("link[rel='manifest']");
@@ -156,7 +151,7 @@ export function WhiteLabelProvider({ children }: { children: ReactNode }) {
             nameMeta.setAttribute('property', 'og:site_name');
             document.head.appendChild(nameMeta);
         }
-        nameMeta.content = settings.appName || DEFAULT_WHITE_LABEL_SETTINGS.appName; // Usado por SEOHead como fallback
+        nameMeta.content = settings.appName; // Usado por SEOHead como fallback
     }
 
     // Título da página
