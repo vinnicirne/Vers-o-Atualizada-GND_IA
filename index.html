@@ -1,23 +1,108 @@
-<script type="importmap">
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#ECEFF1" />
+    
+    <!-- SECURITY: Content Security Policy (CSP) Updated to allow AI Studio resources and data URIs -->
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src 'self' https://ai.studio https://*.ai.studio https://*.googleusercontent.com;
+      script-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://sdk.mercadopago.com https://www.googletagmanager.com https://aistudiocdn.com https://cdn.jsdelivr.net https://esm.sh https://ai.studio https://*.ai.studio https://*.googleusercontent.com;
+      style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.tailwindcss.com https://ai.studio https://*.ai.studio;
+      font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+      img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://image.pollinations.ai https://via.placeholder.com https://github.com https://ai.studio https://*.ai.studio;
+      frame-src 'self' https://www.youtube.com https://sdk.mercadopago.com;
+      connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://events.mercadopago.com https://www.google-analytics.com https://image.pollinations.ai https://ai.studio https://*.ai.studio https://*.googleusercontent.com *;
+      manifest-src 'self' https://ai.studio https://*.ai.studio;
+    ">
+
+    <title>GDN_IA - Creator Suite</title>
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/16806/16806607.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" referrerpolicy="no-referrer" />
+    <!-- PrismJS Theme for Syntax Highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-okaidia.min.css" referrerpolicy="no-referrer" />
+    <!-- GrapesJS CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/grapesjs/dist/css/grapes.min.css">
+    <!-- GrapesJS Preset Webpage CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/grapesjs-preset-webpage/dist/grapesjs-preset-webpage.min.css">
+    <link rel="stylesheet" href="/index.css" />
+    
+    <!-- ERROR LOGGING SCRIPT -->
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        console.error("🚨 ERRO CRÍTICO (window.onerror):", message);
+        console.error("📍 Local:", source, ":", lineno, ":", colno);
+        console.error("🔍 Stack:", error);
+        
+        const root = document.getElementById('root');
+        // Only show if root is empty (app hasn't loaded)
+        if (root && root.innerHTML.trim() === '') {
+            root.innerHTML = `
+                <div style="font-family: sans-serif; padding: 2rem; background: #FEF2F2; color: #991B1B; border: 2px solid #EF4444; border-radius: 8px; margin: 20px; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                    <h2 style="margin-top:0; font-size: 1.5rem; display: flex; align-items: center; gap: 10px;">
+                        <span style="font-size: 2rem;">🚨</span> Falha no Carregamento
+                    </h2>
+                    <p style="font-weight: bold; margin-bottom: 0.5rem;">O sistema encontrou um erro crítico e não pôde iniciar.</p>
+                    <div style="background: white; padding: 1rem; border-radius: 4px; border: 1px solid #FECACA; overflow-x: auto;">
+                        <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #DC2626;">${message}</p>
+                        <p style="margin: 0; font-size: 0.875rem; color: #4B5563; font-family: monospace;">${source}:${lineno}</p>
+                    </div>
+                    <details style="margin-top: 1rem;">
+                        <summary style="cursor: pointer; font-weight: bold; color: #7F1D1D;">Ver detalhes técnicos (Stack Trace)</summary>
+                        <pre style="background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 4px; overflow: auto; margin-top: 0.5rem; font-size: 0.75rem; color: #374151;">${error?.stack || 'Nenhuma stacktrace disponível.'}</pre>
+                    </details>
+                    <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #4B5563;">
+                        Tente recarregar a página. Se o erro persistir, verifique o console do desenvolvedor (F12).
+                    </p>
+                </div>
+            `;
+        }
+      };
+
+      window.addEventListener('unhandledrejection', function(event) {
+        console.error("🚨 PROMISE REJEITADA NÃO TRATADA:", event.reason);
+      });
+    </script>
+
+    <script type="importmap">
 {
   "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.1",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.1",
-    "react/": "https://aistudiocdn.com/react@^19.2.1/",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react-dom/client": "https://aistudiocdn.com/react-dom@18.3.1/client",
+    "react-dom": "https://aistudiocdn.com/react-dom@18.3.1",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
+    "react/": "https://aistudiocdn.com/react@18.3.1/",
+    "react": "https://aistudiocdn.com/react@18.3.1",
+    "@supabase/supabase-js": "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.0/+esm",
+    "recharts": "https://esm.sh/recharts@2?external=react,react-dom",
+    "uuid": "https://esm.sh/uuid@9.0.1",
+    "react-resizable-panels": "https://esm.sh/react-resizable-panels@2.0.0",
+    "grapesjs": "https://esm.sh/grapesjs@0.21.2",
+    "grapesjs-preset-webpage": "https://esm.sh/grapesjs-preset-webpage@1.0.3",
     "path": "https://aistudiocdn.com/path@^0.12.7",
-    "recharts": "https://aistudiocdn.com/recharts@^3.5.1",
-    "uuid": "https://aistudiocdn.com/uuid@^13.0.0",
-    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.2",
-    "vite": "https://aistudiocdn.com/vite@^7.2.7",
+    "vite": "https://aistudiocdn.com/vite@^7.2.4",
+    "@vitejs/plugin-react": "https://aistudiocdn.com/@vitejs/plugin-react@^5.1.1",
     "react-helmet-async": "https://aistudiocdn.com/react-helmet-async@^2.0.5",
-    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.86.2",
-    "jszip": "https://aistudiocdn.com/jszip@^3.10.1",
-    "grapesjs": "https://aistudiocdn.com/grapesjs@^0.22.14",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.555.0",
+    "fs": "https://aistudiocdn.com/fs@^0.0.1-security",
     "url": "https://aistudiocdn.com/url@^0.11.4",
-    "fs": "https://aistudiocdn.com/fs@^0.0.1-security"
+    "jszip": "https://esm.sh/jszip@3.10.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/"
   }
 }
 </script>
 <link rel="stylesheet" href="/index.css">
-<script type="module" src="/index.tsx"></script>
+    <!-- Mercado Pago SDK -->
+    <script src="https://sdk.mercadopago.com/js/v2"></script>
+</head>
+  <body class="bg-[#ECEFF1] text-[#263238] font-['Poppins']">
+    <div id="root"></div>
+    <div id="modal-root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
