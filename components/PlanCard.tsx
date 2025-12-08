@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { Plan, ServicePermission } from '../types/plan.types';
 
@@ -21,7 +20,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
         ? 'bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer border border-gray-300'
         : isMostPopular
           ? 'bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-400 text-white shadow-purple-200'
-          : 'bg-[var(--brand-primary)] hover:bg-orange-500 text-white shadow-orange-100' // Use brand-primary
+          : 'bg-[#F39C12] hover:bg-orange-500 text-white shadow-orange-100'
     }
   `;
 
@@ -45,9 +44,9 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
       )}
 
       <div className="mb-6 text-center">
-        <h4 className={`text-2xl font-bold uppercase tracking-widest text-[var(--brand-secondary)]`}>{plan.name}</h4>
+        <h4 className={`text-2xl font-bold uppercase tracking-widest text-[#263238]`}>{plan.name}</h4>
         <div className="mt-3 flex items-baseline justify-center">
-          <span className="text-4xl font-bold text-[var(--brand-secondary)]">
+          <span className="text-4xl font-bold text-[#263238]">
             {isFree ? 'Grátis' : `R$ ${plan.price.toFixed(2).replace('.', ',')}`}
           </span>
           {plan.price > 0 && <span className="text-sm text-gray-500 ml-1">/mês</span>}
@@ -57,7 +56,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
       <div className="flex-grow">
         <ul className="space-y-3 mb-6">
           <li className="flex items-center text-base text-gray-600 bg-[#ECEFF1] border border-gray-200 p-3 rounded-md justify-center font-medium">
-            <i className="fas fa-coins text-[var(--brand-primary)] mr-3"></i>
+            <i className="fas fa-coins text-[#F39C12] mr-3"></i>
             {plan.credits === -1 ? 'Créditos Ilimitados' : `${plan.credits} créditos/mês`}
           </li>
 
@@ -67,7 +66,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({ plan, isCurrent = false, onS
           {plan.services.map((service: ServicePermission, idx: number) => (
             <li key={idx} className={`flex items-center text-sm ${service.enabled ? 'text-gray-600' : 'text-gray-400 line-through decoration-gray-300'} transition-colors`}>
               {service.enabled ? (
-                <i className="fas fa-check-circle text-[var(--brand-tertiary)] mr-2 text-xs"></i>
+                <i className="fas fa-check-circle text-green-500 mr-2 text-xs"></i>
               ) : (
                 <i className="fas fa-times-circle text-gray-300 mr-2 text-xs"></i>
               )}

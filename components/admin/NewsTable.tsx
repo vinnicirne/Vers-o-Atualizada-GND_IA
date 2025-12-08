@@ -1,7 +1,5 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
-// FIX: Imported getNewsWithAuthors from adminService
 import { getNewsWithAuthors, updateNewsStatus } from '../../services/adminService';
 import { NewsArticle, NewsStatus } from '../../types';
 import { Pagination } from './Pagination';
@@ -34,7 +32,6 @@ export function NewsTable({ onEdit, dataVersion, statusFilter: initialStatusFilt
     try {
       setLoading(true);
       setError(null);
-      // FIX: Call getNewsWithAuthors
       const { news: newsList, count } = await getNewsWithAuthors({ 
           page: currentPage, 
           limit: NEWS_PER_PAGE,

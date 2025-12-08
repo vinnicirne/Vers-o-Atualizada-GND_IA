@@ -59,7 +59,6 @@ export const generateCreativeContent = async (
       }
 
       if (data.error) {
-          // Propaga o erro específico da Edge Function para o cliente
           throw new Error(data.error);
       }
 

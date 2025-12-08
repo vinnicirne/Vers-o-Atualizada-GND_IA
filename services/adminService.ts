@@ -1,9 +1,8 @@
 
 import { api } from './api';
 import { logger } from './loggerService';
-// FIX: Imported ToolSetting and WhiteLabelSettings from types
-import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup, ToolSetting, WhiteLabelSettings, ServiceKey, UserPlan } from '../types';
-import { GUEST_ID, CREATOR_SUITE_MODES } from '../constants';
+import { User, Log, UserRole, NewsStatus, NewsArticle, UserStatus, Transaction, PaymentSettings, MultiAISettings, AILog, CreditPackage, AIModel, Plan, AllowedDomain, SecuritySettings, AffiliateLog, Popup } from '../types';
+import { GUEST_ID } from '../constants';
 import { supabase } from './supabaseClient'; // Import supabase directly for complex queries
 
 // Helper for client-side pagination since API might return all data
@@ -12,15 +11,6 @@ const paginate = (items: any[], page: number, limit: number) => {
   const to = from + limit;
   return items.slice(from, to);
 };
-
-// --- USER MANAGEMENT TYPES ---
-export interface CreateUserPayload {
-    email: string;
-    password?: string; // Optional for admin-created users
-    full_name: string;
-    role: UserRole;
-    credits: number;
-}
 
 // --- DOMAIN BLACKLIST ---
 const DOMAIN_BLACKLIST = [
@@ -89,7 +79,7 @@ export const sendSystemNotification = async (
             });
 
             if (error) throw new Error(error);
-            logger.info(adminId, 'Sistema', 'send_user_notification', { title, targetUserId });
+            logger.info(adminId || 'system', 'Sistema', 'send_user_notification', { title, targetUserId });
             return { success: true, count: 1 };
         }
     } catch (e: any) {
@@ -167,7 +157,7 @@ export const getAffiliateStats = async (userId: string) => {
              if(users) {
                  users.forEach((u:any) => {
                      userMap.set(u.id, u.email);
-                 );
+                 });
              }
         }
 
@@ -214,7 +204,7 @@ export const getPopups = async (onlyActive = false): Promise<Popup[]> => {
         // Conversão segura do erro para string
         const errorMsg = typeof error === 'string' ? error : (error.message || JSON.stringify(error));
         
-        // Se a tabela não existir (inda não foi criada via SQL), retorna array vazio para não quebrar a UI
+        // Se a tabela não existir (ainda não foi criada via SQL), retorna array vazio para não quebrar a UI
         if(
             errorMsg.includes('does not exist') || 
             errorMsg.includes('404') || 
@@ -248,93 +238,6 @@ export const deletePopup = async (id: string, adminId: string) => {
     logger.warn(adminId, 'Sistema', 'delete_popup', { id });
 };
 
-// --- GLOBAL TOOL SETTINGS ---
-
-const DEFAULT_TOOL_SETTINGS: ToolSetting[] = CREATOR_SUITE_MODES.map(mode => ({
-    key: mode.value,
-    enabled: true, // Por padrão, todas as ferramentas estão ativadas
-}));
-
-export const getGlobalToolSettings = async (): Promise<ToolSetting[]> => {
-    let settings = await getConfig<ToolSetting[]>('tool_settings', DEFAULT_TOOL_SETTINGS);
-    
-    // Ensure all current modes are represented, even if newly added to CREATOR_SUITE_MODES
-    const currentModeKeys = new Set(CREATOR_SUITE_MODES.map(m => m.value));
-    const existingKeys = new Set(settings.map(s => s.key));
-
-    // Add new modes not present in saved settings
-    for (const mode of CREATOR_SUITE_MODES) {
-        if (!existingKeys.has(mode.value)) {
-            settings.push({ key: mode.value, enabled: true });
-        }
-    }
-    // Remove old modes that are no longer in CREATOR_SUITE_MODES
-    settings = settings.filter(s => currentModeKeys.has(s.key));
-
-    return settings;
-};
-
-export const updateGlobalToolSettings = async (settings: ToolSetting[], adminId: string) => {
-    await setConfig('tool_settings', settings, adminId);
-    logger.info(adminId, 'Planos', 'update_global_tool_settings', { tool_count: settings.length });
-};
-
-// --- WHITE LABEL SETTINGS ---
-const DEFAULT_WHITE_LABEL_SETTINGS: WhiteLabelSettings = {
-    appName: "GDN_IA",
-    appTagline: "Creator Suite",
-    logoTextPart1: "GDN",
-    logoTextPart2: "_IA",
-    primaryColorHex: "#F39C12",
-    secondaryColorHex: "#263238",
-    tertiaryColorHex: "#10B981",
-    faviconUrl: "https://cdn-icons-png.flaticon.com/512/16806/16806607.png",
-    ogImageUrl: "https://gdn.ia/default-og.jpg",
-    wordpressPluginName: "GDN_IA - Poster Pro",
-    copyrightText: "GDN_IA",
-    appVersion: "1.0.9",
-    dashboardTitle: "Creator Suite",
-    // New defaults for landing page and guest footer
-    landingPageEnabled: true,
-    heroSectionTitle: "Crie Notícias, Imagens e Sites 10x Mais Rápido com IA.",
-    heroSectionSubtitle: "A plataforma completa para criadores, jornalistas e agências. Esqueça o bloqueio criativo e produza conteúdo profissional em segundos.",
-    heroCtaPrimaryText: "Começar Agora",
-    heroCtaPrimaryLink: "dashboard",
-    heroCtaSecondaryText: "Ver Demo",
-    heroCtaSecondaryLink: "login",
-    featureSectionTitle: "Tudo o que você precisa em um só lugar",
-    featureSectionSubtitle: "Substitua dezenas de ferramentas caras por uma única suíte inteligente.",
-    landingPageFeatures: [
-        { id: '1', icon: "fa-newspaper", color: "text-green-600", bgColor: "bg-green-100", title: "Gerador de Notícias", description: "Artigos jornalísticos completos, imparciais e otimizados para SEO, baseados em fatos reais e recentes." },
-        { id: '2', icon: "fa-paint-brush", color: "text-purple-600", bgColor: "bg-purple-100", title: "Studio de Arte IA", description: "Crie imagens ultra-realistas, logotipos e ilustrações apenas descrevendo o que você imagina." },
-        { id: '3', icon: "fa-laptop-code", color: "text-blue-600", bgColor: "bg-blue-100", title: "Criador de Sites", description: "Gere Landing Pages e Sites Institucionais completos com código HTML/Tailwind pronto para uso." },
-        { id: '4', icon: "fa-microphone-lines", color: "text-orange-600", bgColor: "bg-orange-100", title: "Texto para Voz", description: "Narre seus artigos e vídeos com vozes neurais ultra-realistas em português." },
-        { id: '5', icon: "fa-bolt", color: "text-yellow-600", bgColor: "bg-yellow-100", title: "Automação N8N", description: "Conecte seu conteúdo diretamente ao seu WordPress, redes sociais ou planilhas via Webhooks." },
-        { id: '6', icon: "fa-search", color: "text-pink-600", bgColor: "bg-pink-100", title: "SEO Automático", description: "Nossa IA analisa e otimiza seu texto para rankear no topo do Google automaticamente." },
-    ],
-    pricingSectionTitle: "Planos acessíveis para todos",
-    pricingSectionSubtitle: "Comece grátis e escale conforme sua necessidade.",
-    landingPageFooterLinks: [
-        { id: '1', text: "Termos", link: "terms" },
-        { id: '2', text: "Privacidade", link: "privacy" },
-        { id: '3', text: "Sobre", link: "about" },
-    ],
-    guestMarketingFooterTitle: "Gostou do teste?",
-    guestMarketingFooterSubtitle: "Crie sua conta gratuita agora e desbloqueie ferramentas avançadas como Geração de Imagens e Sites Completos.",
-    guestMarketingFooterCtaText: "Criar Conta Grátis",
-    guestMarketingFooterCtaLink: "login",
-};
-
-export const getWhiteLabelSettings = async (): Promise<WhiteLabelSettings> => {
-    return getConfig<WhiteLabelSettings>('white_label_settings', DEFAULT_WHITE_LABEL_SETTINGS);
-};
-
-export const updateWhiteLabelSettings = async (settings: WhiteLabelSettings, adminId: string) => {
-    await setConfig('white_label_settings', settings, adminId);
-    logger.info(adminId, 'Sistema', 'update_white_label_settings', settings);
-};
-
-
 // --- USERS ---
 
 export interface GetUsersParams {
@@ -344,153 +247,153 @@ export interface GetUsersParams {
   status: UserStatus | 'all';
 }
 
-export const getUsers = async ({ page, limit, role, status }: GetUsersParams): Promise<{ users: User[], count: number }> => {
+export const getUsers = async ({ page, limit, role, status }: GetUsersParams) => {
   const filters: any = {};
   if (role !== 'all') filters.role = role;
   if (status !== 'all') filters.status = status;
 
-  // Use the direct supabase client for exact count and filtering
-  const { data, count, error } = await supabase
-        .from('app_users')
-        .select('*', { count: 'exact' })
-        .match(filters);
-
-  if (error) {
-      console.error("Erro ao buscar usuários:", error);
-      throw error;
-  }
+  const { data, error } = await api.select('app_users', filters);
+  if (error) throw error;
 
   let usersList = data || [];
   
-  // Enriquecer com dados de créditos
-  const userIds = usersList.map(u => u.id);
-  const { data: creditsData } = await api.select('user_credits', {}, { inColumn: 'user_id', inValues: userIds });
-  const creditsMap = new Map<string, number>();
-  if(creditsData) {
+  const { data: creditsData } = await api.select('user_credits');
+  const creditsMap = new Map();
+  if (creditsData) {
       creditsData.forEach((c: any) => creditsMap.set(c.user_id, c.credits));
   }
 
   const enrichedUsers: User[] = usersList.map((u: any) => ({
       ...u,
-      credits: creditsMap.get(u.id) ?? 0 // Default to 0 if no credit entry
+      credits: creditsMap.get(u.id) ?? 0
   }));
 
-  enrichedUsers.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+  enrichedUsers.sort((a, b) => {
+      if (a.last_login && b.last_login) {
+          return new Date(b.last_login).getTime() - new Date(a.last_login).getTime();
+      }
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+  });
 
-  if (page !== undefined && limit !== undefined) {
-      return { users: paginate(enrichedUsers, page, limit), count: count || 0 };
+  return { users: paginate(enrichedUsers, page, limit), count: enrichedUsers.length };
+};
+
+export const searchUsers = async (term: string): Promise<User[]> => {
+    if (!term || term.length < 3) return [];
+
+    let query = supabase
+        .from('app_users')
+        .select('*');
+
+    // Se parecer um UUID, faz match exato, senão busca nome/email
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term);
+
+    if (isUuid) {
+        query = query.eq('id', term);
+    } else {
+        query = query.or(`email.ilike.%${term}%,full_name.ilike.%${term}%`);
+    }
+
+    const { data, error } = await query.limit(10); // Limite de resultados para performance
+
+    if (error) {
+        console.error("Erro na busca de usuários:", error);
+        return [];
+    }
+
+    // Mapeamento básico para o tipo User (pode faltar créditos, mas ok para seleção)
+    return (data || []).map((u: any) => ({
+        ...u,
+        credits: 0 // Placeholder, não precisamos dos créditos para esta view
+    }));
+};
+
+export const updateUser = async (userId: string, updates: any, adminId: string) => {
+  const profileUpdates: any = {};
+  if (updates.role) profileUpdates.role = updates.role;
+  if (updates.status) profileUpdates.status = updates.status;
+  if (updates.full_name) profileUpdates.full_name = updates.full_name;
+  if (updates.plan) profileUpdates.plan = updates.plan;
+
+  if (Object.keys(profileUpdates).length > 0) {
+    await api.update('app_users', profileUpdates, { id: userId });
   }
-  return { users: enrichedUsers, count: count || 0 };
-};
 
-export const createUser = async (payload: CreateUserPayload, adminId: string) => {
-    const { email, password, full_name, role, credits } = payload;
-    
-    // First, create the user in Auth.supabase
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: { full_name, role, credits } // Pass initial metadata
-    });
-
-    if (authError) {
-        console.error("Erro ao criar usuário no Auth:", authError);
-        throw new Error(authError.message || "Falha ao criar usuário de autenticação.");
+  if (updates.credits !== undefined) {
+    const { data: existing } = await api.select('user_credits', { user_id: userId });
+    if (existing && existing.length > 0) {
+        await api.update('user_credits', { credits: updates.credits }, { user_id: userId });
+    } else {
+        await api.insert('user_credits', { user_id: userId, credits: updates.credits });
     }
-    if (!authData.user) {
-        throw new Error("Usuário de autenticação não retornado após criação.");
-    }
-
-    // The handle_new_user trigger will populate app_users and user_credits
-    // We just need to ensure the role and credits are correctly set if the trigger doesn't cover all cases.
-    // For now, assume trigger handles initial setup, but we might need explicit updates.
-
-    // If initial credits or role are different from trigger defaults, update explicitly
-    await Promise.all([
-        api.update('app_users', { role, full_name }, { id: authData.user.id }),
-        api.update('user_credits', { credits }, { user_id: authData.user.id })
-    ]);
-
-    logger.info(adminId, 'Usuários', 'create_user', { newUserId: authData.user.id, email, role });
-    return authData.user;
-};
-
-export const updateUser = async (userId: string, updates: { role: UserRole, credits: number, status: UserStatus, full_name: string, plan: string }, adminId: string) => {
-    // Update app_users table
-    const { error: userError } = await api.update('app_users', { 
-        role: updates.role, 
-        status: updates.status, 
-        full_name: updates.full_name,
-        plan: updates.plan
-    }, { id: userId });
-    if (userError) throw userError;
-
-    // Update user_credits table
-    const { error: creditsError } = await api.update('user_credits', { credits: updates.credits }, { user_id: userId });
-    if (creditsError) throw creditsError;
-
-    logger.info(adminId, 'Usuários', 'update_user', { userId, updates });
+  }
+  logger.info(adminId, 'Usuários', 'update_user', { target_user_id: userId, updates });
 };
 
 export const deleteUser = async (userId: string, adminId: string) => {
-    // Deleta o usuário da tabela `app_users` e `user_credits` (cascade se configurado)
-    // Deleta o usuário do Auth Supabase (admin API)
-    const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+    const dependencies = [
+        { table: 'user_credits', key: 'user_id' },
+        { table: 'user_memory', key: 'user_id' }, 
+        { table: 'news', key: 'author_id' },      
+        { table: 'logs', key: 'usuario_id' },     
+        { table: 'ai_logs', key: 'usuario_id' },  
+        { table: 'transactions', key: 'usuario_id' },
+        { table: 'affiliate_logs', key: 'affiliate_id' },
+        { table: 'notifications', key: 'user_id' }, // Added notifications
+    ];
 
-    if (authError) {
-        console.error("Erro ao deletar usuário no Auth:", authError);
-        throw new Error(authError.message || "Falha ao deletar usuário de autenticação.");
+    for (const dep of dependencies) {
+        await api.delete(dep.table, { [dep.key]: userId });
     }
     
-    // Logs são importantes para auditoria, então não deletamos aqui, apenas o perfil
-    logger.warn(adminId, 'Usuários', 'delete_user', { userId });
+    const { error } = await api.delete('app_users', { id: userId });
+    if (error) throw new Error(`Erro ao excluir perfil: ${error}`);
+
+    logger.warn(adminId, 'Usuários', 'delete_user', { deleted_user_id: userId });
+};
+
+export interface CreateUserPayload {
+  email: string;
+  password?: string;
+  full_name: string;
+  role: UserRole;
+  credits: number;
+}
+
+export const createUser = async (payload: CreateUserPayload, adminId: string) => {
+  throw new Error("Criação de usuário via Admin requer API direta, não suportada pelo proxy atual.");
 };
 
 // --- NEWS ---
 
-export interface GetNewsParams {
-    page: number;
-    limit: number;
-    status: NewsStatus | 'all';
-}
-
-export const getNewsWithAuthors = async ({ page, limit, status }: GetNewsParams): Promise<{ news: NewsArticle[], count: number }> => {
+export const getNewsWithAuthors = async ({ page, limit, status }: { page?: number; limit?: number; status?: NewsStatus | 'all' } = {}) => {
   const filters: any = {};
-  if (status !== 'all') filters.status = status;
+  if (status && status !== 'all') filters.status = status;
 
-  // Use direct supabase client for exact count and filtering for news
-  const { data, count, error } = await supabase
-        .from('news')
-        .select('*', { count: 'exact' })
-        .match(filters);
-
-  if (error) {
-      console.error("Erro ao buscar notícias:", error);
-      throw error;
-  }
+  const { data, error } = await api.select('news', filters);
+  if (error) throw error;
 
   let newsList = data || [];
   
-  // Optimization: Fetch author emails for all relevant news articles in one go
-  const authorIds = [...new Set(newsList.map((n: any) => n.author_id).filter(Boolean))];
-  let authorMap = new Map();
-  if (authorIds.length > 0) {
-      const { data: users } = await api.select('app_users', {}, { inColumn: 'id', inValues: authorIds });
-      if(users) users.forEach((u: any) => authorMap.set(u.id, u.email));
+  // Optimization here too if needed, but keeping simple for now
+  const userIds = [...new Set(newsList.map((n: any) => n.author_id).filter(Boolean))];
+  let userMap = new Map();
+  if (userIds.length > 0) {
+      const { data: users } = await api.select('app_users', {}, { inColumn: 'id', inValues: userIds });
+      if(users) users.forEach((u: any) => userMap.set(u.id, u.email));
   }
 
   const enrichedNews: NewsArticle[] = newsList.map((n: any) => ({
       ...n,
-      author: { email: authorMap.get(n.author_id) || 'Desconhecido' }
+      author: { email: userMap.get(n.author_id) || 'Desconhecido' }
   }));
 
-  enrichedNews.sort((a, b) => new Date(b.criado_em || '').getTime() - new Date(a.criado_em || '').getTime());
+  enrichedNews.sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime());
 
   if (page !== undefined && limit !== undefined) {
-      return { news: paginate(enrichedNews, page, limit), count: count || 0 };
+      return { news: paginate(enrichedNews, page, limit), count: enrichedNews.length };
   }
-  return { news: enrichedNews, count: count || 0 };
+  return { news: enrichedNews, count: enrichedNews.length };
 };
 
 export const updateNewsStatus = async (newsId: number, status: NewsStatus, adminId: string) => {
@@ -512,16 +415,8 @@ export const getLogs = async ({ page, limit, module, action, searchText }: any) 
   if (module !== 'all') filters.modulo = module;
   if (action !== 'all') filters.acao = action;
 
-  // Use direct supabase client for exact count and filtering for logs
-  const { data, count, error } = await supabase
-        .from('logs')
-        .select('*', { count: 'exact' })
-        .match(filters);
-
-  if (error) {
-      console.error("Erro ao buscar logs:", error);
-      throw error;
-  }
+  const { data, error } = await api.select('logs', filters);
+  if (error) throw error;
 
   let logsList = data || [];
 
@@ -562,7 +457,7 @@ export const getLogs = async ({ page, limit, module, action, searchText }: any) 
 
   enrichedLogs.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
-  return { logs: paginate(enrichedLogs, page, limit), count: count || 0 };
+  return { logs: paginate(enrichedLogs, page, limit), count: enrichedLogs.length };
 };
 
 // --- PAYMENTS ---
@@ -621,7 +516,7 @@ export const getPaymentSettings = async (): Promise<PaymentSettings> => {
         packages: []
     };
     const saved = await getConfig<Partial<PaymentSettings>>('payment_settings', defaults);
-    return { ...defaults, ...saved, gateways: { ...defaults.gateways, ...(saved.gateways || {}) } } as PaymentSettings; // Cast para segurança
+    return { ...defaults, ...saved, gateways: { ...defaults.gateways, ...(saved.gateways || {}) } };
 };
 
 export const saveGatewaySettings = async (gateways: any, adminId: string) => {
@@ -716,35 +611,4 @@ export const isDomainAllowed = async (email: string): Promise<boolean> => {
   } catch (e) {
       return false;
   }
-};
-
-export const searchUsers = async (searchTerm: string): Promise<User[]> => {
-    if (!searchTerm || searchTerm.length < 3) return [];
-
-    const { data, error } = await supabase
-        .from('app_users')
-        .select('id, email, full_name, role, status, plan, credits') // Select necessary fields
-        .or(`email.ilike.%${searchTerm}%,full_name.ilike.%${searchTerm}%,id.eq.${searchTerm}`); // Search across multiple fields
-
-    if (error) {
-        console.error("Error searching users:", error);
-        throw error;
-    }
-
-    let usersList = data || [];
-    
-    // Enrich with credits data if not already present (from the `select` above, it's not direct)
-    const userIds = usersList.map(u => u.id);
-    const { data: creditsData } = await api.select('user_credits', {}, { inColumn: 'user_id', inValues: userIds });
-    const creditsMap = new Map<string, number>();
-    if(creditsData) {
-        creditsData.forEach((c: any) => creditsMap.set(c.user_id, c.credits));
-    }
-
-    const enrichedUsers: User[] = usersList.map((u: any) => ({
-        ...u,
-        credits: creditsMap.get(u.id) ?? 0 // Default to 0 if no credit entry
-    }));
-
-    return enrichedUsers;
 };

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { PlansModal } from '../PlansModal';
 import { UserHistoryModal } from '../UserHistoryModal';
@@ -5,7 +6,6 @@ import { ManualModal } from '../ManualModal';
 import { AffiliateModal } from '../AffiliateModal';
 import { IntegrationsModal } from '../integrations/IntegrationsModal';
 import { User } from '../../types';
-import { ApiKeySelectionModal } from './ApiKeySelectionModal'; // NOVO
 
 interface DashboardModalsProps {
     modals: {
@@ -16,7 +16,6 @@ interface DashboardModalsProps {
         integrations: boolean;
         guestLimit: boolean;
         featureLock: boolean;
-        apiKeySelection: boolean; // NOVO
     };
     toggleModal: (modal: keyof DashboardModalsProps['modals'], value: boolean) => void;
     user: User | null;
@@ -112,18 +111,6 @@ export function DashboardModals({
                         </div>
                     </div>
                 </div>
-            )}
-            
-            {/* NOVO: API KEY SELECTION MODAL */}
-            {modals.apiKeySelection && (
-                <ApiKeySelectionModal
-                    onClose={() => toggleModal('apiKeySelection', false)}
-                    onKeySelected={() => {
-                        toggleModal('apiKeySelection', false); // Fecha o modal
-                        // Tenta gerar novamente, pois o hook useDashboard chamará a validação da chave
-                        // O onKeySelected pode não precisar fazer nada aqui, o useDashboard já cuida
-                    }}
-                />
             )}
         </>
     );

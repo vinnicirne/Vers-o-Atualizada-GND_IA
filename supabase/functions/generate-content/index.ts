@@ -3,9 +3,14 @@
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// CORREÇÃO: Usar npm: para garantir o download correto do pacote oficial
 import { GoogleGenAI } from "npm:@google/genai";
-import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts";
+// Importar templates de currículo (necessário para o backend)
+import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts"; // Ajustar caminho conforme a estrutura real
+// Import the GenerateContentOptions type
+// @ts-ignore
 import type { GenerateContentOptions } from "../../../services/geminiService.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,14 +19,12 @@ const corsHeaders = {
 
 // Limite seguro de caracteres para o modelo de áudio (TTS)
 const MAX_TTS_CHARS = 2800;
-const TTS_FAILED_PREFIX = '[TTS_FAILED_TEXT_FALLBACK]';
-const AUDIO_ERROR_FALLBACK_PREFIX = '[AUDIO_ERROR_FALLBACK]';
 
 const CREATOR_SUITE_SYSTEM_PROMPT = `
 Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
 
 ## PROCESSO DE APRENDIZADO E EVOLUÇÃO (RAG)
-Você possui uma memória persistente das preferências do usuário. Antes de gerar qualquer coisa, analyze a seção "Histórico de Aprendizado do Usuário" abaixo.
+Você possui uma memória persistente das preferências do usuário. Antes de gerar qualquer coisa, analise a seção "Histórico de Aprendizado do Usuário" abaixo.
 1. Se houver feedbacks com "✅ [PADRÃO DE SUCESSO]", tente replicar o estilo, tom ou estrutura que agradou.
 2. Se houver feedbacks com "❌ [PADRÃO DE ERRO]", EVITE cometer os mesmos erros.
 3. A cada nova geração, você deve tentar superar a anterior baseada nesses feedbacks.
@@ -35,7 +38,7 @@ Ao gerar notícias, artigos ou copy:
 MODOS DISPONÍVEIS (roteie baseado na query):
 
 1. **GDN Notícias**: 
-   - Escreva uma matéria aprofundada baseada nos dados fornecidos ou em seu conhecimento.
+   - Escreva uma notícia completa baseada nos dados fornecidos ou em seu conhecimento.
    - **OBRIGATÓRIO:** O primeiro parágrafo deve conter a palavra-chave principal do assunto (ex: se é sobre Flamengo, a palavra "Flamengo" deve estar na primeira linha).
    - Use formatação Markdown (Negrito para ênfase).
 
@@ -62,149 +65,221 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
-   - Use font-sans (padrão moderno).
-   - Espaçamento generoso (py-20, gap-8).
-   - Sombras sofisticadas (shadow-2xl, shadow-inner).
-   - Use <section> tags distintas para cada bloco de conteúdo para facilitar a edição visual.
-   - Retorne APENAS o HTML do <body>.
+   - Use `font-sans` (padrão moderno).
+   - Espaçamento generoso (`py-20`, `gap-8`).
+   - Sombras sofisticadas (`shadow-2xl`, `shadow-inner`).
+   - Use `<section>` tags distintas para cada bloco de conteúdo para facilitar a edição visual.
+   - Retorne APENAS o HTML do `<body>`.
 
-    4. **Studio de Arte IA (Image Generation)**:
-       Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
-       - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
-       - Retorne APENAS o prompt em inglês.
+4. **Studio de Arte IA (Image Generation)**:
+   Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
+   - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
+   - Retorne APENAS o prompt em inglês.
 
-    5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
+5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
 
-    6. **Editor Visual (Social Media)**:
-       Gere APENAS o código HTML de uma <div> (1080x1080px) com Tailwind CSS.
-       - Design vibrante, tipografia grande, contraste alto.
+6. **Editor Visual (Social Media)**:
+   Gere APENAS o código HTML de uma `<div>` (1080x1080px) com Tailwind CSS.
+   - Design vibrante, tipografia grande, contraste alto.
 
-    7. **Criador de Currículos (IA)**:
-       Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
-       Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
+7. **Criador de Currículos (IA)**:
+   Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
+   Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
 
-       **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
-       - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
-       - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
-       - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
-       - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
-       - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
-       - **Tom de Voz:** Profissional, confiante e orientado a resultados.
+   **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
+   - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
+   - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
+   - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
+   - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
+   - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
+   - **Tom de Voz:** Profissional, confiante e orientado a resultados.
 
-       **REGRAS ESTRUTURAIS E DE PREENCHIMENTO HTML (Tailwind CSS):**
-       - Utilize o TEMPLATE HTML fornecido como base.
-       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: \`<span id="resume-name"></span>\`, \`<div id="experience-list"></div>\`).
-       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o `innerHTML`** do elemento com o ID.
-       - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
-       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu `innerHTML` vazio** ou remova o elemento se for mais limpo.
-       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere a estrutura HTML completa da lista e seus itens** (ex: `<div>...</div>` para cada experiência, `<span>...</span>` para cada skill) diretamente dentro do `div` de placeholder da lista.
-       - **NÃO inclua tags \`<html>\`, \`<head>\` ou \`<body>\` externas.** Apenas o conteúdo interno.
-       - Use classes Tailwind CSS para todo o estilo.
-       - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
-       - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+   **REGRAS ESTRUTURAIS HTML (Tailwind CSS):**
+   - Utilize a estrutura HTML fornecida pelo template.
+   - Não inclua tags `<html>`, `<head>` ou `<body>` externas. Apenas o conteúdo interno.
+   - Mantenha a semântica HTML (h1, h2, p, ul, li).
+   - Use classes Tailwind CSS para todo o estilo.
+   - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
 
-    8. **Criador de Posts Sociais (Social Media Poster)**:
-       [IMAGE_PROMPT] (Inglês técnico)
-       [COPY] (Português persuasivo, tom de autoridade).
+   **INSTRUÇÕES DE PREENCHIMENTO:**
+   - Adapte o `summary` (resumo profissional) com base no `prompt` do usuário (se fornecido) e nas informações de experiência.
+   - Para `experience` e `education`, reescreva as `descriptions` para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
+   - Para `skills`, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
+   - **NÃO use Markdown**. Apenas HTML puro com classes Tailwind.
+   - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+
+8. **Criador de Posts Sociais (Social Media Poster)**:
+   [IMAGE_PROMPT] (Inglês técnico)
+   [COPY] (Português persuasivo, tom de autoridade).
 `;
 
-const cleanHtmlContent = (rawText: string): string => {
-    let text = rawText.replace(/```html\n?/g, '').replace(/```/g, '').trim();
+serve(async (req) => {
+  // 1. Handle Preflight Requests (CORS)
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
-    // Try to extract content within <body>...</body> tags
-    // FIX: Explicitly cast 'text' to string before regex match to resolve potential type inference issues in Deno.
-    const bodyMatch = (text as string).match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    if (bodyMatch && bodyMatch[1]) {
-        text = bodyMatch[1].trim();
+  try {
+    // 2. Parse Body
+    let reqBody;
+    try {
+        reqBody = await req.json();
+    } catch (e) {
+        return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
     }
     
-    // If it's still wrapped in a single <div>...</div>, extract that
-    // FIX: Explicitly cast 'text' to string before regex match and string methods.
-    const divMatch = (text as string).match(/^<div[^>]*>([\s\S]*)<\/div>$/i);
-    // Add an extra check to ensure it's not a partial div, and to avoid capturing too much if multiple divs are present.
-    // This is a heuristic. A full HTML parser is ideal but disallowed.
-    if (divMatch && divMatch[1] && (text as string).startsWith('<div') && (text as string).endsWith('</div>')) {
-        text = divMatch[1].trim();
+    // Destructure using let so we can modify mode
+    let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory } = reqBody;
+    // FIX: Explicitly cast rawOptions to the comprehensive type
+    const options: GenerateContentOptions = rawOptions || {};
+
+    // Sanitize mode string to prevent mismatches due to whitespace
+    mode = mode?.trim();
+    
+    // 3. Get & Validate API Key
+    const apiKey = Deno.env.get("GEMINI_API_KEY");
+    if (!apiKey) {
+        throw new Error("Erro de Configuração: GEMINI_API_KEY não encontrada no servidor.");
     }
 
-    // Replace any remaining leading/trailing common HTML block tags that might enclose the main content
-    // This is a heuristic and might need adjustment based on typical model output
-    // A more aggressive regex to remove any outer tags if they look like simple wrappers.
-    // FIX: Added explicit type cast to (text as string) to resolve "Cannot find name 'div'" error.
-    text = (text as string).replace(/^<(p|div|span|h[1-6]|ul|ol|li)[^>]*>\s*/i, '').replace(/\s*<\/(p|div|span|h[1-6]|ul|ol|li)>$/i, '').trim();
+    // 4. Initialize Gemini (GoogleGenAI SDK)
+    const ai = new GoogleGenAI({ apiKey });
+    
+    // --- TEXT TO SPEECH MODE HANDLER ---
+    if (mode === 'text_to_speech') {
+        const voiceName = options?.voice || 'Kore';
+        const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
 
-    return text;
-};
-
-// --- HANDLERS DE MODO ---
-
-async function handleTextToSpeechGeneration(ai: GoogleGenAI, prompt: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const voiceName = options?.voice || 'Kore';
-    const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
-
-    // NOVO: Log de parâmetros de entrada para depuração
-    console.log("Prompt para TTS:", safePrompt);
-    console.log("Opções para TTS:", JSON.stringify(options));
-
-    try {
-        const audioResponse = await ai.models.generateContent({
-            model: "gemini-2.5-flash-preview-tts",
-            contents: [{ parts: [{ text: safePrompt }] }],
-            config: {
-                responseModalities: ["AUDIO"],
-                speechConfig: {
-                    voiceConfig: {
-                        prebuiltVoiceConfig: { voiceName: voiceName },
+        try {
+            const audioResponse = await ai.models.generateContent({
+                model: "gemini-2.5-flash-preview-tts",
+                contents: [{ parts: [{ text: safePrompt }] }],
+                config: {
+                    responseModalities: ["AUDIO"],
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: voiceName },
+                        },
                     },
                 },
-            },
-        });
-        
-        console.log("Resposta completa do TTS da API Gemini:", JSON.stringify(audioResponse, null, 2));
+            });
+            
+            const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+            
+            if (!audioBase64) {
+                throw new Error("O modelo não retornou áudio.");
+            }
 
-        const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-        
-        if (!audioBase64) {
-            console.warn("TTS Falha (Edge Function): Modelo respondeu sem áudio. Retornando texto como fallback.");
-            return { 
-                text: `${TTS_FAILED_PREFIX} ${safePrompt}`,
-                audioBase64: null, 
+            return new Response(JSON.stringify({ 
+                text: "Áudio gerado com sucesso.", 
+                audioBase64, 
                 sources: [] 
-            };
+            }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+
+        } catch (ttsError: any) {
+            console.error("TTS Error:", ttsError);
+            throw new Error(`Falha na geração de áudio: ${ttsError.message}`);
+        }
+    }
+
+    const modelName = 'gemini-2.5-flash';
+
+    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
+
+    let fullPrompt = `
+      Query do usuário: ${prompt}
+      Modo de Geração: ${mode}
+    `;
+
+    if (mode === 'image_generation' && options) {
+        fullPrompt += `
+        CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
+        - Estilo Artístico: ${options.imageStyle || 'Photorealistic'}
+        - Proporção: ${options.aspectRatio || '1:1'}
+        `;
+    }
+
+    if (mode === 'social_media_poster' && options) {
+        fullPrompt += `
+        CONTEXTO PARA POSTER:
+        - Plataforma: ${options.platform || 'Instagram'}
+        - Tema: ${options.theme || 'Modern'}
+        `;
+    }
+
+    if (mode === 'landingpage_generator' && options) { // Agora unificado
+        fullPrompt += `
+        **DIRETRIZES VISUAIS ESPECÍFICAS:**
+        - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
+        - **Cor Primária**: ${options.primaryColor || '#10B981'}.
+        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
+        `;
+    }
+
+    // --- CURRICULUM GENERATOR LOGIC ---
+    if (mode === 'curriculum_generator' && options) {
+        const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
+        const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
+
+        if (!selectedTemplate) {
+            throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
         }
 
-        return { 
-            text: "Áudio gerado com sucesso.", 
-            audioBase64, 
-            sources: [] 
-        };
+        // Prepare data for Handlebars-like replacement (simplified for direct insertion by LLM)
+        // The LLM will "fill in" these placeholders intelligently based on the structured data and prompt.
+        // FIX: Corrected variable access for curriculum data within the prompt and added optional chaining.
+        const curriculumDataPrompt = `
+        Por favor, gere um currículo HTML com Tailwind CSS usando o template a seguir. Preencha os placeholders com as informações fornecidas e otimize cada seção conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis).
 
-    } catch (ttsError: any) {
-        console.error("TTS Error (Edge Function):", ttsError);
-        // FIX: Removed 'error' property from return type, throw instead.
-        throw new Error(`Falha na geração de áudio: ${ttsError.message || "Erro desconhecido da API Gemini."}`);
+        **Template de Currículo Escolhido:**
+        \`\`\`html
+        ${selectedTemplate}
+        \`\`\`
+
+        **Informações do Usuário:**
+        - **Objetivo de Carreira (Prompt Geral):** ${prompt || 'Não fornecido, crie um objetivo padrão.'}
+        - **Dados Pessoais:**
+            Nome: ${options.personalInfo?.name || ''}
+            Email: ${options.personalInfo?.email || ''}
+            Telefone: ${options.personalInfo?.phone || ''}
+            LinkedIn: ${options.personalInfo?.linkedin || ''}
+            Portfólio: ${options.personalInfo?.portfolio || ''}
+        - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo.'}
+        - **Experiência Profissional:**
+            ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
+        - **Formação Acadêmica:**
+            ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
+        - **Habilidades:** ${options.skills?.join(', ') || 'Não fornecido, a IA pode sugerir habilidades comuns.'}
+        - **Projetos:**
+            ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
+        - **Certificações:** ${options.certifications?.join(', ') || 'Nenhuma.'}
+
+        **Lembre-se das Regras do Modo "Criador de Currículos (IA)" para ATS e HTML puro.**
+        `;
+        fullPrompt = curriculumDataPrompt; // Override fullPrompt for curriculum mode
     }
-}
 
-async function handleNewsGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, generateAudio: boolean, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const modelName = 'gemini-2.5-flash';
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-    
-    const fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: news_generator`;
 
-    // FIX: Removed explicit 'any' type to allow proper type inference for config
-    const config = {
-        systemInstruction: systemPromptWithMemory,
-        tools: [{ googleSearch: {} }]
+    let config: any = {
+        systemInstruction: systemPromptWithMemory
     };
+    
+    if (mode === 'news_generator') {
+        config.tools = [{ googleSearch: {} }];
+    }
 
+    // 5. Call Generate Content
     const response = await ai.models.generateContent({
         model: modelName,
-        contents: fullPrompt, 
+        // FIX: The `contents` parameter accepts a string directly. Wrapping in `parts` for robustness.
+        contents: { parts: [{ text: fullPrompt }] }, 
         config: config,
     });
 
-    let text: string = response.text || '';
+    let text = response.text;
+    
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
         sources = response.candidates[0].groundingMetadata.groundingChunks
@@ -221,8 +296,27 @@ async function handleNewsGeneration(ai: GoogleGenAI, prompt: string, userMemory:
         throw new Error('A API não retornou conteúdo de texto.');
     }
 
+    // Cleanup Logic
+    if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
+        text = text.replace(/```html/g, '').replace(/```/g, '').trim();
+        
+        // Ensure only the content inside the <body> or main <div> is returned
+        const bodyStartIndex = text.indexOf('<body');
+        const bodyEndIndex = text.lastIndexOf('body>') + 5;
+        if (bodyStartIndex !== -1 && bodyEndIndex !== -1) {
+            text = text.substring(bodyStartIndex, bodyEndIndex);
+        } else {
+            const divStartIndex = text.indexOf('<div');
+            const divEndIndex = text.lastIndexOf('div>') + 4;
+            if (divStartIndex !== -1 && divEndIndex !== -1) {
+                text = text.substring(divStartIndex, divEndIndex);
+            }
+        }
+    }
+
+    // Audio Generation (Optional for News mode only)
     let audioBase64 = null;
-    if (generateAudio) {
+    if (generateAudio && mode === 'news_generator') {
         try {
             const newsVoice = options?.voice || 'Kore';
             const textForAudio = text.length > MAX_TTS_CHARS ? text.substring(0, MAX_TTS_CHARS) + "..." : text;
@@ -233,276 +327,20 @@ async function handleNewsGeneration(ai: GoogleGenAI, prompt: string, userMemory:
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
-                        prebuiltVoiceConfig: { voiceName: newsVoice },
+                        voiceConfig: {
+                            prebuiltVoiceConfig: { voiceName: newsVoice },
+                        },
                     },
                 },
             });
             
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-
-            if (!audioBase64) {
-                console.warn("TTS Falha para Notícia: Modelo respondeu sem áudio, caindo para fallback de texto.");
-                text = `${AUDIO_ERROR_FALLBACK_PREFIX} ${text}`;
-                audioBase64 = null;
-            }
-
         } catch (audioError: any) {
-            console.error("Failed to generate audio for news on backend:", audioError);
-            text = `${AUDIO_ERROR_FALLBACK_PREFIX} ${text}`;
-            audioBase64 = null;
+            console.error("Failed to generate audio on backend:", audioError);
         }
     }
 
-    return { text, audioBase64, sources };
-}
-
-async function handleCurriculumGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const modelName = 'gemini-2.5-flash';
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-    
-    const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
-    const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
-
-    if (!selectedTemplate) {
-        throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
-    }
-
-    const curriculumDataPromptContent = `
-    Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha o conteúdo de cada elemento com IDs específicos com as informações fornecidas, otimizando conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o objetivo de carreira.
-
-    **TEMPLATE HTML A SER PREENCHIDO (Não modifique a estrutura dos IDs, apenas o conteúdo interno):**
-    ${selectedTemplate}
-
-    **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
-    - **Objetivo de Carreira (Prompt Geral para Resumo):** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
-    - **Dados Pessoais:**
-        Nome: ${options.personalInfo?.name || ''}
-        Email: ${options.personalInfo?.email || ''}
-        Telefone: ${options.personalInfo?.phone || ''}
-        LinkedIn URL: ${options.personalInfo?.linkedin || ''}
-        Portfólio URL: ${options.personalInfo?.portfolio || ''}
-    - **Resumo Profissional:** ${options.summary || 'A IA deve criar um resumo persuasivo e otimizado para ATS.'}
-    - **Experiência Profissional:**
-        ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
-    - **Formação Acadêmica:**
-        ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
-    - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
-    - **Projetos:**
-        ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
-    - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
-
-    **LEMBRE-SE DE CADA ETAPA:**
-    1.  Inicie com o template HTML fornecido.
-    2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
-    3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: \`<p>Seu resumo aqui</p>\` ou \`<div><h3>Cargo</h3><p>Empresa</p></div>\`)** e insira-o como o \`innerHTML\` desse elemento.
-    4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
-        -   Gere o HTML completo para todos os itens da lista.
-        -   Para experiência e educação, cada item deve ter um \`div\` ou \`p\` formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
-        -   Para habilidades e certificações, gere \`<span>\` ou \`<li>\` tags conforme o estilo do template e insira-as dentro do seu \`div\` ou \`ul\` de placeholder.
-    5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o \`innerHTML\` desse elemento vazio**.
-    6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
-    7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
-    `;
-    
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: curriculumDataPromptContent, 
-        config: { systemInstruction: systemPromptWithMemory },
-    });
-
-    let text: string = response.text || '';
-    if (!text) {
-        throw new Error('A API não retornou conteúdo de texto para o currículo.');
-    }
-    
-    text = cleanHtmlContent(text);
-    return { text, audioBase64: null, sources: [] };
-}
-
-async function handleImageGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const modelName = 'gemini-2.5-flash';
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-    
-    const fullPrompt = `
-      Query do usuário: ${prompt}
-      Modo de Geração: Studio de Arte IA
-      CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
-      - Estilo Artístico: ${options.imageStyle || 'Photorealistic'}
-      - Proporção: ${options.aspectRatio || '1:1'}
-    `;
-
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: fullPrompt, 
-        config: { systemInstruction: systemPromptWithMemory },
-    });
-
-    let text: string = response.text || '';
-    if (!text) {
-        throw new Error('A API não retornou conteúdo de texto para a geração de imagem.');
-    }
-    
-    // Para image_generation, o "text" retornado é o prompt otimizado em inglês
-    return { text, audioBase64: null, sources: [] };
-}
-
-async function handleSocialMediaPoster(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const modelName = 'gemini-2.5-flash';
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-    
-    const fullPrompt = `
-        Query do usuário: ${prompt}
-        Modo de Geração: Editor Visual (Social Media)
-        CONTEXTO PARA POSTER:
-        - Plataforma: ${options.platform || 'Instagram'}
-        - Tema: ${options.theme || 'Modern'}
-    `;
-
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: fullPrompt, 
-        config: { systemInstruction: systemPromptWithMemory },
-    });
-
-    let text: string = response.text || '';
-    if (!text) {
-        throw new Error('A API não retornou conteúdo de texto para o poster de mídia social.');
-    }
-    
-    text = cleanHtmlContent(text);
-    return { text, audioBase64: null, sources: [] };
-}
-
-async function handleLandingPageGenerator(ai: GoogleGenAI, prompt: string, userMemory: string, options: GenerateContentOptions): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const modelName = 'gemini-2.5-flash';
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-    
-    const fullPrompt = `
-        Query do usuário: ${prompt}
-        Modo de Geração: Criador de Sites (Web)
-        **DIRETRIZES VISUAIS ESPECÍFICAS:**
-        - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
-        - **Cor Primária**: ${options.primaryColor || '#10B981'}.
-        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
-    `;
-
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: fullPrompt, 
-        config: { systemInstruction: systemPromptWithMemory },
-    });
-
-    let text: string = response.text || '';
-    if (!text) {
-        throw new Error('A API não retornou conteúdo de texto para a landing page.');
-    }
-    
-    text = cleanHtmlContent(text);
-    return { text, audioBase64: null, sources: [] };
-}
-
-async function handleDefaultTextGeneration(ai: GoogleGenAI, prompt: string, userMemory: string, mode: string): Promise<{ text: string, audioBase64: string | null, sources: any[] }> {
-    const modelName = 'gemini-2.5-flash';
-    const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
-    
-    const fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: ${mode}`;
-
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: fullPrompt, 
-        config: { systemInstruction: systemPromptWithMemory },
-    });
-
-    let text: string = response.text || '';
-    if (!text) {
-        throw new Error(`A API não retornou conteúdo de texto para o modo ${mode}.`);
-    }
-    return { text, audioBase64: null, sources: [] };
-}
-
-
-serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
-
-  try {
-    let reqBody;
-    try {
-        reqBody = await req.json();
-    } catch (e) {
-        return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
-    }
-    
-    let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory } = reqBody;
-    const options: GenerateContentOptions = rawOptions || {};
-
-    // NOVO: Log do modo ANTES da limpeza
-    console.log("Mode (raw):", mode);
-
-    // NOVO: Limpeza mais robusta da string 'mode'
-    mode = mode?.trim().replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\u202F\u205F\uFEFF]/g, '') || '';
-    
-    // NOVO: Log do modo DEPOIS da limpeza
-    console.log("Mode (cleaned):", mode);
-
-    const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) {
-        console.error("ERRO CRÍTICO (Edge Function): Variável de ambiente GEMINI_API_KEY não definida.");
-        throw new Error("GEMINI_KEY_MISSING_EDGE_FUNCTION: A chave da API Gemini não está configurada na Edge Function. Contate o administrador.");
-    }
-
-    const ai = new GoogleGenAI({ apiKey: apiKey as string });
-    
-    let result: { text: string, audioBase64: string | null, sources: any[] };
-
-    switch (mode) {
-        case 'text_to_speech':
-            result = await handleTextToSpeechGeneration(ai, prompt, options);
-            break;
-        case 'news_generator':
-            result = await handleNewsGeneration(ai, prompt, userMemory, generateAudio, options);
-            break;
-        case 'curriculum_generator':
-            result = await handleCurriculumGeneration(ai, prompt, userMemory, options);
-            break;
-        case 'image_generation':
-            result = await handleImageGeneration(ai, prompt, userMemory, options);
-            break;
-        case 'social_media_poster':
-            result = await handleSocialMediaPoster(ai, prompt, userMemory, options);
-            break;
-        case 'landingpage_generator':
-            result = await handleLandingPageGenerator(ai, prompt, userMemory, options);
-            break;
-        case 'copy_generator': // Adicionado caso para copy_generator
-        case 'prompt_generator': // Adicionado caso para prompt_generator
-            result = await handleDefaultTextGeneration(ai, prompt, userMemory, mode);
-            break;
-        default:
-            const availableModes = [
-                'GDN Notícias',
-                'Gerador de Prompts',
-                'Criador de Sites (Web)',
-                'Studio de Arte IA',
-                'Gerador de Copy',
-                'Editor Visual (Social Media)',
-                'Criador de Currículos (IA)',
-                'Texto para Voz'
-            ].map((m, i) => `${i + 1}. **${m}**`).join('\n');
-
-            return new Response(JSON.stringify({ 
-                text: `O modo '${mode}' não é um modo de geração válido. Por favor, escolha um dos modos disponíveis:\n${availableModes}\n\n(Mode recebido: '${mode}')`
-            }), {
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
-    }
-
-    return new Response(JSON.stringify({ 
-        text: result.text, 
-        audioBase64: result.audioBase64, 
-        sources: result.sources 
-    }), {
+    return new Response(JSON.stringify({ text, audioBase64, sources }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 

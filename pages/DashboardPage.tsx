@@ -7,7 +7,6 @@ import { Toast } from '../components/admin/Toast';
 import { useDashboard } from '../hooks/useDashboard';
 import { DashboardResults } from '../components/dashboard/DashboardResults';
 import { DashboardModals } from '../components/dashboard/DashboardModals';
-import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -16,10 +15,8 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: DashboardPageProps) {
-  const { settings: whiteLabelSettings } = useWhiteLabel(); // Use White Label settings
   const {
       user,
-      signOut, // Captura signOut do hook
       isGuest,
       guestCredits,
       GUEST_ALLOWED_MODES,
@@ -27,7 +24,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
       setSidebarOpen,
       currentMode,
       isLoading,
-      error, // Agora pegamos o erro do useDashboard
+      error,
       toast,
       setToast,
       results,
@@ -45,7 +42,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
     <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
       <Header
         userEmail={user?.email}
-        onLogout={user ? signOut : undefined} // Passa signOut diretamente
+        onLogout={user ? async () => { await import('../contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
         isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onNavigateToLogin={!user ? onNavigateToLogin : undefined}
@@ -55,7 +52,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         onOpenAffiliates={() => toggleModal('affiliate', true)}
         onOpenIntegrations={() => toggleModal('integrations', true)}
         userCredits={isGuest ? guestCredits : user?.credits}
-        pageTitle={whiteLabelSettings.dashboardTitle} // Use dynamic dashboard title
+        pageTitle="Creator Suite"
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
@@ -111,19 +108,18 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     onCloseEditor={() => updateResultText(null)}
                     showFeedback={showFeedback}
                     onCloseFeedback={() => setShowFeedback(false)}
-                    currentError={error} // Passa o erro principal para DashboardResults
                 />
 
                 {/* MARKETING FOOTER FOR GUESTS */}
                 {isGuest && (
                     <div className="mt-12 p-6 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl text-center text-white shadow-xl animate-fade-in">
-                        <h3 className="text-xl font-bold mb-2">{whiteLabelSettings.guestMarketingFooterTitle}</h3>
-                        <p className="text-gray-300 mb-6 text-sm">{whiteLabelSettings.guestMarketingFooterSubtitle}</p>
+                        <h3 className="text-xl font-bold mb-2">Gostou do teste?</h3>
+                        <p className="text-gray-300 mb-6 text-sm">Crie sua conta gratuita agora e desbloqueie ferramentas avançadas como <strong>Geração de Imagens</strong> e <strong>Sites Completos</strong>.</p>
                         <button 
                             onClick={onNavigateToLogin}
-                            className="bg-[var(--brand-tertiary)] hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition transform hover:-translate-y-1 shadow-lg shadow-[var(--brand-tertiary)]/30"
+                            className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition transform hover:-translate-y-1 shadow-lg shadow-green-500/30"
                         >
-                            {whiteLabelSettings.guestMarketingFooterCtaText}
+                            Criar Conta Grátis
                         </button>
                     </div>
                 )}

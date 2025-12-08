@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
 import { AudioPlayer } from '../AudioPlayer';
@@ -23,7 +24,6 @@ interface DashboardResultsProps {
     onCloseEditor: () => void;
     showFeedback: boolean;
     onCloseFeedback: () => void;
-    currentError: string | null; // Adicionado para receber o erro principal
 }
 
 export function DashboardResults({ 
@@ -33,37 +33,8 @@ export function DashboardResults({
     user, 
     onCloseEditor,
     showFeedback,
-    onCloseFeedback,
-    currentError // Recebe o erro principal
+    onCloseFeedback
 }: DashboardResultsProps) {
-    const TTS_FAILED_PREFIX = '[TTS_FAILED_TEXT_FALLBACK]';
-    const AUDIO_ERROR_FALLBACK_PREFIX = '[AUDIO_ERROR_FALLBACK]';
-
-    // Checa se o erro é de chave Gemini faltando na Edge Function
-    const isGeminiKeyMissingFromEdgeFunction = currentError?.includes('GEMINI_KEY_MISSING_EDGE_FUNCTION');
-
-    // Checa se houve um erro na geração de áudio (seja via currentError ou pela tag de fallback no texto)
-    const isAudioGenerationFailed = 
-        currentError?.includes('AUDIO_GENERATION_FAILED') || 
-        results.text?.includes(AUDIO_ERROR_FALLBACK_PREFIX) ||
-        results.text?.includes(TTS_FAILED_PREFIX);
-
-    let audioErrorMessage = "O áudio não pôde ser gerado.";
-    let audioErrorDetails = "Tente novamente ou verifique seus créditos e permissões da API Gemini.";
-
-    if (isGeminiKeyMissingFromEdgeFunction) {
-        audioErrorMessage = "Erro de Configuração no Servidor:";
-        audioErrorDetails = "A chave `GEMINI_API_KEY` não está configurada na Edge Function do Supabase.";
-    } else if (isAudioGenerationFailed && currentError) {
-        audioErrorMessage = "Falha ao gerar áudio:";
-        audioErrorDetails = currentError
-            .replace('AUDIO_GENERATION_FAILED: ', '')
-            .replace('AUDIO_GENERATION_FAILED_NEWS: ', '');
-    } else if (isAudioGenerationFailed) {
-        audioErrorMessage = "Falha ao gerar áudio:";
-        audioErrorDetails = "O modelo não conseguiu sintetizar o texto em voz. O texto original foi retornado como fallback.";
-    }
-
 
     if (isLoading) {
         return <Loader mode={currentMode} />;
@@ -104,21 +75,11 @@ export function DashboardResults({
         );
     }
 
-    // Determine if an audio-related warning should be shown
-    const shouldShowAudioWarning = isAudioGenerationFailed || isGeminiKeyMissingFromEdgeFunction;
-
-    // Clean text by removing fallback prefixes
-    const cleanedText = results.text
-        ? results.text
-            .replace(AUDIO_ERROR_FALLBACK_PREFIX, '')
-            .replace(TTS_FAILED_PREFIX, '')
-            .trim()
-        : null;
-
     return (
         <div className="mt-8 space-y-8 pb-12">
             
             {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL & CRIADOR DE CURRÍCULOS */}
+            {/* FIX: Removed redundant and unintentional type comparison with 'landingpage_generator' */}
             {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && results.text && (
                 <LandingPageBuilder 
                     initialHtml={results.text} 
@@ -126,8 +87,8 @@ export function DashboardResults({
                 />
             )}
 
-            {/* ALERTAS DE FALHA DE ÁUDIO (Exibido antes do conteúdo principal) */}
-            {shouldShowAudioWarning && (
+            {/* DIAGNOSTIC ALERT FOR TTS FAILURE */}
+            {currentMode === 'text_to_speech' && results.text && !results.audioBase64 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r shadow-sm animate-fade-in">
                     <div className="flex">
                         <div className="flex-shrink-0">
@@ -135,34 +96,32 @@ export function DashboardResults({
                         </div>
                         <div className="ml-3">
                             <p className="text-sm text-yellow-700 font-bold">
-                                Aviso: {audioErrorMessage}
+                                Aviso: O áudio não pôde ser gerado.
                             </p>
                             <p className="text-xs text-yellow-600 mt-1">
-                                {audioErrorDetails}
+                                O sistema retornou texto como fallback. Tente novamente ou verifique os créditos.
                             </p>
-                            {isGeminiKeyMissingFromEdgeFunction && (
-                                <p className="text-xs text-blue-700 mt-2">
-                                    <i className="fas fa-info-circle mr-1"></i> Por favor, configure a variável de ambiente `GEMINI_API_KEY` nas configurações da sua Edge Function no Supabase.
-                                </p>
-                            )}
                         </div>
                     </div>
                 </div>
             )}
 
             {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
-            {/* Renderiza ResultDisplay se houver texto limpo E NÃO for um modo que usa LandingPageBuilder */}
-            {cleanedText && 
-             currentMode !== 'landingpage_generator' && 
+            {/* FIX: Removed redundant and unintentional type comparison with 'landingpage_generator' */}
+            {currentMode !== 'landingpage_generator' && 
              currentMode !== 'image_generation' && 
              currentMode !== 'social_media_poster' &&
              currentMode !== 'canva_structure' && 
-             currentMode !== 'curriculum_generator' && (
+             currentMode !== 'curriculum_generator' && // Hide for curriculum
+             // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.
+             // Se for TTS mas falhou (sem áudio), mostra o texto para debug.
+             (currentMode !== 'text_to_speech' || !results.audioBase64) &&
+             results.text && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
                     <div className="lg:col-span-2">
                         <ResultDisplay 
                             title={results.title} 
-                            text={cleanedText}
+                            text={results.text} 
                             mode={currentMode} 
                             metadata={results.metadata || undefined}
                         />
@@ -173,7 +132,7 @@ export function DashboardResults({
                         <div className="lg:col-span-1">
                             <SeoScorecard 
                                 title={results.title || "Sem Título"} 
-                                content={cleanedText} 
+                                content={results.text} 
                             />
                         </div>
                     )}

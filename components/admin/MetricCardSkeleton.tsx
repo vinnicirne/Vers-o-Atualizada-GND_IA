@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export function MetricCardSkeleton() {
@@ -13,4 +12,4 @@ export function MetricCardSkeleton() {
       </div>
     </div>
   );
-};
+}

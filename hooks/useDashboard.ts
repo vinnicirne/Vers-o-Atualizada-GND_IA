@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
@@ -28,14 +29,14 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
 };
 
 export function useDashboard() {
-    const { user, refresh, signOut } = useUser();
+    const { user, refresh } = useUser();
     const { currentPlan, hasAccessToService, hasEnoughCredits, getCreditsCostForService } = usePlan();
 
     // UI Control
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null); // Erro principal do Dashboard
+    const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
     // Results State
@@ -64,8 +65,7 @@ export function useDashboard() {
         affiliate: false,
         integrations: false,
         guestLimit: false,
-        featureLock: false,
-        apiKeySelection: false, // NOVO: Modal para seleção de API Key
+        featureLock: false
     });
 
     // Guest Logic
@@ -87,26 +87,17 @@ export function useDashboard() {
         setModals(prev => ({ ...prev, [modal]: value }));
     };
 
-    const handleModeChange = async (mode: ServiceKey) => {
-        // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
-        if (!hasAccessToService(mode)) {
-            if (isGuest) {
-                toggleModal('featureLock', true);
-            } else {
-                toggleModal('plans', true);
-            }
+    const handleModeChange = (mode: ServiceKey) => {
+        if (isGuest && !GUEST_ALLOWED_MODES.includes(mode)) {
+            toggleModal('featureLock', true);
+            return;
+        }
+        
+        if (!isGuest && !hasAccessToService(mode)) {
+            toggleModal('plans', true);
             return;
         }
 
-        // NOVO: Verificação de API Key para Text-to-Speech
-        if (mode === 'text_to_speech' && window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            if (!hasKey) {
-                toggleModal('apiKeySelection', true);
-                return;
-            }
-        }
-        
         setCurrentMode(mode);
         // Clear results
         setResults(prev => ({
@@ -135,25 +126,16 @@ export function useDashboard() {
         setResults(prev => ({ ...prev, text: null, title: null, audioBase64: null, imagePrompt: null }));
         setShowFeedback(false);
 
-        // NOVO: Verificação de API Key para Text-to-Speech antes de gerar
-        if (mode === 'text_to_speech' && window.aistudio && typeof window.aistudio.hasSelectedApiKey === 'function') {
-            const hasKey = await window.aistudio.hasSelectedApiKey();
-            if (!hasKey) {
-                toggleModal('apiKeySelection', true);
-                return;
-            }
-        }
-
         // Validation
-        const cost = getCreditsCostForService(mode) + (generateAudio ? getCreditsCostForService('text_to_speech') : 0);
+        const cost = isGuest ? 1 : getCreditsCostForService(mode) + (generateAudio ? 2 : 0);
         
         if (isGuest) {
-            if (guestCredits < cost) {
+            if (guestCredits < 1) {
                 toggleModal('guestLimit', true);
                 return;
             }
         } else {
-            if (!hasEnoughCredits(mode)) { // hasEnoughCredits agora também verifica o custo correto
+            if (!hasEnoughCredits(mode)) {
                 setToast({ message: "Saldo insuficiente.", type: 'error' });
                 toggleModal('plans', true);
                 return;
@@ -197,13 +179,13 @@ export function useDashboard() {
                 imagePrompt: newImagePrompt,
                 imageDimensions: imgDims,
                 metadata: isGuest 
-                    ? { plan: 'Visitante', credits: guestCredits - cost } // Deduz o custo total para guest
+                    ? { plan: 'Visitante', credits: guestCredits - 1 }
                     : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
             });
 
             // Consume Credits
             if (isGuest) {
-                const newCredits = guestCredits - cost; // Deduz o custo total para guest
+                const newCredits = guestCredits - 1;
                 setGuestCredits(newCredits);
                 localStorage.setItem('gdn_guest_credits', newCredits.toString());
             } else {
@@ -214,26 +196,14 @@ export function useDashboard() {
 
         } catch (err: any) {
             console.error("Erro na geração:", err);
-            // Se o erro for "Requested entity was not found." após aistudio.openSelectKey, reabrir modal
-            if (err.message && typeof err.message === 'string' && err.message.includes("Requested entity was not found.") && mode === 'text_to_speech') {
-                setToast({ message: "Sua chave de API pode não estar configurada para este modelo. Por favor, selecione-a novamente.", type: 'error' });
-                toggleModal('apiKeySelection', true);
-            } else {
-                 setError(err.message || 'Erro ao gerar conteúdo.');
-            }
+            setError(err.message || 'Erro ao gerar conteúdo.');
         } finally {
             setIsLoading(false);
         }
     };
 
-    const handleLogout = async () => {
-        await signOut();
-        window.location.reload();
-    };
-
     return {
         user,
-        signOut: handleLogout,
         isGuest,
         guestCredits,
         GUEST_ALLOWED_MODES,
@@ -245,7 +215,7 @@ export function useDashboard() {
         toast,
         setToast,
         results,
-        updateResultText,
+        updateResultText, // Exposed setter for text clearing
         showFeedback,
         setShowFeedback,
         modals,

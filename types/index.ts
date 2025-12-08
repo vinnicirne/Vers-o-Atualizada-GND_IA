@@ -1,8 +1,8 @@
 
 import { ReactNode } from 'react';
-import { Plan, ServiceKey, UserPlan } from './plan.types'; // Importar os novos tipos
+import { Plan, ServiceKey, UserPlan } from './plan.types'; // Looks for sibling 'plan.types.ts'
 
-export type { Plan, ServiceKey, UserPlan }; // Re-exportar para uso em outros arquivos
+export type { Plan, ServiceKey, UserPlan };
 
 export interface BaseComponentProps {
   children?: ReactNode;
@@ -72,8 +72,7 @@ export interface Log {
   user_email?: string;
 }
 
-// FIX: Added 'tool_settings' and 'white_label_settings' to AdminView
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
 
 export interface AllowedDomain {
   id: string;
@@ -181,13 +180,11 @@ export interface AILog {
   };
 }
 
-// --- FEEDBACK TYPES ---
 export interface FeedbackData {
   rating: number;
   comment: string;
 }
 
-// Nova interface para Feedbacks do Sistema (Depoimentos)
 export interface SystemFeedback {
   id: string;
   user_id: string;
@@ -201,7 +198,6 @@ export interface SystemFeedback {
   };
 }
 
-// --- WORDPRESS INTEGRATION ---
 export interface WordPressConfig {
   siteUrl: string;
   username: string;
@@ -209,20 +205,17 @@ export interface WordPressConfig {
   isConnected: boolean;
 }
 
-// --- ANALYTICS INTEGRATION ---
 export interface AnalyticsConfig {
-  measurementId: string; // G-XXXXXXXXXX
+  measurementId: string;
   isConnected: boolean;
 }
 
-// --- N8N / WEBHOOK INTEGRATION ---
 export interface N8nConfig {
   webhookUrl: string;
-  autoSend: boolean; // Se true, envia automaticamente após gerar
+  autoSend: boolean;
   isConnected: boolean;
 }
 
-// --- POPUP SYSTEM ---
 export interface Popup {
   id: string;
   title: string;
@@ -237,28 +230,27 @@ export interface Popup {
     theme?: 'default' | 'dark_gold';
   };
   trigger_settings: {
-    delay: number; // segundos
+    delay: number;
     frequency: 'once' | 'always' | 'daily';
-    button_link?: string; // Link do botão de ação
-    button_text?: string; // Texto do botão
+    button_link?: string;
+    button_text?: string;
   };
   is_active: boolean;
   created_at?: string;
 }
 
-// --- DEVELOPER API ---
 export interface ApiKey {
   id: string;
   user_id?: string;
   name: string;
-  key_prefix: string; // Mostramos apenas o começo ou fim
-  full_key?: string; // Usado apenas na criação para mostrar uma vez
+  key_prefix: string;
+  full_key?: string;
   created_at: string;
   last_used_at?: string;
   status: 'active' | 'revoked';
 }
 
-// --- NOTIFICATION SYSTEM ---
+// Notification System
 export interface AppNotification {
   id: string;
   user_id: string;
@@ -268,48 +260,4 @@ export interface AppNotification {
   is_read: boolean;
   action_link?: string;
   created_at: string;
-}
-
-// --- GLOBAL TOOL SETTINGS ---
-// FIX: Exported ToolSetting
-export interface ToolSetting {
-  key: ServiceKey;
-  enabled: boolean;
-}
-
-// --- WHITE LABEL SETTINGS ---
-// FIX: Exported WhiteLabelSettings
-export interface WhiteLabelSettings {
-  appName: string;
-  appTagline: string;
-  logoTextPart1: string;
-  logoTextPart2: string;
-  primaryColorHex: string;
-  secondaryColorHex: string;
-  tertiaryColorHex: string;
-  faviconUrl: string;
-  ogImageUrl: string;
-  wordpressPluginName: string;
-  copyrightText: string;
-  appVersion: string;
-  dashboardTitle: string; 
-  
-  landingPageEnabled: boolean; 
-  heroSectionTitle: string;
-  heroSectionSubtitle: string;
-  heroCtaPrimaryText: string;
-  heroCtaPrimaryLink: string;
-  heroCtaSecondaryText: string;
-  heroCtaSecondaryLink: string;
-  featureSectionTitle: string;
-  featureSectionSubtitle: string;
-  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>;
-  pricingSectionTitle: string;
-  pricingSectionSubtitle: string;
-  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>;
-  
-  guestMarketingFooterTitle: string;
-  guestMarketingFooterSubtitle: string;
-  guestMarketingFooterCtaText: string;
-  guestMarketingFooterCtaLink: string;
 }
