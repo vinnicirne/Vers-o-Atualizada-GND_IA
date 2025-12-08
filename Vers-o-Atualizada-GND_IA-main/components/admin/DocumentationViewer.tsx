@@ -332,7 +332,7 @@ CREATE TABLE IF NOT EXISTS public.deals (
                     </p>
                     <ol className="list-decimal pl-5 text-sm text-orange-700 space-y-1">
                         <li>Crie uma conta em <a href="https://resend.com" target="_blank" className="underline font-bold">Resend.com</a> e gere uma API Key.</li>
-                        <li>No painel do Supabase, vá em <strong>Settings > Edge Functions</strong>.</li>
+                        <li>No painel do Supabase, vá em <strong>Settings &gt; Edge Functions</strong>.</li>
                         <li>Adicione uma nova secret: Nome <code>RESEND_API_KEY</code>, Valor: <code>re_123...</code> (Sua chave).</li>
                     </ol>
                     <div className="mt-4 pt-4 border-t border-orange-200">
