@@ -1,9 +1,15 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useUser } from '../contexts/UserContext';
-import { ChatConnection, QuickAnswer, ConnectionType } from '../types';
+import { ChatConnection, QuickAnswer, ConnectionType, ChatTicket, ChatMessage } from '../types';
 import { Toast } from '../components/admin/Toast';
-import { getQuickAnswers, createQuickAnswer, deleteQuickAnswer, getConnections, createConnection, deleteConnection, simulateConnectionScan } from '../services/chatService';
+import { 
+    getQuickAnswers, createQuickAnswer, deleteQuickAnswer, 
+    getConnections, createConnection, deleteConnection, simulateConnectionScan,
+    getTickets, getMessages, sendMessage, simulateIncomingMessage, generateSmartReply, getChatMetrics
+} from '../services/chatService';
+import { generateChatResponse } from '../services/geminiService';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 type MenuOption = 'dashboard' | 'connections' | 'chats' | 'contacts' | 'tags' | 'quick_answers' | 'schedules' | 'support' | 'account';
 
@@ -59,6 +65,361 @@ const Sidebar = ({ active, onChange }: { active: MenuOption, onChange: (opt: Men
                 </button>
             </div>
         </aside>
+    );
+};
+
+// --- DASHBOARD VIEW ---
+const DashboardView = () => {
+    const [metrics, setMetrics] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+    const [generatingReport, setGeneratingReport] = useState(false);
+    const [report, setReport] = useState('');
+
+    useEffect(() => {
+        const loadMetrics = async () => {
+            setLoading(true);
+            const data = await getChatMetrics();
+            setMetrics(data);
+            setLoading(false);
+        };
+        loadMetrics();
+    }, []);
+
+    const handleGenerateReport = async () => {
+        if (!metrics) return;
+        setGeneratingReport(true);
+        try {
+            const reportText = await generateChatResponse(JSON.stringify(metrics), 'report');
+            setReport(reportText);
+        } catch (e) {
+            console.error(e);
+        } finally {
+            setGeneratingReport(false);
+        }
+    };
+
+    if (loading) {
+        return <div className="flex h-full items-center justify-center text-gray-400"><i className="fas fa-spinner fa-spin text-3xl"></i></div>;
+    }
+
+    return (
+        <div className="p-8 w-full animate-fade-in overflow-y-auto custom-scrollbar">
+            <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-[#343a40]">Dashboard</h2>
+                <button 
+                    onClick={handleGenerateReport} 
+                    disabled={generatingReport}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2"
+                >
+                    {generatingReport ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-alt"></i>}
+                    Gerar Relatório IA
+                </button>
+            </div>
+            
+            {report && (
+                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-8 animate-fade-in-up">
+                    <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-blue-800 flex items-center gap-2"><i className="fas fa-robot"></i> Análise Executiva</h4>
+                        <button onClick={() => setReport('')} className="text-blue-400 hover:text-blue-600"><i className="fas fa-times"></i></button>
+                    </div>
+                    <p className="text-sm text-blue-900 leading-relaxed">{report}</p>
+                </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total de Leads</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.totalLeads}</h3>
+                        </div>
+                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                            <i className="fas fa-users text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Conversão</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.conversionRate}</h3>
+                        </div>
+                        <div className="p-2 bg-green-50 rounded-lg text-green-600">
+                            <i className="fas fa-chart-line text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Tickets Abertos</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.activeTickets}</h3>
+                        </div>
+                        <div className="p-2 bg-yellow-50 rounded-lg text-yellow-600">
+                            <i className="fas fa-inbox text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Tempo Médio</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.avgResponseTime}</h3>
+                        </div>
+                        <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+                            <i className="fas fa-clock text-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-80">
+                <h3 className="text-lg font-bold text-gray-800 mb-6">Volume de Atendimentos</h3>
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={metrics.weeklyData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                        <YAxis axisLine={false} tickLine={false} />
+                        <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} />
+                        <Bar dataKey="leads" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} name="Leads" />
+                        <Bar dataKey="sales" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} name="Vendas" />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </div>
+    );
+};
+
+// --- CHATS VIEW ---
+const ChatsView = ({ userId }: { userId: string }) => {
+    const [tickets, setTickets] = useState<ChatTicket[]>([]);
+    const [activeTicket, setActiveTicket] = useState<ChatTicket | null>(null);
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [inputText, setInputText] = useState('');
+    const [loading, setLoading] = useState(false);
+    const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [aiProcessing, setAiProcessing] = useState(false);
+
+    // Initial Load
+    useEffect(() => {
+        const loadTickets = async () => {
+            const data = await getTickets(userId);
+            setTickets(data);
+        };
+        loadTickets();
+    }, [userId]);
+
+    // Load Messages when ticket changes
+    useEffect(() => {
+        if (activeTicket) {
+            setLoading(true);
+            getMessages(activeTicket.id).then(msgs => {
+                setMessages(msgs);
+                setLoading(false);
+                scrollToBottom();
+            });
+        }
+    }, [activeTicket]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleSend = async () => {
+        if (!inputText.trim() || !activeTicket) return;
+        const text = inputText;
+        setInputText('');
+        
+        // Optimistic Update
+        const optimisticMsg: ChatMessage = {
+            id: 'temp-' + Date.now(),
+            ticket_id: activeTicket.id,
+            sender: 'user',
+            content: text,
+            timestamp: new Date().toISOString(),
+            status: 'sent'
+        };
+        setMessages(prev => [...prev, optimisticMsg]);
+        scrollToBottom();
+
+        // Real Send
+        await sendMessage(activeTicket.id, text, 'user');
+        
+        // Simulate Reply if Bot Enabled or Just simulation
+        if (activeTicket.ai_enabled) {
+            setAiProcessing(true);
+            setTimeout(async () => {
+                // Generate AI Reply
+                const aiReply = await generateSmartReply([...messages, optimisticMsg]);
+                await sendMessage(activeTicket.id, aiReply, 'bot');
+                // Reload messages to get bot reply
+                const updatedMsgs = await getMessages(activeTicket.id);
+                setMessages(updatedMsgs);
+                setAiProcessing(false);
+                scrollToBottom();
+            }, 2000);
+        } else {
+            // Normal simulation
+            setTimeout(async () => {
+                await simulateIncomingMessage(activeTicket.id);
+                const updatedMsgs = await getMessages(activeTicket.id);
+                setMessages(updatedMsgs);
+                scrollToBottom();
+            }, 3000);
+        }
+    };
+
+    const handleAiSuggestion = async () => {
+        if (!activeTicket) return;
+        setAiProcessing(true);
+        const suggestion = await generateSmartReply(messages);
+        setInputText(suggestion);
+        setAiProcessing(false);
+    };
+
+    const toggleTicketAi = (ticket: ChatTicket) => {
+        // Toggle Local State (Mock)
+        const updated = { ...ticket, ai_enabled: !ticket.ai_enabled };
+        setTickets(prev => prev.map(t => t.id === ticket.id ? updated : t));
+        if (activeTicket?.id === ticket.id) setActiveTicket(updated);
+    };
+
+    return (
+        <div className="flex h-full w-full bg-white overflow-hidden animate-fade-in">
+            {/* Contact List */}
+            <div className="w-80 border-r border-gray-200 flex flex-col bg-white">
+                <div className="p-4 border-b border-gray-200">
+                    <div className="relative">
+                        <input type="text" placeholder="Buscar..." className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-lg text-sm outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition" />
+                        <i className="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
+                    </div>
+                </div>
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                    {tickets.map(ticket => (
+                        <div 
+                            key={ticket.id}
+                            onClick={() => setActiveTicket(ticket)}
+                            className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition ${activeTicket?.id === ticket.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
+                        >
+                            <div className="flex justify-between items-start mb-1">
+                                <h4 className="font-bold text-gray-800 text-sm truncate">{ticket.contact_name}</h4>
+                                <span className="text-[10px] text-gray-400">{new Date(ticket.last_message_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate mb-2">{ticket.last_message}</p>
+                            <div className="flex gap-2">
+                                {ticket.unread_count > 0 && <span className="bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">{ticket.unread_count}</span>}
+                                {ticket.ai_enabled && <span className="bg-purple-100 text-purple-600 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><i className="fas fa-robot"></i> Auto</span>}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            {/* Chat Area */}
+            {activeTicket ? (
+                <div className="flex-1 flex flex-col bg-[#efeae2]">
+                    {/* Chat Header */}
+                    <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
+                                {activeTicket.contact_name.charAt(0)}
+                            </div>
+                            <div>
+                                <h3 className="font-bold text-gray-800">{activeTicket.contact_name}</h3>
+                                <p className="text-xs text-gray-500">{activeTicket.contact_number}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-4">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500 uppercase">Bot Automático</span>
+                                <button 
+                                    onClick={() => toggleTicketAi(activeTicket)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${activeTicket.ai_enabled ? 'bg-purple-600' : 'bg-gray-200'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${activeTicket.ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                            <button className="text-gray-400 hover:text-gray-600"><i className="fas fa-ellipsis-v"></i></button>
+                        </div>
+                    </div>
+
+                    {/* Messages */}
+                    <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')]">
+                        {loading ? (
+                            <div className="text-center text-gray-500 py-10"><i className="fas fa-spinner fa-spin"></i> Carregando...</div>
+                        ) : (
+                            messages.map(msg => (
+                                <div key={msg.id} className={`flex ${msg.sender === 'contact' ? 'justify-start' : 'justify-end'}`}>
+                                    <div className={`max-w-[70%] rounded-lg p-3 shadow-sm relative ${
+                                        msg.sender === 'contact' ? 'bg-white rounded-tl-none' : 
+                                        msg.sender === 'bot' ? 'bg-purple-100 border border-purple-200 rounded-tr-none' : 
+                                        'bg-[#d9fdd3] rounded-tr-none'
+                                    }`}>
+                                        {msg.sender === 'bot' && <div className="text-[10px] text-purple-600 font-bold mb-1"><i className="fas fa-robot"></i> Resposta Automática</div>}
+                                        <p className="text-sm text-gray-800 leading-relaxed">{msg.content}</p>
+                                        <div className="text-[10px] text-gray-500 text-right mt-1 flex items-center justify-end gap-1">
+                                            {new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                                            {msg.sender !== 'contact' && (
+                                                <i className={`fas fa-check-double ${msg.status === 'read' ? 'text-blue-500' : 'text-gray-400'}`}></i>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        {aiProcessing && (
+                            <div className="flex justify-start">
+                                <div className="bg-purple-50 text-purple-600 text-xs px-3 py-2 rounded-lg animate-pulse">
+                                    <i className="fas fa-magic mr-1"></i> IA está digitando...
+                                </div>
+                            </div>
+                        )}
+                        <div ref={messagesEndRef} />
+                    </div>
+
+                    {/* Input Area */}
+                    <div className="bg-white p-4 border-t border-gray-200">
+                        {activeTicket.ai_enabled && (
+                            <button 
+                                onClick={handleAiSuggestion}
+                                disabled={aiProcessing}
+                                className="mb-3 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full border border-purple-200 font-bold transition flex items-center gap-1 w-fit"
+                            >
+                                {aiProcessing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-wand-magic-sparkles"></i>}
+                                Sugestão IA
+                            </button>
+                        )}
+                        <div className="flex gap-2 items-end">
+                            <button className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition"><i className="fas fa-paperclip"></i></button>
+                            <div className="flex-1 bg-gray-100 rounded-lg flex items-center px-4 py-2">
+                                <input 
+                                    type="text" 
+                                    value={inputText}
+                                    onChange={e => setInputText(e.target.value)}
+                                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                                    placeholder="Digite uma mensagem" 
+                                    className="bg-transparent w-full outline-none text-sm text-gray-700"
+                                />
+                            </div>
+                            <button 
+                                onClick={handleSend}
+                                className="p-3 bg-[#d9fdd3] text-gray-600 hover:text-green-600 rounded-full transition shadow-sm"
+                            >
+                                <i className="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] text-gray-400 border-l border-gray-200">
+                    <i className="fab fa-whatsapp text-6xl mb-4 text-gray-300"></i>
+                    <p className="text-sm">Selecione um contato para iniciar o atendimento.</p>
+                </div>
+            )}
+        </div>
     );
 };
 
@@ -223,6 +584,7 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
     const [name, setName] = useState('');
     const [type, setType] = useState<ConnectionType>('legacy_qrcode');
     const [profileType, setProfileType] = useState<'personal' | 'business'>('personal');
+    const [activeTab, setActiveTab] = useState<'general' | 'ai'>('general');
     
     // Legacy Fields
     const [greeting, setGreeting] = useState('');
@@ -232,6 +594,10 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
     const [phoneNumberId, setPhoneNumberId] = useState('');
     const [wabaId, setWabaId] = useState('');
     const [apiToken, setApiToken] = useState('');
+
+    // AI Fields
+    const [aiEnabled, setAiEnabled] = useState(false);
+    const [personality, setPersonality] = useState('formal');
 
     React.useEffect(() => {
         if(isOpen) {
@@ -243,6 +609,9 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
             setApiToken('');
             setType('legacy_qrcode');
             setProfileType('personal');
+            setAiEnabled(false);
+            setPersonality('formal');
+            setActiveTab('general');
         }
     }, [isOpen]);
 
@@ -261,7 +630,11 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
             farewell_message: farewell,
             phone_number_id: phoneNumberId,
             waba_id: wabaId,
-            api_token: apiToken
+            api_token: apiToken,
+            ai_config: {
+                enabled: aiEnabled,
+                personality
+            }
         });
     };
 
@@ -271,79 +644,122 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                 <div className="px-6 py-4 border-b border-gray-700">
                     <h3 className="text-lg font-medium text-white">Nova Conexão</h3>
                 </div>
+
+                <div className="flex border-b border-gray-700">
+                    <button onClick={() => setActiveTab('general')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'general' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}>Geral</button>
+                    <button onClick={() => setActiveTab('ai')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'ai' ? 'text-purple-500 border-b-2 border-purple-500' : 'text-gray-400 hover:text-white'}`}>Inteligência Artificial</button>
+                </div>
                 
                 <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
-                    {/* Connection Type Selector */}
-                    <div className="flex gap-4">
-                        <button 
-                            onClick={() => setType('legacy_qrcode')}
-                            className={`flex-1 py-3 rounded border transition ${type === 'legacy_qrcode' ? 'border-green-500 bg-green-500/10 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                        >
-                            <i className="fab fa-whatsapp text-lg mb-1 block"></i>
-                            <span className="text-xs font-bold">WhatsApp Web (QR Code)</span>
-                        </button>
-                        <button 
-                            onClick={() => setType('official_api')}
-                            className={`flex-1 py-3 rounded border transition ${type === 'official_api' ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                        >
-                            <i className="fab fa-facebook text-lg mb-1 block"></i>
-                            <span className="text-xs font-bold">API Oficial (Meta)</span>
-                        </button>
-                    </div>
-
-                    {/* Profile Type Selector */}
-                    <div className="flex gap-4">
-                        <button 
-                            onClick={() => setProfileType('personal')}
-                            className={`flex-1 py-2 rounded border transition ${profileType === 'personal' ? 'border-gray-400 bg-gray-700 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                        >
-                            <i className="fas fa-user text-sm mr-2"></i>
-                            <span className="text-xs font-bold">Pessoal</span>
-                        </button>
-                        <button 
-                            onClick={() => setProfileType('business')}
-                            className={`flex-1 py-2 rounded border transition ${profileType === 'business' ? 'border-gray-400 bg-gray-700 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                        >
-                            <i className="fas fa-briefcase text-sm mr-2"></i>
-                            <span className="text-xs font-bold">Business</span>
-                        </button>
-                    </div>
-
-                    <div className="relative mt-2">
-                        <label className={labelClass}>Nome da Conexão</label>
-                        <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="Ex: Atendimento Principal" />
-                    </div>
-
-                    {type === 'legacy_qrcode' ? (
+                    
+                    {activeTab === 'general' ? (
                         <>
-                            <div className="relative border border-gray-600 rounded p-3 pt-4">
-                                <label className={labelClass}>Mensagem de saudação</label>
-                                <textarea value={greeting} onChange={e => setGreeting(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao iniciar o atendimento..." />
+                            {/* Connection Type Selector */}
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setType('legacy_qrcode')}
+                                    className={`flex-1 py-3 rounded border transition ${type === 'legacy_qrcode' ? 'border-green-500 bg-green-500/10 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                                >
+                                    <i className="fab fa-whatsapp text-lg mb-1 block"></i>
+                                    <span className="text-xs font-bold">WhatsApp Web (QR Code)</span>
+                                </button>
+                                <button 
+                                    onClick={() => setType('official_api')}
+                                    className={`flex-1 py-3 rounded border transition ${type === 'official_api' ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                                >
+                                    <i className="fab fa-facebook text-lg mb-1 block"></i>
+                                    <span className="text-xs font-bold">API Oficial (Meta)</span>
+                                </button>
                             </div>
-                            <div className="relative border border-gray-600 rounded p-3 pt-4">
-                                <label className={labelClass}>Mensagem de despedida</label>
-                                <textarea value={farewell} onChange={e => setFarewell(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao finalizar..." />
+
+                            {/* Profile Type Selector */}
+                            <div className="flex gap-4">
+                                <button 
+                                    onClick={() => setProfileType('personal')}
+                                    className={`flex-1 py-2 rounded border transition ${profileType === 'personal' ? 'border-gray-400 bg-gray-700 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                                >
+                                    <i className="fas fa-user text-sm mr-2"></i>
+                                    <span className="text-xs font-bold">Pessoal</span>
+                                </button>
+                                <button 
+                                    onClick={() => setProfileType('business')}
+                                    className={`flex-1 py-2 rounded border transition ${profileType === 'business' ? 'border-gray-400 bg-gray-700 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
+                                >
+                                    <i className="fas fa-briefcase text-sm mr-2"></i>
+                                    <span className="text-xs font-bold">Business</span>
+                                </button>
                             </div>
+
+                            <div className="relative mt-2">
+                                <label className={labelClass}>Nome da Conexão</label>
+                                <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="Ex: Atendimento Principal" />
+                            </div>
+
+                            {type === 'legacy_qrcode' ? (
+                                <>
+                                    <div className="relative border border-gray-600 rounded p-3 pt-4">
+                                        <label className={labelClass}>Mensagem de saudação</label>
+                                        <textarea value={greeting} onChange={e => setGreeting(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao iniciar o atendimento..." />
+                                    </div>
+                                    <div className="relative border border-gray-600 rounded p-3 pt-4">
+                                        <label className={labelClass}>Mensagem de despedida</label>
+                                        <textarea value={farewell} onChange={e => setFarewell(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao finalizar..." />
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="relative mt-2">
+                                        <label className={labelClass}>Phone Number ID</label>
+                                        <input type="text" value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} className={inputClass} placeholder="ID do número no Meta for Developers" />
+                                    </div>
+                                    <div className="relative mt-2">
+                                        <label className={labelClass}>WABA ID (WhatsApp Business Account ID)</label>
+                                        <input type="text" value={wabaId} onChange={e => setWabaId(e.target.value)} className={inputClass} placeholder="ID da conta empresarial" />
+                                    </div>
+                                    <div className="relative mt-2">
+                                        <label className={labelClass}>API Token (Permanente)</label>
+                                        <input type="password" value={apiToken} onChange={e => setApiToken(e.target.value)} className={inputClass} placeholder="EAAG..." />
+                                    </div>
+                                </>
+                            )}
                         </>
                     ) : (
-                        <>
-                            <div className="relative mt-2">
-                                <label className={labelClass}>Phone Number ID</label>
-                                <input type="text" value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} className={inputClass} placeholder="ID do número no Meta for Developers" />
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between bg-gray-700/30 p-4 rounded-lg border border-gray-600">
+                                <div>
+                                    <h4 className="font-bold text-purple-400">Ativar Bot Inteligente</h4>
+                                    <p className="text-xs text-gray-400">A IA responderá automaticamente às mensagens recebidas.</p>
+                                </div>
+                                <button 
+                                    onClick={() => setAiEnabled(!aiEnabled)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiEnabled ? 'bg-purple-600' : 'bg-gray-500'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${aiEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
                             </div>
-                            <div className="relative mt-2">
-                                <label className={labelClass}>WABA ID (WhatsApp Business Account ID)</label>
-                                <input type="text" value={wabaId} onChange={e => setWabaId(e.target.value)} className={inputClass} placeholder="ID da conta empresarial" />
-                            </div>
-                            <div className="relative mt-2">
-                                <label className={labelClass}>API Token (Permanente)</label>
-                                <input type="password" value={apiToken} onChange={e => setApiToken(e.target.value)} className={inputClass} placeholder="EAAG..." />
-                            </div>
-                            <div className="p-3 bg-blue-900/30 border border-blue-800 rounded text-xs text-blue-200">
-                                <i className="fas fa-info-circle mr-2"></i>
-                                Para usar a API Oficial, você precisa de uma conta verificada no Meta for Developers. A conexão é instantânea se as credenciais estiverem corretas.
-                            </div>
-                        </>
+
+                            {aiEnabled && (
+                                <div className="space-y-4 animate-fade-in">
+                                    <div className="relative border border-gray-600 rounded p-3 pt-4 bg-gray-800/50">
+                                        <label className={labelClass}>Personalidade do Bot</label>
+                                        <select 
+                                            value={personality} 
+                                            onChange={e => setPersonality(e.target.value)} 
+                                            className="w-full bg-transparent text-gray-200 outline-none text-sm"
+                                        >
+                                            <option value="formal">Formal & Corporativo</option>
+                                            <option value="friendly">Amigável & Casual</option>
+                                            <option value="sales">Vendedor (Focado em Conversão)</option>
+                                            <option value="support">Suporte Técnico (Objetivo)</option>
+                                        </select>
+                                    </div>
+                                    <p className="text-xs text-gray-500">
+                                        <i className="fas fa-info-circle mr-1"></i>
+                                        A IA analisará o histórico da conversa para gerar respostas contextuais. Você pode assumir o controle a qualquer momento.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 
@@ -411,7 +827,7 @@ const QuickAnswerModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClos
 
 export default function ChatCrmPage({ onNavigateToDashboard }: { onNavigateToDashboard: () => void }) {
     const { user } = useUser();
-    const [activeView, setActiveView] = useState<MenuOption>('quick_answers'); 
+    const [activeView, setActiveView] = useState<MenuOption>('dashboard'); // Default to Dashboard
     
     // Real Data State
     const [quickAnswers, setQuickAnswers] = useState<QuickAnswer[]>([]);
@@ -554,6 +970,14 @@ export default function ChatCrmPage({ onNavigateToDashboard }: { onNavigateToDas
                 </header>
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar flex">
+                    {activeView === 'dashboard' && (
+                        <DashboardView />
+                    )}
+
+                    {activeView === 'chats' && user && (
+                        <ChatsView userId={user.id} />
+                    )}
+
                     {activeView === 'quick_answers' && (
                         <QuickAnswersView 
                             answers={quickAnswers} 
@@ -574,7 +998,7 @@ export default function ChatCrmPage({ onNavigateToDashboard }: { onNavigateToDas
                     )}
 
                     {/* Placeholder for other views */}
-                    {['dashboard', 'chats', 'contacts', 'tags', 'schedules', 'support', 'account'].includes(activeView) && (
+                    {['contacts', 'tags', 'schedules', 'support', 'account'].includes(activeView) && (
                         <div className="flex flex-col items-center justify-center w-full h-full text-gray-400">
                             <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
                                 <i className="fas fa-tools text-4xl text-gray-300"></i>

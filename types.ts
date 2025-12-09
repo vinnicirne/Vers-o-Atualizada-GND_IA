@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
@@ -424,9 +425,9 @@ export interface ChatConnection {
   status: 'connected' | 'disconnected' | 'qrcode' | 'pairing';
   type: ConnectionType;
   profile_type?: 'personal' | 'business'; // Novo campo
-  lastActivity?: string;
+  last_activity?: string; // Updated from lastActivity to last_activity
   user_id?: string;
-  created_at?: string; // Added field
+  created_at?: string;
   
   // Legacy / QR Code
   qrcode?: string | null; // Base64 do QR Code para exibir
@@ -441,4 +442,33 @@ export interface ChatConnection {
   greeting_message?: string;
   farewell_message?: string;
   is_default?: boolean;
+
+  // AI Configuration
+  ai_config?: {
+    enabled: boolean;
+    personality?: string; // 'formal', 'friendly', 'sales', 'support'
+    context_window?: number; // How many messages to remember
+  };
+}
+
+export interface ChatTicket {
+  id: string;
+  contact_id: string;
+  contact_name: string;
+  contact_number: string;
+  last_message: string;
+  last_message_time: string;
+  unread_count: number;
+  status: 'open' | 'pending' | 'closed';
+  tags: string[];
+  ai_enabled: boolean; // Flag to enable/disable AI for this specific chat
+}
+
+export interface ChatMessage {
+  id: string;
+  ticket_id: string;
+  sender: 'user' | 'contact' | 'bot'; // user = agent, contact = customer, bot = AI
+  content: string;
+  timestamp: string;
+  status: 'sent' | 'delivered' | 'read';
 }

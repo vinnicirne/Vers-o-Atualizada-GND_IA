@@ -148,13 +148,14 @@ export const generateChatResponse = async (history: string, task: 'reply' | 'rep
         prompt = `
         Atue como um atendente de suporte/vendas profissional, empático e eficiente.
         
-        HISTÓRICO DA CONVERSA:
+        HISTÓRICO DA CONVERSA (Do mais antigo para o mais recente):
         ${history}
         
         SUA TAREFA:
-        Gere uma resposta curta (max 3 frases) e direta para a última mensagem do cliente.
+        Gere uma resposta curta (max 3 frases) e direta para a última mensagem do cliente (Contact).
         Se o cliente fez uma pergunta, responda. Se for uma saudação, saúde de volta.
-        Não use placeholders como [Nome].
+        Tente ajudar ou avançar a venda.
+        Não use placeholders como [Nome]. Use as informações do histórico se disponíveis.
         `;
     } else {
         prompt = `
