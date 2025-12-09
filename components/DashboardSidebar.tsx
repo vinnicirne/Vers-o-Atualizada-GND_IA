@@ -69,30 +69,32 @@ export function DashboardSidebar({
                     </button>
                 </div>
                 
-                <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
-                    {/* CRM BUTTON HIGHLIGHTED */}
-                    {!isGuest && onNavigateCRM && (
-                        <div className="mb-4">
-                            <button
-                                onClick={() => {
-                                    onNavigateCRM();
-                                    setIsOpen(false);
-                                }}
-                                className="w-full flex items-center p-3 rounded-xl bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg shadow-green-500/30 hover:scale-[1.02] transition-transform duration-200 group"
-                            >
-                                <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-white/20 text-white">
-                                    <i className="fab fa-whatsapp text-lg"></i>
-                                </div>
-                                <div className="flex-1 text-left">
-                                    <p className="text-sm font-bold">CRM WhatsApp</p>
-                                    <p className="text-[10px] text-green-100 opacity-90">Multi-atendimento</p>
-                                </div>
-                                <i className="fas fa-chevron-right text-xs opacity-60"></i>
-                            </button>
-                        </div>
-                    )}
+                {/* CRM BUTTON HIGHLIGHTED (FIXED TOP) */}
+                {!isGuest && onNavigateCRM && (
+                    <div className="p-4 pb-2 border-b border-green-100 bg-green-50/50">
+                        <button
+                            onClick={() => {
+                                onNavigateCRM();
+                                setIsOpen(false);
+                            }}
+                            className="w-full flex items-center p-3 rounded-xl bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg shadow-green-500/30 hover:scale-[1.02] transition-transform duration-200 group relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                            <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-white/20 text-white shadow-sm border border-white/20">
+                                <i className="fab fa-whatsapp text-lg"></i>
+                            </div>
+                            <div className="flex-1 text-left">
+                                <p className="text-sm font-bold tracking-wide">CRM WhatsApp</p>
+                                <p className="text-[10px] text-green-100 font-medium">Multi-atendimento</p>
+                            </div>
+                            <i className="fas fa-chevron-right text-xs opacity-60 group-hover:translate-x-1 transition-transform"></i>
+                        </button>
+                    </div>
+                )}
 
-                    <div className="px-2 py-1">
+                <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
+                    
+                    <div className="px-2 py-1 mt-2">
                         <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Criação IA</span>
                     </div>
 
