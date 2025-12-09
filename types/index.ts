@@ -327,6 +327,22 @@ export interface WhatsAppInstance {
     created_at: string;
 }
 
+export interface ChatQueue {
+    id: string;
+    name: string;
+    color: string;
+    created_at: string;
+}
+
+export interface ChatAgent {
+    id: string;
+    name: string;
+    email: string;
+    role: 'admin' | 'agent';
+    status: 'online' | 'offline';
+    avatar_url?: string;
+}
+
 export interface ChatContact {
     id: string;
     phone: string;
@@ -349,6 +365,7 @@ export interface ChatConversation {
     unread_count: number;
     status: 'open' | 'closed' | 'pending';
     assigned_agent_id?: string;
+    queue_id?: string;
 }
 
 export interface ChatMessage {

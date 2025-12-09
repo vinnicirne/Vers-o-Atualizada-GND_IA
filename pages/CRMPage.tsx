@@ -5,6 +5,7 @@ import { usePlan } from '../hooks/usePlan';
 import { CRMManager } from '../components/admin/CRMManager'; // Admin View
 import { ClientCRM } from '../components/crm/ClientCRM'; // User View
 import { MultiChatLayout } from '../components/chat/MultiChatLayout'; // Chat View
+import { CRMSettings } from '../components/crm/CRMSettings'; // Settings View
 import { Header } from '../components/Header'; // Reusing Header for consistency
 import { PlansModal } from '../components/PlansModal';
 
@@ -16,7 +17,7 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
     const { user } = useUser();
     const { hasAccessToService } = usePlan();
     const [showPlans, setShowPlans] = useState(false);
-    const [activeTab, setActiveTab] = useState<'leads' | 'chat'>('leads');
+    const [activeTab, setActiveTab] = useState<'leads' | 'chat' | 'settings'>('leads');
 
     if (!user) {
         return (
@@ -72,6 +73,17 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
         );
     }
 
+    const renderContent = () => {
+        if (isAdmin) return <CRMManager />;
+        
+        switch (activeTab) {
+            case 'leads': return <ClientCRM userId={user.id} />;
+            case 'chat': return <div className="h-full"><MultiChatLayout user={user} /></div>;
+            case 'settings': return <CRMSettings user={user} />;
+            default: return null;
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#F0F2F5] font-['Poppins'] flex flex-col">
             {/* Custom Header for CRM Page */}
@@ -109,48 +121,39 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
                         >
                             <i className="fab fa-whatsapp text-xs"></i> Chat
                         </button>
+                        <button 
+                            onClick={() => setActiveTab('settings')}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'settings' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <i className="fas fa-cog text-xs"></i> Configurações
+                        </button>
                     </div>
                 )}
             </header>
 
-            <main className="flex-1 overflow-hidden flex flex-col">
+            <main className={`flex-1 overflow-hidden flex flex-col ${activeTab === 'chat' ? 'bg-gray-100' : 'p-6 overflow-y-auto'}`}>
                 {isAdmin ? (
-                    <div className="p-6 overflow-y-auto">
-                        <div className="space-y-6 max-w-7xl mx-auto">
-                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start mb-6">
-                                <i className="fas fa-info-circle text-blue-500 mt-1"></i>
-                                <div>
-                                    <h3 className="font-bold text-blue-800 text-sm">Visão do Sistema (Admin)</h3>
-                                    <p className="text-xs text-blue-600">
-                                        Aqui você gerencia os <strong>Leads do Sistema</strong> (pessoas que se cadastraram na Landing Page do SaaS). 
-                                        Para ver o CRM de um cliente específico, acesse "Usuários" e "Ver Detalhes".
-                                    </p>
-                                </div>
+                    <div className="space-y-6 max-w-7xl mx-auto w-full">
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start mb-6">
+                            <i className="fas fa-info-circle text-blue-500 mt-1"></i>
+                            <div>
+                                <h3 className="font-bold text-blue-800 text-sm">Visão do Sistema (Admin)</h3>
+                                <p className="text-xs text-blue-600">
+                                    Aqui você gerencia os <strong>Leads do Sistema</strong> (pessoas que se cadastraram na Landing Page do SaaS). 
+                                    Para ver o CRM de um cliente específico, acesse "Usuários" e "Ver Detalhes".
+                                </p>
                             </div>
-                            <CRMManager />
                         </div>
+                        <CRMManager />
                     </div>
                 ) : (
-                    /* Client View Switcher */
-                    activeTab === 'leads' ? (
-                        <div className="p-6 overflow-y-auto">
-                            <div className="max-w-7xl mx-auto space-y-6">
-                                <div className="flex justify-between items-end mb-4">
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-gray-800">Seus Clientes</h2>
-                                        <p className="text-gray-500 text-sm">Gerencie os contatos capturados pelo Chat e Landing Pages.</p>
-                                    </div>
-                                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">
-                                        <i className="fas fa-plus mr-2"></i> Adicionar Manualmente
-                                    </button>
-                                </div>
-                                <ClientCRM userId={user.id} />
-                            </div>
+                    activeTab === 'chat' ? (
+                        <div className="h-full flex flex-col">
+                            <MultiChatLayout user={user} />
                         </div>
                     ) : (
-                        /* Chat View - Full Height */
-                        <div className="h-full bg-gray-100 flex flex-col">
-                            <MultiChatLayout user={user} />
+                        <div className="max-w-7xl mx-auto space-y-6 w-full">
+                            {renderContent()}
                         </div>
                     )
                 )}
