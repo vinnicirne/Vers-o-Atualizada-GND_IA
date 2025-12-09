@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -419,12 +418,12 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 
        **REGRAS ESTRUTURAIS E DE PREENCHIMENTO HTML (Tailwind CSS):**
        - Utilize o TEMPLATE HTML fornecido como base.
-       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: \`<span id="resume-name"></span>\`, \`<div id="experience-list"></div>\`).
-       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o `innerHTML`** do elemento com o ID.
+       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: "<span id='resume-name'></span>", "<div id='experience-list'></div>").
+       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o "innerHTML"** do elemento com o ID.
        - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
-       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu `innerHTML` vazio** ou remova o elemento se for mais limpo.
-       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere o HTML completo para todos os itens da lista e seus itens** (ex: `<div>...</div>` para cada experiência, `<span>...</span>` para cada skill) diretamente dentro do `div` de placeholder da lista.
-       - **NÃO inclua tags \`<html>\`, \`<head>\` ou \`<body>\` externas.** Apenas o conteúdo interno.
+       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu "innerHTML" vazio** ou remova o elemento se for mais limpo.
+       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere o HTML completo para todos os itens da lista e seus itens** (ex: "<div>...</div>" para cada experiência, "<span>...</span>" para cada skill) diretamente dentro do "div" de placeholder da lista.
+       - **NÃO inclua tags "<html>", "<head>" ou "<body>" externas.** Apenas o conteúdo interno.
        - Use classes Tailwind CSS para todo o estilo.
        - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
        - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
@@ -575,12 +574,12 @@ serve(async (req) => {
         **LEMBRE-SE DE CADA ETAPA:**
         1.  Inicie com o template HTML fornecido.
         2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
-        3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: \`<p>Seu resumo aqui</p>\` ou \`<div><h3>Cargo</h3><p>Empresa</p></div>\`)** e insira-o como o \`innerHTML\` desse elemento.
+        3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: "<p>Seu resumo aqui</p>" ou "<div><h3>Cargo</h3><p>Empresa</p></div>")** e insira-o como o "innerHTML" desse elemento.
         4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
             -   Gere o HTML completo para todos os itens da lista.
-            -   Para experiência e educação, cada item deve ter um \`div\` ou \`p\` formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
-            -   Para habilidades e certificações, gere '<span>' ou '<li>' tags conforme o estilo do template e insira-as dentro do seu 'div' ou 'ul' de placeholder.
-        5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o \`innerHTML\` desse elemento vazio**.
+            -   Para experiência e educação, cada item deve ter um "div" ou "p" formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
+            -   Para habilidades e certificações, gere '<span>' ou '<li>' tags conforme o estilo do template e insira-as dentro do seu "div" ou "ul" de placeholder.
+        5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o "innerHTML" desse elemento vazio**.
         6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
         7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
         `;

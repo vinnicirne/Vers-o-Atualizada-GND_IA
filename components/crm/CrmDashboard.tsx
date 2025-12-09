@@ -18,6 +18,66 @@ const STAGES: { id: LeadStatus; label: string; color: string; bg: string; chartC
     { id: 'lost', label: 'Perdidos', color: 'text-gray-600', bg: 'bg-gray-100', chartColor: '#9ca3af' },
 ];
 
+const INSTALL_SQL = `
+-- 1. TABELA DE LEADS
+create table if not exists public.leads (
+  id uuid default uuid_generate_v4() primary key,
+  owner_id uuid references public.app_users(id) not null,
+  email text not null,
+  name text,
+  phone text,
+  company text,
+  status text default 'new',
+  score int default 0,
+  source text,
+  utm_source text,
+  utm_medium text,
+  utm_campaign text,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 2. TABELA DE EVENTOS DE MARKETING
+create table if not exists public.marketing_events (
+  id uuid default uuid_generate_v4() primary key,
+  lead_id uuid references public.leads(id) on delete cascade,
+  event_type text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+-- 3. TABELA DE DEALS (NEGÓCIOS)
+create table if not exists public.deals (
+  id uuid default uuid_generate_v4() primary key,
+  lead_id uuid references public.leads(id) on delete cascade,
+  owner_id uuid references public.app_users(id) not null,
+  title text not null,
+  value numeric default 0,
+  status text default 'open',
+  created_at timestamptz default now()
+);
+
+-- 4. HABILITAR RLS
+alter table public.leads enable row level security;
+alter table public.marketing_events enable row level security;
+alter table public.deals enable row level security;
+
+-- 5. POLÍTICAS
+create policy "Users manage own leads" on public.leads for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+create policy "Users manage own deals" on public.deals for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+create policy "Read events" on public.marketing_events for select using (exists (select 1 from public.leads where id = lead_id and (owner_id = auth.uid() or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')))));
+create policy "Insert events" on public.marketing_events for insert with check (true);
+
+-- 6. PERMISSÕES
+grant all on public.leads to authenticated;
+grant all on public.marketing_events to authenticated;
+grant all on public.deals to authenticated;
+grant all on public.leads to service_role;
+grant all on public.marketing_events to service_role;
+grant all on public.deals to service_role;
+`;
+
 export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const { user } = useUser();
     const [leads, setLeads] = useState<Lead[]>([]);
@@ -26,6 +86,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [missingTables, setMissingTables] = useState(false);
     
     // Modal State
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -34,11 +95,19 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const fetchLeads = async () => {
         if (!user) return;
         setLoading(true);
+        setMissingTables(false);
         try {
             const data = await getLeads(user.id, isAdminView && user.role === 'admin');
             setLeads(data);
         } catch (e: any) {
             console.error(e);
+            // Detect if error is due to missing tables
+            if (e.message && (
+                e.message.includes('relation "public.leads" does not exist') || 
+                e.message.includes('404')
+            )) {
+                setMissingTables(true);
+            }
         } finally {
             setLoading(false);
         }
@@ -75,6 +144,11 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
         } catch (e) {
             setToast({ message: "Erro ao excluir.", type: 'error' });
         }
+    };
+
+    const copySql = () => {
+        navigator.clipboard.writeText(INSTALL_SQL);
+        setToast({ message: "SQL copiado! Cole no SQL Editor do Supabase.", type: 'success' });
     };
 
     const openNewModal = () => {
@@ -116,7 +190,50 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
             value: metrics[stage.id] || 0,
             fill: stage.chartColor
         }))
-        .filter(d => d.value > 0); // Recharts funnel looks better if we filter zeros, or keep them. Let's keep non-zeros for cleaner look.
+        .filter(d => d.value > 0); 
+
+    // --- MISSING TABLES STATE ---
+    if (missingTables) {
+        return (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center max-w-3xl mx-auto mt-8 shadow-sm">
+                <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 text-3xl">
+                    <i className="fas fa-database"></i>
+                </div>
+                <h2 className="text-2xl font-bold text-red-700 mb-2">Banco de Dados Desatualizado</h2>
+                <p className="text-red-600 mb-6">
+                    As tabelas necessárias para o CRM (Leads, Eventos, Negócios) ainda não existem no seu Supabase.
+                </p>
+                
+                <div className="bg-white border border-red-100 rounded-lg p-4 text-left mb-6 relative group">
+                    <pre className="text-xs text-gray-600 font-mono overflow-x-auto whitespace-pre-wrap max-h-48 custom-scrollbar">
+                        {INSTALL_SQL}
+                    </pre>
+                    <button 
+                        onClick={copySql}
+                        className="absolute top-2 right-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded text-xs font-bold transition flex items-center gap-2"
+                    >
+                        <i className="fas fa-copy"></i> Copiar SQL
+                    </button>
+                </div>
+
+                <div className="flex flex-col items-center gap-4">
+                    <button 
+                        onClick={copySql}
+                        className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-red-200 transition flex items-center gap-2"
+                    >
+                        <i className="fas fa-copy"></i> Copiar Código de Instalação
+                    </button>
+                    <p className="text-sm text-gray-500">
+                        1. Copie o código acima.<br/>
+                        2. Vá ao seu painel Supabase > SQL Editor.<br/>
+                        3. Cole e clique em "Run".<br/>
+                        4. Recarregue esta página.
+                    </p>
+                </div>
+                {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
