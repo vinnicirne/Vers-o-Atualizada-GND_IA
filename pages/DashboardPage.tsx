@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Header } from '../components/Header';
 import { DashboardSidebar } from '../components/DashboardSidebar';
@@ -79,6 +78,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
             onOpenIntegrations={() => toggleModal('integrations', true)}
             onOpenManual={() => toggleModal('manual', true)}
             onNavigateFeedback={() => onNavigate('feedback')}
+            onNavigateChatCrm={() => onNavigate('chat_crm')} // Pass new navigation handler
         />
 
         {/* MAIN CONTENT */}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { CREATOR_SUITE_MODES, SERVICE_ICONS } from '../constants'; // SERVICE_COLORS não será mais usado diretamente
@@ -7,8 +6,8 @@ import { User } from '../types';
 interface DashboardSidebarProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    currentMode: ServiceKey | 'crm'; // Add 'crm' to type
-    onModeChange: (mode: ServiceKey | 'crm') => void; // Update type
+    currentMode: ServiceKey | 'crm' | 'chat_crm'; // Updated Type
+    onModeChange: (mode: ServiceKey | 'crm' | 'chat_crm') => void; // Updated Type
     user: User | null;
     isGuest: boolean;
     activeCredits: number;
@@ -20,6 +19,7 @@ interface DashboardSidebarProps {
     onOpenIntegrations: () => void;
     onOpenManual: () => void;
     onNavigateFeedback: () => void;
+    onNavigateChatCrm?: () => void; // New prop
 }
 
 export function DashboardSidebar({
@@ -37,21 +37,17 @@ export function DashboardSidebar({
     onOpenHistory,
     onOpenIntegrations,
     onOpenManual,
-    onNavigateFeedback
+    onNavigateFeedback,
+    onNavigateChatCrm
 }: DashboardSidebarProps) {
 
     const handleModeSelection = (mode: ServiceKey) => {
-        // hasAccessToService agora considera a ativação global e o plano.
-        // guestAllowedModes ainda é usado para a lógica específica de guest que pode ter um comportamento diferente (ex: modal de feature lock)
         if (isGuest && !guestAllowedModes.includes(mode)) {
-            // Este é o check específico para guests que atingem um recurso bloqueado
-            onModeChange(mode); // Chama onModeChange para que o hook useDashboard lide com o modal 'featureLock'
+            onModeChange(mode); 
             return;
         }
 
-        // Para usuários logados, ou guests em modos permitidos, hasAccessToService deve ser a única fonte de verdade
         if (!hasAccessToService(mode)) {
-            // Se for um usuário logado sem acesso, ou um guest em um modo bloqueado globalmente, o onModeChange vai tratar
             onModeChange(mode); 
             return;
         }
@@ -82,17 +78,32 @@ export function DashboardSidebar({
                     </button>
                 </div>
                 
+                {/* === CHAT CRM HIGHLIGHT BUTTON === */}
+                {user && hasAccessToService('crm_suite') && (
+                    <div className="p-4 border-b border-gray-200 bg-blue-50/50">
+                        <button
+                            onClick={() => {
+                                if (onNavigateChatCrm) onNavigateChatCrm();
+                                setIsOpen(false);
+                            }}
+                            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:to-blue-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 flex flex-col items-center justify-center text-center group transition-all transform hover:-translate-y-0.5"
+                        >
+                            <div className="flex items-center gap-2 mb-1">
+                                <i className="fab fa-whatsapp text-2xl"></i>
+                                <i className="fas fa-comments text-lg opacity-80"></i>
+                            </div>
+                            <span className="text-sm">Central de Atendimento</span>
+                            <span className="text-[10px] opacity-80 font-medium bg-blue-700/30 px-2 py-0.5 rounded-full mt-1">CRM 360° • Whaticket</span>
+                        </button>
+                    </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
-                    {CREATOR_SUITE_MODES.map((svc) => {
+                    {CREATOR_SUITE_MODES.filter(svc => svc.value !== 'crm_suite').map((svc) => {
                         const isSelected = currentMode === svc.value;
-                        
-                        // hasAccessToService já considera o estado global da ferramenta e o plano do usuário
                         const isLocked = !hasAccessToService(svc.value); 
-                        
-                        // Robust lookup for icon and use dynamic colors
                         const iconClass = SERVICE_ICONS[svc.value] || 'fa-question'; 
 
-                        // Determine colors based on active mode for icons, else a neutral gray
                         let iconBgColor = 'bg-gray-100';
                         let iconTextColor = 'text-gray-500';
 
@@ -100,11 +111,9 @@ export function DashboardSidebar({
                             iconBgColor = 'bg-[var(--brand-primary)]/[0.1]';
                             iconTextColor = 'text-[var(--brand-primary)]';
                         } else if (!isSelected && !isLocked) {
-                            // Neutral state for unlocked items
                             iconBgColor = 'bg-gray-100';
                             iconTextColor = 'text-gray-500';
                         } else if (isLocked) {
-                            // Locked state
                             iconBgColor = 'bg-gray-50';
                             iconTextColor = 'text-gray-400';
                         }
@@ -120,7 +129,7 @@ export function DashboardSidebar({
                                     }
                                     ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}
                                 `}
-                                disabled={isLocked} // Desabilita o botão se a ferramenta estiver bloqueada (globalmente ou pelo plano)
+                                disabled={isLocked}
                             >
                                 <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${iconBgColor} ${iconTextColor}`}>
                                     <i className={`fas ${iconClass} text-sm`}></i>
@@ -130,7 +139,6 @@ export function DashboardSidebar({
                                     <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[var(--brand-secondary)]' : 'text-gray-600 group-hover:text-[var(--brand-secondary)]'}`}>
                                         {svc.label}
                                     </p>
-                                    {/* Adicionado o placeholder para melhor descrição */}
                                     <p className="text-xs text-gray-400 mt-0.5 truncate">{svc.placeholder}</p>
                                 </div>
 
@@ -138,27 +146,6 @@ export function DashboardSidebar({
                             </button>
                         );
                     })}
-
-                    {/* CRM & Leads Link - Only for logged in users AND if they have access */}
-                    {user && hasAccessToService('crm_suite') && (
-                        <>
-                            <div className="h-px bg-gray-100 my-2"></div>
-                            <button
-                                onClick={() => onModeChange('crm')}
-                                className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 text-left group ${currentMode === 'crm' ? 'bg-blue-50 ring-1 ring-blue-500' : 'hover:bg-gray-50'}`}
-                            >
-                                <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${currentMode === 'crm' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
-                                    <i className="fas fa-users-cog text-sm"></i>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                    <p className={`text-sm font-semibold truncate ${currentMode === 'crm' ? 'text-blue-800' : 'text-gray-600'}`}>
-                                        CRM & Leads
-                                    </p>
-                                    <p className="text-xs text-gray-400 mt-0.5 truncate">Gerencie seus contatos</p>
-                                </div>
-                            </button>
-                        </>
-                    )}
                 </div>
 
                 {/* Menu Extra (Mobile Only) */}

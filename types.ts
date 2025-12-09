@@ -354,3 +354,48 @@ export interface Deal {
   status: 'open' | 'won' | 'lost';
   created_at: string;
 }
+
+// --- CHAT / WHATICKET TYPES ---
+export interface ChatContact {
+  id: string;
+  name: string;
+  number: string;
+  profilePicUrl?: string;
+  email?: string;
+  leadId?: string; // Link to Lead if exists
+}
+
+export interface Ticket {
+  id: string;
+  contactId: string;
+  contact: ChatContact;
+  status: 'open' | 'pending' | 'closed';
+  unreadCount: number;
+  lastMessage: string;
+  updatedAt: string;
+  ownerId: string; // Which user/admin owns this ticket
+  tags?: string[];
+}
+
+export interface Message {
+  id: string;
+  ticketId: string;
+  body: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video' | 'audio' | 'document';
+  fromMe: boolean;
+  isRead: boolean;
+  createdAt: string;
+  status?: 'sent' | 'received' | 'read' | 'error';
+}
+
+export interface WhatsappConfig {
+  id?: string;
+  userId: string;
+  sessionName: string; // e.g. "default"
+  status: 'qrcode' | 'connected' | 'disconnected' | 'pairing';
+  qrcode?: string; // Base64
+  type: 'backend' | 'api'; 
+  apiUrl?: string;
+  apiToken?: string;
+}

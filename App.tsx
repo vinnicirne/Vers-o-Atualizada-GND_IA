@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
@@ -13,12 +12,13 @@ const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
 const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage'));
 const LandingPage = React.lazy(() => import('./pages/LandingPage')); 
 const DashboardPage = React.lazy(() => import('./pages/DashboardPage')); // Corrected import path
+const ChatCrmPage = React.lazy(() => import('./pages/ChatCrmPage')); // NOVO
 
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
 import { PopupRenderer } from './components/PopupRenderer'; 
 
-type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
+type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing' | 'chat_crm';
 
 const SimpleLoader = () => {
   const { settings, loading: wlLoading } = useWhiteLabel(); 
@@ -65,7 +65,7 @@ function AppContent() {
     }
 
     // 2. Outras páginas permitidas via URL
-    const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback'];
+    const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'chat_crm'];
     if (pageParam && validPages.includes(pageParam as PageRoute)) {
         return pageParam as PageRoute;
     }
@@ -109,8 +109,8 @@ function AppContent() {
         }
     } else {
         // Not logged-in users logic
-        // If they try to access admin, kick to dashboard (guest)
-        if (targetPage === 'admin') {
+        // If they try to access admin or chat_crm, kick to dashboard (guest)
+        if (targetPage === 'admin' || targetPage === 'chat_crm') {
             targetPage = 'dashboard'; 
         } 
         // If they are on landing but it's disabled, kick to dashboard
@@ -270,6 +270,10 @@ function AppContent() {
                     onNavigateToDashboard={() => handleNavigate('dashboard')}
                   />
             </AdminGate>
+        )}
+
+        {currentPage === 'chat_crm' && (
+            <ChatCrmPage onNavigateToDashboard={() => handleNavigate('dashboard')} />
         )}
 
         {/* Public Feedback Page */}
