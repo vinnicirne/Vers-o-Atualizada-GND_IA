@@ -101,19 +101,14 @@ export function DocumentationViewer() {
 
   const schemaSql = `
 -- =========================================================
--- 🚨 PACOTE DE CORREÇÃO (RESET) - CRM & LEADS
--- Use este script se encontrar erros como "column owner_id does not exist".
+-- 🚨 PACOTE COMPLETO (CHAT CRM & LEADS)
+-- Execute este script para habilitar todas as tabelas.
 -- =========================================================
-
--- 1. LIMPEZA (Apaga versões incompatíveis)
-DROP TABLE IF EXISTS public.marketing_events CASCADE;
-DROP TABLE IF EXISTS public.deals CASCADE;
-DROP TABLE IF EXISTS public.leads CASCADE;
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 2. TABELA DE LEADS (Corrigida)
-create table public.leads (
+-- 1. TABELAS DE CRM / LEADS
+create table if not exists public.leads (
   id uuid default gen_random_uuid() primary key,
   owner_id uuid references public.app_users(id) not null,
   email text not null,
@@ -131,8 +126,7 @@ create table public.leads (
   updated_at timestamptz default now()
 );
 
--- 3. TABELA DE EVENTOS DE MARKETING
-create table public.marketing_events (
+create table if not exists public.marketing_events (
   id uuid default gen_random_uuid() primary key,
   lead_id uuid references public.leads(id) on delete cascade,
   event_type text not null,
@@ -140,41 +134,69 @@ create table public.marketing_events (
   created_at timestamptz default now()
 );
 
--- 4. TABELA DE DEALS (NEGÓCIOS)
-create table public.deals (
+-- 2. TABELAS DE CHAT (WHATICKET / GENESIS)
+create table if not exists public.chat_connections (
   id uuid default gen_random_uuid() primary key,
-  lead_id uuid references public.leads(id) on delete cascade,
-  owner_id uuid references public.app_users(id) not null,
-  title text not null,
-  value numeric default 0,
-  status text default 'open',
+  user_id uuid references public.app_users(id) not null,
+  name text not null,
+  status text default 'disconnected', -- disconnected, qrcode, connected
+  type text default 'legacy_qrcode', -- legacy_qrcode, official_api
+  profile_type text default 'personal', -- personal, business
+  
+  -- Campos para API Oficial
+  phone_number_id text,
+  waba_id text,
+  api_token text,
+  
+  -- Campos Legacy
+  qrcode text,
+  session_name text,
+  
+  -- Configurações
+  greeting_message text,
+  farewell_message text,
+  is_default boolean default false,
+  
+  lastActivity timestamptz default now(),
   created_at timestamptz default now()
 );
 
--- 5. HABILITAR RLS
+create table if not exists public.chat_quick_answers (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.app_users(id) not null,
+  shortcut text not null,
+  message text not null,
+  created_at timestamptz default now()
+);
+
+-- 3. HABILITAR RLS (Row Level Security)
 alter table public.leads enable row level security;
 alter table public.marketing_events enable row level security;
-alter table public.deals enable row level security;
+alter table public.chat_connections enable row level security;
+alter table public.chat_quick_answers enable row level security;
 
--- 6. POLÍTICAS DE SEGURANÇA
+-- 4. POLÍTICAS DE SEGURANÇA
+-- Leads
 create policy "Users manage own leads" on public.leads
   for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
-create policy "Users manage own deals" on public.deals
-  for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+-- Chat Connections
+create policy "Users manage own connections" on public.chat_connections
+  for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
-create policy "Read events" on public.marketing_events
-  for select using (exists (select 1 from public.leads where id = lead_id and (owner_id = auth.uid() or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')))));
+-- Quick Answers
+create policy "Users manage own answers" on public.chat_quick_answers
+  for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
-create policy "Insert events" on public.marketing_events for insert with check (true);
-
--- 7. PERMISSÕES
+-- 5. PERMISSÕES
 grant all on public.leads to authenticated;
 grant all on public.marketing_events to authenticated;
-grant all on public.deals to authenticated;
+grant all on public.chat_connections to authenticated;
+grant all on public.chat_quick_answers to authenticated;
 grant all on public.leads to service_role;
 grant all on public.marketing_events to service_role;
-grant all on public.deals to service_role;
+grant all on public.chat_connections to service_role;
+grant all on public.chat_quick_answers to service_role;
 `;
 
   return (
@@ -261,9 +283,6 @@ grant all on public.deals to service_role;
                 <p className="text-gray-600 mb-4">
                     Utilize este script para configurar um projeto Supabase <strong>totalmente novo</strong>.
                 </p>
-                <div className="bg-yellow-50 p-4 border border-yellow-200 rounded text-sm text-yellow-800">
-                    <strong>Nota:</strong> O script completo está disponível no arquivo <code>Admin/DocumentationViewer.tsx</code>.
-                </div>
             </div>
         )}
 
@@ -272,7 +291,7 @@ grant all on public.deals to service_role;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Use este script para corrigir tabelas de CRM quebradas (erro "column does not exist").
+                    Use este script para criar as tabelas de Chat (Genesis), CRM e Leads.
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>

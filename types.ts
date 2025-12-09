@@ -413,11 +413,32 @@ export interface QuickAnswer {
   id: string;
   shortcut: string;
   message: string;
+  user_id?: string; // Vinculo com usuário
 }
+
+export type ConnectionType = 'legacy_qrcode' | 'official_api';
 
 export interface ChatConnection {
   id: string;
   name: string;
-  status: 'connected' | 'disconnected' | 'qrcode';
+  status: 'connected' | 'disconnected' | 'qrcode' | 'pairing';
+  type: ConnectionType;
+  profile_type?: 'personal' | 'business'; // Novo campo
   lastActivity?: string;
+  user_id?: string;
+  created_at?: string; // Added field
+  
+  // Legacy / QR Code
+  qrcode?: string | null; // Base64 do QR Code para exibir
+  session_name?: string;
+
+  // Official API Fields
+  phone_number_id?: string;
+  waba_id?: string;
+  api_token?: string; // Armazenado criptografado idealmente
+  
+  // Mensagens
+  greeting_message?: string;
+  farewell_message?: string;
+  is_default?: boolean;
 }
