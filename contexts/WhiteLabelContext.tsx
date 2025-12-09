@@ -1,6 +1,3 @@
-
-
-
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { getWhiteLabelSettings, updateWhiteLabelSettings as saveWhiteLabelSettingsService } from '../services/adminService';
 // FIX: Imported WhiteLabelSettings from types
@@ -62,7 +59,7 @@ interface WhiteLabelContextType {
 
 const WhiteLabelContext = createContext<WhiteLabelContextType | undefined>(undefined);
 
-export function WhiteLabelProvider({ children }: { children: ReactNode }) {
+export function WhiteLabelProvider({ children }: { children?: ReactNode }) {
   const [settings, setSettings] = useState<WhiteLabelSettings>(DEFAULT_WHITE_LABEL_SETTINGS);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
