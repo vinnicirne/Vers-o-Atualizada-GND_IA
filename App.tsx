@@ -2,7 +2,7 @@
 import React, { useState, useEffect, Suspense, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { UserProvider, useUser } from './contexts/UserContext';
-import LoginPage from './LoginPage';
+import LoginPage from './components/LoginPage';
 import { WhiteLabelProvider, useWhiteLabel } from './contexts/WhiteLabelContext'; // Import WhiteLabelContext
 // Lazy Load Pages
 const AdminPage = React.lazy(() => import('./pages/admin'));

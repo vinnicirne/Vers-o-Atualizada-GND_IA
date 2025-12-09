@@ -1,1164 +1,153 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Header } from '../components/Header';
+import { DashboardSidebar } from '../components/DashboardSidebar';
+import { CrmDashboard } from '../components/crm/CrmDashboard';
+import { ChatConnection } from '../types';
 import { useUser } from '../contexts/UserContext';
-import { ChatConnection, QuickAnswer, ConnectionType, ChatTicket, ChatMessage } from '../types';
-import { Toast } from '../components/admin/Toast';
-import { 
-    getQuickAnswers, createQuickAnswer, deleteQuickAnswer, 
-    getConnections, createConnection, deleteConnection, simulateConnectionScan,
-    getTickets, getMessages, sendMessage, simulateIncomingMessage, generateSmartReply, getChatMetrics,
-    fetchRemoteQrCode, fetchRemoteStatus // NEW IMPORTS
-} from '../services/chatService';
-import { generateChatResponse } from '../services/geminiService';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-
-type MenuOption = 'dashboard' | 'connections' | 'chats' | 'contacts' | 'tags' | 'quick_answers' | 'schedules' | 'support' | 'account';
-
-// --- COMPONENTS ---
-
-const Sidebar = ({ active, onChange }: { active: MenuOption, onChange: (opt: MenuOption) => void }) => {
-    const menus: { id: MenuOption, icon: string, label: string }[] = [
-        { id: 'dashboard', icon: 'fas fa-tachometer-alt', label: 'Dashboard' },
-        { id: 'connections', icon: 'fas fa-sync-alt', label: 'Conexões' },
-        { id: 'chats', icon: 'fab fa-whatsapp', label: 'Atendimentos' },
-        { id: 'contacts', icon: 'fas fa-address-book', label: 'Contatos' },
-        { id: 'tags', icon: 'fas fa-tags', label: 'Etiquetas' },
-        { id: 'quick_answers', icon: 'fas fa-bolt', label: 'Respostas rápidas' },
-        { id: 'schedules', icon: 'far fa-clock', label: 'Mensagens Agendadas' },
-        { id: 'support', icon: 'far fa-question-circle', label: 'Suporte' },
-    ];
-
-    return (
-        <aside className="w-64 bg-[#1e1e2d] text-[#a6a7ad] flex flex-col h-full shrink-0 transition-all duration-300">
-            <div className="h-16 flex items-center px-6 bg-[#1b1b28] border-b border-[#2d2d3f]">
-                <div className="flex items-center gap-3 text-white font-bold text-xl tracking-wider">
-                    <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
-                        <i className="fas fa-atom text-sm"></i>
-                    </div>
-                    <span>Genesis</span>
-                </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto py-4 space-y-1 custom-scrollbar">
-                {menus.map(menu => (
-                    <button
-                        key={menu.id}
-                        onClick={() => onChange(menu.id)}
-                        className={`w-full flex items-center px-6 py-3 transition-colors duration-200 border-l-4 ${
-                            active === menu.id 
-                            ? 'bg-[#2a2a3c] text-white border-blue-500' 
-                            : 'border-transparent hover:bg-[#2a2a3c] hover:text-white'
-                        }`}
-                    >
-                        <i className={`${menu.icon} w-6 text-center mr-3 ${active === menu.id ? 'text-blue-500' : ''}`}></i>
-                        <span className="text-sm font-medium">{menu.label}</span>
-                    </button>
-                ))}
-            </div>
-
-            <div className="p-4 border-t border-[#2d2d3f] space-y-1">
-                <button 
-                    onClick={() => onChange('account')}
-                    className={`w-full flex items-center px-4 py-2 rounded-lg transition-colors ${active === 'account' ? 'bg-[#2a2a3c] text-white' : 'hover:bg-[#2a2a3c] hover:text-white'}`}
-                >
-                    <i className="fas fa-user-circle w-6 mr-2"></i>
-                    <span className="text-sm">Minha conta</span>
-                </button>
-            </div>
-        </aside>
-    );
-};
-
-// --- NEW COMPONENT: CONNECTION CARD (POLLING LOGIC) ---
-const ConnectionCard: React.FC<{ 
-    connection: ChatConnection, 
-    onDelete: (id: string) => void, 
-    onSimulateScan: (id: string) => void 
-}> = ({ 
-    connection, 
-    onDelete, 
-    onSimulateScan 
-}) => {
-    const [qrCode, setQrCode] = useState<string | null>(connection.qrcode || null);
-    const [status, setStatus] = useState(connection.status);
-    const [polling, setPolling] = useState(false);
-
-    // Polling Effect for Real Integration
-    useEffect(() => {
-        if (connection.type !== 'legacy_qrcode' || status !== 'qrcode' || !connection.external_api_url) {
-            return;
-        }
-
-        let isMounted = true;
-        setPolling(true);
-
-        const poll = async () => {
-            if (!isMounted) return;
-
-            // 1. Check Status
-            const newStatus = await fetchRemoteStatus(connection);
-            if (newStatus && newStatus !== status) {
-                setStatus(newStatus);
-                if (newStatus === 'connected') {
-                    // Update in parent via callback or simulate re-fetch (simulated locally for speed)
-                    onSimulateScan(connection.id); // Re-using this handler to update local state effectively
-                    return; // Stop polling
-                }
-            }
-
-            // 2. Fetch QR if still needed
-            if (!newStatus || newStatus === 'qrcode') {
-                const newQr = await fetchRemoteQrCode(connection);
-                if (newQr && newQr !== qrCode) {
-                    setQrCode(newQr);
-                }
-            }
-
-            if (isMounted) setTimeout(poll, 3000); // Poll every 3s
-        };
-
-        poll();
-
-        return () => { isMounted = false; };
-    }, [connection, status]);
-
-    // Handle initial static QR or Base64
-    const qrSrc = qrCode 
-        ? (qrCode.startsWith('http') ? qrCode : `data:image/png;base64,${qrCode}`)
-        : null;
-
-    return (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all">
-            {/* Header / Status Bar */}
-            <div className={`h-2 ${status === 'connected' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
-            
-            <div className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl text-gray-600 shrink-0">
-                            <i className={`fab fa-${connection.type === 'official_api' ? 'facebook' : 'whatsapp'}`}></i>
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-bold text-gray-800 leading-tight">{connection.name}</h3>
-                            <div className="flex items-center gap-1.5 mt-1">
-                                <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide border ${
-                                    status === 'connected' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                }`}>
-                                    {status === 'connected' ? 'CONECTADO' : 'AGUARDANDO'}
-                                </span>
-                                {connection.profile_type === 'business' && (
-                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 font-bold">Business</span>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <button onClick={() => onDelete(connection.id)} className="text-gray-400 hover:text-red-500 transition">
-                        <i className="fas fa-trash"></i>
-                    </button>
-                </div>
-
-                <p className="text-xs text-gray-500 mb-6 truncate font-mono">
-                    {connection.type === 'official_api' ? 'Meta Cloud API' : 'WhatsApp Web (Legacy)'}
-                </p>
-
-                {/* QR Code Area - Whaticket Style */}
-                {status === 'qrcode' && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center mb-4 relative">
-                        {qrSrc ? (
-                            <img src={qrSrc} alt="QR Code" className="w-48 h-48 object-contain mix-blend-multiply" />
-                        ) : (
-                            <div className="w-48 h-48 flex items-center justify-center text-gray-300">
-                                {connection.external_api_url && polling ? (
-                                    <div className="flex flex-col items-center">
-                                        <i className="fas fa-spinner fa-spin text-3xl mb-2"></i>
-                                        <span className="text-xs">Buscando QR Code...</span>
-                                    </div>
-                                ) : (
-                                    <i className="fas fa-qrcode text-6xl opacity-20"></i>
-                                )}
-                            </div>
-                        )}
-                        
-                        <p className="text-sm text-gray-600 font-medium mt-4 text-center">Escaneie com seu WhatsApp</p>
-                        <p className="text-xs text-gray-400 mt-1">Menu > Aparelhos conectados > Conectar</p>
-
-                        {!connection.external_api_url && (
-                            <button 
-                                onClick={() => onSimulateScan(connection.id)}
-                                className="mt-4 text-xs text-blue-500 underline hover:text-blue-700 font-medium"
-                            >
-                                [Simular Scan]
-                            </button>
-                        )}
-                    </div>
-                )}
-
-                {status === 'connected' && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-6 flex flex-col items-center justify-center mb-4 text-center">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-3">
-                            <i className="fas fa-check text-2xl"></i>
-                        </div>
-                        <h4 className="font-bold text-green-800">Tudo pronto!</h4>
-                        <p className="text-xs text-green-600 mt-1">Seu WhatsApp está conectado e recebendo mensagens.</p>
-                    </div>
-                )}
-
-                <div className="pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
-                    <span>Sessão: <span className="font-mono text-gray-500">{connection.session_name}</span></span>
-                    {connection.last_activity && <span>Última atividade: {new Date(connection.last_activity).toLocaleDateString()}</span>}
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- DASHBOARD VIEW ---
-const DashboardView = () => {
-    const [metrics, setMetrics] = useState<any>(null);
-    const [loading, setLoading] = useState(true);
-    const [generatingReport, setGeneratingReport] = useState(false);
-    const [report, setReport] = useState('');
-
-    useEffect(() => {
-        const loadMetrics = async () => {
-            setLoading(true);
-            const data = await getChatMetrics();
-            setMetrics(data);
-            setLoading(false);
-        };
-        loadMetrics();
-    }, []);
-
-    const handleGenerateReport = async () => {
-        if (!metrics) return;
-        setGeneratingReport(true);
-        try {
-            const reportText = await generateChatResponse(JSON.stringify(metrics), 'report');
-            setReport(reportText);
-        } catch (e) {
-            console.error(e);
-        } finally {
-            setGeneratingReport(false);
-        }
-    };
-
-    if (loading) {
-        return <div className="flex h-full items-center justify-center text-gray-400"><i className="fas fa-spinner fa-spin text-3xl"></i></div>;
-    }
-
-    return (
-        <div className="p-8 w-full animate-fade-in overflow-y-auto custom-scrollbar">
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-[#343a40]">Dashboard</h2>
-                <button 
-                    onClick={handleGenerateReport} 
-                    disabled={generatingReport}
-                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2"
-                >
-                    {generatingReport ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-file-alt"></i>}
-                    Gerar Relatório IA
-                </button>
-            </div>
-            
-            {report && (
-                <div className="bg-blue-50 border border-blue-200 p-4 rounded-xl mb-8 animate-fade-in-up">
-                    <div className="flex justify-between items-start mb-2">
-                        <h4 className="font-bold text-blue-800 flex items-center gap-2"><i className="fas fa-robot"></i> Análise Executiva</h4>
-                        <button onClick={() => setReport('')} className="text-blue-400 hover:text-blue-600"><i className="fas fa-times"></i></button>
-                    </div>
-                    <p className="text-sm text-blue-900 leading-relaxed">{report}</p>
-                </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Total de Leads</p>
-                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.totalLeads}</h3>
-                        </div>
-                        <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                            <i className="fas fa-users text-lg"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Conversão</p>
-                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.conversionRate}</h3>
-                        </div>
-                        <div className="p-2 bg-green-50 rounded-lg text-green-600">
-                            <i className="fas fa-chart-line text-lg"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Tickets Abertos</p>
-                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.activeTickets}</h3>
-                        </div>
-                        <div className="p-2 bg-yellow-50 rounded-lg text-yellow-600">
-                            <i className="fas fa-inbox text-lg"></i>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-xs text-gray-500 uppercase font-bold tracking-wider">Tempo Médio</p>
-                            <h3 className="text-2xl font-bold text-gray-800 mt-1">{metrics.avgResponseTime}</h3>
-                        </div>
-                        <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-                            <i className="fas fa-clock text-lg"></i>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 h-80">
-                <h3 className="text-lg font-bold text-gray-800 mb-6">Volume de Atendimentos</h3>
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={metrics.weeklyData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                        <YAxis axisLine={false} tickLine={false} />
-                        <Tooltip cursor={{fill: '#f3f4f6'}} contentStyle={{borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)'}} />
-                        <Bar dataKey="leads" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} name="Leads" />
-                        <Bar dataKey="sales" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} name="Vendas" />
-                    </BarChart>
-                </ResponsiveContainer>
-            </div>
-        </div>
-    );
-};
-
-// --- CHATS VIEW ---
-const ChatsView = ({ userId }: { userId: string }) => {
-    const [tickets, setTickets] = useState<ChatTicket[]>([]);
-    const [activeTicket, setActiveTicket] = useState<ChatTicket | null>(null);
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [inputText, setInputText] = useState('');
-    const [loading, setLoading] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    const [aiProcessing, setAiProcessing] = useState(false);
-
-    // Initial Load
-    useEffect(() => {
-        const loadTickets = async () => {
-            const data = await getTickets(userId);
-            setTickets(data);
-        };
-        loadTickets();
-    }, [userId]);
-
-    // Load Messages when ticket changes
-    useEffect(() => {
-        if (activeTicket) {
-            setLoading(true);
-            getMessages(activeTicket.id).then(msgs => {
-                setMessages(msgs);
-                setLoading(false);
-                scrollToBottom();
-            });
-        }
-    }, [activeTicket]);
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
-
-    const handleSend = async () => {
-        if (!inputText.trim() || !activeTicket) return;
-        const text = inputText;
-        setInputText('');
-        
-        // Optimistic Update
-        const optimisticMsg: ChatMessage = {
-            id: 'temp-' + Date.now(),
-            ticket_id: activeTicket.id,
-            sender_type: 'user',
-            sender: 'user',
-            content: text,
-            created_at: new Date().toISOString(),
-            timestamp: new Date().toISOString(),
-            status: 'sent'
-        };
-        setMessages(prev => [...prev, optimisticMsg]);
-        scrollToBottom();
-
-        // Real Send
-        await sendMessage(activeTicket.id, text, 'user');
-        
-        // Simulate Reply if Bot Enabled or Just simulation
-        if (activeTicket.ai_enabled) {
-            setAiProcessing(true);
-            setTimeout(async () => {
-                // Generate AI Reply
-                const aiReply = await generateSmartReply([...messages, optimisticMsg]);
-                await sendMessage(activeTicket.id, aiReply, 'bot');
-                // Reload messages to get bot reply
-                const updatedMsgs = await getMessages(activeTicket.id);
-                setMessages(updatedMsgs);
-                setAiProcessing(false);
-                scrollToBottom();
-            }, 2000);
-        } else {
-            // Normal simulation
-            setTimeout(async () => {
-                await simulateIncomingMessage(activeTicket.id);
-                const updatedMsgs = await getMessages(activeTicket.id);
-                setMessages(updatedMsgs);
-                scrollToBottom();
-            }, 3000);
-        }
-    };
-
-    const handleAiSuggestion = async () => {
-        if (!activeTicket) return;
-        setAiProcessing(true);
-        const suggestion = await generateSmartReply(messages);
-        setInputText(suggestion);
-        setAiProcessing(false);
-    };
-
-    const toggleTicketAi = (ticket: ChatTicket) => {
-        // Toggle Local State (Mock)
-        const updated = { ...ticket, ai_enabled: !ticket.ai_enabled };
-        setTickets(prev => prev.map(t => t.id === ticket.id ? updated : t));
-        if (activeTicket?.id === ticket.id) setActiveTicket(updated);
-    };
-
-    return (
-        <div className="flex h-full w-full bg-white overflow-hidden animate-fade-in">
-            {/* Contact List */}
-            <div className="w-80 border-r border-gray-200 flex flex-col bg-white">
-                <div className="p-4 border-b border-gray-200">
-                    <div className="relative">
-                        <input type="text" placeholder="Buscar..." className="w-full pl-9 pr-4 py-2 bg-gray-100 rounded-lg text-sm outline-none focus:bg-white focus:ring-1 focus:ring-blue-500 transition" />
-                        <i className="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
-                    </div>
-                </div>
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                    {tickets.map(ticket => (
-                        <div 
-                            key={ticket.id}
-                            onClick={() => setActiveTicket(ticket)}
-                            className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 transition ${activeTicket?.id === ticket.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}`}
-                        >
-                            <div className="flex justify-between items-start mb-1">
-                                <h4 className="font-bold text-gray-800 text-sm truncate">{ticket.contact_name}</h4>
-                                <span className="text-[10px] text-gray-400">{new Date(ticket.last_message_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
-                            </div>
-                            <p className="text-xs text-gray-500 truncate mb-2">{ticket.last_message}</p>
-                            <div className="flex gap-2">
-                                {ticket.unread_count > 0 && <span className="bg-green-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">{ticket.unread_count}</span>}
-                                {ticket.ai_enabled && <span className="bg-purple-100 text-purple-600 text-[10px] px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><i className="fas fa-robot"></i> Auto</span>}
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Chat Area */}
-            {activeTicket ? (
-                <div className="flex-1 flex flex-col bg-[#efeae2]">
-                    {/* Chat Header */}
-                    <div className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gray-300 rounded-full flex items-center justify-center text-white font-bold">
-                                {activeTicket.contact_name.charAt(0)}
-                            </div>
-                            <div>
-                                <h3 className="font-bold text-gray-800">{activeTicket.contact_name}</h3>
-                                <p className="text-xs text-gray-500">{activeTicket.contact_number}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs font-bold text-gray-500 uppercase">Bot Automático</span>
-                                <button 
-                                    onClick={() => toggleTicketAi(activeTicket)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${activeTicket.ai_enabled ? 'bg-purple-600' : 'bg-gray-200'}`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${activeTicket.ai_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                            </div>
-                            <button className="text-gray-400 hover:text-gray-600"><i className="fas fa-ellipsis-v"></i></button>
-                        </div>
-                    </div>
-
-                    {/* Messages */}
-                    <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')]">
-                        {loading ? (
-                            <div className="text-center text-gray-500 py-10"><i className="fas fa-spinner fa-spin"></i> Carregando...</div>
-                        ) : (
-                            messages.map(msg => (
-                                <div key={msg.id} className={`flex ${msg.sender === 'contact' || msg.sender_type === 'contact' ? 'justify-start' : 'justify-end'}`}>
-                                    <div className={`max-w-[70%] rounded-lg p-3 shadow-sm relative ${
-                                        msg.sender === 'contact' || msg.sender_type === 'contact' ? 'bg-white rounded-tl-none' : 
-                                        msg.sender === 'bot' || msg.sender_type === 'bot' ? 'bg-purple-100 border border-purple-200 rounded-tr-none' : 
-                                        'bg-[#d9fdd3] rounded-tr-none'
-                                    }`}>
-                                        {(msg.sender === 'bot' || msg.sender_type === 'bot') && <div className="text-[10px] text-purple-600 font-bold mb-1"><i className="fas fa-robot"></i> Resposta Automática</div>}
-                                        <p className="text-sm text-gray-800 leading-relaxed">{msg.content}</p>
-                                        <div className="text-[10px] text-gray-500 text-right mt-1 flex items-center justify-end gap-1">
-                                            {new Date(msg.timestamp || msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                                            {msg.sender !== 'contact' && msg.sender_type !== 'contact' && (
-                                                <i className={`fas fa-check-double ${msg.status === 'read' ? 'text-blue-500' : 'text-gray-400'}`}></i>
-                                            )}
-                                        </div>
-                                    </div>
-                                </div>
-                            ))
-                        )}
-                        {aiProcessing && (
-                            <div className="flex justify-start">
-                                <div className="bg-purple-50 text-purple-600 text-xs px-3 py-2 rounded-lg animate-pulse">
-                                    <i className="fas fa-magic mr-1"></i> IA está digitando...
-                                </div>
-                            </div>
-                        )}
-                        <div ref={messagesEndRef} />
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="bg-white p-4 border-t border-gray-200">
-                        {activeTicket.ai_enabled && (
-                            <button 
-                                onClick={handleAiSuggestion}
-                                disabled={aiProcessing}
-                                className="mb-3 text-xs bg-purple-50 hover:bg-purple-100 text-purple-700 px-3 py-1.5 rounded-full border border-purple-200 font-bold transition flex items-center gap-1 w-fit"
-                            >
-                                {aiProcessing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-wand-magic-sparkles"></i>}
-                                Sugestão IA
-                            </button>
-                        )}
-                        <div className="flex gap-2 items-end">
-                            <button className="p-3 text-gray-500 hover:bg-gray-100 rounded-full transition"><i className="fas fa-paperclip"></i></button>
-                            <div className="flex-1 bg-gray-100 rounded-lg flex items-center px-4 py-2">
-                                <input 
-                                    type="text" 
-                                    value={inputText}
-                                    onChange={e => setInputText(e.target.value)}
-                                    onKeyDown={e => e.key === 'Enter' && handleSend()}
-                                    placeholder="Digite uma mensagem" 
-                                    className="bg-transparent w-full outline-none text-sm text-gray-700"
-                                />
-                            </div>
-                            <button 
-                                onClick={handleSend}
-                                className="p-3 bg-[#d9fdd3] text-gray-600 hover:text-green-600 rounded-full transition shadow-sm"
-                            >
-                                <i className="fas fa-paper-plane"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            ) : (
-                <div className="flex-1 flex flex-col items-center justify-center bg-[#f0f2f5] text-gray-400 border-l border-gray-200">
-                    <i className="fab fa-whatsapp text-6xl mb-4 text-gray-300"></i>
-                    <p className="text-sm">Selecione um contato para iniciar o atendimento.</p>
-                </div>
-            )}
-        </div>
-    );
-};
-
-const QuickAnswersView = ({ answers, onDelete, onAdd, loading }: { answers: QuickAnswer[], onDelete: (id: string) => void, onAdd: () => void, loading: boolean }) => {
-    const [searchTerm, setSearchTerm] = useState('');
-
-    const filtered = answers.filter(a => 
-        a.shortcut.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        a.message.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
-    return (
-        <div className="p-8 animate-fade-in w-full h-full flex flex-col">
-            <h2 className="text-2xl font-bold text-[#343a40] mb-6">Respostas rápidas</h2>
-            
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden flex flex-col flex-1">
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white">
-                    <div className="flex items-center gap-4">
-                        <div className="relative">
-                            <input 
-                                type="text" 
-                                placeholder="Pesquisar" 
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="pl-9 pr-4 py-2 bg-gray-100 border-transparent focus:bg-white focus:border-blue-500 rounded-full text-sm outline-none transition w-64 border"
-                            />
-                            <i className="fas fa-search absolute left-3 top-2.5 text-gray-400"></i>
-                        </div>
-                    </div>
-                    <button 
-                        onClick={onAdd}
-                        className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-bold hover:bg-blue-600 transition shadow-sm uppercase tracking-wide flex items-center gap-2"
-                    >
-                        <i className="fas fa-plus"></i> Adicionar
-                    </button>
-                </div>
-
-                <div className="overflow-auto flex-1">
-                    <table className="w-full text-left border-collapse">
-                        <thead className="sticky top-0 z-10">
-                            <tr className="bg-gray-50 text-gray-600 border-b border-gray-200">
-                                <th className="px-6 py-4 font-bold text-sm">Atalho</th>
-                                <th className="px-6 py-4 font-bold text-sm">Mensagem</th>
-                                <th className="px-6 py-4 font-bold text-sm text-center w-32">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {loading ? (
-                                <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500"><i className="fas fa-spinner fa-spin mr-2"></i> Carregando...</td></tr>
-                            ) : filtered.length === 0 ? (
-                                <tr><td colSpan={3} className="px-6 py-12 text-center text-gray-500">Nenhum registro encontrado</td></tr>
-                            ) : (
-                                filtered.map(ans => (
-                                    <tr key={ans.id} className="hover:bg-blue-50/50 transition text-sm text-gray-700">
-                                        <td className="px-6 py-4 font-mono text-blue-600 bg-blue-50/30 w-48 truncate">/{ans.shortcut}</td>
-                                        <td className="px-6 py-4 max-w-xl truncate">{ans.message}</td>
-                                        <td className="px-6 py-4 text-center">
-                                            <div className="flex justify-center gap-3">
-                                                <button onClick={() => onDelete(ans.id)} className="text-gray-400 hover:text-red-500 transition p-2 rounded-full hover:bg-red-50"><i className="fas fa-trash-alt"></i></button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const ConnectionsView = ({ connections, onDelete, onAdd, onSimulateScan, loading }: { connections: ChatConnection[], onDelete: (id: string) => void, onAdd: () => void, onSimulateScan: (id: string) => void, loading: boolean }) => {
-    return (
-        <div className="p-8 w-full animate-fade-in">
-            <div className="flex justify-between items-center mb-8">
-                <div>
-                    <h2 className="text-2xl font-bold text-[#343a40]">Conexões</h2>
-                    <p className="text-gray-500 text-sm mt-1">Gerencie seus canais de WhatsApp.</p>
-                </div>
-                <button onClick={onAdd} className="px-4 py-2 bg-blue-500 text-white rounded-md text-sm font-bold uppercase hover:bg-blue-600 transition shadow-sm flex items-center gap-2">
-                    <i className="fas fa-plus"></i> Adicionar Conexão
-                </button>
-            </div>
-
-            {loading ? (
-                <div className="text-center py-20"><i className="fas fa-spinner fa-spin text-3xl text-gray-300"></i></div>
-            ) : connections.length === 0 ? (
-                <div className="text-center py-20 bg-white rounded-lg shadow-sm border border-gray-200 text-gray-500">
-                    <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <i className="fas fa-wifi text-4xl text-gray-400"></i>
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-700">Nenhuma conexão encontrada</h3>
-                    <p className="text-sm">Adicione um novo número para começar.</p>
-                </div>
-            ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {connections.map(conn => (
-                        <ConnectionCard 
-                            key={conn.id}
-                            connection={conn}
-                            onDelete={onDelete}
-                            onSimulateScan={onSimulateScan}
-                        />
-                    ))}
-                </div>
-            )}
-        </div>
-    );
-};
-
-const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (data: any) => void }) => {
-    const [name, setName] = useState('');
-    const [type, setType] = useState<ConnectionType>('legacy_qrcode');
-    const [profileType, setProfileType] = useState<'personal' | 'business'>('personal');
-    const [activeTab, setActiveTab] = useState<'general' | 'ai'>('general');
-    const [externalApiUrl, setExternalApiUrl] = useState('');
-    const [externalApiToken, setExternalApiToken] = useState('');
-    
-    // Legacy Fields
-    const [greeting, setGreeting] = useState('');
-    const [farewell, setFarewell] = useState('');
-    
-    // Official Fields
-    const [phoneNumberId, setPhoneNumberId] = useState('');
-    const [wabaId, setWabaId] = useState('');
-    const [apiToken, setApiToken] = useState('');
-
-    // AI Fields
-    const [aiEnabled, setAiEnabled] = useState(false);
-    const [personality, setPersonality] = useState('formal');
-
-    React.useEffect(() => {
-        if(isOpen) {
-            setName('');
-            setGreeting('');
-            setFarewell('');
-            setPhoneNumberId('');
-            setWabaId('');
-            setApiToken('');
-            setType('legacy_qrcode');
-            setProfileType('personal');
-            setAiEnabled(false);
-            setPersonality('formal');
-            setActiveTab('general');
-            setExternalApiUrl('');
-            setExternalApiToken('');
-        }
-    }, [isOpen]);
-
-    if (!isOpen) return null;
-
-    const inputClass = "w-full bg-transparent border border-gray-600 rounded px-3 py-3 text-gray-200 focus:border-blue-500 outline-none transition text-sm";
-    const labelClass = "absolute left-3 -top-2.5 bg-[#2a2a3c] px-1 text-xs text-blue-400";
-
-    const handleSave = () => {
-        if (!name) return;
-        onSave({ 
-            name, 
-            type,
-            profile_type: profileType,
-            greeting_message: greeting, 
-            farewell_message: farewell,
-            phone_number_id: phoneNumberId,
-            waba_id: wabaId,
-            api_token: apiToken,
-            external_api_url: externalApiUrl,
-            external_api_token: externalApiToken,
-            ai_config: {
-                enabled: aiEnabled,
-                personality
-            }
-        });
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in font-sans">
-            <div className="bg-[#2a2a3c] w-full max-w-2xl rounded shadow-2xl flex flex-col max-h-[90vh]">
-                <div className="px-6 py-4 border-b border-gray-700">
-                    <h3 className="text-lg font-medium text-white">Nova Conexão</h3>
-                </div>
-
-                <div className="flex border-b border-gray-700">
-                    <button onClick={() => setActiveTab('general')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'general' ? 'text-blue-500 border-b-2 border-blue-500' : 'text-gray-400 hover:text-white'}`}>Geral</button>
-                    <button onClick={() => setActiveTab('ai')} className={`flex-1 py-3 text-sm font-bold ${activeTab === 'ai' ? 'text-purple-500 border-b-2 border-purple-500' : 'text-gray-400 hover:text-white'}`}>Inteligência Artificial</button>
-                </div>
-                
-                <div className="p-6 overflow-y-auto custom-scrollbar space-y-6">
-                    
-                    {activeTab === 'general' ? (
-                        <>
-                            {/* Connection Type Selector */}
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => setType('legacy_qrcode')}
-                                    className={`flex-1 py-3 rounded border transition ${type === 'legacy_qrcode' ? 'border-green-500 bg-green-500/10 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                                >
-                                    <i className="fab fa-whatsapp text-lg mb-1 block"></i>
-                                    <span className="text-xs font-bold">WhatsApp Web (QR Code)</span>
-                                </button>
-                                <button 
-                                    onClick={() => setType('official_api')}
-                                    className={`flex-1 py-3 rounded border transition ${type === 'official_api' ? 'border-blue-500 bg-blue-500/10 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                                >
-                                    <i className="fab fa-facebook text-lg mb-1 block"></i>
-                                    <span className="text-xs font-bold">API Oficial (Meta)</span>
-                                </button>
-                            </div>
-
-                            {/* Profile Type Selector */}
-                            <div className="flex gap-4">
-                                <button 
-                                    onClick={() => setProfileType('personal')}
-                                    className={`flex-1 py-2 rounded border transition ${profileType === 'personal' ? 'border-gray-400 bg-gray-700 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                                >
-                                    <i className="fas fa-user text-sm mr-2"></i>
-                                    <span className="text-xs font-bold">Pessoal</span>
-                                </button>
-                                <button 
-                                    onClick={() => setProfileType('business')}
-                                    className={`flex-1 py-2 rounded border transition ${profileType === 'business' ? 'border-gray-400 bg-gray-700 text-white' : 'border-gray-600 text-gray-400 hover:bg-gray-700'}`}
-                                >
-                                    <i className="fas fa-briefcase text-sm mr-2"></i>
-                                    <span className="text-xs font-bold">Business</span>
-                                </button>
-                            </div>
-
-                            <div className="relative mt-2">
-                                <label className={labelClass}>Nome da Conexão</label>
-                                <input type="text" value={name} onChange={e => setName(e.target.value)} className={inputClass} placeholder="Ex: Atendimento Principal" />
-                            </div>
-
-                            {type === 'legacy_qrcode' ? (
-                                <>
-                                    <div className="relative border border-gray-600 rounded p-3 pt-4">
-                                        <label className={labelClass}>Mensagem de saudação</label>
-                                        <textarea value={greeting} onChange={e => setGreeting(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao iniciar o atendimento..." />
-                                    </div>
-                                    <div className="relative border border-gray-600 rounded p-3 pt-4">
-                                        <label className={labelClass}>Mensagem de despedida</label>
-                                        <textarea value={farewell} onChange={e => setFarewell(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao finalizar..." />
-                                    </div>
-                                    <div className="border-t border-gray-700 pt-4 mt-2">
-                                        <h4 className="text-sm font-bold text-gray-400 mb-3">Integração (Backend)</h4>
-                                        <div className="p-3 bg-gray-800 rounded border border-gray-600 mb-3 text-xs text-gray-300">
-                                            <p className="mb-2"><i className="fas fa-info-circle text-blue-400"></i> Configure a URL da sua API (Evolution/WPPConnect) para gerar o QR Code real.</p>
-                                            <p>Sem isso, será usado um simulador.</p>
-                                        </div>
-                                        <div className="grid gap-4">
-                                            <div className="relative">
-                                                <label className={labelClass}>URL da API</label>
-                                                <input type="text" value={externalApiUrl} onChange={e => setExternalApiUrl(e.target.value)} className={inputClass} placeholder="https://api.seudominio.com" />
-                                            </div>
-                                            <div className="relative">
-                                                <label className={labelClass}>API Key / Token</label>
-                                                <input type="password" value={externalApiToken} onChange={e => setExternalApiToken(e.target.value)} className={inputClass} placeholder="Seu token de acesso" />
-                                            </div>
-                                        </div>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="relative mt-2">
-                                        <label className={labelClass}>Phone Number ID</label>
-                                        <input type="text" value={phoneNumberId} onChange={e => setPhoneNumberId(e.target.value)} className={inputClass} placeholder="ID do número no Meta for Developers" />
-                                    </div>
-                                    <div className="relative mt-2">
-                                        <label className={labelClass}>WABA ID (WhatsApp Business Account ID)</label>
-                                        <input type="text" value={wabaId} onChange={e => setWabaId(e.target.value)} className={inputClass} placeholder="ID da conta empresarial" />
-                                    </div>
-                                    <div className="relative mt-2">
-                                        <label className={labelClass}>API Token (Permanente)</label>
-                                        <input type="password" value={apiToken} onChange={e => setApiToken(e.target.value)} className={inputClass} placeholder="EAAG..." />
-                                    </div>
-                                </>
-                            )}
-                        </>
-                    ) : (
-                        <div className="space-y-6">
-                            <div className="flex items-center justify-between bg-gray-700/30 p-4 rounded-lg border border-gray-600">
-                                <div>
-                                    <h4 className="font-bold text-purple-400">Ativar Bot Inteligente</h4>
-                                    <p className="text-xs text-gray-400">A IA responderá automaticamente às mensagens recebidas.</p>
-                                </div>
-                                <button 
-                                    onClick={() => setAiEnabled(!aiEnabled)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${aiEnabled ? 'bg-purple-600' : 'bg-gray-500'}`}
-                                >
-                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${aiEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                                </button>
-                            </div>
-
-                            {aiEnabled && (
-                                <div className="space-y-4 animate-fade-in">
-                                    <div className="relative border border-gray-600 rounded p-3 pt-4 bg-gray-800/50">
-                                        <label className={labelClass}>Personalidade do Bot</label>
-                                        <select 
-                                            value={personality} 
-                                            onChange={e => setPersonality(e.target.value)} 
-                                            className="w-full bg-transparent text-gray-200 outline-none text-sm"
-                                        >
-                                            <option value="formal">Formal & Corporativo</option>
-                                            <option value="friendly">Amigável & Casual</option>
-                                            <option value="sales">Vendedor (Focado em Conversão)</option>
-                                            <option value="support">Suporte Técnico (Objetivo)</option>
-                                        </select>
-                                    </div>
-                                    <p className="text-xs text-gray-500">
-                                        <i className="fas fa-info-circle mr-1"></i>
-                                        A IA analisará o histórico da conversa para gerar respostas contextuais. Você pode assumir o controle a qualquer momento.
-                                    </p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-
-                <div className="p-4 border-t border-gray-700 flex justify-end gap-3">
-                    <button onClick={onClose} className="text-blue-400 hover:text-blue-300 font-medium text-sm px-4 py-2 uppercase transition">Cancelar</button>
-                    <button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm px-6 py-2 rounded uppercase shadow-md transition">Salvar Conexão</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-const QuickAnswerModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose: () => void, onSave: (data: {shortcut: string, message: string}) => void }) => {
-    const [shortcut, setShortcut] = useState('');
-    const [message, setMessage] = useState('');
-
-    if (!isOpen) return null;
-
-    const handleSubmit = () => {
-        if (!shortcut || !message) return;
-        onSave({ shortcut, message });
-        setShortcut('');
-        setMessage('');
-        onClose();
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-4 backdrop-blur-sm animate-fade-in font-sans">
-            <div className="bg-white w-full max-w-lg rounded-lg shadow-2xl flex flex-col">
-                <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-lg font-bold text-gray-800">Adicionar Resposta Rápida</h3>
-                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><i className="fas fa-times"></i></button>
-                </div>
-                <div className="p-6 space-y-4">
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Atalho</label>
-                        <input 
-                            type="text" 
-                            value={shortcut} 
-                            onChange={e => setShortcut(e.target.value)} 
-                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                            placeholder="Ex: bomdia"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Mensagem</label>
-                        <textarea 
-                            value={message} 
-                            onChange={e => setMessage(e.target.value)} 
-                            className="w-full border border-gray-300 rounded-md p-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none h-32 resize-none"
-                            placeholder="Digite a mensagem completa..."
-                        />
-                    </div>
-                </div>
-                <div className="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50 rounded-b-lg">
-                    <button onClick={onClose} className="px-4 py-2 text-gray-600 font-bold text-sm hover:bg-gray-200 rounded">Cancelar</button>
-                    <button onClick={handleSubmit} className="px-4 py-2 bg-blue-600 text-white font-bold text-sm rounded hover:bg-blue-700 shadow-sm">Salvar</button>
-                </div>
-            </div>
-        </div>
-    );
-};
-
-// --- MAIN PAGE ---
-
-export default function ChatCrmPage({ onNavigateToDashboard }: { onNavigateToDashboard: () => void }) {
+import { useDashboard } from '../hooks/useDashboard';
+import { useWhiteLabel } from '../contexts/WhiteLabelContext';
+import { api } from '../services/api';
+import { fetchRemoteStatus, fetchRemoteQrCode } from '../services/chatService';
+
+interface ChatCrmPageProps {
+    onNavigateToDashboard: () => void;
+}
+
+export default function ChatCrmPage({ onNavigateToDashboard }: ChatCrmPageProps) {
     const { user } = useUser();
-    const [activeView, setActiveView] = useState<MenuOption>('dashboard'); // Default to Dashboard
-    
-    // Real Data State
-    const [quickAnswers, setQuickAnswers] = useState<QuickAnswer[]>([]);
-    const [connections, setConnections] = useState<ChatConnection[]>([]);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    
-    // Modal Control
-    const [showConnectionModal, setShowConnectionModal] = useState(false);
-    const [showQAModal, setShowQAModal] = useState(false);
-    
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const { settings } = useWhiteLabel();
+    const { 
+        sidebarOpen, 
+        setSidebarOpen, 
+        GUEST_ALLOWED_MODES, 
+        handleModeChange, 
+        isGuest, 
+        guestCredits,
+        hasAccessToService,
+        modals,
+        toggleModal
+    } = useDashboard();
 
-    // Initial Data Fetch
+    const [connection, setConnection] = useState<ChatConnection | null>(null);
+    const [qrCode, setQrCode] = useState<string | null>(null);
+    const [status, setStatus] = useState<'connected' | 'disconnected' | 'qrcode' | 'pairing'>('disconnected');
+    const [loading, setLoading] = useState(true);
+
     useEffect(() => {
         if (!user) return;
-        
-        const loadData = async () => {
-            setLoading(true);
-            setError(null);
+
+        const loadConnection = async () => {
             try {
-                const [qa, conns] = await Promise.all([
-                    getQuickAnswers(user.id),
-                    getConnections(user.id)
-                ]);
-                setQuickAnswers(qa);
-                setConnections(conns);
-            } catch (e: any) {
-                console.error("Erro ao carregar dados do chat:", e);
-                // Handle "relation does not exist" error
-                if (e.message && (e.message.includes('relation') || e.message.includes('does not exist'))) {
-                    setError('Tabelas de Chat não encontradas no banco de dados.');
+                // Fetch existing connection
+                const { data } = await api.select('chat_connections', { user_id: user.id });
+                if (data && data.length > 0) {
+                    const conn = data[0] as ChatConnection;
+                    setConnection(conn);
+                    
+                    if (conn.external_api_url) {
+                        const remoteStatus = await fetchRemoteStatus(conn);
+                        if (remoteStatus) setStatus(remoteStatus);
+                        
+                        if (remoteStatus === 'qrcode' || remoteStatus === 'disconnected') {
+                            const qr = await fetchRemoteQrCode(conn);
+                            setQrCode(qr);
+                        }
+                    }
                 } else {
-                    setToast({ message: "Erro ao carregar dados.", type: 'error' });
+                    // Create default placeholder connection if none exists
+                    const newConn: Partial<ChatConnection> = {
+                        user_id: user.id,
+                        name: 'Default',
+                        status: 'disconnected',
+                        type: 'official_api', // Default to API for now or prompts setup
+                        profile_type: 'business',
+                        session_name: `session_${user.id.slice(0,8)}`
+                    };
+                    // Typically we would save this to DB, here just state for UI setup
+                    setConnection(newConn as ChatConnection);
                 }
+            } catch (e) {
+                console.error("Error loading chat connection:", e);
             } finally {
                 setLoading(false);
             }
         };
-        
-        loadData();
+
+        loadConnection();
     }, [user]);
 
-    // --- QUICK ANSWERS LOGIC ---
-    const handleAddQuickAnswer = async (data: { shortcut: string, message: string }) => {
-        if (!user) return;
-        try {
-            const newAns = await createQuickAnswer(data, user.id);
-            setQuickAnswers([...quickAnswers, newAns as QuickAnswer]);
-            setToast({ message: "Resposta rápida adicionada!", type: 'success' });
-        } catch (e) {
-            setToast({ message: "Erro ao salvar.", type: 'error' });
-        }
-    };
-
-    const handleDeleteQuickAnswer = async (id: string) => {
-        if(confirm('Tem certeza?')) {
-            try {
-                await deleteQuickAnswer(id);
-                setQuickAnswers(quickAnswers.filter(a => a.id !== id));
-                setToast({ message: "Item removido.", type: 'success' });
-            } catch(e) {
-                setToast({ message: "Erro ao deletar.", type: 'error' });
-            }
-        }
-    };
-
-    // --- CONNECTIONS LOGIC ---
-    const handleSaveConnection = async (data: any) => {
-        if (!user) return;
-        try {
-            const newConn = await createConnection(data, user.id);
-            setConnections([...connections, newConn as ChatConnection]);
-            setShowConnectionModal(false);
-            setToast({ message: "Conexão criada com sucesso!", type: 'success' });
-        } catch (e: any) {
-            setToast({ message: "Erro ao criar conexão: " + e.message, type: 'error' });
-        }
-    };
-
-    const handleDeleteConnection = async (id: string) => {
-        if(confirm('Desconectar e remover esta conexão?')) {
-            try {
-                await deleteConnection(id);
-                setConnections(connections.filter(c => c.id !== id));
-                setToast({ message: "Conexão removida.", type: 'success' });
-            } catch(e) {
-                setToast({ message: "Erro ao remover.", type: 'error' });
-            }
-        }
-    };
-
-    const handleSimulateScan = async (id: string) => {
-        // This is now used to refresh status from card if needed, or fallback simulate
-        try {
-            // Check if we can fetch real status first
-            const conn = connections.find(c => c.id === id);
-            if (conn && conn.external_api_url) {
-                const status = await fetchRemoteStatus(conn);
-                if (status === 'connected') {
-                    setConnections(prev => prev.map(c => c.id === id ? { ...c, status: 'connected', qrcode: undefined } : c));
-                    setToast({ message: "Conectado com sucesso!", type: 'success' });
-                    return;
-                }
-            }
-
-            // Fallback Simulation
-            await simulateConnectionScan(id);
-            setConnections(prev => prev.map(c => c.id === id ? { ...c, status: 'connected', qrcode: undefined } : c));
-            setToast({ message: "Dispositivo conectado (Simulação)!", type: 'success' });
-        } catch(e) {
-            setToast({ message: "Erro na conexão.", type: 'error' });
-        }
-    };
-
-    if (error) {
-        return (
-            <div className="flex h-screen bg-[#F4F5F7] font-sans items-center justify-center">
-                <div className="bg-white p-8 rounded-xl shadow-lg max-w-lg text-center border border-red-200">
-                    <i className="fas fa-database text-4xl text-red-500 mb-4"></i>
-                    <h2 className="text-xl font-bold text-gray-800 mb-2">Configuração Necessária</h2>
-                    <p className="text-gray-600 mb-6">{error}</p>
-                    <p className="text-sm text-gray-500 mb-6">
-                        Por favor, acesse o painel Admin e execute o script SQL de atualização na aba "Updates & SQL" para criar as tabelas necessárias.
-                    </p>
-                    <button onClick={onNavigateToDashboard} className="px-6 py-2 bg-gray-800 text-white rounded font-bold hover:bg-gray-700 transition">
-                        Voltar ao Dashboard
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className="flex h-screen bg-[#F4F5F7] font-sans overflow-hidden">
-            {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-            
-            {/* Sidebar Navigation */}
-            <Sidebar active={activeView} onChange={setActiveView} />
+        <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
+            <Header
+                userEmail={user?.email}
+                onLogout={async () => { await import('../contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); }}
+                isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
+                onNavigateToAdmin={() => {}} // Not needed here
+                onNavigateToDashboard={onNavigateToDashboard}
+                pageTitle="Gestão de Leads & CRM"
+                userCredits={user?.credits}
+                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+            />
 
-            {/* Main Content Area */}
-            <main className="flex-1 flex flex-col relative overflow-hidden">
-                {/* Top Header - Contextual */}
-                <header className="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-6 shadow-sm z-10 shrink-0">
-                    <div className="flex items-center gap-4">
-                        <button onClick={onNavigateToDashboard} className="text-gray-400 hover:text-blue-600 transition"><i className="fas fa-arrow-left"></i></button>
-                        <h1 className="text-xl font-bold text-gray-700 capitalize">{activeView.replace('_', ' ')}</h1>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <button className="text-gray-400 hover:text-blue-500"><i className="fas fa-bell"></i></button>
-                        <button className="text-gray-400 hover:text-blue-500"><i className="fas fa-question-circle"></i></button>
-                    </div>
-                </header>
+            <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+                <DashboardSidebar 
+                    isOpen={sidebarOpen}
+                    setIsOpen={setSidebarOpen}
+                    currentMode='crm'
+                    onModeChange={(m) => { if(m !== 'crm') onNavigateToDashboard(); }}
+                    user={user}
+                    isGuest={isGuest}
+                    activeCredits={isGuest ? guestCredits : (user?.credits || 0)}
+                    hasAccessToService={hasAccessToService}
+                    guestAllowedModes={GUEST_ALLOWED_MODES}
+                    onOpenPlans={() => toggleModal('plans', true)}
+                    onOpenAffiliates={() => toggleModal('affiliate', true)}
+                    onOpenHistory={() => toggleModal('history', true)}
+                    onOpenIntegrations={() => toggleModal('integrations', true)}
+                    onOpenManual={() => toggleModal('manual', true)}
+                    onNavigateFeedback={() => {}}
+                />
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar flex">
-                    {activeView === 'dashboard' && (
-                        <DashboardView />
-                    )}
-
-                    {activeView === 'chats' && user && (
-                        <ChatsView userId={user.id} />
-                    )}
-
-                    {activeView === 'quick_answers' && (
-                        <QuickAnswersView 
-                            answers={quickAnswers} 
-                            onDelete={handleDeleteQuickAnswer} 
-                            onAdd={() => setShowQAModal(true)}
-                            loading={loading}
-                        />
-                    )}
-
-                    {activeView === 'connections' && (
-                        <ConnectionsView 
-                            connections={connections} 
-                            onDelete={handleDeleteConnection} 
-                            onAdd={() => setShowConnectionModal(true)}
-                            onSimulateScan={handleSimulateScan}
-                            loading={loading}
-                        />
-                    )}
-
-                    {/* Placeholder for other views */}
-                    {['contacts', 'tags', 'schedules', 'support', 'account'].includes(activeView) && (
-                        <div className="flex flex-col items-center justify-center w-full h-full text-gray-400">
-                            <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                                <i className="fas fa-tools text-4xl text-gray-300"></i>
+                <main className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar bg-[#F5F7FA]">
+                    <div className="max-w-7xl mx-auto">
+                        
+                        {/* Status Bar / Connection Warning */}
+                        {connection && status !== 'connected' && (
+                            <div className="bg-white p-6 rounded-xl border border-orange-200 shadow-sm mb-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div>
+                                    <h3 className="text-lg font-bold text-orange-800 flex items-center gap-2">
+                                        <i className="fas fa-exclamation-triangle"></i> WhatsApp Desconectado
+                                    </h3>
+                                    <p className="text-sm text-gray-600 mt-1">Conecte seu WhatsApp para sincronizar conversas e usar a IA.</p>
+                                </div>
+                                
+                                {qrCode ? (
+                                    <div className="flex flex-col items-center bg-white p-2 rounded-lg border border-gray-200">
+                                        <img src={qrCode} alt="QR Code" className="w-32 h-32 object-contain" />
+                                        <p className="text-xs text-gray-500 mt-2 font-mono">Escaneie no WhatsApp</p>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col items-center">
+                                        {!connection.external_api_url && (
+                                            <div className="text-center text-sm text-gray-500">
+                                                <p>Configure a URL da API externa no painel de administração ou configurações.</p>
+                                            </div>
+                                        )}
+                                        {connection.external_api_url && (
+                                            <div className="flex items-center gap-2 text-gray-400">
+                                                <i className="fas fa-spinner fa-spin"></i> Gerando QR Code...
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
-                            <h3 className="text-xl font-bold text-gray-600 mb-2">Módulo em Desenvolvimento</h3>
-                            <p className="text-sm">A funcionalidade <strong>{activeView}</strong> estará disponível em breve.</p>
-                            <button onClick={onNavigateToDashboard} className="mt-6 px-6 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50 transition shadow-sm">
-                                Voltar ao App Anterior
-                            </button>
-                        </div>
-                    )}
-                </div>
-            </main>
+                        )}
 
-            {/* Modals */}
-            <ConnectionModal 
-                isOpen={showConnectionModal} 
-                onClose={() => setShowConnectionModal(false)} 
-                onSave={handleSaveConnection} 
-            />
-
-            <QuickAnswerModal 
-                isOpen={showQAModal}
-                onClose={() => setShowQAModal(false)}
-                onSave={handleAddQuickAnswer}
-            />
+                        <CrmDashboard />
+                    </div>
+                </main>
+            </div>
         </div>
     );
 }
