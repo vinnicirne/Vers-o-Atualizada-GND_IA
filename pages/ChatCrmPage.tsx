@@ -6,7 +6,8 @@ import { Toast } from '../components/admin/Toast';
 import { 
     getQuickAnswers, createQuickAnswer, deleteQuickAnswer, 
     getConnections, createConnection, deleteConnection, simulateConnectionScan,
-    getTickets, getMessages, sendMessage, simulateIncomingMessage, generateSmartReply, getChatMetrics
+    getTickets, getMessages, sendMessage, simulateIncomingMessage, generateSmartReply, getChatMetrics,
+    fetchRemoteQrCode, fetchRemoteStatus // NEW IMPORTS
 } from '../services/chatService';
 import { generateChatResponse } from '../services/geminiService';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
@@ -65,6 +66,150 @@ const Sidebar = ({ active, onChange }: { active: MenuOption, onChange: (opt: Men
                 </button>
             </div>
         </aside>
+    );
+};
+
+// --- NEW COMPONENT: CONNECTION CARD (POLLING LOGIC) ---
+const ConnectionCard: React.FC<{ 
+    connection: ChatConnection, 
+    onDelete: (id: string) => void, 
+    onSimulateScan: (id: string) => void 
+}> = ({ 
+    connection, 
+    onDelete, 
+    onSimulateScan 
+}) => {
+    const [qrCode, setQrCode] = useState<string | null>(connection.qrcode || null);
+    const [status, setStatus] = useState(connection.status);
+    const [polling, setPolling] = useState(false);
+
+    // Polling Effect for Real Integration
+    useEffect(() => {
+        if (connection.type !== 'legacy_qrcode' || status !== 'qrcode' || !connection.external_api_url) {
+            return;
+        }
+
+        let isMounted = true;
+        setPolling(true);
+
+        const poll = async () => {
+            if (!isMounted) return;
+
+            // 1. Check Status
+            const newStatus = await fetchRemoteStatus(connection);
+            if (newStatus && newStatus !== status) {
+                setStatus(newStatus);
+                if (newStatus === 'connected') {
+                    // Update in parent via callback or simulate re-fetch (simulated locally for speed)
+                    onSimulateScan(connection.id); // Re-using this handler to update local state effectively
+                    return; // Stop polling
+                }
+            }
+
+            // 2. Fetch QR if still needed
+            if (!newStatus || newStatus === 'qrcode') {
+                const newQr = await fetchRemoteQrCode(connection);
+                if (newQr && newQr !== qrCode) {
+                    setQrCode(newQr);
+                }
+            }
+
+            if (isMounted) setTimeout(poll, 3000); // Poll every 3s
+        };
+
+        poll();
+
+        return () => { isMounted = false; };
+    }, [connection, status]);
+
+    // Handle initial static QR or Base64
+    const qrSrc = qrCode 
+        ? (qrCode.startsWith('http') ? qrCode : `data:image/png;base64,${qrCode}`)
+        : null;
+
+    return (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-all">
+            {/* Header / Status Bar */}
+            <div className={`h-2 ${status === 'connected' ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+            
+            <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl text-gray-600 shrink-0">
+                            <i className={`fab fa-${connection.type === 'official_api' ? 'facebook' : 'whatsapp'}`}></i>
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-bold text-gray-800 leading-tight">{connection.name}</h3>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <span className={`text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wide border ${
+                                    status === 'connected' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                }`}>
+                                    {status === 'connected' ? 'CONECTADO' : 'AGUARDANDO'}
+                                </span>
+                                {connection.profile_type === 'business' && (
+                                    <span className="text-[10px] bg-blue-50 text-blue-600 px-2 py-0.5 rounded border border-blue-100 font-bold">Business</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button onClick={() => onDelete(connection.id)} className="text-gray-400 hover:text-red-500 transition">
+                        <i className="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <p className="text-xs text-gray-500 mb-6 truncate font-mono">
+                    {connection.type === 'official_api' ? 'Meta Cloud API' : 'WhatsApp Web (Legacy)'}
+                </p>
+
+                {/* QR Code Area - Whaticket Style */}
+                {status === 'qrcode' && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 flex flex-col items-center justify-center mb-4 relative">
+                        {qrSrc ? (
+                            <img src={qrSrc} alt="QR Code" className="w-48 h-48 object-contain mix-blend-multiply" />
+                        ) : (
+                            <div className="w-48 h-48 flex items-center justify-center text-gray-300">
+                                {connection.external_api_url && polling ? (
+                                    <div className="flex flex-col items-center">
+                                        <i className="fas fa-spinner fa-spin text-3xl mb-2"></i>
+                                        <span className="text-xs">Buscando QR Code...</span>
+                                    </div>
+                                ) : (
+                                    <i className="fas fa-qrcode text-6xl opacity-20"></i>
+                                )}
+                            </div>
+                        )}
+                        
+                        <p className="text-sm text-gray-600 font-medium mt-4 text-center">Escaneie com seu WhatsApp</p>
+                        <p className="text-xs text-gray-400 mt-1">Menu > Aparelhos conectados > Conectar</p>
+
+                        {!connection.external_api_url && (
+                            <button 
+                                onClick={() => onSimulateScan(connection.id)}
+                                className="mt-4 text-xs text-blue-500 underline hover:text-blue-700 font-medium"
+                            >
+                                [Simular Scan]
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                {status === 'connected' && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-6 flex flex-col items-center justify-center mb-4 text-center">
+                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-3">
+                            <i className="fas fa-check text-2xl"></i>
+                        </div>
+                        <h4 className="font-bold text-green-800">Tudo pronto!</h4>
+                        <p className="text-xs text-green-600 mt-1">Seu WhatsApp está conectado e recebendo mensagens.</p>
+                    </div>
+                )}
+
+                <div className="pt-4 border-t border-gray-100 flex justify-between items-center text-xs text-gray-400">
+                    <span>Sessão: <span className="font-mono text-gray-500">{connection.session_name}</span></span>
+                    {connection.last_activity && <span>Última atividade: {new Date(connection.last_activity).toLocaleDateString()}</span>}
+                </div>
+            </div>
+        </div>
     );
 };
 
@@ -237,8 +382,10 @@ const ChatsView = ({ userId }: { userId: string }) => {
         const optimisticMsg: ChatMessage = {
             id: 'temp-' + Date.now(),
             ticket_id: activeTicket.id,
+            sender_type: 'user',
             sender: 'user',
             content: text,
+            created_at: new Date().toISOString(),
             timestamp: new Date().toISOString(),
             status: 'sent'
         };
@@ -352,17 +499,17 @@ const ChatsView = ({ userId }: { userId: string }) => {
                             <div className="text-center text-gray-500 py-10"><i className="fas fa-spinner fa-spin"></i> Carregando...</div>
                         ) : (
                             messages.map(msg => (
-                                <div key={msg.id} className={`flex ${msg.sender === 'contact' ? 'justify-start' : 'justify-end'}`}>
+                                <div key={msg.id} className={`flex ${msg.sender === 'contact' || msg.sender_type === 'contact' ? 'justify-start' : 'justify-end'}`}>
                                     <div className={`max-w-[70%] rounded-lg p-3 shadow-sm relative ${
-                                        msg.sender === 'contact' ? 'bg-white rounded-tl-none' : 
-                                        msg.sender === 'bot' ? 'bg-purple-100 border border-purple-200 rounded-tr-none' : 
+                                        msg.sender === 'contact' || msg.sender_type === 'contact' ? 'bg-white rounded-tl-none' : 
+                                        msg.sender === 'bot' || msg.sender_type === 'bot' ? 'bg-purple-100 border border-purple-200 rounded-tr-none' : 
                                         'bg-[#d9fdd3] rounded-tr-none'
                                     }`}>
-                                        {msg.sender === 'bot' && <div className="text-[10px] text-purple-600 font-bold mb-1"><i className="fas fa-robot"></i> Resposta Automática</div>}
+                                        {(msg.sender === 'bot' || msg.sender_type === 'bot') && <div className="text-[10px] text-purple-600 font-bold mb-1"><i className="fas fa-robot"></i> Resposta Automática</div>}
                                         <p className="text-sm text-gray-800 leading-relaxed">{msg.content}</p>
                                         <div className="text-[10px] text-gray-500 text-right mt-1 flex items-center justify-end gap-1">
-                                            {new Date(msg.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                                            {msg.sender !== 'contact' && (
+                                            {new Date(msg.timestamp || msg.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                                            {msg.sender !== 'contact' && msg.sender_type !== 'contact' && (
                                                 <i className={`fas fa-check-double ${msg.status === 'read' ? 'text-blue-500' : 'text-gray-400'}`}></i>
                                             )}
                                         </div>
@@ -518,61 +665,12 @@ const ConnectionsView = ({ connections, onDelete, onAdd, onSimulateScan, loading
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {connections.map(conn => (
-                        <div key={conn.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition group">
-                            <div className={`h-2 bg-gradient-to-r ${conn.status === 'connected' ? 'from-green-400 to-blue-500' : 'from-yellow-400 to-orange-500'}`}></div>
-                            <div className="p-6">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl text-gray-600">
-                                            <i className={`fab fa-${conn.type === 'official_api' ? 'facebook' : 'whatsapp'}`}></i>
-                                        </div>
-                                        <div>
-                                            <h3 className="text-lg font-bold text-gray-800 leading-tight">{conn.name}</h3>
-                                            <div className="flex items-center gap-1.5 mt-1">
-                                                {conn.profile_type === 'business' ? (
-                                                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold flex items-center gap-1"><i className="fas fa-briefcase"></i> Business</span>
-                                                ) : (
-                                                    <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded font-bold flex items-center gap-1"><i className="fas fa-user"></i> Pessoal</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border flex items-center gap-1 ${
-                                        conn.status === 'connected' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                    }`}>
-                                        <div className={`w-1.5 h-1.5 rounded-full ${conn.status === 'connected' ? 'bg-green-500' : 'bg-yellow-500 animate-pulse'}`}></div>
-                                        {conn.status === 'connected' ? 'Conectado' : 'Aguardando'}
-                                    </div>
-                                </div>
-                                
-                                <p className="text-xs text-gray-500 mb-4 truncate">{conn.type === 'official_api' ? 'API Oficial (Meta Cloud)' : 'WhatsApp Web (Legacy)'}</p>
-                                
-                                {/* QR Code Display for Legacy */}
-                                {conn.status === 'qrcode' && conn.qrcode && (
-                                    <div className="mb-4 flex flex-col items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
-                                        <img src={conn.qrcode} alt="Scan Me" className="w-32 h-32 mb-2" />
-                                        <p className="text-[10px] text-gray-500 text-center">Escaneie com seu WhatsApp</p>
-                                        <button 
-                                            onClick={() => onSimulateScan(conn.id)}
-                                            className="mt-2 text-xs text-blue-500 underline hover:text-blue-700"
-                                        >
-                                            [Simular Scan]
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div className="flex gap-2 pt-4 border-t border-gray-100">
-                                    {conn.status === 'connected' && (
-                                        <div className="flex-1 text-center py-2 text-xs text-gray-400">
-                                            Online desde {new Date(conn.created_at || '').toLocaleDateString()}
-                                        </div>
-                                    )}
-                                    <button onClick={() => onDelete(conn.id)} className="ml-auto py-2 px-3 bg-red-50 hover:bg-red-100 text-red-600 rounded text-xs font-bold transition flex items-center justify-center gap-2 border border-red-200">
-                                        <i className="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+                        <ConnectionCard 
+                            key={conn.id}
+                            connection={conn}
+                            onDelete={onDelete}
+                            onSimulateScan={onSimulateScan}
+                        />
                     ))}
                 </div>
             )}
@@ -713,9 +811,13 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                                     </div>
                                     <div className="border-t border-gray-700 pt-4 mt-2">
                                         <h4 className="text-sm font-bold text-gray-400 mb-3">Integração (Backend)</h4>
+                                        <div className="p-3 bg-gray-800 rounded border border-gray-600 mb-3 text-xs text-gray-300">
+                                            <p className="mb-2"><i className="fas fa-info-circle text-blue-400"></i> Configure a URL da sua API (Evolution/WPPConnect) para gerar o QR Code real.</p>
+                                            <p>Sem isso, será usado um simulador.</p>
+                                        </div>
                                         <div className="grid gap-4">
                                             <div className="relative">
-                                                <label className={labelClass}>URL da API (Evolution/WPPConnect)</label>
+                                                <label className={labelClass}>URL da API</label>
                                                 <input type="text" value={externalApiUrl} onChange={e => setExternalApiUrl(e.target.value)} className={inputClass} placeholder="https://api.seudominio.com" />
                                             </div>
                                             <div className="relative">
@@ -940,12 +1042,25 @@ export default function ChatCrmPage({ onNavigateToDashboard }: { onNavigateToDas
     };
 
     const handleSimulateScan = async (id: string) => {
+        // This is now used to refresh status from card if needed, or fallback simulate
         try {
+            // Check if we can fetch real status first
+            const conn = connections.find(c => c.id === id);
+            if (conn && conn.external_api_url) {
+                const status = await fetchRemoteStatus(conn);
+                if (status === 'connected') {
+                    setConnections(prev => prev.map(c => c.id === id ? { ...c, status: 'connected', qrcode: undefined } : c));
+                    setToast({ message: "Conectado com sucesso!", type: 'success' });
+                    return;
+                }
+            }
+
+            // Fallback Simulation
             await simulateConnectionScan(id);
             setConnections(prev => prev.map(c => c.id === id ? { ...c, status: 'connected', qrcode: undefined } : c));
-            setToast({ message: "Dispositivo conectado!", type: 'success' });
+            setToast({ message: "Dispositivo conectado (Simulação)!", type: 'success' });
         } catch(e) {
-            setToast({ message: "Erro na simulação.", type: 'error' });
+            setToast({ message: "Erro na conexão.", type: 'error' });
         }
     };
 

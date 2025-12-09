@@ -113,7 +113,7 @@ const LeadCard = ({ lead, onClick, onAnalyze, isOverlay = false, isAnalyzing = f
 };
 
 // 2. DRAGGABLE WRAPPER
-const DraggableLead = ({ lead, onClick, onAnalyze, isAnalyzing }: { lead: Lead, onClick: () => void, onAnalyze: (l: Lead) => void, isAnalyzing: boolean }) => {
+const DraggableLead: React.FC<{ lead: Lead, onClick: () => void, onAnalyze: (l: Lead) => void, isAnalyzing: boolean }> = ({ lead, onClick, onAnalyze, isAnalyzing }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: lead.id,
         data: { lead }
@@ -132,7 +132,7 @@ const DraggableLead = ({ lead, onClick, onAnalyze, isAnalyzing }: { lead: Lead, 
 };
 
 // 3. DROPPABLE COLUMN
-const DroppableColumn = ({ stage, leads, onEditLead, onAnalyzeLead, analyzingIds }: { stage: typeof STAGES[0], leads: Lead[], onEditLead: (l: Lead) => void, onAnalyzeLead: (l: Lead) => void, analyzingIds: Set<string> }) => {
+const DroppableColumn: React.FC<{ stage: typeof STAGES[0], leads: Lead[], onEditLead: (l: Lead) => void, onAnalyzeLead: (l: Lead) => void, analyzingIds: Set<string> }> = ({ stage, leads, onEditLead, onAnalyzeLead, analyzingIds }) => {
     const { setNodeRef, isOver } = useDroppable({
         id: stage.id,
     });

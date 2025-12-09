@@ -46,6 +46,7 @@ export const getConnections = async (userId: string): Promise<ChatConnection[]> 
 
 export const createConnection = async (connData: Partial<ChatConnection>, userId: string) => {
     const isOfficial = connData.type === 'official_api';
+    const isExternalApi = !!connData.external_api_url;
     
     // Configuração inicial
     const newConnection = {
@@ -54,6 +55,7 @@ export const createConnection = async (connData: Partial<ChatConnection>, userId
         name: connData.name || 'Nova Conexão',
         type: connData.type || 'legacy_qrcode',
         profile_type: connData.profile_type || 'personal',
+        // Se for API Externa, começa como 'qrcode' para buscar. Se for Oficial, 'connected'.
         status: isOfficial ? 'connected' : 'qrcode', 
         
         greeting_message: connData.greeting_message,
@@ -64,7 +66,8 @@ export const createConnection = async (connData: Partial<ChatConnection>, userId
         api_token: connData.api_token,
 
         session_name: `session_${Date.now()}`,
-        qrcode: !isOfficial ? 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SimulacaoConexaoGenesis' : null,
+        // QR Code inicial placeholder. O componente fará o fetch do real se tiver URL externa.
+        qrcode: !isOfficial ? null : null, 
         external_api_url: connData.external_api_url,
         external_api_token: connData.external_api_token,
         
@@ -87,6 +90,55 @@ export const deleteConnection = async (id: string) => {
 
 export const simulateConnectionScan = async (connectionId: string) => {
     await api.update('chat_connections', { status: 'connected', qrcode: null }, { id: connectionId });
+};
+
+// --- REAL EXTERNAL API HELPERS ---
+
+export const fetchRemoteQrCode = async (connection: ChatConnection): Promise<string | null> => {
+    if (!connection.external_api_url) return null;
+
+    try {
+        // Tenta padrão Evolution API v2: /instance/connect/{instance}
+        const url = `${connection.external_api_url}/instance/connect/${connection.session_name}`;
+        const headers: any = { 'Content-Type': 'application/json' };
+        if (connection.external_api_token) headers['apikey'] = connection.external_api_token;
+
+        const res = await fetch(url, { method: 'GET', headers });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        // Evolution retorna { base64: "..." } ou { qrcode: "..." }
+        return data.base64 || data.qrcode || null;
+    } catch (e) {
+        console.error("Erro ao buscar QR Code externo:", e);
+        return null;
+    }
+};
+
+export const fetchRemoteStatus = async (connection: ChatConnection): Promise<'connected' | 'disconnected' | 'qrcode' | null> => {
+    if (!connection.external_api_url) return null;
+
+    try {
+        // Tenta padrão Evolution API v2: /instance/connectionState/{instance}
+        const url = `${connection.external_api_url}/instance/connectionState/${connection.session_name}`;
+        const headers: any = { 'Content-Type': 'application/json' };
+        if (connection.external_api_token) headers['apikey'] = connection.external_api_token;
+
+        const res = await fetch(url, { method: 'GET', headers });
+        if (!res.ok) return null;
+
+        const data = await res.json();
+        // Mapeia status da Evolution para o nosso
+        const state = data.instance?.state || data.state;
+        
+        if (state === 'open') return 'connected';
+        if (state === 'connecting') return 'qrcode';
+        if (state === 'close') return 'disconnected';
+        
+        return null;
+    } catch (e) {
+        return null;
+    }
 };
 
 // --- CHAT SYSTEM (REAL DATABASE IMPLEMENTATION) ---
