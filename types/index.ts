@@ -425,7 +425,7 @@ export interface ChatConnection {
   status: 'connected' | 'disconnected' | 'qrcode' | 'pairing';
   type: ConnectionType;
   profile_type?: 'personal' | 'business'; // Novo campo
-  lastActivity?: string;
+  last_activity?: string; // Updated from lastActivity to last_activity
   user_id?: string;
   created_at?: string;
   

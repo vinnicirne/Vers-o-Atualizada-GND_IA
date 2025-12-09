@@ -68,7 +68,7 @@ export const createConnection = async (connData: Partial<ChatConnection>, userId
         session_name: `session_${Date.now()}`,
         qrcode: !isOfficial ? 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=SimulacaoConexaoGenesis' : null, // Mock QR para demo
         
-        lastActivity: new Date().toISOString(),
+        last_activity: new Date().toISOString(), // Changed to last_activity
         created_at: new Date().toISOString()
     };
 
