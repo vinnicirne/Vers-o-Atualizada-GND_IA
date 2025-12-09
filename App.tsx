@@ -12,6 +12,7 @@ const CookiesPage = React.lazy(() => import('./pages/legal/CookiesPage'));
 const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
 const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage'));
 const LandingPage = React.lazy(() => import('./pages/LandingPage')); 
+const CRMPage = React.lazy(() => import('./pages/CRMPage')); // NOVO
 
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
@@ -23,7 +24,7 @@ const SimpleLoader = () => (
   </div>
 );
 
-type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing';
+type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing' | 'crm';
 
 function AppContent() {
   const { user, loading, error } = useUser();
@@ -37,7 +38,7 @@ function AppContent() {
         try {
             const params = new URLSearchParams(window.location.search);
             const page = params.get('page');
-            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
+            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard', 'crm'];
             if (page && validPages.includes(page as PageRoute)) {
                 return page as PageRoute;
             }
@@ -205,6 +206,11 @@ function AppContent() {
                     onNavigateToDashboard={() => handleNavigate('dashboard')}
                   />
             </AdminGate>
+        )}
+
+        {/* CRM PAGE (NEW) */}
+        {currentPage === 'crm' && (
+            <CRMPage onNavigateToDashboard={() => handleNavigate('dashboard')} />
         )}
 
         {/* Public Feedback Page */}

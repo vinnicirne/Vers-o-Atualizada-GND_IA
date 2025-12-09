@@ -44,6 +44,10 @@ export function DashboardSidebar({
         onModeChange(mode);
     };
 
+    const navigateToCRM = () => {
+        window.location.href = '/?page=crm';
+    };
+
     return (
         <>
             {/* SIDEBAR OVERLAY (Mobile) */}
@@ -67,7 +71,26 @@ export function DashboardSidebar({
                     </button>
                 </div>
                 
+                {/* CRM HIGHLIGHT BUTTON */}
+                {user && (
+                    <div className="p-4 pb-2">
+                        <button
+                            onClick={navigateToCRM}
+                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3 group"
+                        >
+                            <div className="bg-white/20 p-1.5 rounded-lg group-hover:bg-white/30 transition">
+                                <i className="fas fa-users text-sm"></i>
+                            </div>
+                            <span className="font-bold text-sm tracking-wide">CRM & Vendas</span>
+                        </button>
+                    </div>
+                )}
+
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
+                    <div className="px-2 py-1 mt-2">
+                        <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Ferramentas de IA</span>
+                    </div>
+
                     {CREATOR_SUITE_MODES.map((svc) => {
                         const isSelected = currentMode === svc.value;
                         const isLocked = (isGuest && !guestAllowedModes.includes(svc.value)) || (!isGuest && !hasAccessToService(svc.value));

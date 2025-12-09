@@ -65,11 +65,11 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
-   - Use `font-sans` (padrão moderno).
-   - Espaçamento generoso (`py-20`, `gap-8`).
-   - Sombras sofisticadas (`shadow-2xl`, `shadow-inner`).
-   - Use `<section>` tags distintas para cada bloco de conteúdo para facilitar a edição visual.
-   - Retorne APENAS o HTML do `<body>`.
+   - Use \`font-sans\` (padrão moderno).
+   - Espaçamento generoso (\`py-20\`, \`gap-8\`).
+   - Sombras sofisticadas (\`shadow-2xl\`, \`shadow-inner\`).
+   - Use \`<section>\` tags distintas para cada bloco de conteúdo para facilitar a edição visual.
+   - Retorne APENAS o HTML do \`<body>\`.
 
 4. **Studio de Arte IA (Image Generation)**:
    Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
@@ -79,7 +79,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
 
 6. **Editor Visual (Social Media)**:
-   Gere APENAS o código HTML de uma `<div>` (1080x1080px) com Tailwind CSS.
+   Gere APENAS o código HTML de uma \`<div>\` (1080x1080px) com Tailwind CSS.
    - Design vibrante, tipografia grande, contraste alto.
 
 7. **Criador de Currículos (IA)**:
@@ -96,15 +96,15 @@ MODOS DISPONÍVEIS (roteie baseado na query):
 
    **REGRAS ESTRUTURAIS HTML (Tailwind CSS):**
    - Utilize a estrutura HTML fornecida pelo template.
-   - Não inclua tags `<html>`, `<head>` ou `<body>` externas. Apenas o conteúdo interno.
+   - Não inclua tags \`<html>\`, \`<head>\` ou \`<body>\` externas. Apenas o conteúdo interno.
    - Mantenha a semântica HTML (h1, h2, p, ul, li).
    - Use classes Tailwind CSS para todo o estilo.
    - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
 
    **INSTRUÇÕES DE PREENCHIMENTO:**
-   - Adapte o `summary` (resumo profissional) com base no `prompt` do usuário (se fornecido) e nas informações de experiência.
-   - Para `experience` e `education`, reescreva as `descriptions` para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
-   - Para `skills`, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
+   - Adapte o \`summary\` (resumo profissional) com base no \`prompt\` do usuário (se fornecido) e nas informações de experiência.
+   - Para \`experience\` e \`education\`, reescreva as \`descriptions\` para serem concisas, com verbos de ação e resultados quantificáveis. Se a descrição for genérica, melhore-a.
+   - Para \`skills\`, agrupe ou formate de maneira legível (ex: "Hard Skills:", "Soft Skills:").
    - **NÃO use Markdown**. Apenas HTML puro com classes Tailwind.
    - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
 

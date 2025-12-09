@@ -1,6 +1,6 @@
 
 import { ReactNode } from 'react';
-import { Plan, ServiceKey, UserPlan } from './plan.types'; // Looks for sibling 'plan.types.ts'
+import { Plan, ServiceKey, UserPlan } from './plan.types';
 
 export type { Plan, ServiceKey, UserPlan };
 
@@ -22,7 +22,7 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: string; // This type allows for flexibility, will be 'landingpage_generator' for all sites
+  tipo?: string; 
   author_id?: string;
   criado_em?: string;
   author?: {
@@ -72,7 +72,7 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'crm';
 
 export interface AllowedDomain {
   id: string;
@@ -117,7 +117,6 @@ export interface Transaction {
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string; 
-  // secretKey removed for security
 }
 
 export interface CreditPackage {
@@ -250,7 +249,6 @@ export interface ApiKey {
   status: 'active' | 'revoked';
 }
 
-// Notification System
 export interface AppNotification {
   id: string;
   user_id: string;
@@ -260,6 +258,59 @@ export interface AppNotification {
   is_read: boolean;
   action_link?: string;
   created_at: string;
+}
+
+export interface ToolSetting {
+  key: ServiceKey;
+  enabled: boolean;
+}
+
+export interface FeatureCardConfig {
+    id: string; 
+    icon: string; 
+    title: string; 
+    description: string; 
+    color: string; 
+    bgColor: string;
+}
+
+export interface FooterLinkConfig {
+    id: string; 
+    text: string; 
+    link: string;
+}
+
+export interface WhiteLabelSettings {
+  appName: string;
+  appTagline: string;
+  logoTextPart1: string;
+  logoTextPart2: string;
+  primaryColorHex: string;
+  secondaryColorHex: string;
+  tertiaryColorHex: string;
+  faviconUrl: string;
+  ogImageUrl: string;
+  wordpressPluginName: string;
+  copyrightText: string;
+  appVersion: string;
+  dashboardTitle: string;
+  landingPageEnabled: boolean;
+  heroSectionTitle: string;
+  heroSectionSubtitle: string;
+  heroCtaPrimaryText: string;
+  heroCtaPrimaryLink: string;
+  heroCtaSecondaryText: string;
+  heroCtaSecondaryLink: string;
+  featureSectionTitle: string;
+  featureSectionSubtitle: string;
+  landingPageFeatures: FeatureCardConfig[];
+  pricingSectionTitle: string;
+  pricingSectionSubtitle: string;
+  landingPageFooterLinks: FooterLinkConfig[];
+  guestMarketingFooterTitle: string;
+  guestMarketingFooterSubtitle: string;
+  guestMarketingFooterCtaText: string;
+  guestMarketingFooterCtaLink: string;
 }
 
 // --- CHAT SYSTEM TYPES ---
@@ -279,8 +330,12 @@ export interface ChatContact {
     id: string;
     phone: string;
     name: string;
+    email?: string; // Added for CRM
+    notes?: string; // Added for CRM
     profile_pic_url?: string;
     tags?: string[];
+    crm_stage?: 'new' | 'negotiation' | 'won' | 'lost'; // Added for CRM Pipeline
+    created_at?: string;
 }
 
 export interface ChatConversation {
@@ -305,4 +360,45 @@ export interface ChatMessage {
     media_type?: 'image' | 'video' | 'audio' | 'document';
     status: 'sent' | 'delivered' | 'read' | 'failed';
     created_at: string;
+}
+
+// --- CRM / LEAD SYSTEM ---
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
+export type DealStatus = 'won' | 'lost' | 'pending';
+export type MarketingEventType = 'view_landing' | 'submit_form' | 'email_open' | 'email_click' | 'checkout_view' | 'purchase';
+
+export interface Lead {
+  id: string;
+  email: string;
+  nome?: string;
+  telefone?: string;
+  empresa?: string;
+  fonte?: string;
+  utm_campaign?: string;
+  utm_medium?: string;
+  utm_source?: string;
+  status_funil: LeadStatus;
+  score: number;
+  tags?: string[]; // Array of strings in Supabase (text[])
+  consentimento: boolean;
+  created_at: string;
+  notes?: string;
+}
+
+export interface MarketingEvent {
+  id: number;
+  lead_id: string;
+  tipo_evento: MarketingEventType;
+  metadata?: any;
+  created_at: string;
+}
+
+export interface Deal {
+  id: string;
+  lead_id: string;
+  plano: string;
+  valor: number;
+  status: DealStatus;
+  gateway_ref?: string;
+  created_at: string;
 }
