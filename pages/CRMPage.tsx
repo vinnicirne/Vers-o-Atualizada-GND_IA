@@ -1,9 +1,11 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useUser } from '../contexts/UserContext';
+import { usePlan } from '../hooks/usePlan';
 import { CRMManager } from '../components/admin/CRMManager'; // Admin View
 import { ClientCRM } from '../components/crm/ClientCRM'; // User View
 import { Header } from '../components/Header'; // Reusing Header for consistency
+import { PlansModal } from '../components/PlansModal';
 
 interface CRMPageProps {
     onNavigateToDashboard: () => void;
@@ -11,16 +13,62 @@ interface CRMPageProps {
 
 export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
     const { user } = useUser();
+    const { hasAccessToService } = usePlan();
+    const [showPlans, setShowPlans] = useState(false);
 
     if (!user) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-100">
-                <p className="text-gray-500">Faça login para acessar o CRM.</p>
+            <div className="min-h-screen flex items-center justify-center bg-gray-100 font-['Poppins']">
+                <div className="text-center">
+                    <p className="text-gray-500 mb-4">Faça login para acessar o CRM.</p>
+                    <button onClick={onNavigateToDashboard} className="text-blue-600 hover:underline">Voltar</button>
+                </div>
             </div>
         );
     }
 
     const isAdmin = user.role === 'admin' || user.role === 'super_admin';
+    const canAccessCRM = hasAccessToService('crm');
+
+    // Access Denied State
+    if (!isAdmin && !canAccessCRM) {
+        return (
+            <div className="min-h-screen bg-[#F0F2F5] flex items-center justify-center p-4 font-['Poppins']">
+                {showPlans && (
+                    <PlansModal 
+                        currentPlanId={user.plan} 
+                        onClose={() => setShowPlans(false)}
+                        onSelectPlan={() => {}} 
+                        onBuyCredits={() => {}} 
+                    />
+                )}
+                
+                <div className="bg-white rounded-2xl shadow-xl p-8 max-w-md w-full text-center border-t-8 border-blue-600">
+                    <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
+                        <i className="fas fa-lock text-4xl"></i>
+                    </div>
+                    <h2 className="text-2xl font-bold text-gray-800 mb-2">CRM Bloqueado</h2>
+                    <p className="text-gray-500 mb-8 leading-relaxed">
+                        A gestão de leads e vendas está disponível apenas nos planos <strong>Básico</strong>, <strong>Standard</strong> e <strong>Premium</strong>.
+                    </p>
+                    <div className="space-y-3">
+                        <button 
+                            onClick={() => setShowPlans(true)}
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-blue-200 transition transform hover:-translate-y-0.5"
+                        >
+                            Ver Planos & Upgrade
+                        </button>
+                        <button 
+                            onClick={onNavigateToDashboard}
+                            className="w-full bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold py-3 rounded-xl transition"
+                        >
+                            Voltar ao Dashboard
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-[#F0F2F5] font-['Poppins']">

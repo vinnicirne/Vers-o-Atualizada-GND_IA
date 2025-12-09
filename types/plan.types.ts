@@ -10,7 +10,8 @@ export type ServiceKey =
   | 'social_media_poster'
   | 'n8n_integration'
   | 'curriculum_generator'
-  | 'multi_chat'; // NOVO
+  | 'multi_chat'
+  | 'crm'; // NOVO
 
 export interface ServicePermission {
   key: ServiceKey; // Nome em português

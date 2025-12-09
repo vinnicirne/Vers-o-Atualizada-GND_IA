@@ -320,7 +320,7 @@ export interface WhatsAppInstance {
     name: string;
     phone_number?: string;
     status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready';
-    connection_type: 'gateway' | 'official'; // Added connection type
+    connection_type: 'gateway' | 'official'; 
     qr_code?: string;
     api_url?: string;
     api_token?: string;
@@ -331,11 +331,11 @@ export interface ChatContact {
     id: string;
     phone: string;
     name: string;
-    email?: string; // Added for CRM
-    notes?: string; // Added for CRM
+    email?: string; 
+    notes?: string; 
     profile_pic_url?: string;
     tags?: string[];
-    crm_stage?: 'new' | 'negotiation' | 'won' | 'lost'; // Added for CRM Pipeline
+    crm_stage?: 'new' | 'negotiation' | 'won' | 'lost'; 
     created_at?: string;
 }
 

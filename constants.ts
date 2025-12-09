@@ -78,6 +78,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
   multi_chat: 0, // Recurso mensal, não consome crédito por uso
+  crm: 0, // Recurso de acesso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -113,6 +114,9 @@ const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integraç
 // Serviço de Chat (WhatsApp)
 const chatService: ServicePermission = { key: 'multi_chat', name: 'Chat Multi-Atendimento', enabled: true, creditsPerUse: 0 };
 
+// Serviço de CRM
+const crmService: ServicePermission = { key: 'crm', name: 'CRM & Gestão de Vendas', enabled: true, creditsPerUse: 0 };
+
 
 export const PLANS: Record<UserPlan, Plan> = {
   free: {
@@ -143,7 +147,8 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
-      chatService
+      chatService,
+      crmService // CRM disponível no Basic
     ]
   },
   standard: {
@@ -165,7 +170,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       siteBuilderService, // Usando o serviço unificado
       ...artServices, // Agora contém apenas o Editor Visual
       n8nService,
-      chatService
+      chatService,
+      crmService // CRM disponível no Standard
     ]
   },
   premium: {
@@ -187,7 +193,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       siteBuilderService, // Usando o serviço unificado
       ...artServices,
       n8nService,
-      chatService
+      chatService,
+      crmService // CRM disponível no Premium
     ]
   }
 };
@@ -205,6 +212,7 @@ export const SERVICE_ICONS: Record<ServiceKey, string> = {
     curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
     n8n_integration: 'fa-plug',
     multi_chat: 'fa-comments',
+    crm: 'fa-users',
 };
 
 // Cores para os ícones
@@ -220,4 +228,5 @@ export const SERVICE_COLORS: Record<ServiceKey, string> = {
     curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
     n8n_integration: 'text-red-500 bg-red-50',
     multi_chat: 'text-teal-600 bg-teal-50',
+    crm: 'text-blue-600 bg-blue-50',
 };

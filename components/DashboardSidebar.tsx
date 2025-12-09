@@ -45,8 +45,14 @@ export function DashboardSidebar({
     };
 
     const navigateToCRM = () => {
+        if (!hasAccessToService('crm')) {
+            onOpenPlans();
+            return;
+        }
         window.location.href = '/?page=crm';
     };
+
+    const isCrmLocked = !hasAccessToService('crm');
 
     return (
         <>
@@ -76,12 +82,22 @@ export function DashboardSidebar({
                     <div className="p-4 pb-2">
                         <button
                             onClick={navigateToCRM}
-                            className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white p-3 rounded-xl shadow-lg shadow-blue-500/30 transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3 group"
+                            className={`w-full p-3 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3 group relative ${
+                                isCrmLocked 
+                                ? 'bg-gray-100 text-gray-500 border border-gray-200 cursor-not-allowed hover:bg-gray-200' 
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/30'
+                            }`}
                         >
-                            <div className="bg-white/20 p-1.5 rounded-lg group-hover:bg-white/30 transition">
-                                <i className="fas fa-users text-sm"></i>
+                            <div className={`p-1.5 rounded-lg transition ${isCrmLocked ? 'bg-gray-200' : 'bg-white/20 group-hover:bg-white/30'}`}>
+                                <i className={`fas ${isCrmLocked ? 'fa-lock' : 'fa-users'} text-sm`}></i>
                             </div>
                             <span className="font-bold text-sm tracking-wide">CRM & Vendas</span>
+                            
+                            {isCrmLocked && (
+                                <span className="absolute top-[-8px] right-[-8px] bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-yellow-200">
+                                    PRO
+                                </span>
+                            )}
                         </button>
                     </div>
                 )}
