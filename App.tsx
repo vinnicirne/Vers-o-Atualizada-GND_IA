@@ -11,8 +11,8 @@ const TermsPage = React.lazy(() => import('./pages/legal/TermsPage'));
 const CookiesPage = React.lazy(() => import('./pages/legal/CookiesPage'));
 const AboutPage = React.lazy(() => import('./pages/legal/AboutPage'));
 const FeedbackPage = React.lazy(() => import('./pages/FeedbackPage'));
-const LandingPage = React.lazy(() => import('./pages/LandingPage')); 
-const CRMPage = React.lazy(() => import('./pages/CRMPage')); // NOVO
+const LandingPage = React.lazy(() => import('./pages/LandingPage'));
+const ChatCRMPage = React.lazy(() => import('./pages/ChatCRMPage')); // NOVO
 
 import { AdminGate } from './components/admin/AdminGate';
 import { initGA4 } from './services/analyticsService'; 
@@ -24,7 +24,7 @@ const SimpleLoader = () => (
   </div>
 );
 
-type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing' | 'crm';
+type PageRoute = 'dashboard' | 'admin' | 'login' | 'privacy' | 'terms' | 'cookies' | 'about' | 'feedback' | 'landing' | 'chat_crm';
 
 function AppContent() {
   const { user, loading, error } = useUser();
@@ -38,7 +38,7 @@ function AppContent() {
         try {
             const params = new URLSearchParams(window.location.search);
             const page = params.get('page');
-            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard', 'crm'];
+            const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard', 'chat_crm'];
             if (page && validPages.includes(page as PageRoute)) {
                 return page as PageRoute;
             }
@@ -57,8 +57,8 @@ function AppContent() {
   useEffect(() => {
     if (!loading) {
         if (user) {
-            // Se logado e está na landing ou login, vai pro dashboard
-            if (currentPage === 'landing' || currentPage === 'login') {
+            // Se logado e está no login, vai pro dashboard
+            if (currentPage === 'login') {
                 setCurrentPage('dashboard');
             }
         }
@@ -175,7 +175,7 @@ function AppContent() {
     <Suspense fallback={<SimpleLoader />}>
         <PopupRenderer />
 
-        {/* Landing Page Route (Still available if needed directly, but dashboard is default) */}
+        {/* Landing Page Route (Acessível via ?page=landing) */}
         {currentPage === 'landing' && (
             <LandingPage onNavigate={(page) => handleNavigate(page as PageRoute)} />
         )}
@@ -200,17 +200,19 @@ function AppContent() {
             />
         )}
         
+        {/* ROTA CRM WHATSAPP */}
+        {currentPage === 'chat_crm' && (
+            <ChatCRMPage 
+                onNavigateToDashboard={() => handleNavigate('dashboard')}
+            />
+        )}
+        
         {currentPage === 'admin' && (
              <AdminGate onAccessDenied={() => handleNavigate('dashboard')}>
                   <AdminPage 
                     onNavigateToDashboard={() => handleNavigate('dashboard')}
                   />
             </AdminGate>
-        )}
-
-        {/* CRM PAGE (NEW) */}
-        {currentPage === 'crm' && (
-            <CRMPage onNavigateToDashboard={() => handleNavigate('dashboard')} />
         )}
 
         {/* Public Feedback Page */}

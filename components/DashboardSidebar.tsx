@@ -20,6 +20,7 @@ interface DashboardSidebarProps {
     onOpenIntegrations: () => void;
     onOpenManual: () => void;
     onNavigateFeedback: () => void;
+    onNavigateCRM?: () => void; // Novo callback
 }
 
 export function DashboardSidebar({
@@ -37,22 +38,13 @@ export function DashboardSidebar({
     onOpenHistory,
     onOpenIntegrations,
     onOpenManual,
-    onNavigateFeedback
+    onNavigateFeedback,
+    onNavigateCRM
 }: DashboardSidebarProps) {
 
     const handleModeSelection = (mode: ServiceKey) => {
         onModeChange(mode);
     };
-
-    const navigateToCRM = () => {
-        if (!hasAccessToService('crm')) {
-            onOpenPlans();
-            return;
-        }
-        window.location.href = '/?page=crm';
-    };
-
-    const isCrmLocked = !hasAccessToService('crm');
 
     return (
         <>
@@ -70,41 +62,53 @@ export function DashboardSidebar({
                 ${isOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
             `}>
                 {/* Mobile Header */}
-                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white md:hidden">
+                <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-white md:hidden shrink-0">
                     <span className="text-xs font-bold text-[#263238] uppercase tracking-wider">Ferramentas</span>
                     <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-red-500">
                         <i className="fas fa-times text-lg"></i>
                     </button>
                 </div>
                 
-                {/* CRM HIGHLIGHT BUTTON */}
-                {user && (
-                    <div className="p-4 pb-2">
+                {/* CRM BUTTON HIGHLIGHTED (FIXED TOP) */}
+                {onNavigateCRM && (
+                    <div className="p-4 pb-2 border-b border-green-100 bg-[#F0FDF4] shrink-0">
                         <button
-                            onClick={navigateToCRM}
-                            className={`w-full p-3 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3 group relative ${
-                                isCrmLocked 
-                                ? 'bg-gray-100 text-gray-500 border border-gray-200 cursor-not-allowed hover:bg-gray-200' 
-                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/30'
-                            }`}
+                            onClick={() => {
+                                onNavigateCRM();
+                                setIsOpen(false);
+                            }}
+                            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 group relative overflow-hidden text-left shadow-md
+                                ${isGuest 
+                                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed' 
+                                    : 'bg-[#00A884] text-white hover:bg-[#008F6F] hover:shadow-lg hover:shadow-green-500/30 hover:-translate-y-0.5'
+                                }
+                            `}
                         >
-                            <div className={`p-1.5 rounded-lg transition ${isCrmLocked ? 'bg-gray-200' : 'bg-white/20 group-hover:bg-white/30'}`}>
-                                <i className={`fas ${isCrmLocked ? 'fa-lock' : 'fa-users'} text-sm`}></i>
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 shadow-sm border ${isGuest ? 'bg-white text-gray-300' : 'bg-white/20 text-white border-white/20'}`}>
+                                <i className="fab fa-whatsapp text-xl"></i>
                             </div>
-                            <span className="font-bold text-sm tracking-wide">CRM & Vendas</span>
-                            
-                            {isCrmLocked && (
-                                <span className="absolute top-[-8px] right-[-8px] bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-yellow-200">
-                                    PRO
-                                </span>
-                            )}
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm font-bold tracking-wide truncate">CRM WhatsApp</p>
+                                <p className={`text-[10px] font-medium truncate ${isGuest ? 'text-gray-400' : 'text-green-100'}`}>
+                                    {isGuest ? 'Acesso Restrito' : 'Multi-atendimento'}
+                                </p>
+                            </div>
+                            <div className="ml-2">
+                                {isGuest ? (
+                                    <i className="fas fa-lock text-xs opacity-50"></i>
+                                ) : (
+                                    <i className="fas fa-chevron-right text-xs opacity-60 group-hover:translate-x-1 transition-transform"></i>
+                                )}
+                            </div>
                         </button>
                     </div>
                 )}
 
+                {/* SCROLLABLE TOOLS LIST */}
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
+                    
                     <div className="px-2 py-1 mt-2">
-                        <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Ferramentas de IA</span>
+                        <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Criação IA</span>
                     </div>
 
                     {CREATOR_SUITE_MODES.map((svc) => {
@@ -143,7 +147,7 @@ export function DashboardSidebar({
                 </div>
 
                 {/* Menu Extra (Mobile Only) */}
-                <div className={`p-3 border-t border-gray-200 bg-white space-y-2 md:hidden ${!user ? 'hidden' : ''}`}>
+                <div className={`p-3 border-t border-gray-200 bg-white space-y-2 md:hidden ${!user ? 'hidden' : ''} shrink-0`}>
                     <div className="px-2 py-1">
                         <span className="text-[10px] font-extrabold text-gray-900 uppercase tracking-widest">Minha Conta</span>
                     </div>
@@ -214,7 +218,7 @@ export function DashboardSidebar({
                 
                 {/* Link para Feedback Desktop */}
                 {user && (
-                    <div className="hidden md:block p-4 border-t border-gray-200">
+                    <div className="hidden md:block p-4 border-t border-gray-200 shrink-0">
                         <button 
                             onClick={onNavigateFeedback}
                             className="w-full bg-white border border-gray-300 text-gray-600 hover:text-green-600 hover:border-green-400 px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"

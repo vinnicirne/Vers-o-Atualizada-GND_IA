@@ -1,18 +1,21 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
-import App from './App';
+import App from './Vers-o-Atualizada-GND_IA-main/App';
 import { HelmetProvider } from 'react-helmet-async';
-import './index.css';
+import './Vers-o-Atualizada-GND_IA-main/index.css';
 
 console.log("🚀 [index.tsx] Aplicação Iniciando...");
 
+// Tenta registrar o Service Worker se disponível (caminho ajustado para a estrutura de pastas)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
+    // Tenta registrar o SW da pasta interna ou raiz, dependendo de como o build move os arquivos.
+    // Usando caminho relativo à pasta principal por segurança.
+    navigator.serviceWorker.register('/Vers-o-Atualizada-GND_IA-main/sw.js').then(registration => {
       console.log('✅ ServiceWorker registrado com escopo:', registration.scope);
     }).catch(err => {
-      console.log('❌ Falha no ServiceWorker:', err);
+      console.log('⚠️ Falha ao registrar ServiceWorker (pode ser ignorado em dev):', err);
     });
   });
 }

@@ -75,6 +75,13 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
             onOpenIntegrations={() => toggleModal('integrations', true)}
             onOpenManual={() => toggleModal('manual', true)}
             onNavigateFeedback={() => onNavigate('feedback')}
+            onNavigateCRM={() => {
+                if (isGuest) {
+                    toggleModal('featureLock', true);
+                } else {
+                    onNavigate('chat_crm');
+                }
+            }}
         />
 
         {/* MAIN CONTENT */}
