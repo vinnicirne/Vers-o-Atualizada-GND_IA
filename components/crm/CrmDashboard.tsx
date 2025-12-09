@@ -235,7 +235,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                     </button>
                     <p className="text-sm text-gray-500">
                         1. Copie o código acima.<br/>
-                        2. Vá ao seu painel Supabase > SQL Editor.<br/>
+                        2. Vá ao seu painel Supabase &gt; SQL Editor.<br/>
                         3. Cole e clique em "Run".<br/>
                         4. Recarregue esta página.
                     </p>
