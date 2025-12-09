@@ -10,7 +10,8 @@ export type ServiceKey =
   | 'social_media_poster'
   | 'n8n_integration'
   | 'curriculum_generator'
-  | 'whatsapp_crm'; // NOVO: Chat Multi-atendimento
+  | 'multi_chat'
+  | 'crm'; // NOVO
 
 export interface ServicePermission {
   key: ServiceKey; // Nome em português
@@ -29,9 +30,10 @@ export interface Plan {
   services: ServicePermission[]; // Permissões de serviço para este plano
   color: string; // Cor do plano para UI
   expressCreditPrice: number; // Preço do crédito avulso para este plano
-  
-  // Limites Específicos
-  maxWhatsAppInstances?: number; // NOVO: Limite de números conectados
+  limits?: {
+      whatsapp_instances: number;
+      agents: number;
+  };
 }
 
 // UserPlan now references the ID of the Plan type

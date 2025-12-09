@@ -20,7 +20,6 @@ interface DashboardSidebarProps {
     onOpenIntegrations: () => void;
     onOpenManual: () => void;
     onNavigateFeedback: () => void;
-    onNavigateCRM?: () => void; // Novo callback
 }
 
 export function DashboardSidebar({
@@ -38,13 +37,22 @@ export function DashboardSidebar({
     onOpenHistory,
     onOpenIntegrations,
     onOpenManual,
-    onNavigateFeedback,
-    onNavigateCRM
+    onNavigateFeedback
 }: DashboardSidebarProps) {
 
     const handleModeSelection = (mode: ServiceKey) => {
         onModeChange(mode);
     };
+
+    const navigateToCRM = () => {
+        if (!hasAccessToService('crm')) {
+            onOpenPlans();
+            return;
+        }
+        window.location.href = '/?page=crm';
+    };
+
+    const isCrmLocked = !hasAccessToService('crm');
 
     return (
         <>
@@ -69,33 +77,34 @@ export function DashboardSidebar({
                     </button>
                 </div>
                 
-                {/* CRM BUTTON HIGHLIGHTED (FIXED TOP) */}
-                {!isGuest && onNavigateCRM && (
-                    <div className="p-4 pb-2 border-b border-green-100 bg-green-50/50">
+                {/* CRM HIGHLIGHT BUTTON */}
+                {user && (
+                    <div className="p-4 pb-2">
                         <button
-                            onClick={() => {
-                                onNavigateCRM();
-                                setIsOpen(false);
-                            }}
-                            className="w-full flex items-center p-3 rounded-xl bg-gradient-to-r from-green-600 to-green-500 text-white shadow-lg shadow-green-500/30 hover:scale-[1.02] transition-transform duration-200 group relative overflow-hidden"
+                            onClick={navigateToCRM}
+                            className={`w-full p-3 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 flex items-center justify-center gap-3 group relative ${
+                                isCrmLocked 
+                                ? 'bg-gray-100 text-gray-500 border border-gray-200 cursor-not-allowed hover:bg-gray-200' 
+                                : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-blue-500/30'
+                            }`}
                         >
-                            <div className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                            <div className="w-8 h-8 rounded-full flex items-center justify-center mr-3 bg-white/20 text-white shadow-sm border border-white/20">
-                                <i className="fab fa-whatsapp text-lg"></i>
+                            <div className={`p-1.5 rounded-lg transition ${isCrmLocked ? 'bg-gray-200' : 'bg-white/20 group-hover:bg-white/30'}`}>
+                                <i className={`fas ${isCrmLocked ? 'fa-lock' : 'fa-users'} text-sm`}></i>
                             </div>
-                            <div className="flex-1 text-left">
-                                <p className="text-sm font-bold tracking-wide">CRM WhatsApp</p>
-                                <p className="text-[10px] text-green-100 font-medium">Multi-atendimento</p>
-                            </div>
-                            <i className="fas fa-chevron-right text-xs opacity-60 group-hover:translate-x-1 transition-transform"></i>
+                            <span className="font-bold text-sm tracking-wide">CRM & Vendas</span>
+                            
+                            {isCrmLocked && (
+                                <span className="absolute top-[-8px] right-[-8px] bg-yellow-400 text-black text-[9px] font-bold px-1.5 py-0.5 rounded-full shadow-sm border border-yellow-200">
+                                    PRO
+                                </span>
+                            )}
                         </button>
                     </div>
                 )}
 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
-                    
                     <div className="px-2 py-1 mt-2">
-                        <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Criação IA</span>
+                        <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest">Ferramentas de IA</span>
                     </div>
 
                     {CREATOR_SUITE_MODES.map((svc) => {

@@ -26,10 +26,10 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Gerador de Prompts',
     placeholder: 'Descreva a tarefa para a qual você precisa de um prompt. Ex: "um prompt para criar um carrossel de 5 posts no Instagram sobre produtividade".',
   },
-  // --- OPÇÕES PREMIUM / AVANÇADAS (REORDERED FOR VISIBILITY) ---
+  // --- OPÇÕES PREMIUM / AVANÇADAS ---
   {
     value: 'curriculum_generator',
-    label: 'Criador de Currículos (IA)', // NOVO
+    label: 'Criador de Currículos (IA)',
     placeholder: 'Descreva seu perfil e objetivo (ex: "Currículo para Desenvolvedor Fullstack com 5 anos de experiência, focado em React e Node.js. Objetivo: vaga em startup de tecnologia.").',
   },
   {
@@ -57,6 +57,8 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Texto para Voz',
     placeholder: 'Insira o texto que você deseja transformar em áudio.',
   },
+  // NOTA: 'multi_chat' removido da lista para não aparecer na sidebar principal.
+  // Ele agora é acessado exclusivamente via botão "CRM & Vendas".
 ];
 
 // --- CUSTO POR AÇÃO (CRÉDITOS) ---
@@ -72,7 +74,8 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   social_media_poster: 5, // Custo similar à geração de imagem
   curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
-  whatsapp_crm: 0, // Recurso de acesso mensal (definido no plano)
+  multi_chat: 0, // Recurso mensal, não consome crédito por uso
+  crm: 0, // Recurso de acesso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -90,14 +93,26 @@ const artServices: ServicePermission[] = [
   { key: 'canva_structure', name: 'Editor Visual (Social Media)', enabled: true, creditsPerUse: TASK_COSTS.canva_structure },
 ];
 
+// Adicionando a nova feature de imagem
 const imageService: ServicePermission = { key: 'image_generation', name: 'Studio de Arte IA', enabled: true, creditsPerUse: TASK_COSTS.image_generation };
+
+// Nova feature de Social Media Poster
 const socialPosterService: ServicePermission = { key: 'social_media_poster', name: 'Criador de Posts Sociais', enabled: true, creditsPerUse: TASK_COSTS.social_media_poster };
+
+// Agora apenas um serviço para sites
 const siteBuilderService: ServicePermission = { key: 'landingpage_generator', name: 'Criador de Sites (Web)', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
+
+// Novo serviço de currículo
 const curriculumService: ServicePermission = { key: 'curriculum_generator', name: 'Criador de Currículos (IA)', enabled: true, creditsPerUse: TASK_COSTS.curriculum_generator };
+
+// Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
 
-// Serviço WhatsApp (Disponível a partir do Basic, com limites diferentes)
-const whatsappService: ServicePermission = { key: 'whatsapp_crm', name: 'CRM WhatsApp Multi-atendimento', enabled: true, creditsPerUse: 0 };
+// Serviço de Chat (WhatsApp)
+const chatService: ServicePermission = { key: 'multi_chat', name: 'Chat Multi-Atendimento', enabled: true, creditsPerUse: 0 };
+
+// Serviço de CRM
+const crmService: ServicePermission = { key: 'crm', name: 'CRM & Gestão de Vendas', enabled: true, creditsPerUse: 0 };
 
 
 export const PLANS: Record<UserPlan, Plan> = {
@@ -109,13 +124,12 @@ export const PLANS: Record<UserPlan, Plan> = {
     interval: 'month',
     isActive: true,
     expressCreditPrice: 15.00,
-    color: 'gray', 
+    color: 'gray', // Cor Tailwind
+    limits: { whatsapp_instances: 0, agents: 0 },
     services: [
       ...commonServices,
-      promptService,
-      { ...whatsappService, enabled: false } // Sem acesso
-    ],
-    maxWhatsAppInstances: 0
+      promptService // Adicionado ao Free
+    ]
   },
   basic: {
     id: 'basic',
@@ -125,13 +139,14 @@ export const PLANS: Record<UserPlan, Plan> = {
     interval: 'month',
     isActive: true,
     expressCreditPrice: 9.00,
-    color: 'blue',
+    color: 'blue', // Cor Tailwind
+    limits: { whatsapp_instances: 1, agents: 1 },
     services: [
       ...commonServices,
       promptService,
-      whatsappService // 1 Número
-    ],
-    maxWhatsAppInstances: 1
+      chatService,
+      crmService // CRM disponível no Basic
+    ]
   },
   standard: {
     id: 'standard',
@@ -141,19 +156,20 @@ export const PLANS: Record<UserPlan, Plan> = {
     interval: 'month',
     isActive: true,
     expressCreditPrice: 7.00,
-    color: 'green',
+    color: 'green', // Cor Tailwind
+    limits: { whatsapp_instances: 3, agents: 5 },
     services: [
       ...commonServices,
       promptService,
-      curriculumService,
-      socialPosterService,
+      curriculumService, // Adicionado ao Standard
+      socialPosterService, // Adicionado ao Standard
       imageService, 
-      siteBuilderService, 
-      ...artServices, 
+      siteBuilderService, // Usando o serviço unificado
+      ...artServices, // Agora contém apenas o Editor Visual
       n8nService,
-      whatsappService // 3 Números
-    ],
-    maxWhatsAppInstances: 3
+      chatService,
+      crmService // CRM disponível no Standard
+    ]
   },
   premium: {
     id: 'premium',
@@ -163,19 +179,20 @@ export const PLANS: Record<UserPlan, Plan> = {
     interval: 'month',
     isActive: true,
     expressCreditPrice: 5.00,
-    color: 'purple',
+    color: 'purple', // Cor Tailwind
+    limits: { whatsapp_instances: 10, agents: 99 },
     services: [
       ...commonServices,
       promptService,
-      curriculumService, 
-      socialPosterService, 
+      curriculumService, // Adicionado ao Premium
+      socialPosterService, // Adicionado ao Premium
       imageService,
-      siteBuilderService, 
+      siteBuilderService, // Usando o serviço unificado
       ...artServices,
       n8nService,
-      whatsappService // 10 Números
-    ],
-    maxWhatsAppInstances: 10
+      chatService,
+      crmService // CRM disponível no Premium
+    ]
   }
 };
 
@@ -185,13 +202,14 @@ export const SERVICE_ICONS: Record<ServiceKey, string> = {
     text_to_speech: 'fa-microphone-lines',
     copy_generator: 'fa-pen-nib',
     prompt_generator: 'fa-terminal',
-    landingpage_generator: 'fa-code', 
+    landingpage_generator: 'fa-code', // Icone para Criador de Sites (Web)
     canva_structure: 'fa-vector-square',
     image_generation: 'fa-paint-brush',
     social_media_poster: 'fa-share-alt',
-    curriculum_generator: 'fa-file-alt', 
+    curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
     n8n_integration: 'fa-plug',
-    whatsapp_crm: 'fab fa-whatsapp', // Icone do WhatsApp
+    multi_chat: 'fa-comments',
+    crm: 'fa-users',
 };
 
 // Cores para os ícones
@@ -200,11 +218,12 @@ export const SERVICE_COLORS: Record<ServiceKey, string> = {
     text_to_speech: 'text-blue-500 bg-blue-50',
     copy_generator: 'text-purple-500 bg-purple-50',
     prompt_generator: 'text-yellow-500 bg-yellow-50',
-    landingpage_generator: 'text-orange-500 bg-orange-50', 
+    landingpage_generator: 'text-orange-500 bg-orange-50', // Cor para Criador de Sites (Web)
     canva_structure: 'text-cyan-500 bg-cyan-50',
     image_generation: 'text-rose-500 bg-rose-50',
     social_media_poster: 'text-indigo-500 bg-indigo-50',
-    curriculum_generator: 'text-blue-500 bg-blue-50', 
+    curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
     n8n_integration: 'text-red-500 bg-red-50',
-    whatsapp_crm: 'text-green-600 bg-green-100', // Verde WhatsApp
+    multi_chat: 'text-teal-600 bg-teal-50',
+    crm: 'text-blue-600 bg-blue-50',
 };
