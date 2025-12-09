@@ -75,7 +75,7 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings' | 'crm';
 
 export interface AllowedDomain {
   id: string;
@@ -314,4 +314,39 @@ export interface WhiteLabelSettings {
   guestMarketingFooterSubtitle: string;
   guestMarketingFooterCtaText: string;
   guestMarketingFooterCtaLink: string;
+}
+
+// --- CRM & MARKETING TYPES ---
+// Updated to match SQL Schema: contacts, conversations, messages
+
+export interface ChatContact {
+  id: string;
+  phone: string;
+  name?: string;
+  created_at?: string;
+}
+
+export interface ChatConversation {
+  id: string;
+  contact_id: string;
+  last_message?: string;
+  last_message_at?: string;
+  unread_count: number;
+  created_at: string;
+  contact?: ChatContact; // Join result
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  direction: 'in' | 'out';
+  body: string;
+  created_at: string;
+}
+
+export interface AiSettings {
+  user_id?: string;
+  enabled: boolean;
+  temperature: number;
+  system_prompt: string;
 }

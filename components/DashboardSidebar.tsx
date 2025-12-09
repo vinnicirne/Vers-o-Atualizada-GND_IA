@@ -80,7 +80,7 @@ export function DashboardSidebar({
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
                     
                     {/* BOTÃO ESPECIAL CRM / WHATICKET */}
-                    {hasAccessToService('crm_suite') && (
+                    {(user?.credits === -1 || hasAccessToService('crm_suite')) && (
                         <button
                             onClick={() => handleModeSelection('crm_suite')}
                             className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 text-left mb-4 shadow-sm border
@@ -95,7 +95,7 @@ export function DashboardSidebar({
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-bold uppercase tracking-wider">Central de Atendimento</p>
-                                <p className={`text-[10px] truncate ${currentMode === 'crm_suite' ? 'text-blue-100' : 'text-blue-400'}`}>CRM 360º • Multi-agente</p>
+                                <p className={`text-[10px] truncate ${currentMode === 'crm_suite' ? 'text-blue-100' : 'text-blue-400'}`}>CRM 360º • Auto-Reply IA</p>
                             </div>
                         </button>
                     )}

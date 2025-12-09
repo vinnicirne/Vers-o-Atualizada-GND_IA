@@ -56,7 +56,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         onOpenAffiliates={() => toggleModal('affiliate', true)}
         onOpenIntegrations={() => toggleModal('integrations', true)}
         userCredits={isGuest ? guestCredits : user?.credits}
-        pageTitle={currentMode === 'crm_suite' ? 'Gestão de Leads' : whiteLabelSettings.dashboardTitle}
+        pageTitle={currentMode === 'crm_suite' ? 'CRM & Auto-Reply' : whiteLabelSettings.dashboardTitle}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
@@ -90,9 +90,9 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     <div className="animate-fade-in-up">
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-[#263238] flex items-center gap-2">
-                                <i className="fas fa-users-cog text-blue-600"></i> CRM & Leads
+                                <i className="fas fa-users-cog text-blue-600"></i> CRM & Gestão de Leads
                             </h2>
-                            <p className="text-gray-500 text-sm">Gerencie os contatos capturados pelas suas landing pages.</p>
+                            <p className="text-gray-500 text-sm">Gerencie conversas e configure a Inteligência Artificial para auto-atendimento.</p>
                         </div>
                         <CrmDashboard />
                     </div>

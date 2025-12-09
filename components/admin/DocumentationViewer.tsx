@@ -101,66 +101,144 @@ export function DocumentationViewer() {
 
   const schemaSql = `
 -- =========================================================
--- 🛠️ SCRIPT DE ATUALIZAÇÃO (TABELAS DE SISTEMA)
--- Execute este script para garantir o funcionamento correto.
+-- 🛠️ ATUALIZAÇÃO 1: CRM & CHAT CORE (WHATICKET)
 -- =========================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. TABELA DE FEEDBACKS DO SISTEMA (DEPOIMENTOS)
-create table if not exists public.system_feedbacks (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.app_users(id) not null,
-  content text not null,
-  rating int not null check (rating >= 1 and rating <= 5),
-  status text default 'pending', -- pending, approved, rejected
+-- 1. TABELA DE CONTATOS
+create table if not exists public.contacts (
+  id uuid primary key default uuid_generate_v4(),
+  phone text not null unique,
+  name text,
   created_at timestamptz default now()
 );
 
--- 2. TABELA DE POPUPS
-create table if not exists public.system_popups (
-  id uuid default gen_random_uuid() primary key,
-  title text not null,
-  content text,
-  type text default 'text', -- text, image, video
-  media_url text,
-  style jsonb default '{}'::jsonb, -- cores, tema
-  trigger_settings jsonb default '{}'::jsonb, -- delay, frequencia
-  is_active boolean default true,
+-- 2. TABELA DE CONVERSAS
+create table if not exists public.conversations (
+  id uuid primary key default uuid_generate_v4(),
+  contact_id uuid references public.contacts(id),
+  last_message text,
+  last_message_at timestamptz default now(),
+  unread_count int default 0,
   created_at timestamptz default now()
 );
 
--- 3. HABILITAR RLS (Row Level Security)
-alter table public.system_feedbacks enable row level security;
-alter table public.system_popups enable row level security;
+-- 3. TABELA DE MENSAGENS
+create table if not exists public.messages (
+  id uuid primary key default uuid_generate_v4(),
+  conversation_id uuid references public.conversations(id),
+  direction text check(direction in ('in','out')),
+  body text,
+  created_at timestamptz default now()
+);
 
--- 4. POLÍTICAS DE SEGURANÇA (DROP IF EXISTS para evitar erros)
+-- 4. HABILITAR RLS (Segurança)
+alter table public.contacts enable row level security;
+alter table public.conversations enable row level security;
+alter table public.messages enable row level security;
 
-drop policy if exists "Users can insert feedbacks" on public.system_feedbacks;
-create policy "Users can insert feedbacks" on public.system_feedbacks for insert with check (auth.uid() = user_id);
+-- 5. POLÍTICAS DE ACESSO
+create policy "Allow all access to contacts" on public.contacts for all using (true) with check (true);
+create policy "Allow all access to conversations" on public.conversations for all using (true) with check (true);
+create policy "Allow all access to messages" on public.messages for all using (true) with check (true);
 
-drop policy if exists "Public view approved feedbacks" on public.system_feedbacks;
-create policy "Public view approved feedbacks" on public.system_feedbacks for select using (status = 'approved');
+-- 6. PERMISSÕES
+grant all on public.contacts to anon, authenticated, service_role;
+grant all on public.conversations to anon, authenticated, service_role;
+grant all on public.messages to anon, authenticated, service_role;
 
-drop policy if exists "Admin manage feedbacks" on public.system_feedbacks;
-create policy "Admin manage feedbacks" on public.system_feedbacks for all using (exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+-- 7. RPC: SAVE INCOMING MESSAGE
+create or replace function save_incoming_message(phone text, text_body text)
+returns void
+language plpgsql
+security definer 
+as $$
+declare
+  contact public.contacts%rowtype;
+  conv public.conversations%rowtype;
+begin
+  select * into contact from public.contacts where public.contacts.phone = phone limit 1;
+  if not found then
+    insert into public.contacts(phone, name) values(phone, phone) returning * into contact;
+  end if;
 
-drop policy if exists "Public view active popups" on public.system_popups;
-create policy "Public view active popups" on public.system_popups for select using (true); -- Popups são públicos para leitura
+  select * into conv from public.conversations where contact_id = contact.id limit 1;
+  if not found then
+    insert into public.conversations(contact_id, last_message, last_message_at, unread_count)
+    values(contact.id, text_body, now(), 1)
+    returning * into conv;
+  else
+    update public.conversations
+    set last_message = text_body, last_message_at = now(), unread_count = unread_count + 1
+    where id = conv.id;
+  end if;
 
-drop policy if exists "Admin manage popups" on public.system_popups;
-create policy "Admin manage popups" on public.system_popups for all using (exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+  insert into public.messages(conversation_id, direction, body)
+  values (conv.id, 'in', text_body);
+end;
+$$;
 
--- 5. PERMISSÕES
-grant all on public.system_feedbacks to authenticated;
-grant select on public.system_feedbacks to anon; -- Para mostrar na home pública se necessário
+-- 8. RPC: SAVE OUTGOING MESSAGE
+create or replace function save_outgoing_message(phone text, text_body text)
+returns void
+language plpgsql
+security definer
+as $$
+declare
+  contact public.contacts%rowtype;
+  conv public.conversations%rowtype;
+begin
+  select * into contact from public.contacts where public.contacts.phone = phone limit 1;
+  if not found then
+    insert into public.contacts(phone, name) values(phone, phone) returning * into contact;
+  end if;
 
-grant select on public.system_popups to anon;
-grant select on public.system_popups to authenticated;
-grant all on public.system_popups to authenticated; -- Admin only via RLS
+  select * into conv from public.conversations where contact_id = contact.id limit 1;
+  if not found then
+    insert into public.conversations(contact_id, last_message, last_message_at) values(contact.id, text_body, now()) returning * into conv;
+  else 
+    update public.conversations set last_message = text_body, last_message_at = now() where id = conv.id;
+  end if;
 
-grant all on public.system_feedbacks to service_role;
-grant all on public.system_popups to service_role;
+  insert into public.messages(conversation_id, direction, body)
+  values (conv.id, 'out', text_body);
+end;
+$$;
+`;
+
+const aiSql = `
+-- =========================================================
+-- 🛠️ ATUALIZAÇÃO 2: CRM AI AUTOMATION
+-- Execute este script para habilitar respostas automáticas.
+-- =========================================================
+
+-- 1. TABELA DE CONFIGURAÇÕES DE IA
+create table if not exists public.ai_settings (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  enabled boolean default false,
+  temperature float default 0.7,
+  system_prompt text default 'Você é um assistente virtual útil e profissional. Responda de forma clara e concisa.',
+  created_at timestamptz default now()
+);
+
+-- 2. HABILITAR RLS
+alter table public.ai_settings enable row level security;
+
+-- 3. POLÍTICAS DE ACESSO
+create policy "Users can manage their own AI settings" 
+on public.ai_settings for all 
+using (auth.uid() = user_id) 
+with check (auth.uid() = user_id);
+
+-- Permitir leitura pública (para o backend/bot ler as configs sem login de usuário específico se necessário, ou use service_role)
+create policy "Service role can access all" 
+on public.ai_settings for all 
+using (true) 
+with check (true);
+
+-- 4. PERMISSÕES
+grant all on public.ai_settings to anon, authenticated, service_role;
 `;
 
   return (
@@ -251,17 +329,27 @@ grant all on public.system_popups to service_role;
         )}
 
         {activeTab === 'updates' && (
-            <div className="prose prose-slate max-w-none">
-                <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
-                <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
-                    <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Use este script para criar as tabelas de sistema (Feedbacks, Popups).
-                </p>
-                <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
-                    <pre className="whitespace-pre-wrap">{schemaSql}</pre>
-                    <button onClick={() => handleCopy(schemaSql, 'schema_sql')} className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded font-bold hover:bg-gray-100">
-                        {copiedField === 'schema_sql' ? 'Copiado!' : 'Copiar SQL'}
-                    </button>
+            <div className="space-y-8">
+                <div className="prose prose-slate max-w-none">
+                    <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
+                    
+                    <h3 className="text-lg font-bold text-blue-600 mt-6 mb-2">Atualização 1: CRM Core</h3>
+                    <p className="text-sm text-gray-500 mb-2">Estrutura base do Whaticket (Conversas, Mensagens).</p>
+                    <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[300px] overflow-auto custom-scrollbar">
+                        <pre className="whitespace-pre-wrap">{schemaSql}</pre>
+                        <button onClick={() => handleCopy(schemaSql, 'schema_sql')} className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded font-bold hover:bg-gray-100">
+                            {copiedField === 'schema_sql' ? 'Copiado!' : 'Copiar'}
+                        </button>
+                    </div>
+
+                    <h3 className="text-lg font-bold text-green-600 mt-8 mb-2">Atualização 2: CRM AI Automation</h3>
+                    <p className="text-sm text-gray-500 mb-2">Tabela de configurações para o Auto-Reply com IA.</p>
+                    <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[300px] overflow-auto custom-scrollbar">
+                        <pre className="whitespace-pre-wrap">{aiSql}</pre>
+                        <button onClick={() => handleCopy(aiSql, 'ai_sql')} className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-white border border-gray-300 rounded font-bold hover:bg-gray-100">
+                            {copiedField === 'ai_sql' ? 'Copiado!' : 'Copiar'}
+                        </button>
+                    </div>
                 </div>
             </div>
         )}

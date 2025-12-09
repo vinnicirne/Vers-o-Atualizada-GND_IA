@@ -1,4 +1,3 @@
-
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
@@ -355,124 +354,42 @@ export interface Deal {
   created_at: string;
 }
 
-// --- CHAT / WHATICKET TYPES ---
+// --- CHAT / CRM TYPES ---
+// Updated to match SQL Schema: contacts, conversations, messages
+
 export interface ChatContact {
   id: string;
-  name: string;
-  number: string;
+  phone: string;
+  name?: string;
+  created_at?: string;
+  // Legacy fields kept optional for backward compatibility if needed
+  number?: string;
   profilePicUrl?: string;
   email?: string;
-  leadId?: string; // Link to Lead if exists
+  leadId?: string;
 }
 
-export interface ChatQueue {
-  id: string;
-  name: string;
-  color: string;
-}
-
-export interface Ticket {
-  id: string;
-  contactId: string;
-  contact: ChatContact;
-  status: 'open' | 'pending' | 'closed';
-  unreadCount: number;
-  lastMessage: string;
-  updatedAt: string;
-  ownerId: string | null; // Null if waiting in queue
-  queueId?: string | null; // Which queue it belongs to
-  tags?: string[];
-  botEnabled?: boolean; 
-  aiSummary?: string;   
-}
-
-export interface Message {
-  id: string;
-  ticketId: string;
-  body: string;
-  mediaUrl?: string;
-  mediaType?: 'image' | 'video' | 'audio' | 'document';
-  fromMe: boolean;
-  isRead: boolean;
-  createdAt: string;
-  status?: 'sent' | 'received' | 'read' | 'error';
-  isAiGenerated?: boolean; 
-}
-
-export interface WhatsappConfig {
-  id?: string;
-  userId: string;
-  sessionName: string; // e.g. "default"
-  status: 'qrcode' | 'connected' | 'disconnected' | 'pairing';
-  qrcode?: string; // Base64
-  type: 'backend' | 'api'; 
-  apiUrl?: string;
-  apiToken?: string;
-}
-
-export interface QuickAnswer {
-  id: string;
-  shortcut: string;
-  message: string;
-  user_id?: string; // Vinculo com usuário
-}
-
-export type ConnectionType = 'legacy_qrcode' | 'official_api';
-
-export interface ChatConnection {
-  id: string;
-  name: string;
-  status: 'connected' | 'disconnected' | 'qrcode' | 'pairing';
-  type: ConnectionType;
-  profile_type?: 'personal' | 'business';
-  last_activity?: string;
-  user_id?: string;
-  created_at?: string;
-  
-  // Legacy / QR Code
-  qrcode?: string | null; // Base64 do QR Code para exibir
-  session_name?: string;
-  external_api_url?: string;
-  external_api_token?: string;
-
-  // Official API Fields
-  phone_number_id?: string;
-  waba_id?: string;
-  api_token?: string; // Armazenado criptografado idealmente
-  
-  // Mensagens
-  greeting_message?: string;
-  farewell_message?: string;
-  is_default?: boolean;
-
-  // AI Configuration
-  ai_config?: {
-    enabled: boolean;
-    personality?: string; // 'formal', 'friendly', 'sales', 'support'
-    context_window?: number; // How many messages to remember
-  };
-}
-
-export interface ChatTicket {
+export interface ChatConversation {
   id: string;
   contact_id: string;
-  contact_name: string;
-  contact_number: string;
-  last_message: string;
-  last_message_time: string;
+  last_message?: string;
+  last_message_at?: string;
   unread_count: number;
-  status: 'open' | 'pending' | 'closed';
-  tags: string[];
-  ai_enabled: boolean;
+  created_at: string;
+  contact?: ChatContact; // Join result
 }
 
 export interface ChatMessage {
   id: string;
-  ticket_id: string;
-  sender_type: 'user' | 'contact' | 'bot'; // Mapped to DB column 'sender_type'
-  sender?: 'user' | 'contact' | 'bot'; // Compatibility alias for frontend components
-  content: string;
-  timestamp?: string; // Compatibility alias
+  conversation_id: string;
+  direction: 'in' | 'out';
+  body: string;
   created_at: string;
-  status: 'sent' | 'delivered' | 'read';
+}
+
+export interface AiSettings {
+  user_id?: string;
+  enabled: boolean;
+  temperature: number;
+  system_prompt: string;
 }
