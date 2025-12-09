@@ -1,7 +1,10 @@
+
 import React, { useRef, useEffect, useState } from 'react';
 import { Toast } from './admin/Toast';
 import { TEMPLATES } from './landing-page/templates';
 import { addBlocks } from './landing-page/blocks';
+import { useUser } from '../contexts/UserContext'; // Importar contexto de usuário
+import { supabaseUrl } from '../services/supabaseClient'; // Importar URL do supabase
 
 interface LandingPageBuilderProps {
   initialHtml: string;
@@ -20,6 +23,7 @@ const sanitizeHtml = (html: string): string => {
 };
 
 export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
+  const { user } = useUser(); // Obter usuário
   const editorRef = useRef<HTMLDivElement>(null);
   
   // Refs para os Containers de UI
@@ -184,7 +188,8 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           setIsEditorReady(true);
           
           try {
-            addBlocks(editorInstance);
+            // Passa userId (se existir, ou string vazia) e supabaseUrl para o gerador de blocos
+            addBlocks(editorInstance, user?.id || '', supabaseUrl);
             injectTailwind(editorInstance);
             
             // Auto-seleção de aba
@@ -215,7 +220,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         editorInstanceRef.current = null;
       }
     };
-  }, []);
+  }, [user]); // Re-executa se user mudar (para pegar o ID)
 
   const injectTailwind = (ed: any) => {
       const frameEl = ed.Canvas.getFrameEl();
