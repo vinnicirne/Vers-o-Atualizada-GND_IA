@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plan, ServiceKey, ServicePermission } from '../../types/plan.types';
 import { CREATOR_SUITE_MODES, TASK_COSTS } from '../../constants'; // Importe CREATOR_SUITE_MODES para obter labels de serviço
@@ -22,6 +21,7 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'social_media_poster', 
   'curriculum_generator', // NOVO
   'n8n_integration',
+  'crm_suite', // NOVO: CRM
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil
@@ -30,6 +30,7 @@ const serviceKeyToNameMap = new Map(
 );
 // Adiciona manualmente serviços que não são modos de criação (não estão na sidebar)
 serviceKeyToNameMap.set('n8n_integration', 'Integração N8N / Webhooks');
+serviceKeyToNameMap.set('crm_suite', 'CRM & Leads');
 
 // Cores padrão para os planos (pode ser expandido)
 const PLAN_COLORS = [

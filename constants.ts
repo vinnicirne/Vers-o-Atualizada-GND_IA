@@ -1,5 +1,4 @@
 
-
 import { ServiceKey, Plan, ServicePermission, UserPlan } from './types/plan.types'; // Importar os novos tipos de plano e serviço
 
 interface CreatorSuiteModeConfig {
@@ -73,6 +72,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   social_media_poster: 5, // Custo similar à geração de imagem
   curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
+  crm_suite: 0, // Recurso de acesso (CRM), sem custo por uso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -105,6 +105,9 @@ const curriculumService: ServicePermission = { key: 'curriculum_generator', name
 // Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
 
+// Serviço CRM (Apenas Basic, Standard e Premium)
+const crmService: ServicePermission = { key: 'crm_suite', name: 'CRM & Gestão de Leads', enabled: true, creditsPerUse: 0 };
+
 
 export const PLANS: Record<UserPlan, Plan> = {
   free: {
@@ -133,6 +136,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
+      crmService // CRM no Basic
     ]
   },
   standard: {
@@ -152,7 +156,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       imageService, 
       siteBuilderService, // Usando o serviço unificado
       ...artServices, // Agora contém apenas o Editor Visual
-      n8nService 
+      n8nService,
+      crmService // CRM no Standard
     ]
   },
   premium: {
@@ -172,7 +177,8 @@ export const PLANS: Record<UserPlan, Plan> = {
       imageService,
       siteBuilderService, // Usando o serviço unificado
       ...artServices,
-      n8nService 
+      n8nService,
+      crmService // CRM no Premium
     ]
   }
 };
@@ -189,6 +195,7 @@ export const SERVICE_ICONS: Record<ServiceKey, string> = {
     social_media_poster: 'fa-share-alt',
     curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
     n8n_integration: 'fa-plug',
+    crm_suite: 'fa-users-cog',
 };
 
 // Cores para os ícones
@@ -203,4 +210,5 @@ export const SERVICE_COLORS: Record<ServiceKey, string> = {
     social_media_poster: 'text-indigo-500 bg-indigo-50',
     curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
     n8n_integration: 'text-red-500 bg-red-50',
+    crm_suite: 'text-blue-700 bg-blue-100',
 };

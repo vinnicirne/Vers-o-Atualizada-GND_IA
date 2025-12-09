@@ -139,8 +139,8 @@ export function DashboardSidebar({
                         );
                     })}
 
-                    {/* CRM & Leads Link - Only for logged in users */}
-                    {user && (
+                    {/* CRM & Leads Link - Only for logged in users AND if they have access */}
+                    {user && hasAccessToService('crm_suite') && (
                         <>
                             <div className="h-px bg-gray-100 my-2"></div>
                             <button

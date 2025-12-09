@@ -9,6 +9,7 @@ import { DashboardResults } from '../components/dashboard/DashboardResults';
 import { DashboardModals } from '../components/dashboard/DashboardModals';
 import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
 import { CrmDashboard } from '../components/crm/CrmDashboard';
+import { ServiceKey } from '../types/plan.types';
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -99,7 +100,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     <>
                         {/* GENERATOR INPUT */}
                         <ContentGenerator 
-                            mode={currentMode as any} // Cast specific mode
+                            mode={currentMode as ServiceKey} 
                             onModeChange={(m) => handleModeChange(m)}
                             onGenerate={handleGenerateContent}
                             isLoading={isLoading}
@@ -117,7 +118,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
 
                         {/* RESULTS AREA */}
                         <DashboardResults 
-                            currentMode={currentMode as any}
+                            currentMode={currentMode as ServiceKey}
                             results={results}
                             isLoading={isLoading}
                             user={user}
