@@ -432,6 +432,8 @@ export interface ChatConnection {
   // Legacy / QR Code
   qrcode?: string | null; // Base64 do QR Code para exibir
   session_name?: string;
+  external_api_url?: string;
+  external_api_token?: string;
 
   // Official API Fields
   phone_number_id?: string;

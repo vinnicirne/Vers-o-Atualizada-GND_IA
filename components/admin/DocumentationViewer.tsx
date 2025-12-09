@@ -103,6 +103,7 @@ export function DocumentationViewer() {
 -- =========================================================
 -- 🚨 PACOTE COMPLETO (CHAT CRM & LEADS)
 -- Execute este script para habilitar todas as tabelas.
+-- Versão com DROP POLICY para evitar erros de duplicidade.
 -- =========================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -135,32 +136,31 @@ create table if not exists public.marketing_events (
 );
 
 -- 2. TABELAS DE CHAT (WHATICKET / GENESIS)
+
+-- Conexões
 create table if not exists public.chat_connections (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.app_users(id) not null,
   name text not null,
-  status text default 'disconnected', -- disconnected, qrcode, connected
-  type text default 'legacy_qrcode', -- legacy_qrcode, official_api
-  profile_type text default 'personal', -- personal, business
-  
-  -- Campos para API Oficial
+  status text default 'disconnected', 
+  type text default 'legacy_qrcode',
+  profile_type text default 'personal',
   phone_number_id text,
   waba_id text,
   api_token text,
-  
-  -- Campos Legacy
   qrcode text,
   session_name text,
-  
-  -- Configurações
+  external_api_url text,
+  external_api_token text,
   greeting_message text,
   farewell_message text,
   is_default boolean default false,
-  
-  lastActivity timestamptz default now(),
+  ai_config jsonb default '{"enabled": false, "personality": "formal"}'::jsonb,
+  last_activity timestamptz default now(),
   created_at timestamptz default now()
 );
 
+-- Respostas Rápidas
 create table if not exists public.chat_quick_answers (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.app_users(id) not null,
@@ -169,34 +169,92 @@ create table if not exists public.chat_quick_answers (
   created_at timestamptz default now()
 );
 
+-- Contatos do Chat
+create table if not exists public.chat_contacts (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.app_users(id) not null,
+  name text not null,
+  number text not null,
+  profile_pic_url text,
+  email text,
+  tags text[],
+  created_at timestamptz default now()
+);
+
+-- Tickets (Conversas/Atendimentos)
+create table if not exists public.chat_tickets (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.app_users(id) not null,
+  contact_id uuid references public.chat_contacts(id) not null,
+  connection_id uuid references public.chat_connections(id),
+  status text default 'open', -- open, pending, closed
+  unread_count int default 0,
+  last_message text,
+  last_message_time timestamptz default now(),
+  ai_enabled boolean default false,
+  tags text[],
+  created_at timestamptz default now()
+);
+
+-- Mensagens do Chat
+create table if not exists public.chat_messages (
+  id uuid default gen_random_uuid() primary key,
+  ticket_id uuid references public.chat_tickets(id) not null,
+  sender_type text not null, -- 'user' (agente), 'contact' (cliente), 'bot' (IA)
+  content text,
+  media_url text,
+  media_type text, -- text, image, audio, video
+  status text default 'sent', -- sent, delivered, read
+  created_at timestamptz default now()
+);
+
 -- 3. HABILITAR RLS (Row Level Security)
 alter table public.leads enable row level security;
 alter table public.marketing_events enable row level security;
 alter table public.chat_connections enable row level security;
 alter table public.chat_quick_answers enable row level security;
+alter table public.chat_contacts enable row level security;
+alter table public.chat_tickets enable row level security;
+alter table public.chat_messages enable row level security;
 
--- 4. POLÍTICAS DE SEGURANÇA
--- Leads
-create policy "Users manage own leads" on public.leads
-  for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+-- 4. POLÍTICAS DE SEGURANÇA (DROP IF EXISTS para evitar erros)
 
--- Chat Connections
-create policy "Users manage own connections" on public.chat_connections
-  for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+drop policy if exists "Users manage own leads" on public.leads;
+create policy "Users manage own leads" on public.leads for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
--- Quick Answers
-create policy "Users manage own answers" on public.chat_quick_answers
-  for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+drop policy if exists "Users manage own connections" on public.chat_connections;
+create policy "Users manage own connections" on public.chat_connections for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+
+drop policy if exists "Users manage own answers" on public.chat_quick_answers;
+create policy "Users manage own answers" on public.chat_quick_answers for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+
+drop policy if exists "Users manage own contacts" on public.chat_contacts;
+create policy "Users manage own contacts" on public.chat_contacts for all using (auth.uid() = user_id);
+
+drop policy if exists "Users manage own tickets" on public.chat_tickets;
+create policy "Users manage own tickets" on public.chat_tickets for all using (auth.uid() = user_id);
+
+drop policy if exists "Users manage own messages" on public.chat_messages;
+create policy "Users manage own messages" on public.chat_messages for all using (
+  exists (select 1 from public.chat_tickets where id = chat_messages.ticket_id and user_id = auth.uid())
+);
 
 -- 5. PERMISSÕES
 grant all on public.leads to authenticated;
 grant all on public.marketing_events to authenticated;
 grant all on public.chat_connections to authenticated;
 grant all on public.chat_quick_answers to authenticated;
+grant all on public.chat_contacts to authenticated;
+grant all on public.chat_tickets to authenticated;
+grant all on public.chat_messages to authenticated;
+
 grant all on public.leads to service_role;
 grant all on public.marketing_events to service_role;
 grant all on public.chat_connections to service_role;
 grant all on public.chat_quick_answers to service_role;
+grant all on public.chat_contacts to service_role;
+grant all on public.chat_tickets to service_role;
+grant all on public.chat_messages to service_role;
 `;
 
   return (
@@ -291,7 +349,7 @@ grant all on public.chat_quick_answers to service_role;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Use este script para criar as tabelas de Chat (Genesis), CRM e Leads.
+                    Use este script para criar todas as tabelas necessárias (Chat CRM, Leads, etc).
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>

@@ -585,6 +585,8 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
     const [type, setType] = useState<ConnectionType>('legacy_qrcode');
     const [profileType, setProfileType] = useState<'personal' | 'business'>('personal');
     const [activeTab, setActiveTab] = useState<'general' | 'ai'>('general');
+    const [externalApiUrl, setExternalApiUrl] = useState('');
+    const [externalApiToken, setExternalApiToken] = useState('');
     
     // Legacy Fields
     const [greeting, setGreeting] = useState('');
@@ -612,6 +614,8 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
             setAiEnabled(false);
             setPersonality('formal');
             setActiveTab('general');
+            setExternalApiUrl('');
+            setExternalApiToken('');
         }
     }, [isOpen]);
 
@@ -631,6 +635,8 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
             phone_number_id: phoneNumberId,
             waba_id: wabaId,
             api_token: apiToken,
+            external_api_url: externalApiUrl,
+            external_api_token: externalApiToken,
             ai_config: {
                 enabled: aiEnabled,
                 personality
@@ -704,6 +710,19 @@ const ConnectionModal = ({ isOpen, onClose, onSave }: { isOpen: boolean, onClose
                                     <div className="relative border border-gray-600 rounded p-3 pt-4">
                                         <label className={labelClass}>Mensagem de despedida</label>
                                         <textarea value={farewell} onChange={e => setFarewell(e.target.value)} className="w-full bg-transparent text-gray-200 outline-none resize-none h-20 text-sm" placeholder="Mensagem enviada ao finalizar..." />
+                                    </div>
+                                    <div className="border-t border-gray-700 pt-4 mt-2">
+                                        <h4 className="text-sm font-bold text-gray-400 mb-3">Integração (Backend)</h4>
+                                        <div className="grid gap-4">
+                                            <div className="relative">
+                                                <label className={labelClass}>URL da API (Evolution/WPPConnect)</label>
+                                                <input type="text" value={externalApiUrl} onChange={e => setExternalApiUrl(e.target.value)} className={inputClass} placeholder="https://api.seudominio.com" />
+                                            </div>
+                                            <div className="relative">
+                                                <label className={labelClass}>API Key / Token</label>
+                                                <input type="password" value={externalApiToken} onChange={e => setExternalApiToken(e.target.value)} className={inputClass} placeholder="Seu token de acesso" />
+                                            </div>
+                                        </div>
                                     </div>
                                 </>
                             ) : (

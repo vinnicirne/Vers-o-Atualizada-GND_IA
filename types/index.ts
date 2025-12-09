@@ -424,14 +424,16 @@ export interface ChatConnection {
   name: string;
   status: 'connected' | 'disconnected' | 'qrcode' | 'pairing';
   type: ConnectionType;
-  profile_type?: 'personal' | 'business'; // Novo campo
-  last_activity?: string; // Updated from lastActivity to last_activity
+  profile_type?: 'personal' | 'business';
+  last_activity?: string;
   user_id?: string;
   created_at?: string;
   
   // Legacy / QR Code
   qrcode?: string | null; // Base64 do QR Code para exibir
   session_name?: string;
+  external_api_url?: string;
+  external_api_token?: string;
 
   // Official API Fields
   phone_number_id?: string;
@@ -461,14 +463,16 @@ export interface ChatTicket {
   unread_count: number;
   status: 'open' | 'pending' | 'closed';
   tags: string[];
-  ai_enabled: boolean; // Flag to enable/disable AI for this specific chat
+  ai_enabled: boolean;
 }
 
 export interface ChatMessage {
   id: string;
   ticket_id: string;
-  sender: 'user' | 'contact' | 'bot'; // user = agent, contact = customer, bot = AI
+  sender_type: 'user' | 'contact' | 'bot'; // Mapped to DB column 'sender_type'
+  sender?: 'user' | 'contact' | 'bot'; // Compatibility alias for frontend components
   content: string;
-  timestamp: string;
+  timestamp?: string; // Compatibility alias
+  created_at: string;
   status: 'sent' | 'delivered' | 'read';
 }

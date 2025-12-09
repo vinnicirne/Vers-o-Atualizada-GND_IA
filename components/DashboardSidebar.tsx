@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { CREATOR_SUITE_MODES, SERVICE_ICONS } from '../constants'; // SERVICE_COLORS não será mais usado diretamente
@@ -55,6 +56,15 @@ export function DashboardSidebar({
         onModeChange(mode);
     };
 
+    const handleCrmClick = () => {
+        if (hasAccessToService('crm_suite')) {
+            if (onNavigateChatCrm) onNavigateChatCrm();
+            setIsOpen(false);
+        } else {
+            onOpenPlans(); // Upsell
+        }
+    };
+
     return (
         <>
             {/* SIDEBAR OVERLAY (Mobile) */}
@@ -79,14 +89,11 @@ export function DashboardSidebar({
                 </div>
                 
                 {/* === CHAT CRM HIGHLIGHT BUTTON === */}
-                {user && hasAccessToService('crm_suite') && (
-                    <div className="p-4 border-b border-gray-200 bg-blue-50/50">
+                {user && (
+                    <div className="p-4 border-b border-gray-200 bg-blue-50/50 relative">
                         <button
-                            onClick={() => {
-                                if (onNavigateChatCrm) onNavigateChatCrm();
-                                setIsOpen(false);
-                            }}
-                            className="w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:to-blue-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 flex flex-col items-center justify-center text-center group transition-all transform hover:-translate-y-0.5"
+                            onClick={handleCrmClick}
+                            className={`w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:to-blue-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 flex flex-col items-center justify-center text-center group transition-all transform hover:-translate-y-0.5 ${!hasAccessToService('crm_suite') ? 'opacity-80 grayscale' : ''}`}
                         >
                             <div className="flex items-center gap-2 mb-1">
                                 <i className="fab fa-whatsapp text-2xl"></i>
@@ -95,6 +102,12 @@ export function DashboardSidebar({
                             <span className="text-sm">Central de Atendimento</span>
                             <span className="text-[10px] opacity-80 font-medium bg-blue-700/30 px-2 py-0.5 rounded-full mt-1">CRM 360° • Whaticket</span>
                         </button>
+                        
+                        {!hasAccessToService('crm_suite') && (
+                            <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
+                                <i className="fas fa-lock"></i> PRO
+                            </div>
+                        )}
                     </div>
                 )}
 

@@ -19,18 +19,18 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'copy_generator',
   'image_generation',
   'social_media_poster', 
-  'curriculum_generator', // NOVO
+  'curriculum_generator', 
   'n8n_integration',
-  'crm_suite', // NOVO: CRM
+  'crm_suite', // Adicionado CRM
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil
 const serviceKeyToNameMap = new Map(
   CREATOR_SUITE_MODES.map(mode => [mode.value, mode.label])
 );
-// Adiciona manualmente serviços que não são modos de criação (não estão na sidebar)
+// Adiciona manualmente serviços que não são modos de criação (não estão na sidebar principal)
 serviceKeyToNameMap.set('n8n_integration', 'Integração N8N / Webhooks');
-serviceKeyToNameMap.set('crm_suite', 'CRM & Leads');
+serviceKeyToNameMap.set('crm_suite', 'CRM & Gestão de Leads (Genesis)');
 
 // Cores padrão para os planos (pode ser expandido)
 const PLAN_COLORS = [

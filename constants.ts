@@ -121,7 +121,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     color: 'gray', // Cor Tailwind
     services: [
       ...commonServices,
-      promptService // Adicionado ao Free
+      promptService // Adicionado ao Free (CRM não incluso)
     ]
   },
   basic: {
