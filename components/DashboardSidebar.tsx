@@ -78,6 +78,30 @@ export function DashboardSidebar({
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
+                    
+                    {/* BOTÃO ESPECIAL CRM / WHATICKET */}
+                    {hasAccessToService('crm_suite') && (
+                        <button
+                            onClick={() => handleModeSelection('crm_suite')}
+                            className={`w-full flex items-center p-3 rounded-xl transition-all duration-200 text-left mb-4 shadow-sm border
+                                ${currentMode === 'crm_suite' 
+                                    ? 'bg-blue-600 text-white border-blue-700 shadow-blue-200' 
+                                    : 'bg-white hover:bg-blue-50 text-blue-900 border-blue-100 hover:border-blue-200'
+                                }
+                            `}
+                        >
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center mr-3 ${currentMode === 'crm_suite' ? 'bg-white/20' : 'bg-blue-100'}`}>
+                                <i className={`fab fa-whatsapp text-lg ${currentMode === 'crm_suite' ? 'text-white' : 'text-blue-600'}`}></i>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <p className="text-xs font-bold uppercase tracking-wider">Central de Atendimento</p>
+                                <p className={`text-[10px] truncate ${currentMode === 'crm_suite' ? 'text-blue-100' : 'text-blue-400'}`}>CRM 360º • Multi-agente</p>
+                            </div>
+                        </button>
+                    )}
+
+                    <div className="h-px bg-gray-100 my-2"></div>
+
                     {CREATOR_SUITE_MODES.map((svc) => {
                         const isSelected = currentMode === svc.value;
                         const isLocked = !hasAccessToService(svc.value); 

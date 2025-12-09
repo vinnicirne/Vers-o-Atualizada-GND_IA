@@ -121,7 +121,8 @@ export const PLANS: Record<UserPlan, Plan> = {
     color: 'gray', // Cor Tailwind
     services: [
       ...commonServices,
-      promptService // Adicionado ao Free
+      promptService, // Adicionado ao Free
+      { ...crmService, enabled: false } // CRM Desabilitado no Free
     ]
   },
   basic: {
@@ -136,6 +137,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
+      { ...crmService, enabled: false } // CRM Desabilitado no Basic
     ]
   },
   standard: {
@@ -156,7 +158,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       siteBuilderService, // Usando o serviço unificado
       ...artServices, // Agora contém apenas o Editor Visual
       n8nService,
-      crmService, // Adicionado ao Standard
+      crmService, // Adicionado ao Standard (Habilitado)
     ]
   },
   premium: {
@@ -177,7 +179,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       siteBuilderService, // Usando o serviço unificado
       ...artServices,
       n8nService,
-      crmService, // Adicionado ao Premium
+      crmService, // Adicionado ao Premium (Habilitado)
     ]
   }
 };
