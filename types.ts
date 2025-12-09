@@ -1,3 +1,4 @@
+
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
@@ -316,45 +317,6 @@ export interface WhiteLabelSettings {
 }
 
 // --- CRM & MARKETING TYPES ---
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'lost';
-
-export interface Lead {
-  id: string;
-  owner_id: string; // User ID who owns this lead
-  email: string;
-  name?: string;
-  phone?: string;
-  company?: string;
-  status: LeadStatus;
-  score: number;
-  source?: string; // 'landing_page', 'manual', 'import'
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MarketingEvent {
-  id: string;
-  lead_id: string;
-  event_type: 'page_view' | 'form_submit' | 'email_open' | 'click' | 'purchase';
-  metadata?: any;
-  created_at: string;
-}
-
-export interface Deal {
-  id: string;
-  lead_id: string;
-  owner_id: string;
-  title: string;
-  value: number;
-  status: 'open' | 'won' | 'lost';
-  created_at: string;
-}
-
-// --- CHAT / CRM TYPES ---
 // Updated to match SQL Schema: contacts, conversations, messages
 
 export interface ChatContact {
@@ -362,11 +324,6 @@ export interface ChatContact {
   phone: string;
   name?: string;
   created_at?: string;
-  // Legacy fields kept optional for backward compatibility if needed
-  number?: string;
-  profilePicUrl?: string;
-  email?: string;
-  leadId?: string;
 }
 
 export interface ChatConversation {

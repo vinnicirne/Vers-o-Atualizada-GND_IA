@@ -7,8 +7,8 @@ import { User } from '../types';
 interface DashboardSidebarProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    currentMode: ServiceKey; // Removed 'crm' from union type
-    onModeChange: (mode: ServiceKey) => void;
+    currentMode: ServiceKey | 'crm_suite'; 
+    onModeChange: (mode: ServiceKey | 'crm_suite') => void;
     user: User | null;
     isGuest: boolean;
     activeCredits: number;
@@ -40,7 +40,15 @@ export function DashboardSidebar({
     onNavigateFeedback,
 }: DashboardSidebarProps) {
 
-    const handleModeSelection = (mode: ServiceKey) => {
+    const handleModeSelection = (mode: ServiceKey | 'crm_suite') => {
+        if (mode === 'crm_suite') {
+             // Only allow CRM if user has access (checked inside render logic too, but good for safety)
+             if (user?.credits === -1 || hasAccessToService('crm_suite')) {
+                 onModeChange(mode);
+             }
+             return;
+        }
+
         if (isGuest && !guestAllowedModes.includes(mode)) {
             onModeChange(mode); 
             return;

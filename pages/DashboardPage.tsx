@@ -66,7 +66,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         <DashboardSidebar 
             isOpen={sidebarOpen}
             setIsOpen={setSidebarOpen}
-            currentMode={currentMode as ServiceKey}
+            currentMode={currentMode as ServiceKey | 'crm_suite'}
             onModeChange={handleModeChange}
             user={user}
             isGuest={isGuest}
