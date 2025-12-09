@@ -19,9 +19,18 @@ const STAGES: { id: LeadStatus; label: string; color: string; bg: string; chartC
 ];
 
 const INSTALL_SQL = `
+-- ⚠️ SCRIPT DE CORREÇÃO (RESET)
+-- Execute para corrigir erros de "column does not exist"
+
+DROP TABLE IF EXISTS public.marketing_events CASCADE;
+DROP TABLE IF EXISTS public.deals CASCADE;
+DROP TABLE IF EXISTS public.leads CASCADE;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 -- 1. TABELA DE LEADS
-create table if not exists public.leads (
-  id uuid default uuid_generate_v4() primary key,
+create table public.leads (
+  id uuid default gen_random_uuid() primary key,
   owner_id uuid references public.app_users(id) not null,
   email text not null,
   name text,
@@ -39,8 +48,8 @@ create table if not exists public.leads (
 );
 
 -- 2. TABELA DE EVENTOS DE MARKETING
-create table if not exists public.marketing_events (
-  id uuid default uuid_generate_v4() primary key,
+create table public.marketing_events (
+  id uuid default gen_random_uuid() primary key,
   lead_id uuid references public.leads(id) on delete cascade,
   event_type text not null,
   metadata jsonb default '{}'::jsonb,
@@ -48,8 +57,8 @@ create table if not exists public.marketing_events (
 );
 
 -- 3. TABELA DE DEALS (NEGÓCIOS)
-create table if not exists public.deals (
-  id uuid default uuid_generate_v4() primary key,
+create table public.deals (
+  id uuid default gen_random_uuid() primary key,
   lead_id uuid references public.leads(id) on delete cascade,
   owner_id uuid references public.app_users(id) not null,
   title text not null,
@@ -104,7 +113,8 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
             // Detect if error is due to missing tables
             if (e.message && (
                 e.message.includes('relation "public.leads" does not exist') || 
-                e.message.includes('404')
+                e.message.includes('404') ||
+                e.message.includes('does not exist')
             )) {
                 setMissingTables(true);
             }
@@ -201,7 +211,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                 </div>
                 <h2 className="text-2xl font-bold text-red-700 mb-2">Banco de Dados Desatualizado</h2>
                 <p className="text-red-600 mb-6">
-                    As tabelas necessárias para o CRM (Leads, Eventos, Negócios) ainda não existem no seu Supabase.
+                    As tabelas necessárias para o CRM (Leads, Eventos, Negócios) ainda não existem ou estão incorretas.
                 </p>
                 
                 <div className="bg-white border border-red-100 rounded-lg p-4 text-left mb-6 relative group">
@@ -221,7 +231,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                         onClick={copySql}
                         className="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-bold shadow-lg shadow-red-200 transition flex items-center gap-2"
                     >
-                        <i className="fas fa-copy"></i> Copiar Código de Instalação
+                        <i className="fas fa-copy"></i> Copiar Código de Correção
                     </button>
                     <p className="text-sm text-gray-500">
                         1. Copie o código acima.<br/>

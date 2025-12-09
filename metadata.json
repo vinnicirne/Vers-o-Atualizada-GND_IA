@@ -1,4 +1,5 @@
-
 {
-  "requestFramePermissions": []
+  "requestFramePermissions": [],
+  "name": "Empty React Scaffold",
+  "description": ""
 }

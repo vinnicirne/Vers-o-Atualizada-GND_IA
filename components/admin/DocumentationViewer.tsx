@@ -101,19 +101,26 @@ export function DocumentationViewer() {
 
   const schemaSql = `
 -- =========================================================
--- 🚨 PACOTE DE CORREÇÃO (UPDATES - CRM & LEADS)
--- Execute para adicionar o sistema de CRM.
+-- 🚨 PACOTE DE CORREÇÃO (RESET) - CRM & LEADS
+-- Use este script se encontrar erros como "column owner_id does not exist".
 -- =========================================================
 
--- 1. TABELA DE LEADS
-create table if not exists public.leads (
-  id uuid default uuid_generate_v4() primary key,
+-- 1. LIMPEZA (Apaga versões incompatíveis)
+DROP TABLE IF EXISTS public.marketing_events CASCADE;
+DROP TABLE IF EXISTS public.deals CASCADE;
+DROP TABLE IF EXISTS public.leads CASCADE;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. TABELA DE LEADS (Corrigida)
+create table public.leads (
+  id uuid default gen_random_uuid() primary key,
   owner_id uuid references public.app_users(id) not null,
   email text not null,
   name text,
   phone text,
   company text,
-  status text default 'new', -- new, contacted, qualified, customer, lost
+  status text default 'new',
   score int default 0,
   source text,
   utm_source text,
@@ -124,48 +131,44 @@ create table if not exists public.leads (
   updated_at timestamptz default now()
 );
 
--- 2. TABELA DE EVENTOS DE MARKETING
-create table if not exists public.marketing_events (
-  id uuid default uuid_generate_v4() primary key,
+-- 3. TABELA DE EVENTOS DE MARKETING
+create table public.marketing_events (
+  id uuid default gen_random_uuid() primary key,
   lead_id uuid references public.leads(id) on delete cascade,
-  event_type text not null, -- page_view, form_submit, email_open, etc
+  event_type text not null,
   metadata jsonb default '{}'::jsonb,
   created_at timestamptz default now()
 );
 
--- 3. TABELA DE DEALS (NEGÓCIOS)
-create table if not exists public.deals (
-  id uuid default uuid_generate_v4() primary key,
+-- 4. TABELA DE DEALS (NEGÓCIOS)
+create table public.deals (
+  id uuid default gen_random_uuid() primary key,
   lead_id uuid references public.leads(id) on delete cascade,
   owner_id uuid references public.app_users(id) not null,
   title text not null,
   value numeric default 0,
-  status text default 'open', -- open, won, lost
+  status text default 'open',
   created_at timestamptz default now()
 );
 
--- 4. HABILITAR RLS
+-- 5. HABILITAR RLS
 alter table public.leads enable row level security;
 alter table public.marketing_events enable row level security;
 alter table public.deals enable row level security;
 
--- 5. POLÍTICAS DE SEGURANÇA (RLS)
--- Leads: Users can see own leads. Admins see all.
+-- 6. POLÍTICAS DE SEGURANÇA
 create policy "Users manage own leads" on public.leads
   for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
--- Deals: Users manage own deals.
 create policy "Users manage own deals" on public.deals
   for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
--- Marketing Events: Read access for owners.
 create policy "Read events" on public.marketing_events
   for select using (exists (select 1 from public.leads where id = lead_id and (owner_id = auth.uid() or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')))));
 
--- Allow insert events (e.g. from public forms via edge functions later, or authenticated user)
 create policy "Insert events" on public.marketing_events for insert with check (true);
 
--- Permissões
+-- 7. PERMISSÕES
 grant all on public.leads to authenticated;
 grant all on public.marketing_events to authenticated;
 grant all on public.deals to authenticated;
@@ -269,7 +272,7 @@ grant all on public.deals to service_role;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Use este script para habilitar as funcionalidades de <strong>CRM e Leads</strong>.
+                    Use este script para corrigir tabelas de CRM quebradas (erro "column does not exist").
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>
