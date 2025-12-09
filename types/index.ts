@@ -409,3 +409,16 @@ export interface WhatsappConfig {
   apiUrl?: string;
   apiToken?: string;
 }
+
+export interface QuickAnswer {
+  id: string;
+  shortcut: string;
+  message: string;
+}
+
+export interface ChatConnection {
+  id: string;
+  name: string;
+  status: 'connected' | 'disconnected' | 'qrcode';
+  lastActivity?: string;
+}

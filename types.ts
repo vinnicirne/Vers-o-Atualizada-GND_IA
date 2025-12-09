@@ -1,4 +1,3 @@
-
 import { ReactNode } from 'react';
 import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
@@ -408,4 +407,17 @@ export interface WhatsappConfig {
   type: 'backend' | 'api'; 
   apiUrl?: string;
   apiToken?: string;
+}
+
+export interface QuickAnswer {
+  id: string;
+  shortcut: string;
+  message: string;
+}
+
+export interface ChatConnection {
+  id: string;
+  name: string;
+  status: 'connected' | 'disconnected' | 'qrcode';
+  lastActivity?: string;
 }
