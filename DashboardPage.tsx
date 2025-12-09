@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { Header } from './components/Header';
-import { DashboardSidebar } from './components/DashboardSidebar';
-import { ContentGenerator } from './components/ContentGenerator';
-import { Toast } from './components/admin/Toast';
-import { useDashboard } from './hooks/useDashboard';
-import { DashboardResults } from './components/dashboard/DashboardResults';
-import { DashboardModals } from './components/dashboard/DashboardModals';
+import { Header } from '../components/Header';
+import { DashboardSidebar } from '../components/DashboardSidebar';
+import { ContentGenerator } from '../components/ContentGenerator';
+import { Toast } from '../components/admin/Toast';
+import { useDashboard } from '../hooks/useDashboard';
+import { DashboardResults } from '../components/dashboard/DashboardResults';
+import { DashboardModals } from '../components/dashboard/DashboardModals';
+import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // Import useWhiteLabel
 
 interface DashboardPageProps {
   onNavigateToAdmin: () => void;
@@ -15,6 +16,7 @@ interface DashboardPageProps {
 }
 
 export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, onNavigate }: DashboardPageProps) {
+  const { settings: whiteLabelSettings } = useWhiteLabel(); // Use White Label settings
   const {
       user,
       isGuest,
@@ -42,7 +44,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
     <div className="min-h-screen bg-[#ECEFF1] text-[#263238] font-['Poppins']">
       <Header
         userEmail={user?.email}
-        onLogout={user ? async () => { await import('./contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
+        onLogout={user ? async () => { await import('../contexts/UserContext').then(m => m.useUser().signOut); window.location.reload(); } : undefined}
         isAdmin={user?.role === 'admin' || user?.role === 'super_admin'}
         onNavigateToAdmin={onNavigateToAdmin}
         onNavigateToLogin={!user ? onNavigateToLogin : undefined}
@@ -52,7 +54,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         onOpenAffiliates={() => toggleModal('affiliate', true)}
         onOpenIntegrations={() => toggleModal('integrations', true)}
         userCredits={isGuest ? guestCredits : user?.credits}
-        pageTitle="Creator Suite"
+        pageTitle={whiteLabelSettings.dashboardTitle} // Use dynamic dashboard title
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
@@ -77,11 +79,9 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
             onNavigateFeedback={() => onNavigate('feedback')}
         />
 
-        {/* MAIN CONTENT AREA */}
-        <main className="flex-1 overflow-y-auto relative custom-scrollbar bg-[#F5F7FA]">
-            
-            {/* STANDARD CONTENT GENERATOR VIEW */}
-            <div className="p-4 md:p-8 max-w-5xl mx-auto">
+        {/* MAIN CONTENT */}
+        <main className="flex-1 overflow-y-auto p-4 md:p-8 relative custom-scrollbar bg-[#F5F7FA]">
+            <div className="max-w-5xl mx-auto">
                 
                 {/* GENERATOR INPUT */}
                 <ContentGenerator 
@@ -115,13 +115,13 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                 {/* MARKETING FOOTER FOR GUESTS */}
                 {isGuest && (
                     <div className="mt-12 p-6 bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl text-center text-white shadow-xl animate-fade-in">
-                        <h3 className="text-xl font-bold mb-2">Gostou do teste?</h3>
-                        <p className="text-gray-300 mb-6 text-sm">Crie sua conta gratuita agora e desbloqueie ferramentas avançadas como <strong>Geração de Imagens</strong> e <strong>Sites Completos</strong>.</p>
+                        <h3 className="text-xl font-bold mb-2">{whiteLabelSettings.guestMarketingFooterTitle}</h3>
+                        <p className="text-gray-300 mb-6 text-sm">{whiteLabelSettings.guestMarketingFooterSubtitle}</p>
                         <button 
                             onClick={onNavigateToLogin}
-                            className="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition transform hover:-translate-y-1 shadow-lg shadow-green-500/30"
+                            className="bg-[var(--brand-tertiary)] hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full transition transform hover:-translate-y-1 shadow-lg shadow-[var(--brand-tertiary)]/30"
                         >
-                            Criar Conta Grátis
+                            {whiteLabelSettings.guestMarketingFooterCtaText}
                         </button>
                     </div>
                 )}

@@ -1,4 +1,5 @@
 
+
 # 🏗️ Documentação Técnica do Sistema - GDN_IA
 
 ## 1. Visão Geral
@@ -7,17 +8,17 @@
 **GDN_IA** (Gerador de Notícias Inteligente & Creator Suite)
 
 ### Objetivo Principal
-O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligência Artificial Generativa**. O sistema permite que usuários criem diversos tipos de conteúdo — notícias, imagens, sites, copys e áudio — utilizando um sistema híbrido de acesso (Visitante/Logado) e um funil de vendas integrado.
+O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligência Artificial Generativa**. O sistema permite que usuários criem diversos tipos de conteúdo — notícias, imagens, sites, copys e áudio — utilizando um sistema híbrido de acesso (Visitante/Logado).
 
 ### Tecnologias Utilizadas
 *   **Frontend:** React 18, Vite, TypeScript.
 *   **Estilização:** Tailwind CSS, FontAwesome.
-*   **Backend / BaaS:** Supabase (PostgreSQL, Auth, Realtime, Edge Functions).
+*   **Backend / BaaS:** Supabase (PostgreSQL, Auth, Realtime).
 *   **Inteligência Artificial:**
     *   Google Gemini API (`gemini-2.5-flash`, `gemini-2.5-flash-preview-tts`) para texto e áudio.
     *   Pollinations.ai para geração de imagens.
-*   **E-mail Transacional:** Resend (via Edge Functions).
 *   **Editor Visual:** GrapesJS (para Landing Pages e Sites).
+*   **SEO Engine:** Algoritmos proprietários para análise léxica e geração de metadados.
 
 ---
 
@@ -27,75 +28,45 @@ O GDN_IA é uma plataforma SaaS (Software as a Service) focada em **Inteligênci
 Implementado no frontend para permitir degustação do produto.
 *   **Estado:** Utiliza `localStorage.getItem('gdn_guest_credits')`.
 *   **Inicialização:** Se a chave não existir, inicia com 3 créditos.
-*   **Restrições:** O componente `ContentGenerator.tsx` bloqueia ferramentas avançadas se `!user`.
+*   **Restrições:**
+    *   O componente `ContentGenerator.tsx` recebe uma prop `guestAllowedModes`.
+    *   Se o usuário não estiver logado (`!user`) e tentar acessar um modo fora da lista permitida (ex: Imagens), um modal de bloqueio (`showFeatureLockModal`) é exibido.
+    *   Se os créditos locais acabarem, o modal `showGuestLimitModal` bloqueia a ação.
 
 ### Motor de SEO (`services/seoService.ts`)
-Sistema para garantir pontuação alta em ferramentas como Yoast/Rank Math.
-*   **Golden Keyword:** Algoritmo que encontra interseções de palavras entre título e introdução.
-*   **Metadados:** Gera Title e Meta Description dentro dos limites de caracteres.
+Um sistema avançado para garantir pontuação alta em ferramentas como Yoast/Rank Math.
+1.  **Engenharia Reversa de Keyword (Golden Keyword):**
+    *   A função `suggestFocusKeyword` tokeniza o título e os primeiros 300 caracteres do conteúdo.
+    *   Procura por interseções (palavras que aparecem em ambos).
+    *   Prioriza bigramas (duas palavras, ex: "Inteligência Artificial") sobre unigramas.
+2.  **Otimização de Metadados:**
+    *   `generateOptimizedTags`: Cria matematicamente títulos e descrições dentro dos limites de caracteres do Google (Title < 60, Meta < 160).
+    *   Se o título original for longo, ele é truncado mas a palavra-chave é preservada.
+3.  **Análise de Score:**
+    *   Calcula uma pontuação de 0 a 100 baseada em 5 critérios: Palavra-chave no Título, Palavra-chave na Introdução, Tamanho do Título, Tamanho do Conteúdo e Densidade.
 
-### Landing Page Isolada
-A página de vendas é desacoplada do painel administrativo.
-*   **Rota:** Acessível via `/?page=landing`.
-*   **Lógica:** O `App.tsx` verifica este parâmetro antes de verificar a autenticação, permitindo que a Landing Page seja renderizada mesmo se o usuário tiver sessão (ou não).
-
----
-
-## 3. Funil de Vendas e CRM (Novo)
-
-O sistema possui um CRM nativo para gerenciar leads capturados na Landing Page.
-
-### Estrutura de Dados (Supabase)
-1.  **`leads`**: Armazena os contatos.
-    *   Campos: `id`, `email`, `nome`, `whatsapp`, `status_funil` (new, contacted, qualified, converted, lost), `score`, `tags`, `utm_source`, `utm_medium`, `utm_campaign`, `created_at`.
-    *   **Segurança (RLS):** Permite `INSERT` público (anônimo) para captura de leads via formulário. `SELECT/UPDATE/DELETE` restrito a Admins.
-2.  **`eventos_marketing`**: Rastreia a jornada do lead.
-    *   Tipos: `view_landing`, `submit_form`, `email_open`.
-3.  **`deals`**: Registra vendas associadas a um lead.
-
-### Automação de Isca Digital (Lead Magnet)
-Fluxo automático ao capturar um lead:
-1.  **Frontend (`LandingPage.tsx`):**
-    *   Captura parâmetros UTM da URL e salva em `sessionStorage`.
-    *   Envia dados do formulário para a tabela `leads`.
-    *   Invoca a Edge Function `deliver-lead-magnet`.
-2.  **Edge Function (`supabase/functions/deliver-lead-magnet`):**
-    *   Recebe o e-mail e nome do lead.
-    *   Gera o corpo do e-mail (HTML com o E-book/Guia).
-    *   Envia via API da **Resend**.
+### Processamento de Texto (`DashboardPage.tsx`)
+Para garantir uma experiência de "Copiar e Colar" limpa:
+*   **Regex de Limpeza:** A função `extractTitleAndContent` remove prefixos comuns gerados por LLMs, como `**Título:**`, `Headline:`, `Assunto:`.
+*   **Separação:** O texto é dividido. A primeira linha (se for identificada como título) é removida do corpo do texto e armazenada no estado `resultTitle`. O restante vai para `resultText`.
+*   **Display:** O componente `ResultDisplay` renderiza dois boxes visuais separados, cada um com seu botão de cópia.
 
 ---
 
-## 4. Integração de E-mail (Resend)
-
-Para ativar o envio de e-mails, siga estes passos:
-
-### Configuração
-1.  **Conta:** Crie uma conta em [resend.com](https://resend.com).
-2.  **API Key:** Gere uma chave com permissão de envio ("Sending Access").
-3.  **Supabase:**
-    *   Acesse o Dashboard do Supabase.
-    *   Vá em **Settings** > **Edge Functions**.
-    *   Adicione uma Secret: `RESEND_API_KEY` = `sua_chave_re_123...`.
-4.  **Verificação de Domínio (Produção):**
-    *   Para enviar e-mails para endereços reais (não apenas o seu de teste), adicione seu domínio no painel da Resend e configure os registros DNS (DKIM/SPF) no seu provedor de domínio.
-    *   Atualize o campo `from` no arquivo `supabase/functions/deliver-lead-magnet/index.ts` para um e-mail do seu domínio (ex: `contato@seusite.com`).
-
----
-
-## 5. Autenticação e Segurança
+## 3. Autenticação e Segurança
 
 ### Fluxo de Autenticação
-*   **Supabase Auth:** Gerencia sessões JWT.
-*   **Persistência:** `UserContext.tsx` sincroniza o estado global.
+O sistema utiliza o **Supabase Auth**.
+*   **Sessão:** Persistida e monitorada via `UserContext.tsx`.
+*   **Sincronização:** Ao logar, os créditos do banco (`user_credits`) substituem os créditos do localStorage.
 
-### Segurança de Domínios
-*   **Blacklist Interna:** Bloqueia domínios temporários (`tempmail.com`, etc).
-*   **Allowlist/DNS:** Configurável via Admin para restringir cadastros a domínios corporativos específicos.
+### Segurança de Domínios (`services/adminService.ts`)
+*   **Blacklist Interna:** Bloqueia domínios temporários (`teste.com`, `tempmail.com`).
+*   **Validação Híbrida:** Configurada via painel Admin. Pode operar em modo Estrito (Allowlist) ou modo DNS (consulta pública de registros MX).
 
 ---
 
-## 6. Banco de Dados e Afiliados
+## 4. Banco de Dados e Afiliados
 
 ### Tabelas Principais
 *   **`app_users`**: Perfil público.
@@ -103,20 +74,43 @@ Para ativar o envio de e-mails, siga estes passos:
 *   **`news`**: Histórico de conteúdo.
 *   **`transactions`**: Histórico financeiro.
 *   **`affiliate_logs`**: Registro de comissões.
-*   **`system_config`**: Armazena JSONs de configuração (White Label, IA, Planos).
+*   **`system_config`**: Armazena JSONs de configuração (Planos, Pagamentos, IA).
+
+### Planos e Personalização
+Os planos são armazenados em um JSON na tabela `system_config`.
+*   **Planos Customizados (Ocultos):** O sistema suporta planos que não aparecem na loja pública (propriedade `isActive: false`).
+*   **Atribuição Manual:** O administrador pode criar um plano "Enterprise" ou "Especial", desativá-lo para o público, e atribuí-lo manualmente a um usuário específico através da edição de perfil no Admin Dashboard.
 
 ### Sistema de Afiliados
 1.  **Tracking:** Parâmetro URL `?ref=CODE` salvo no `localStorage`.
-2.  **Vínculo:** No cadastro, o código é lido e o ID do afiliado é salvo em `referred_by`.
-3.  **Comissão:** Edge Functions (`mp-pagar`, `asaas-pagar`) calculam e registram comissão (20%) após confirmação de pagamento.
+2.  **Vínculo:** No cadastro (`signUp`), o código é lido e o ID do afiliado é salvo em `referred_by`.
+3.  **Comissão:** Script `processAffiliateCommission` roda após cada transação aprovada, creditando 20% ao afiliado pai.
 
 ---
 
-## 7. Integrações (Webhooks / N8N)
+## 5. Serviços e Logs
 
-O sistema permite enviar dados gerados para workflows externos.
+### `services/loggerService.ts`
+Logs centralizados operando em modo *Fire-and-Forget* para performance. Registra ações críticas (geração de conteúdo, alterações admin, erros de sistema).
 
-### Payload JSON (Enviado para o Webhook)
+### `services/geminiService.ts`
+*   **System Prompt:** Instruções atualizadas para forçar a IA a colocar a palavra-chave no primeiro parágrafo (crucial para o Score 100 de SEO).
+*   **Grounding:** Integração com Google Search para notícias recentes.
+
+---
+
+## 6. Integrações e Extensibilidade (N8N)
+
+### Arquitetura de Webhooks
+O sistema possui integração nativa com automações externas (Make/N8N) via **Webhooks POST**.
+
+*   **Configuração:** O usuário insere a URL do Webhook no modal de Integrações.
+*   **Persistência:** A URL é salva em `user_memory` (Chave: `n8n_config`) e sincronizada entre dispositivos.
+*   **Disparo:** Pode ser manual (botão no resultado) ou automático (configurável).
+
+### Payload JSON
+O GDN_IA envia o seguinte payload para a URL configurada:
+
 ```json
 {
   "title": "Título do Conteúdo",
@@ -125,11 +119,10 @@ O sistema permite enviar dados gerados para workflows externos.
   "generated_at": "ISO 8601 Timestamp",
   "audio_base64": "String Base64 (se houver áudio)",
   "image_prompt": "Prompt usado (se for imagem)",
-  "source": "gdn_ia_dashboard",
-  "userId": "uuid-do-usuario"
+  "source": "gdn_ia_dashboard"
 }
 ```
 
 ---
 
-*Documentação técnica atualizada para o sistema GDN_IA v1.0.9 - Com CRM e Automação de Marketing.*
+*Documentação técnica atualizada para o sistema GDN_IA v1.0.8.*

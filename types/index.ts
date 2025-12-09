@@ -22,7 +22,7 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: string; 
+  tipo?: string; // This type allows for flexibility, will be 'landingpage_generator' for all sites
   author_id?: string;
   criado_em?: string;
   author?: {
@@ -72,7 +72,8 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'crm';
+// FIX: Added 'tool_settings' and 'white_label_settings' to AdminView
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
 
 export interface AllowedDomain {
   id: string;
@@ -117,6 +118,7 @@ export interface Transaction {
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string; 
+  // secretKey removed for security
 }
 
 export interface CreditPackage {
@@ -179,11 +181,13 @@ export interface AILog {
   };
 }
 
+// --- FEEDBACK TYPES ---
 export interface FeedbackData {
   rating: number;
   comment: string;
 }
 
+// Nova interface para Feedbacks do Sistema (Depoimentos)
 export interface SystemFeedback {
   id: string;
   user_id: string;
@@ -197,6 +201,7 @@ export interface SystemFeedback {
   };
 }
 
+// --- WORDPRESS INTEGRATION ---
 export interface WordPressConfig {
   siteUrl: string;
   username: string;
@@ -204,17 +209,20 @@ export interface WordPressConfig {
   isConnected: boolean;
 }
 
+// --- ANALYTICS INTEGRATION ---
 export interface AnalyticsConfig {
-  measurementId: string;
+  measurementId: string; // G-XXXXXXXXXX
   isConnected: boolean;
 }
 
+// --- N8N / WEBHOOK INTEGRATION ---
 export interface N8nConfig {
   webhookUrl: string;
-  autoSend: boolean;
+  autoSend: boolean; // Se true, envia automaticamente após gerar
   isConnected: boolean;
 }
 
+// --- POPUP SYSTEM ---
 export interface Popup {
   id: string;
   title: string;
@@ -229,26 +237,28 @@ export interface Popup {
     theme?: 'default' | 'dark_gold';
   };
   trigger_settings: {
-    delay: number;
+    delay: number; // segundos
     frequency: 'once' | 'always' | 'daily';
-    button_link?: string;
-    button_text?: string;
+    button_link?: string; // Link do botão de ação
+    button_text?: string; // Texto do botão
   };
   is_active: boolean;
   created_at?: string;
 }
 
+// --- DEVELOPER API ---
 export interface ApiKey {
   id: string;
   user_id?: string;
   name: string;
-  key_prefix: string;
-  full_key?: string;
+  key_prefix: string; // Mostramos apenas o começo ou fim
+  full_key?: string; // Usado apenas na criação para mostrar uma vez
   created_at: string;
   last_used_at?: string;
   status: 'active' | 'revoked';
 }
 
+// --- NOTIFICATION SYSTEM ---
 export interface AppNotification {
   id: string;
   user_id: string;
@@ -260,26 +270,13 @@ export interface AppNotification {
   created_at: string;
 }
 
+// --- GLOBAL TOOL SETTINGS ---
 export interface ToolSetting {
   key: ServiceKey;
   enabled: boolean;
 }
 
-export interface FeatureCardConfig {
-    id: string; 
-    icon: string; 
-    title: string; 
-    description: string; 
-    color: string; 
-    bgColor: string;
-}
-
-export interface FooterLinkConfig {
-    id: string; 
-    text: string; 
-    link: string;
-}
-
+// --- WHITE LABEL SETTINGS ---
 export interface WhiteLabelSettings {
   appName: string;
   appTagline: string;
@@ -293,8 +290,9 @@ export interface WhiteLabelSettings {
   wordpressPluginName: string;
   copyrightText: string;
   appVersion: string;
-  dashboardTitle: string;
-  landingPageEnabled: boolean;
+  dashboardTitle: string; 
+  
+  landingPageEnabled: boolean; 
   heroSectionTitle: string;
   heroSectionSubtitle: string;
   heroCtaPrimaryText: string;
@@ -303,120 +301,13 @@ export interface WhiteLabelSettings {
   heroCtaSecondaryLink: string;
   featureSectionTitle: string;
   featureSectionSubtitle: string;
-  landingPageFeatures: FeatureCardConfig[];
+  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>;
   pricingSectionTitle: string;
   pricingSectionSubtitle: string;
-  landingPageFooterLinks: FooterLinkConfig[];
+  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>;
+  
   guestMarketingFooterTitle: string;
   guestMarketingFooterSubtitle: string;
   guestMarketingFooterCtaText: string;
   guestMarketingFooterCtaLink: string;
-}
-
-// --- CHAT SYSTEM TYPES ---
-export interface WhatsAppInstance {
-    id: string;
-    user_id: string;
-    name: string;
-    phone_number?: string;
-    status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready';
-    connection_type: 'gateway' | 'official'; 
-    qr_code?: string;
-    api_url?: string;
-    api_token?: string;
-    created_at: string;
-}
-
-export interface ChatQueue {
-    id: string;
-    name: string;
-    color: string;
-    created_at: string;
-}
-
-export interface ChatAgent {
-    id: string;
-    name: string;
-    email: string;
-    role: 'admin' | 'agent';
-    status: 'online' | 'offline';
-    avatar_url?: string;
-}
-
-export interface ChatContact {
-    id: string;
-    phone: string;
-    name: string;
-    email?: string; 
-    notes?: string; 
-    profile_pic_url?: string;
-    tags?: string[];
-    crm_stage?: 'new' | 'negotiation' | 'won' | 'lost'; 
-    created_at?: string;
-}
-
-export interface ChatConversation {
-    id: string;
-    instance_id: string;
-    contact_id: string;
-    contact: ChatContact;
-    last_message?: string;
-    last_message_at: string;
-    unread_count: number;
-    status: 'open' | 'closed' | 'pending';
-    assigned_agent_id?: string;
-    queue_id?: string;
-}
-
-export interface ChatMessage {
-    id: string;
-    conversation_id: string;
-    sender_type: 'agent' | 'contact' | 'system';
-    sender_id?: string; // agent_id or contact_id
-    content: string;
-    media_url?: string;
-    media_type?: 'image' | 'video' | 'audio' | 'document';
-    status: 'sent' | 'delivered' | 'read' | 'failed';
-    created_at: string;
-}
-
-// --- CRM / LEAD SYSTEM ---
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'converted' | 'lost';
-export type DealStatus = 'won' | 'lost' | 'pending';
-export type MarketingEventType = 'view_landing' | 'submit_form' | 'email_open' | 'email_click' | 'checkout_view' | 'purchase';
-
-export interface Lead {
-  id: string;
-  email: string;
-  nome?: string;
-  telefone?: string;
-  empresa?: string;
-  fonte?: string;
-  utm_campaign?: string;
-  utm_medium?: string;
-  utm_source?: string;
-  status_funil: LeadStatus;
-  score: number;
-  tags?: string[]; // Array of strings in Supabase (text[])
-  consentimento: boolean;
-  created_at: string;
-  notes?: string;
-}
-
-export interface MarketingEvent {
-  id: number;
-  lead_id: string;
-  tipo_evento: MarketingEventType;
-  metadata?: any;
-  created_at: string;
-}
-
-export interface Deal {
-  id: string;
-  lead_id: string;
-  plano: string;
-  valor: number;
-  status: DealStatus;
-  gateway_ref?: string;
-  created_at: string;
 }
