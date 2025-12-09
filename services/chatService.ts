@@ -15,26 +15,50 @@ export const getWhatsAppInstances = async (): Promise<WhatsAppInstance[]> => {
     return MOCK_INSTANCES;
 };
 
-export const createWhatsAppInstance = async (name: string, apiUrl: string, token: string): Promise<WhatsAppInstance> => {
+export const createWhatsAppInstance = async (
+    name: string, 
+    connectionType: 'gateway' | 'official',
+    apiUrl?: string, 
+    token?: string
+): Promise<WhatsAppInstance> => {
     await delay(1000);
+    
     const newInstance: WhatsAppInstance = {
         id: uuidv4(),
         user_id: 'current_user',
         name,
+        connection_type: connectionType,
         api_url: apiUrl,
         api_token: token,
-        status: 'connecting',
+        // Se for gateway, começa esperando QR. Se oficial, assume connecting se tiver credenciais
+        status: connectionType === 'gateway' ? 'qr_ready' : 'connecting', 
         created_at: new Date().toISOString()
     };
+    
     MOCK_INSTANCES.push(newInstance);
     
-    // Simula conexão após 3 segundos
-    setTimeout(() => {
-        newInstance.status = 'connected';
-        newInstance.phone_number = '5511999999999';
-    }, 3000);
+    // Se for oficial e tiver credenciais, simula conexão rápida
+    if (connectionType === 'official') {
+        setTimeout(() => {
+            newInstance.status = 'connected';
+            newInstance.phone_number = '5511999999999';
+        }, 3000);
+    }
+    
+    // NOTA: Se for 'gateway', o frontend vai chamar uma rota separada para pegar o QR
+    // e o status só muda quando o webhook bater (aqui simulado no frontend component)
 
     return newInstance;
+};
+
+// Simula a mudança de status pós-leitura do QR
+export const simulateQrScan = async (instanceId: string) => {
+    await delay(2000);
+    const instance = MOCK_INSTANCES.find(i => i.id === instanceId);
+    if (instance) {
+        instance.status = 'connected';
+        instance.phone_number = '5511988887777';
+    }
 };
 
 export const deleteWhatsAppInstance = async (id: string) => {

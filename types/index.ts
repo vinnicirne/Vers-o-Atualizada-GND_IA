@@ -320,6 +320,7 @@ export interface WhatsAppInstance {
     name: string;
     phone_number?: string;
     status: 'connected' | 'disconnected' | 'connecting' | 'qr_ready';
+    connection_type: 'gateway' | 'official'; // Added connection type
     qr_code?: string;
     api_url?: string;
     api_token?: string;

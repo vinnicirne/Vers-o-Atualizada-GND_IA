@@ -281,8 +281,8 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                     {!isLoading && (
                     <>
                         {/* LANDING PAGE & SITE EDITOR */}
-                        {/* FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type */}
-                        {(currentMode === 'landingpage_generator' || currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && resultText && (
+                        {/* FIX: Removed duplicate comparison */}
+                        {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && resultText && (
                             <LandingPageBuilder 
                                 initialHtml={resultText} 
                                 onClose={() => setResultText(null)}
@@ -319,9 +319,8 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
                         )}
 
                         {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
-                        {/* FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type */}
+                        {/* FIX: Removed duplicate comparisons */}
                         {currentMode !== 'landingpage_generator' && 
-                         currentMode !== 'landingpage_generator' && 
                          currentMode !== 'image_generation' && 
                          currentMode !== 'canva_structure' && 
                          currentMode !== 'curriculum_generator' &&
