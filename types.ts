@@ -353,3 +353,40 @@ export interface Deal {
   gateway_ref?: string;
   created_at: string;
 }
+
+// --- WHATSAPP CRM SYSTEM ---
+export type WhatsAppInstanceStatus = 'connected' | 'disconnected' | 'connecting' | 'qrcode';
+
+export interface WhatsAppInstance {
+  id: string;
+  user_id: string;
+  name: string;
+  phone_number?: string;
+  status: WhatsAppInstanceStatus;
+  qr_code?: string; // Base64
+  api_provider: 'evolution' | 'wppconnect' | 'zapi';
+  created_at: string;
+}
+
+export interface ChatContact {
+  id: string;
+  name: string;
+  phone: string;
+  avatar_url?: string;
+  last_message?: string;
+  last_message_time?: string;
+  unread_count: number;
+  tags?: string[];
+  instance_id: string; // Qual numero recebeu
+}
+
+export interface ChatMessage {
+  id: string;
+  conversation_id: string;
+  content: string;
+  type: 'text' | 'image' | 'audio' | 'video' | 'file';
+  direction: 'inbound' | 'outbound';
+  status: 'sent' | 'delivered' | 'read' | 'failed';
+  timestamp: string;
+  media_url?: string;
+}
