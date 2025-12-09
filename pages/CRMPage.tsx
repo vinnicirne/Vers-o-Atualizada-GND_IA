@@ -99,15 +99,15 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
                     <div className="flex bg-gray-100 p-1 rounded-lg">
                         <button 
                             onClick={() => setActiveTab('leads')}
-                            className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'leads' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'leads' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <i className="fas fa-columns mr-2"></i> Leads
+                            <i className="fas fa-columns text-xs"></i> Leads
                         </button>
                         <button 
                             onClick={() => setActiveTab('chat')}
-                            className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                            className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <i className="fab fa-whatsapp mr-2"></i> Chat
+                            <i className="fab fa-whatsapp text-xs"></i> Chat
                         </button>
                     </div>
                 )}
@@ -149,7 +149,7 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
                         </div>
                     ) : (
                         /* Chat View - Full Height */
-                        <div className="h-full bg-gray-100">
+                        <div className="h-full bg-gray-100 flex flex-col">
                             <MultiChatLayout user={user} />
                         </div>
                     )

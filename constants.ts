@@ -29,7 +29,7 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
   // --- OPÇÕES PREMIUM / AVANÇADAS ---
   {
     value: 'curriculum_generator',
-    label: 'Criador de Currículos (IA)', // NOVO
+    label: 'Criador de Currículos (IA)',
     placeholder: 'Descreva seu perfil e objetivo (ex: "Currículo para Desenvolvedor Fullstack com 5 anos de experiência, focado em React e Node.js. Objetivo: vaga em startup de tecnologia.").',
   },
   {
@@ -57,6 +57,8 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Texto para Voz',
     placeholder: 'Insira o texto que você deseja transformar em áudio.',
   },
+  // NOTA: 'multi_chat' removido da lista para não aparecer na sidebar principal.
+  // Ele agora é acessado exclusivamente via botão "CRM & Vendas".
 ];
 
 // --- CUSTO POR AÇÃO (CRÉDITOS) ---
