@@ -16,6 +16,7 @@ export function CrmDashboard() {
     const [qrCode, setQrCode] = useState("");
     const [serverUrl, setServerUrl] = useState(localStorage.getItem('whatsapp_server_url') || 'http://localhost:3001');
     const [status, setStatus] = useState("Desconectado");
+    const [isServerOnline, setIsServerOnline] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -67,28 +68,38 @@ export function CrmDashboard() {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
 
-    // QR Code Polling
+    // QR Code Polling - Robust check for backend
     useEffect(() => {
         let interval: any;
-        if (activeTab === 'connection') {
-            interval = setInterval(async () => {
-                try {
-                    // Tenta buscar status primeiro
-                    const res = await fetch(`${serverUrl}/qr`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        if (data.qr) {
-                            setQrCode(data.qr);
-                            setStatus("Aguardando Leitura");
-                        } else if (data.connected) {
-                            setQrCode("");
-                            setStatus("Conectado");
-                        }
+        
+        const checkConnection = async () => {
+            try {
+                // Tenta buscar status primeiro
+                const res = await fetch(`${serverUrl}/qr`);
+                if (res.ok) {
+                    setIsServerOnline(true);
+                    const data = await res.json();
+                    
+                    if (data.qr) {
+                        setQrCode(data.qr);
+                        setStatus("Aguardando Leitura");
+                    } else if (data.connected) {
+                        setQrCode("");
+                        setStatus("Conectado");
                     }
-                } catch (e) {
-                    setStatus("Erro de conexão com servidor");
+                } else {
+                    setIsServerOnline(false);
+                    setStatus("Erro HTTP Server");
                 }
-            }, 2000);
+            } catch (e) {
+                setIsServerOnline(false);
+                setStatus("Servidor Offline");
+            }
+        };
+
+        if (activeTab === 'connection') {
+            checkConnection(); // Immediate check
+            interval = setInterval(checkConnection, 3000);
         }
         return () => clearInterval(interval);
     }, [activeTab, serverUrl]);
@@ -130,7 +141,7 @@ export function CrmDashboard() {
                 throw new Error("Falha no envio");
             }
         } catch (e) {
-            setToast({ message: "Erro ao enviar. Verifique se o servidor está rodando.", type: 'error' });
+            setToast({ message: "Erro ao enviar. Verifique se o servidor local está rodando.", type: 'error' });
         }
     };
 
@@ -167,7 +178,7 @@ export function CrmDashboard() {
     };
 
     return (
-        <div className="flex h-[calc(100vh-140px)] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative">
+        <div className="flex h-[calc(100vh-140px)] bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden relative animate-fade-in-up">
             {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
             
             {/* LEFT COLUMN: SIDEBAR LIST */}
@@ -179,18 +190,21 @@ export function CrmDashboard() {
                             <button 
                                 onClick={() => setActiveTab('chats')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeTab === 'chats' ? 'bg-blue-100 text-blue-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                                title="Conversas"
                             >
                                 <i className="fas fa-comments mr-1"></i>
                             </button>
                             <button 
                                 onClick={() => setActiveTab('connection')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeTab === 'connection' ? 'bg-green-100 text-green-700' : 'text-gray-500 hover:bg-gray-100'}`}
+                                title="Conexão QR Code"
                             >
                                 <i className="fas fa-qrcode mr-1"></i>
                             </button>
                             <button 
                                 onClick={() => setActiveTab('settings')}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${activeTab === 'settings' ? 'bg-gray-200 text-gray-800' : 'text-gray-500 hover:bg-gray-100'}`}
+                                title="Configurações Locais"
                             >
                                 <i className="fas fa-cog"></i>
                             </button>
@@ -200,7 +214,7 @@ export function CrmDashboard() {
                         <div className="flex items-center gap-1">
                             <button
                                 onClick={toggleAi}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${aiSettings.enabled ? 'bg-purple-600 text-white' : 'bg-gray-200 text-gray-500'}`}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${aiSettings.enabled ? 'bg-purple-600 text-white shadow-purple-200 shadow-sm' : 'bg-gray-200 text-gray-500'}`}
                                 title={aiSettings.enabled ? "IA Ativada (Auto-Reply)" : "IA Desativada"}
                             >
                                 <i className="fas fa-robot"></i> {aiSettings.enabled ? 'ON' : 'OFF'}
@@ -231,7 +245,12 @@ export function CrmDashboard() {
                             {/* List */}
                             <div className="divide-y divide-gray-100">
                                 {conversations.length === 0 && (
-                                    <p className="text-center text-gray-400 text-xs p-4">Nenhuma conversa encontrada.</p>
+                                    <div className="text-center p-8">
+                                        <div className="bg-gray-100 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                                            <i className="fas fa-inbox text-gray-400 text-xl"></i>
+                                        </div>
+                                        <p className="text-gray-400 text-xs">Nenhuma conversa encontrada.</p>
+                                    </div>
                                 )}
                                 {conversations.map(chat => (
                                     <div 
@@ -240,7 +259,7 @@ export function CrmDashboard() {
                                         className={`p-4 cursor-pointer hover:bg-blue-50 transition flex gap-3 ${selectedChat === chat.id ? 'bg-blue-100/50' : 'bg-white'}`}
                                     >
                                         <div className="relative">
-                                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                                            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold border border-gray-300">
                                                 {chat.contact?.name?.charAt(0) || chat.contact?.phone?.charAt(0)}
                                             </div>
                                         </div>
@@ -253,7 +272,7 @@ export function CrmDashboard() {
                                         </div>
                                         {chat.unread_count > 0 && (
                                             <div className="flex flex-col justify-center">
-                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                                <span className="bg-green-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center shadow-sm">
                                                     {chat.unread_count}
                                                 </span>
                                             </div>
@@ -265,25 +284,36 @@ export function CrmDashboard() {
                     ) : activeTab === 'connection' ? (
                         <div className="p-6 text-center flex flex-col items-center">
                             <h3 className="font-bold text-gray-800 mb-2">Conectar WhatsApp</h3>
-                            <p className="text-xs text-gray-500 mb-4">Certifique-se que seu servidor está rodando em <code>{serverUrl}</code></p>
+                            <div className={`text-xs px-3 py-1 rounded-full inline-block font-bold mb-6 ${status === 'Conectado' ? 'bg-green-100 text-green-700' : (isServerOnline ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700')}`}>
+                                Status: {status}
+                            </div>
                             
                             {qrCode ? (
-                                <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 inline-block mb-4">
+                                <div className="bg-white p-4 rounded-xl shadow-lg border border-gray-200 inline-block mb-4">
                                     <QRCode value={qrCode} size={180} />
+                                    <p className="text-[10px] text-gray-400 mt-2">Escaneie com seu celular</p>
                                 </div>
                             ) : status === 'Conectado' ? (
-                                <div className="w-32 h-32 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4">
+                                <div className="w-32 h-32 bg-green-100 rounded-full flex items-center justify-center text-green-600 mb-4 animate-bounce">
                                     <i className="fas fa-check text-4xl"></i>
                                 </div>
                             ) : (
-                                <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-4">
-                                    <i className="fas fa-spinner fa-spin text-2xl"></i>
+                                <div className="flex flex-col items-center gap-4">
+                                    <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center text-gray-400 mb-2">
+                                        <i className="fas fa-server text-3xl"></i>
+                                    </div>
+                                    {!isServerOnline && (
+                                        <div className="text-left bg-red-50 p-3 rounded border border-red-100 text-xs text-red-700 max-w-xs">
+                                            <strong>Servidor Offline?</strong><br/>
+                                            Certifique-se de rodar o script Node.js localmente na porta 3001.
+                                            <br/>
+                                            <span className="font-mono bg-red-100 px-1 rounded">node index.js</span>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                             
-                            <div className={`text-xs px-3 py-1 rounded-full inline-block font-bold ${status === 'Conectado' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                                Status: {status}
-                            </div>
+                            <p className="text-xs text-gray-500 mt-4">Backend URL: <code>{serverUrl}</code></p>
                         </div>
                     ) : (
                         <div className="p-6">
@@ -299,7 +329,7 @@ export function CrmDashboard() {
                                 />
                                 <p className="text-[10px] text-gray-400 mt-1">Onde está rodando o script Baileys/Node.js?</p>
                             </div>
-                            <button onClick={handleSaveSettings} className="w-full bg-blue-600 text-white py-2 rounded text-sm font-bold">Salvar</button>
+                            <button onClick={handleSaveSettings} className="w-full bg-blue-600 text-white py-2 rounded text-sm font-bold">Salvar URL</button>
                         </div>
                     )}
                 </div>
@@ -312,9 +342,9 @@ export function CrmDashboard() {
                 {selectedChat ? (
                     <>
                         {/* Chat Header */}
-                        <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 justify-between z-10">
+                        <div className="h-16 bg-white border-b border-gray-200 flex items-center px-4 justify-between z-10 shadow-sm">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold">
+                                <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold border border-gray-300">
                                     {conversations.find(c => c.id === selectedChat)?.contact?.name?.charAt(0)}
                                 </div>
                                 <div>
@@ -328,9 +358,9 @@ export function CrmDashboard() {
                         <div className="flex-1 overflow-y-auto p-4 space-y-4 relative z-0">
                             {messages.map((msg) => (
                                 <div key={msg.id} className={`flex ${msg.direction === 'out' ? 'justify-end' : 'justify-start'}`}>
-                                    <div className={`max-w-[70%] rounded-lg px-4 py-2 shadow-sm relative ${msg.direction === 'out' ? 'bg-[#D9FDD3] text-gray-800 rounded-tr-none' : 'bg-white text-gray-800 rounded-tl-none'}`}>
-                                        <p className="text-sm">{msg.body}</p>
-                                        <span className="text-[10px] text-gray-500 block text-right mt-1 ml-4">
+                                    <div className={`max-w-[70%] rounded-lg px-4 py-2 shadow-sm relative text-sm ${msg.direction === 'out' ? 'bg-[#D9FDD3] text-gray-900 rounded-tr-none' : 'bg-white text-gray-900 rounded-tl-none'}`}>
+                                        <p>{msg.body}</p>
+                                        <span className="text-[10px] text-gray-500 block text-right mt-1 ml-4 opacity-70">
                                             {new Date(msg.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                                         </span>
                                     </div>
@@ -340,7 +370,7 @@ export function CrmDashboard() {
                         </div>
 
                         {/* Input Area */}
-                        <div className="p-3 bg-[#F0F2F5] flex items-center gap-2 z-10">
+                        <div className="p-3 bg-[#F0F2F5] flex items-center gap-2 z-10 border-t border-gray-200">
                             <button className="text-gray-500 hover:text-gray-700 p-2"><i className="far fa-smile text-xl"></i></button>
                             <form className="flex-1 flex gap-2" onSubmit={handleSendMessage}>
                                 <input 
@@ -350,7 +380,7 @@ export function CrmDashboard() {
                                     placeholder="Digite uma mensagem" 
                                     className="flex-1 bg-white border-none rounded-lg px-4 py-2 focus:ring-0 text-sm shadow-sm" 
                                 />
-                                <button type="submit" className="text-gray-500 hover:text-blue-600 p-2">
+                                <button type="submit" className="text-gray-500 hover:text-blue-600 p-2 transition">
                                     <i className="fas fa-paper-plane text-xl"></i>
                                 </button>
                             </form>
@@ -372,7 +402,7 @@ export function CrmDashboard() {
             {/* AI CONFIG MODAL */}
             {showAiModal && (
                 <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md border border-gray-200 animate-fade-in-scale">
                         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                             <h3 className="font-bold text-gray-800 text-lg flex items-center gap-2">
                                 <i className="fas fa-robot text-purple-600"></i> Configurar IA

@@ -34,8 +34,8 @@ export function useDashboard() {
 
     // UI Control
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    // Allow 'crm' as a valid mode for the dashboard state
-    const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm'>('news_generator');
+    // Allow 'crm_suite' as a valid mode for the dashboard state
+    const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm_suite'>('news_generator');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -84,15 +84,30 @@ export function useDashboard() {
         }
     }, [user]);
 
+    // Check URL params for direct mode access (e.g. ?mode=crm_suite)
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const modeParam = params.get('mode');
+        if (modeParam === 'crm' || modeParam === 'crm_suite') {
+            setCurrentMode('crm_suite');
+        } else if (modeParam && hasAccessToService(modeParam as ServiceKey)) {
+            setCurrentMode(modeParam as ServiceKey);
+        }
+    }, [hasAccessToService]);
+
     const toggleModal = (modal: keyof typeof modals, value: boolean) => {
         setModals(prev => ({ ...prev, [modal]: value }));
     };
 
-    const handleModeChange = (mode: ServiceKey | 'crm') => {
+    const handleModeChange = (mode: ServiceKey | 'crm_suite') => {
         // Special handling for CRM
-        if (mode === 'crm') {
+        if (mode === 'crm_suite') {
             setCurrentMode(mode);
             setSidebarOpen(false);
+            // Update URL for bookmarking without reloading
+            const url = new URL(window.location.href);
+            url.searchParams.set('mode', 'crm_suite');
+            window.history.pushState({}, '', url);
             return;
         }
 
@@ -107,6 +122,12 @@ export function useDashboard() {
         }
         
         setCurrentMode(mode);
+        
+        // Update URL
+        const url = new URL(window.location.href);
+        url.searchParams.set('mode', mode);
+        window.history.pushState({}, '', url);
+
         // Clear results
         setResults(prev => ({
             ...prev,
