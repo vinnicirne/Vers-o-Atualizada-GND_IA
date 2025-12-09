@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from 'react';
 import { Lead, LeadStatus } from '../../types';
 import { getLeads, updateLead, deleteLead, createLead } from '../../services/marketingService';
+import { analyzeLeadQuality } from '../../services/geminiService';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from '../admin/Toast';
 import { ResponsiveContainer, FunnelChart, Funnel, LabelList, Tooltip, Cell } from 'recharts';
-import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 interface CrmDashboardProps {
@@ -39,7 +40,7 @@ const openWhatsApp = (phone: string | undefined, name: string | undefined) => {
 // --- COMPONENTES DRAG AND DROP ---
 
 // 1. LEAD CARD (Visual Component)
-const LeadCard = ({ lead, onClick, isOverlay = false }: { lead: Lead, onClick?: () => void, isOverlay?: boolean }) => {
+const LeadCard = ({ lead, onClick, onAnalyze, isOverlay = false, isAnalyzing = false }: { lead: Lead, onClick?: () => void, onAnalyze?: (l: Lead) => void, isOverlay?: boolean, isAnalyzing?: boolean }) => {
     const tempTag = getTemperatureTag(lead.score);
 
     const handleWhatsAppClick = (e: React.MouseEvent) => {
@@ -47,12 +48,17 @@ const LeadCard = ({ lead, onClick, isOverlay = false }: { lead: Lead, onClick?: 
         openWhatsApp(lead.phone, lead.name);
     };
 
+    const handleAnalyzeClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onAnalyze && !isAnalyzing) onAnalyze(lead);
+    };
+
     return (
         <div 
             onClick={onClick}
             className={`
                 bg-white p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing group relative
-                ${isOverlay ? 'shadow-2xl rotate-2 scale-105 ring-2 ring-green-500 z-50 border-green-500' : 'border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300'}
+                ${isOverlay ? 'shadow-2xl rotate-3 scale-105 cursor-grabbing ring-2 ring-blue-500 z-50 border-blue-500' : 'border-gray-200 shadow-sm hover:shadow-md hover:border-blue-300'}
             `}
         >
             {/* Header do Card */}
@@ -78,17 +84,27 @@ const LeadCard = ({ lead, onClick, isOverlay = false }: { lead: Lead, onClick?: 
                 </div>
 
                 <div className="flex gap-2">
+                    {/* Botão Análise IA */}
+                    <button 
+                        onClick={handleAnalyzeClick}
+                        className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${isAnalyzing ? 'bg-purple-100 text-purple-500 cursor-wait' : 'bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white'}`}
+                        title="Classificar com IA"
+                        disabled={isAnalyzing}
+                    >
+                        {isAnalyzing ? <i className="fas fa-spinner fa-spin text-xs"></i> : <i className="fas fa-robot text-xs"></i>}
+                    </button>
+
                     {lead.phone && (
                         <button 
                             onClick={handleWhatsAppClick}
-                            className="w-7 h-7 rounded-full bg-green-100 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-colors"
+                            className="w-7 h-7 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-colors"
                             title="Chamar no WhatsApp"
                         >
-                            <i className="fab fa-whatsapp"></i>
+                            <i className="fab fa-whatsapp text-xs"></i>
                         </button>
                     )}
                     <div className="w-7 h-7 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                        <i className="fas fa-pen text-xs"></i>
+                        <i className="fas fa-pen text-[10px]"></i>
                     </div>
                 </div>
             </div>
@@ -97,7 +113,7 @@ const LeadCard = ({ lead, onClick, isOverlay = false }: { lead: Lead, onClick?: 
 };
 
 // 2. DRAGGABLE WRAPPER
-const DraggableLead = ({ lead, onClick }: { lead: Lead, onClick: () => void }) => {
+const DraggableLead = ({ lead, onClick, onAnalyze, isAnalyzing }: { lead: Lead, onClick: () => void, onAnalyze: (l: Lead) => void, isAnalyzing: boolean }) => {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
         id: lead.id,
         data: { lead }
@@ -105,32 +121,32 @@ const DraggableLead = ({ lead, onClick }: { lead: Lead, onClick: () => void }) =
 
     const style = {
         transform: CSS.Translate.toString(transform),
-        opacity: isDragging ? 0.3 : 1,
+        opacity: isDragging ? 0.0 : 1, // Hide original when dragging (classic Kanban style)
     };
 
     return (
         <div ref={setNodeRef} {...listeners} {...attributes} style={style} className="touch-none">
-            <LeadCard lead={lead} onClick={onClick} />
+            <LeadCard lead={lead} onClick={onClick} onAnalyze={onAnalyze} isAnalyzing={isAnalyzing} />
         </div>
     );
 };
 
 // 3. DROPPABLE COLUMN
-const DroppableColumn = ({ stage, leads, onEditLead }: { stage: typeof STAGES[0], leads: Lead[], onEditLead: (l: Lead) => void }) => {
+const DroppableColumn = ({ stage, leads, onEditLead, onAnalyzeLead, analyzingIds }: { stage: typeof STAGES[0], leads: Lead[], onEditLead: (l: Lead) => void, onAnalyzeLead: (l: Lead) => void, analyzingIds: Set<string> }) => {
     const { setNodeRef, isOver } = useDroppable({
         id: stage.id,
     });
 
-    const totalValue = leads.length; // Futuramente pode ser a soma de deal values
+    const totalValue = leads.length; 
 
     return (
         <div 
             ref={setNodeRef}
             className={`
                 min-w-[280px] w-full md:w-1/5 rounded-xl flex flex-col h-[calc(100vh-240px)] transition-all duration-200 border-t-4
-                ${isOver ? 'bg-blue-50/80 border-blue-400' : `bg-gray-50/50 border-${stage.color.split('-')[1]}-400`}
+                ${isOver ? 'bg-blue-50 ring-2 ring-blue-200 border-blue-500' : `bg-gray-50/50 border-${stage.color.split('-')[1]}-400`}
             `}
-            style={{ borderColor: stage.chartColor }}
+            style={{ borderColor: isOver ? '#3b82f6' : stage.chartColor }}
         >
             {/* Column Header */}
             <div className="p-3 mb-2">
@@ -147,12 +163,18 @@ const DroppableColumn = ({ stage, leads, onEditLead }: { stage: typeof STAGES[0]
             {/* Column Body */}
             <div className="px-2 pb-2 flex-1 overflow-y-auto custom-scrollbar space-y-3">
                 {leads.map(lead => (
-                    <DraggableLead key={lead.id} lead={lead} onClick={() => onEditLead(lead)} />
+                    <DraggableLead 
+                        key={lead.id} 
+                        lead={lead} 
+                        onClick={() => onEditLead(lead)} 
+                        onAnalyze={onAnalyzeLead}
+                        isAnalyzing={analyzingIds.has(lead.id)}
+                    />
                 ))}
                 {leads.length === 0 && (
                     <div className="h-full flex flex-col items-center justify-center text-gray-300 opacity-50">
                         <i className="fas fa-inbox text-3xl mb-2"></i>
-                        <span className="text-xs">Vazio</span>
+                        <span className="text-xs">Arraste aqui</span>
                     </div>
                 )}
             </div>
@@ -168,9 +190,12 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'analytics'>('kanban'); 
     const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
     const [searchTerm, setSearchTerm] = useState('');
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const [missingTables, setMissingTables] = useState(false);
     
+    // IA Analysis State
+    const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
+
     // Drag State
     const [activeDragId, setActiveDragId] = useState<string | null>(null);
     const [activeDragLead, setActiveDragLead] = useState<Lead | null>(null);
@@ -179,9 +204,13 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingLead, setEditingLead] = useState<Partial<Lead>>({});
 
+    // SENSORES OTIMIZADOS PARA USABILIDADE
     const sensors = useSensors(
-        useSensor(MouseSensor, { activationConstraint: { distance: 10 } }),
-        useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } })
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 5, // 5px movement required to start drag (avoids click confusion)
+            },
+        })
     );
 
     const fetchLeads = async () => {
@@ -244,6 +273,44 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                 ));
                 setToast({ message: "Erro ao mover lead.", type: 'error' });
             }
+        }
+    };
+
+    const handleAnalyzeLead = async (lead: Lead) => {
+        if (analyzingIds.has(lead.id)) return;
+        
+        setAnalyzingIds(prev => new Set(prev).add(lead.id));
+        setToast({ message: `Analisando ${lead.name}...`, type: 'info' });
+
+        try {
+            const analysis = await analyzeLeadQuality(lead);
+            
+            // Adiciona a justificativa da IA às notas existentes
+            const timestamp = new Date().toLocaleString('pt-BR');
+            const newNote = `\n\n[🤖 Análise IA - ${timestamp}]\nScore: ${analysis.score}\nJustificativa: ${analysis.justification}`;
+            const updatedNotes = (lead.notes || '') + newNote;
+            
+            // Atualiza no banco
+            await updateLead(lead.id, { 
+                score: analysis.score,
+                notes: updatedNotes
+            });
+            
+            // Atualiza estado local
+            setLeads(prev => prev.map(l => 
+                l.id === lead.id ? { ...l, score: analysis.score, notes: updatedNotes } : l
+            ));
+            
+            setToast({ message: "Lead analisado com sucesso!", type: 'success' });
+
+        } catch (e) {
+            setToast({ message: "Falha na análise IA.", type: 'error' });
+        } finally {
+            setAnalyzingIds(prev => {
+                const next = new Set(prev);
+                next.delete(lead.id);
+                return next;
+            });
         }
     };
 
@@ -386,7 +453,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
 
                     {/* KANBAN VIEW */}
                     {viewMode === 'kanban' && (
-                        <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                             <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar h-[calc(100vh-220px)] items-start">
                                 {STAGES.map(stage => (
                                     <DroppableColumn 
@@ -394,6 +461,8 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                                         stage={stage} 
                                         leads={filteredLeads.filter(l => l.status === stage.id)}
                                         onEditLead={openEditModal}
+                                        onAnalyzeLead={handleAnalyzeLead}
+                                        analyzingIds={analyzingIds}
                                     />
                                 ))}
                             </div>
@@ -420,6 +489,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                                     <tbody className="divide-y divide-gray-50 text-sm">
                                         {filteredLeads.map(lead => {
                                             const temp = getTemperatureTag(lead.score);
+                                            const isAnalyzing = analyzingIds.has(lead.id);
                                             return (
                                                 <tr key={lead.id} className="hover:bg-gray-50 transition group">
                                                     <td className="px-6 py-4">
@@ -441,9 +511,19 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                                                         </span>
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
-                                                        <button onClick={() => openEditModal(lead)} className="text-gray-400 hover:text-blue-600 transition p-2">
-                                                            <i className="fas fa-pen"></i>
-                                                        </button>
+                                                        <div className="flex justify-end gap-2">
+                                                            <button 
+                                                                onClick={() => handleAnalyzeLead(lead)} 
+                                                                className={`p-2 rounded text-xs transition-colors ${isAnalyzing ? 'bg-purple-100 text-purple-500' : 'text-purple-600 hover:bg-purple-50'}`}
+                                                                title="Analisar"
+                                                                disabled={isAnalyzing}
+                                                            >
+                                                                {isAnalyzing ? <i className="fas fa-spinner fa-spin"></i> : <i className="fas fa-robot"></i>}
+                                                            </button>
+                                                            <button onClick={() => openEditModal(lead)} className="text-gray-400 hover:text-blue-600 transition p-2">
+                                                                <i className="fas fa-pen"></i>
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
