@@ -365,6 +365,12 @@ export interface ChatContact {
   leadId?: string; // Link to Lead if exists
 }
 
+export interface ChatQueue {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface Ticket {
   id: string;
   contactId: string;
@@ -373,8 +379,11 @@ export interface Ticket {
   unreadCount: number;
   lastMessage: string;
   updatedAt: string;
-  ownerId: string; // Which user/admin owns this ticket
+  ownerId: string | null; // Null if waiting in queue
+  queueId?: string | null; // Which queue it belongs to
   tags?: string[];
+  botEnabled?: boolean; 
+  aiSummary?: string;   
 }
 
 export interface Message {
@@ -387,6 +396,7 @@ export interface Message {
   isRead: boolean;
   createdAt: string;
   status?: 'sent' | 'received' | 'read' | 'error';
+  isAiGenerated?: boolean; 
 }
 
 export interface WhatsappConfig {

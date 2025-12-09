@@ -137,3 +137,51 @@ export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, ju
       return { score: 50, justification: "Não foi possível realizar a análise automática." };
   }
 };
+
+/**
+ * Gera uma resposta de chat ou relatório usando IA.
+ */
+export const generateChatResponse = async (history: string, task: 'reply' | 'report' = 'reply'): Promise<string> => {
+    let prompt = '';
+    
+    if (task === 'reply') {
+        prompt = `
+        Atue como um atendente de suporte/vendas profissional, empático e eficiente.
+        
+        HISTÓRICO DA CONVERSA:
+        ${history}
+        
+        SUA TAREFA:
+        Gere uma resposta curta (max 3 frases) e direta para a última mensagem do cliente.
+        Se o cliente fez uma pergunta, responda. Se for uma saudação, saúde de volta.
+        Não use placeholders como [Nome].
+        `;
+    } else {
+        prompt = `
+        Atue como um analista de dados.
+        
+        DADOS DE MÉTRICAS (JSON):
+        ${history}
+        
+        SUA TAREFA:
+        Gere um resumo executivo curto (max 1 parágrafo) destacando o desempenho do atendimento.
+        Foque em insights acionáveis.
+        `;
+    }
+
+    try {
+        const { data, error } = await supabase.functions.invoke('generate-content', {
+            body: {
+                prompt,
+                mode: 'chat_response', // Novo modo que o backend deve tratar como genérico
+                generateAudio: false
+            }
+        });
+
+        if (error) throw error;
+        return data.text.trim();
+    } catch (e) {
+        console.error("Erro na geração de chat/relatório:", e);
+        return task === 'reply' ? "Desculpe, não consegui gerar uma resposta agora." : "Erro ao gerar relatório.";
+    }
+};
