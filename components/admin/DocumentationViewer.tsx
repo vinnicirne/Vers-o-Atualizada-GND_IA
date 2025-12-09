@@ -101,160 +101,66 @@ export function DocumentationViewer() {
 
   const schemaSql = `
 -- =========================================================
--- 🚨 PACOTE COMPLETO (CHAT CRM & LEADS)
--- Execute este script para habilitar todas as tabelas.
--- Versão com DROP POLICY para evitar erros de duplicidade.
+-- 🛠️ SCRIPT DE ATUALIZAÇÃO (TABELAS DE SISTEMA)
+-- Execute este script para garantir o funcionamento correto.
 -- =========================================================
 
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. TABELAS DE CRM / LEADS
-create table if not exists public.leads (
-  id uuid default gen_random_uuid() primary key,
-  owner_id uuid references public.app_users(id) not null,
-  email text not null,
-  name text,
-  phone text,
-  company text,
-  status text default 'new',
-  score int default 0,
-  source text,
-  utm_source text,
-  utm_medium text,
-  utm_campaign text,
-  notes text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-create table if not exists public.marketing_events (
-  id uuid default gen_random_uuid() primary key,
-  lead_id uuid references public.leads(id) on delete cascade,
-  event_type text not null,
-  metadata jsonb default '{}'::jsonb,
-  created_at timestamptz default now()
-);
-
--- 2. TABELAS DE CHAT (WHATICKET / GENESIS)
-
--- Conexões
-create table if not exists public.chat_connections (
+-- 1. TABELA DE FEEDBACKS DO SISTEMA (DEPOIMENTOS)
+create table if not exists public.system_feedbacks (
   id uuid default gen_random_uuid() primary key,
   user_id uuid references public.app_users(id) not null,
-  name text not null,
-  status text default 'disconnected', 
-  type text default 'legacy_qrcode',
-  profile_type text default 'personal',
-  phone_number_id text,
-  waba_id text,
-  api_token text,
-  qrcode text,
-  session_name text,
-  external_api_url text,
-  external_api_token text,
-  greeting_message text,
-  farewell_message text,
-  is_default boolean default false,
-  ai_config jsonb default '{"enabled": false, "personality": "formal"}'::jsonb,
-  last_activity timestamptz default now(),
+  content text not null,
+  rating int not null check (rating >= 1 and rating <= 5),
+  status text default 'pending', -- pending, approved, rejected
   created_at timestamptz default now()
 );
 
--- Respostas Rápidas
-create table if not exists public.chat_quick_answers (
+-- 2. TABELA DE POPUPS
+create table if not exists public.system_popups (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.app_users(id) not null,
-  shortcut text not null,
-  message text not null,
-  created_at timestamptz default now()
-);
-
--- Contatos do Chat
-create table if not exists public.chat_contacts (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.app_users(id) not null,
-  name text not null,
-  number text not null,
-  profile_pic_url text,
-  email text,
-  tags text[],
-  created_at timestamptz default now()
-);
-
--- Tickets (Conversas/Atendimentos)
-create table if not exists public.chat_tickets (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references public.app_users(id) not null,
-  contact_id uuid references public.chat_contacts(id) not null,
-  connection_id uuid references public.chat_connections(id),
-  status text default 'open', -- open, pending, closed
-  unread_count int default 0,
-  last_message text,
-  last_message_time timestamptz default now(),
-  ai_enabled boolean default false,
-  tags text[],
-  created_at timestamptz default now()
-);
-
--- Mensagens do Chat
-create table if not exists public.chat_messages (
-  id uuid default gen_random_uuid() primary key,
-  ticket_id uuid references public.chat_tickets(id) not null,
-  sender_type text not null, -- 'user' (agente), 'contact' (cliente), 'bot' (IA)
+  title text not null,
   content text,
+  type text default 'text', -- text, image, video
   media_url text,
-  media_type text, -- text, image, audio, video
-  status text default 'sent', -- sent, delivered, read
+  style jsonb default '{}'::jsonb, -- cores, tema
+  trigger_settings jsonb default '{}'::jsonb, -- delay, frequencia
+  is_active boolean default true,
   created_at timestamptz default now()
 );
 
 -- 3. HABILITAR RLS (Row Level Security)
-alter table public.leads enable row level security;
-alter table public.marketing_events enable row level security;
-alter table public.chat_connections enable row level security;
-alter table public.chat_quick_answers enable row level security;
-alter table public.chat_contacts enable row level security;
-alter table public.chat_tickets enable row level security;
-alter table public.chat_messages enable row level security;
+alter table public.system_feedbacks enable row level security;
+alter table public.system_popups enable row level security;
 
 -- 4. POLÍTICAS DE SEGURANÇA (DROP IF EXISTS para evitar erros)
 
-drop policy if exists "Users manage own leads" on public.leads;
-create policy "Users manage own leads" on public.leads for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+drop policy if exists "Users can insert feedbacks" on public.system_feedbacks;
+create policy "Users can insert feedbacks" on public.system_feedbacks for insert with check (auth.uid() = user_id);
 
-drop policy if exists "Users manage own connections" on public.chat_connections;
-create policy "Users manage own connections" on public.chat_connections for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+drop policy if exists "Public view approved feedbacks" on public.system_feedbacks;
+create policy "Public view approved feedbacks" on public.system_feedbacks for select using (status = 'approved');
 
-drop policy if exists "Users manage own answers" on public.chat_quick_answers;
-create policy "Users manage own answers" on public.chat_quick_answers for all using (auth.uid() = user_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+drop policy if exists "Admin manage feedbacks" on public.system_feedbacks;
+create policy "Admin manage feedbacks" on public.system_feedbacks for all using (exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
-drop policy if exists "Users manage own contacts" on public.chat_contacts;
-create policy "Users manage own contacts" on public.chat_contacts for all using (auth.uid() = user_id);
+drop policy if exists "Public view active popups" on public.system_popups;
+create policy "Public view active popups" on public.system_popups for select using (true); -- Popups são públicos para leitura
 
-drop policy if exists "Users manage own tickets" on public.chat_tickets;
-create policy "Users manage own tickets" on public.chat_tickets for all using (auth.uid() = user_id);
-
-drop policy if exists "Users manage own messages" on public.chat_messages;
-create policy "Users manage own messages" on public.chat_messages for all using (
-  exists (select 1 from public.chat_tickets where id = chat_messages.ticket_id and user_id = auth.uid())
-);
+drop policy if exists "Admin manage popups" on public.system_popups;
+create policy "Admin manage popups" on public.system_popups for all using (exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
 -- 5. PERMISSÕES
-grant all on public.leads to authenticated;
-grant all on public.marketing_events to authenticated;
-grant all on public.chat_connections to authenticated;
-grant all on public.chat_quick_answers to authenticated;
-grant all on public.chat_contacts to authenticated;
-grant all on public.chat_tickets to authenticated;
-grant all on public.chat_messages to authenticated;
+grant all on public.system_feedbacks to authenticated;
+grant select on public.system_feedbacks to anon; -- Para mostrar na home pública se necessário
 
-grant all on public.leads to service_role;
-grant all on public.marketing_events to service_role;
-grant all on public.chat_connections to service_role;
-grant all on public.chat_quick_answers to service_role;
-grant all on public.chat_contacts to service_role;
-grant all on public.chat_tickets to service_role;
-grant all on public.chat_messages to service_role;
+grant select on public.system_popups to anon;
+grant select on public.system_popups to authenticated;
+grant all on public.system_popups to authenticated; -- Admin only via RLS
+
+grant all on public.system_feedbacks to service_role;
+grant all on public.system_popups to service_role;
 `;
 
   return (
@@ -349,7 +255,7 @@ grant all on public.chat_messages to service_role;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Use este script para criar todas as tabelas necessárias (Chat CRM, Leads, etc).
+                    Use este script para criar as tabelas de sistema (Feedbacks, Popups).
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>

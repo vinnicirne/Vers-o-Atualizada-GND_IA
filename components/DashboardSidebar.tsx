@@ -7,8 +7,8 @@ import { User } from '../types';
 interface DashboardSidebarProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    currentMode: ServiceKey | 'crm' | 'chat_crm'; // Updated Type
-    onModeChange: (mode: ServiceKey | 'crm' | 'chat_crm') => void; // Updated Type
+    currentMode: ServiceKey; // Removed 'crm' from union type
+    onModeChange: (mode: ServiceKey) => void;
     user: User | null;
     isGuest: boolean;
     activeCredits: number;
@@ -20,7 +20,6 @@ interface DashboardSidebarProps {
     onOpenIntegrations: () => void;
     onOpenManual: () => void;
     onNavigateFeedback: () => void;
-    onNavigateChatCrm?: () => void; // New prop
 }
 
 export function DashboardSidebar({
@@ -39,7 +38,6 @@ export function DashboardSidebar({
     onOpenIntegrations,
     onOpenManual,
     onNavigateFeedback,
-    onNavigateChatCrm
 }: DashboardSidebarProps) {
 
     const handleModeSelection = (mode: ServiceKey) => {
@@ -54,15 +52,6 @@ export function DashboardSidebar({
         }
 
         onModeChange(mode);
-    };
-
-    const handleCrmClick = () => {
-        if (hasAccessToService('crm_suite')) {
-            if (onNavigateChatCrm) onNavigateChatCrm();
-            setIsOpen(false);
-        } else {
-            onOpenPlans(); // Upsell
-        }
     };
 
     return (
@@ -88,31 +77,8 @@ export function DashboardSidebar({
                     </button>
                 </div>
                 
-                {/* === CHAT CRM HIGHLIGHT BUTTON === */}
-                {user && (
-                    <div className="p-4 border-b border-gray-200 bg-blue-50/50 relative">
-                        <button
-                            onClick={handleCrmClick}
-                            className={`w-full bg-gradient-to-r from-blue-600 to-blue-500 hover:to-blue-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-blue-500/20 flex flex-col items-center justify-center text-center group transition-all transform hover:-translate-y-0.5 ${!hasAccessToService('crm_suite') ? 'opacity-80 grayscale' : ''}`}
-                        >
-                            <div className="flex items-center gap-2 mb-1">
-                                <i className="fab fa-whatsapp text-2xl"></i>
-                                <i className="fas fa-comments text-lg opacity-80"></i>
-                            </div>
-                            <span className="text-sm">Central de Atendimento</span>
-                            <span className="text-[10px] opacity-80 font-medium bg-blue-700/30 px-2 py-0.5 rounded-full mt-1">CRM 360° • Whaticket</span>
-                        </button>
-                        
-                        {!hasAccessToService('crm_suite') && (
-                            <div className="absolute top-2 right-2 bg-yellow-400 text-black text-xs font-bold px-2 py-1 rounded-full shadow-sm z-10 flex items-center gap-1">
-                                <i className="fas fa-lock"></i> PRO
-                            </div>
-                        )}
-                    </div>
-                )}
-
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
-                    {CREATOR_SUITE_MODES.filter(svc => svc.value !== 'crm_suite').map((svc) => {
+                    {CREATOR_SUITE_MODES.map((svc) => {
                         const isSelected = currentMode === svc.value;
                         const isLocked = !hasAccessToService(svc.value); 
                         const iconClass = SERVICE_ICONS[svc.value] || 'fa-question'; 

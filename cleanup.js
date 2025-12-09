@@ -1,3 +1,4 @@
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -14,9 +15,18 @@ const filesToDelete = [
   'components/admin/AllNewsViewer.tsx',
   'components/Layout.tsx',
   'components/EmptyState.tsx',
-  'Header.tsx', // Arquivo duplicado na raiz (o correto está em components/Header.tsx)
-  'services/paymentService.ts', // Removido
-  'components/MercadoPagoCheckout.tsx' // Removido
+  'Header.tsx', 
+  'services/paymentService.ts',
+  'components/MercadoPagoCheckout.tsx',
+  // Chat / CRM / Whaticket Module Removal
+  'pages/ChatCrmPage.tsx',
+  'components/crm/CrmDashboard.tsx',
+  'services/chatService.ts',
+  'services/marketingService.ts',
+  'wa-backend/index.js',
+  'wa-backend/package.json',
+  'supabase/functions/capture-lead/index.ts',
+  'supabase/functions/capture-lead/deno.json'
 ];
 
 console.log('🧹 Iniciando limpeza de arquivos obsoletos (Lixo Digital)...');
@@ -34,6 +44,27 @@ filesToDelete.forEach(file => {
   } else {
     console.log(`⚠️  Não encontrado (já removido?): ${file}`);
   }
+});
+
+// Tentativa de remover pastas vazias (opcional e seguro)
+const dirsToDelete = [
+  'components/crm',
+  'wa-backend/session',
+  'wa-backend',
+  'supabase/functions/capture-lead'
+];
+
+dirsToDelete.forEach(dir => {
+    const dirPath = path.join(__dirname, dir);
+    if (fs.existsSync(dirPath)) {
+        try {
+            // Só remove se estiver vazio ou forçamos recursive
+            fs.rmSync(dirPath, { recursive: true, force: true });
+            console.log(`✅ Pasta removida: ${dir}`);
+        } catch(e) {
+            console.log(`ℹ️ Nota: Não foi possível remover pasta ${dir} (pode não estar vazia ou permissão).`);
+        }
+    }
 });
 
 console.log('\n✨ Limpeza concluída! O projeto está mais leve e organizado.');

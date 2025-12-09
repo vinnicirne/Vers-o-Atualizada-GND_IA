@@ -56,7 +56,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         onOpenAffiliates={() => toggleModal('affiliate', true)}
         onOpenIntegrations={() => toggleModal('integrations', true)}
         userCredits={isGuest ? guestCredits : user?.credits}
-        pageTitle={currentMode === 'crm' ? 'Gestão de Leads' : whiteLabelSettings.dashboardTitle}
+        pageTitle={currentMode === 'crm_suite' ? 'Gestão de Leads' : whiteLabelSettings.dashboardTitle}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
@@ -66,7 +66,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         <DashboardSidebar 
             isOpen={sidebarOpen}
             setIsOpen={setSidebarOpen}
-            currentMode={currentMode}
+            currentMode={currentMode as ServiceKey}
             onModeChange={handleModeChange}
             user={user}
             isGuest={isGuest}
@@ -86,7 +86,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
             <div className="max-w-5xl mx-auto">
                 
                 {/* CONDITIONAL RENDER: CRM OR GENERATOR */}
-                {currentMode === 'crm' ? (
+                {currentMode === 'crm_suite' ? (
                     <div className="animate-fade-in-up">
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-[#263238] flex items-center gap-2">

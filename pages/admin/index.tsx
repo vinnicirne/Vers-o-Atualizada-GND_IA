@@ -19,7 +19,6 @@ import { FeedbackManager } from '../../components/admin/FeedbackManager';
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
 import { ToolManager } from '../../components/admin/ToolManager'; 
 import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager';
-import { CrmDashboard } from '../../components/crm/CrmDashboard'; // NOVO IMPORT
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
 import { CreateUserPayload, updateNewsArticle, createUser } from '../../services/adminService';
@@ -163,8 +162,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <LogsViewer dataVersion={dataVersion} />;
       case 'docs': 
         return <DocumentationViewer />;
-      case 'crm': // NOVO CASE
-        return <CrmDashboard isAdminView={true} />;
       default:
         return (
           <>
