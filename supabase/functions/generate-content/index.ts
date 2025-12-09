@@ -423,7 +423,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
        - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o `innerHTML`** do elemento com o ID.
        - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
        - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu `innerHTML` vazio** ou remova o elemento se for mais limpo.
-       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere a estrutura HTML completa da lista e seus itens** (ex: `<div>...</div>` para cada experiência, `<span>...</span>` para cada skill) diretamente dentro do `div` de placeholder da lista.
+       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere o HTML completo para todos os itens da lista e seus itens** (ex: `<div>...</div>` para cada experiência, `<span>...</span>` para cada skill) diretamente dentro do `div` de placeholder da lista.
        - **NÃO inclua tags \`<html>\`, \`<head>\` ou \`<body>\` externas.** Apenas o conteúdo interno.
        - Use classes Tailwind CSS para todo o estilo.
        - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
@@ -464,7 +464,6 @@ serve(async (req) => {
     }
 
     // 4. Initialize Gemini (GoogleGenAI SDK)
-    // FIX: Use the correct class for Google GenAI SDK.
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
     
     // --- TEXT TO SPEECH MODE HANDLER ---
@@ -597,7 +596,6 @@ serve(async (req) => {
     }
 
     // 5. Call Generate Content
-    // FIX: The `contents` parameter accepts a string directly for single text prompts.
     const response = await ai.models.generateContent({
         model: modelName,
         contents: fullPrompt, 
@@ -605,7 +603,7 @@ serve(async (req) => {
     });
 
     // FIX: Ensure `response.text` is always a string and explicitly typed.
-    let text: string = response.text || '';
+    let text: string = typeof response.text === 'string' ? response.text : '';
     
     let sources = [];
     if (response.candidates?.[0]?.groundingMetadata?.groundingChunks) {
@@ -627,22 +625,28 @@ serve(async (req) => {
     if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
         
-        // FIX: Explicitly define string literals for indexOf/lastIndexOf calls to avoid potential Deno type checker quirks.
-        const bodyCloseTag = '</body>';
-        const divOpenTag = '<div>';
-        const divCloseTag = '</div>';
+        // Use explicit strings to avoid parser ambiguity if any
+        const tagBodyStart = '<body';
+        const tagBodyEnd = '</body>';
+        
+        const bodyStart = text.indexOf(tagBodyStart);
+        const bodyEnd = text.lastIndexOf(tagBodyEnd);
 
-        const bodyStartIndex = text.indexOf('<body');
-        const bodyEndIndex = text.lastIndexOf(bodyCloseTag) + bodyCloseTag.length;
-        if (bodyStartIndex !== -1 && bodyEndIndex !== -1 && bodyEndIndex > bodyStartIndex) {
-            text = text.substring(bodyStartIndex, bodyEndIndex);
+        if (bodyStart !== -1 && bodyEnd !== -1 && (bodyEnd + tagBodyEnd.length) > bodyStart) {
+            text = text.substring(bodyStart, bodyEnd + tagBodyEnd.length);
         } else {
-            const divStartIndex = text.indexOf(divOpenTag);
-            const lastDivIndex = text.lastIndexOf(divCloseTag);
-            // Ensure lastDivIndex is not -1 before calculating divEndIndex
-            const divEndIndex = (lastDivIndex !== -1 ? lastDivIndex : 0) + divCloseTag.length; 
-            if (divStartIndex !== -1 && divEndIndex > divStartIndex) {
-                text = text.substring(divStartIndex, divEndIndex);
+            // Fallback to div
+            const tagDivStart = '<div>';
+            const tagDivEnd = '</div>';
+            
+            const divStart = text.indexOf(tagDivStart);
+            const divEnd = text.lastIndexOf(tagDivEnd);
+            
+            if (divStart !== -1 && divEnd !== -1) {
+                const divEndPos = divEnd + tagDivEnd.length;
+                if (divEndPos > divStart) {
+                    text = text.substring(divStart, divEndPos);
+                }
             }
         }
     }

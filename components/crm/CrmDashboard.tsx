@@ -4,24 +4,25 @@ import { Lead, LeadStatus } from '../../types';
 import { getLeads, updateLead, deleteLead, createLead } from '../../services/marketingService';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from '../admin/Toast';
+import { ResponsiveContainer, FunnelChart, Funnel, LabelList, Tooltip, Cell } from 'recharts';
 
 interface CrmDashboardProps {
     isAdminView?: boolean;
 }
 
-const STAGES: { id: LeadStatus; label: string; color: string; bg: string }[] = [
-    { id: 'new', label: 'Novos', color: 'text-blue-700', bg: 'bg-blue-50' },
-    { id: 'contacted', label: 'Contatados', color: 'text-yellow-700', bg: 'bg-yellow-50' },
-    { id: 'qualified', label: 'Qualificados', color: 'text-purple-700', bg: 'bg-purple-50' },
-    { id: 'customer', label: 'Clientes (Ganho)', color: 'text-green-700', bg: 'bg-green-50' },
-    { id: 'lost', label: 'Perdidos', color: 'text-gray-600', bg: 'bg-gray-100' },
+const STAGES: { id: LeadStatus; label: string; color: string; bg: string; chartColor: string }[] = [
+    { id: 'new', label: 'Novos', color: 'text-blue-700', bg: 'bg-blue-50', chartColor: '#3b82f6' },
+    { id: 'contacted', label: 'Contatados', color: 'text-yellow-700', bg: 'bg-yellow-50', chartColor: '#eab308' },
+    { id: 'qualified', label: 'Qualificados', color: 'text-purple-700', bg: 'bg-purple-50', chartColor: '#a855f7' },
+    { id: 'customer', label: 'Clientes (Ganho)', color: 'text-green-700', bg: 'bg-green-50', chartColor: '#22c55e' },
+    { id: 'lost', label: 'Perdidos', color: 'text-gray-600', bg: 'bg-gray-100', chartColor: '#9ca3af' },
 ];
 
 export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const { user } = useUser();
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewMode, setViewMode] = useState<'table' | 'kanban'>('kanban'); // Default to Kanban for "Funnel" view
+    const [viewMode, setViewMode] = useState<'table' | 'kanban' | 'analytics'>('kanban'); 
     const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -88,7 +89,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
 
     // Filter Logic
     const filteredLeads = leads.filter(lead => {
-        const matchesStatus = viewMode === 'kanban' ? true : (filterStatus === 'all' || lead.status === filterStatus);
+        const matchesStatus = (viewMode === 'kanban' || viewMode === 'analytics') ? true : (filterStatus === 'all' || lead.status === filterStatus);
         const matchesSearch = !searchTerm || 
             (lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
              lead.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -106,6 +107,16 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
         acc[stage.id] = leads.filter(l => l.status === stage.id).length;
         return acc;
     }, {} as Record<string, number>);
+
+    // Data for Funnel Chart
+    const funnelChartData = STAGES
+        .filter(s => s.id !== 'lost') // Usually lost leads are not in the main funnel visualization
+        .map(stage => ({
+            name: stage.label,
+            value: metrics[stage.id] || 0,
+            fill: stage.chartColor
+        }))
+        .filter(d => d.value > 0); // Recharts funnel looks better if we filter zeros, or keep them. Let's keep non-zeros for cleaner look.
 
     return (
         <div className="space-y-6">
@@ -129,13 +140,19 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                             onClick={() => setViewMode('kanban')}
                             className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition ${viewMode === 'kanban' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
-                            <i className="fas fa-columns"></i> Funil
+                            <i className="fas fa-columns"></i> Funil (Kanban)
                         </button>
                         <button 
                             onClick={() => setViewMode('table')}
                             className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition ${viewMode === 'table' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
                         >
                             <i className="fas fa-list"></i> Lista
+                        </button>
+                        <button 
+                            onClick={() => setViewMode('analytics')}
+                            className={`px-3 py-1.5 rounded-md text-xs font-bold flex items-center gap-2 transition ${viewMode === 'analytics' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <i className="fas fa-chart-pie"></i> Gráficos
                         </button>
                     </div>
 
@@ -181,6 +198,34 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                 </div>
             ) : (
                 <>
+                    {/* ANALYTICS VIEW (VISUAL FUNNEL) */}
+                    {viewMode === 'analytics' && (
+                        <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">
+                            <h3 className="text-lg font-bold text-gray-800 mb-6">Visualização do Funil de Vendas</h3>
+                            {funnelChartData.length > 0 ? (
+                                <div className="w-full h-[400px] flex justify-center">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <FunnelChart>
+                                            <Tooltip />
+                                            <Funnel
+                                                dataKey="value"
+                                                data={funnelChartData}
+                                                isAnimationActive
+                                            >
+                                                <LabelList position="right" fill="#000" stroke="none" dataKey="name" />
+                                                {funnelChartData.map((entry, index) => (
+                                                    <Cell key={`cell-${index}`} fill={entry.fill} />
+                                                ))}
+                                            </Funnel>
+                                        </FunnelChart>
+                                    </ResponsiveContainer>
+                                </div>
+                            ) : (
+                                <p className="text-center text-gray-500 py-10">Dados insuficientes para gerar o gráfico de funil. Adicione leads em diferentes estágios.</p>
+                            )}
+                        </div>
+                    )}
+
                     {/* KANBAN VIEW */}
                     {viewMode === 'kanban' && (
                         <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar">
@@ -198,7 +243,7 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                                                     key={lead.id} 
                                                     onClick={() => openEditModal(lead)}
                                                     className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm hover:shadow-md cursor-pointer transition border-l-4"
-                                                    style={{ borderLeftColor: stage.color.includes('blue') ? '#3b82f6' : stage.color.includes('yellow') ? '#eab308' : stage.color.includes('purple') ? '#a855f7' : stage.color.includes('green') ? '#22c55e' : '#9ca3af' }}
+                                                    style={{ borderLeftColor: stage.chartColor }}
                                                 >
                                                     <h4 className="font-bold text-gray-800 text-sm truncate">{lead.name || 'Sem Nome'}</h4>
                                                     <p className="text-xs text-gray-500 mb-1 truncate">{lead.company}</p>
