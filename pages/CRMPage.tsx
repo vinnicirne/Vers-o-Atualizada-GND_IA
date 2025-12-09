@@ -4,6 +4,7 @@ import { useUser } from '../contexts/UserContext';
 import { usePlan } from '../hooks/usePlan';
 import { CRMManager } from '../components/admin/CRMManager'; // Admin View
 import { ClientCRM } from '../components/crm/ClientCRM'; // User View
+import { MultiChatLayout } from '../components/chat/MultiChatLayout'; // Chat View
 import { Header } from '../components/Header'; // Reusing Header for consistency
 import { PlansModal } from '../components/PlansModal';
 
@@ -15,6 +16,7 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
     const { user } = useUser();
     const { hasAccessToService } = usePlan();
     const [showPlans, setShowPlans] = useState(false);
+    const [activeTab, setActiveTab] = useState<'leads' | 'chat'>('leads');
 
     if (!user) {
         return (
@@ -71,9 +73,9 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
     }
 
     return (
-        <div className="min-h-screen bg-[#F0F2F5] font-['Poppins']">
+        <div className="min-h-screen bg-[#F0F2F5] font-['Poppins'] flex flex-col">
             {/* Custom Header for CRM Page */}
-            <header className="bg-white border-b border-gray-200 h-16 flex items-center px-6 justify-between sticky top-0 z-30 shadow-sm">
+            <header className="bg-white border-b border-gray-200 h-16 flex items-center px-6 justify-between sticky top-0 z-30 shadow-sm shrink-0">
                 <div className="flex items-center gap-4">
                     <button onClick={onNavigateToDashboard} className="text-gray-500 hover:text-gray-800 transition">
                         <i className="fas fa-arrow-left text-lg"></i>
@@ -88,41 +90,69 @@ export default function CRMPage({ onNavigateToDashboard }: CRMPageProps) {
                     </div>
                 </div>
                 
-                {isAdmin && (
+                {isAdmin ? (
                     <div className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold border border-yellow-200">
                         Modo Administrador (Visão do Sistema)
+                    </div>
+                ) : (
+                    /* Tabs para Usuário Final */
+                    <div className="flex bg-gray-100 p-1 rounded-lg">
+                        <button 
+                            onClick={() => setActiveTab('leads')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'leads' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <i className="fas fa-columns mr-2"></i> Leads
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('chat')}
+                            className={`px-4 py-1.5 rounded-md text-sm font-bold transition-all ${activeTab === 'chat' ? 'bg-white text-green-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                        >
+                            <i className="fab fa-whatsapp mr-2"></i> Chat
+                        </button>
                     </div>
                 )}
             </header>
 
-            <main className="p-6 max-w-7xl mx-auto">
+            <main className="flex-1 overflow-hidden flex flex-col">
                 {isAdmin ? (
-                    <div className="space-y-6">
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start mb-6">
-                            <i className="fas fa-info-circle text-blue-500 mt-1"></i>
-                            <div>
-                                <h3 className="font-bold text-blue-800 text-sm">Visão do Sistema (Admin)</h3>
-                                <p className="text-xs text-blue-600">
-                                    Aqui você gerencia os <strong>Leads do Sistema</strong> (pessoas que se cadastraram na Landing Page do SaaS). 
-                                    Para ver o CRM de um cliente específico, acesse "Usuários" e "Ver Detalhes".
-                                </p>
+                    <div className="p-6 overflow-y-auto">
+                        <div className="space-y-6 max-w-7xl mx-auto">
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex gap-3 items-start mb-6">
+                                <i className="fas fa-info-circle text-blue-500 mt-1"></i>
+                                <div>
+                                    <h3 className="font-bold text-blue-800 text-sm">Visão do Sistema (Admin)</h3>
+                                    <p className="text-xs text-blue-600">
+                                        Aqui você gerencia os <strong>Leads do Sistema</strong> (pessoas que se cadastraram na Landing Page do SaaS). 
+                                        Para ver o CRM de um cliente específico, acesse "Usuários" e "Ver Detalhes".
+                                    </p>
+                                </div>
                             </div>
+                            <CRMManager />
                         </div>
-                        <CRMManager />
                     </div>
                 ) : (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-end mb-4">
-                            <div>
-                                <h2 className="text-2xl font-bold text-gray-800">Seus Clientes</h2>
-                                <p className="text-gray-500 text-sm">Gerencie os contatos capturados pelo Chat e Landing Pages.</p>
+                    /* Client View Switcher */
+                    activeTab === 'leads' ? (
+                        <div className="p-6 overflow-y-auto">
+                            <div className="max-w-7xl mx-auto space-y-6">
+                                <div className="flex justify-between items-end mb-4">
+                                    <div>
+                                        <h2 className="text-2xl font-bold text-gray-800">Seus Clientes</h2>
+                                        <p className="text-gray-500 text-sm">Gerencie os contatos capturados pelo Chat e Landing Pages.</p>
+                                    </div>
+                                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">
+                                        <i className="fas fa-plus mr-2"></i> Adicionar Manualmente
+                                    </button>
+                                </div>
+                                <ClientCRM userId={user.id} />
                             </div>
-                            <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition">
-                                <i className="fas fa-plus mr-2"></i> Adicionar Manualmente
-                            </button>
                         </div>
-                        <ClientCRM userId={user.id} />
-                    </div>
+                    ) : (
+                        /* Chat View - Full Height */
+                        <div className="h-full bg-gray-100">
+                            <MultiChatLayout user={user} />
+                        </div>
+                    )
                 )}
             </main>
         </div>

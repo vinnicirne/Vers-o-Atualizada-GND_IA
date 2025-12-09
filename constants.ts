@@ -26,12 +26,7 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Gerador de Prompts',
     placeholder: 'Descreva a tarefa para a qual você precisa de um prompt. Ex: "um prompt para criar um carrossel de 5 posts no Instagram sobre produtividade".',
   },
-  // --- OPÇÕES PREMIUM / AVANÇADAS (REORDERED FOR VISIBILITY) ---
-  {
-    value: 'multi_chat',
-    label: 'Chat Multi-Atendimento',
-    placeholder: '',
-  },
+  // --- OPÇÕES PREMIUM / AVANÇADAS ---
   {
     value: 'curriculum_generator',
     label: 'Criador de Currículos (IA)', // NOVO
