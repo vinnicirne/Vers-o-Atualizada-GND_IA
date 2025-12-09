@@ -34,7 +34,8 @@ export function useDashboard() {
 
     // UI Control
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
+    // Allow 'crm' as a valid mode for the dashboard state
+    const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm'>('news_generator');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -87,10 +88,15 @@ export function useDashboard() {
         setModals(prev => ({ ...prev, [modal]: value }));
     };
 
-    const handleModeChange = (mode: ServiceKey) => {
+    const handleModeChange = (mode: ServiceKey | 'crm') => {
+        // Special handling for CRM
+        if (mode === 'crm') {
+            setCurrentMode(mode);
+            setSidebarOpen(false);
+            return;
+        }
+
         // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
-        // Se a ferramenta não estiver acessível (seja por plano ou por desativação global),
-        // o modal de 'plans' (para logados) ou 'featureLock' (para guests) será acionado.
         if (!hasAccessToService(mode)) {
             if (isGuest) {
                 toggleModal('featureLock', true);

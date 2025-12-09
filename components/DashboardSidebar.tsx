@@ -1,6 +1,4 @@
 
-
-
 import React from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { CREATOR_SUITE_MODES, SERVICE_ICONS } from '../constants'; // SERVICE_COLORS não será mais usado diretamente
@@ -9,8 +7,8 @@ import { User } from '../types';
 interface DashboardSidebarProps {
     isOpen: boolean;
     setIsOpen: (open: boolean) => void;
-    currentMode: ServiceKey;
-    onModeChange: (mode: ServiceKey) => void;
+    currentMode: ServiceKey | 'crm'; // Add 'crm' to type
+    onModeChange: (mode: ServiceKey | 'crm') => void; // Update type
     user: User | null;
     isGuest: boolean;
     activeCredits: number;
@@ -140,6 +138,27 @@ export function DashboardSidebar({
                             </button>
                         );
                     })}
+
+                    {/* CRM & Leads Link - Only for logged in users */}
+                    {user && (
+                        <>
+                            <div className="h-px bg-gray-100 my-2"></div>
+                            <button
+                                onClick={() => onModeChange('crm')}
+                                className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 text-left group ${currentMode === 'crm' ? 'bg-blue-50 ring-1 ring-blue-500' : 'hover:bg-gray-50'}`}
+                            >
+                                <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${currentMode === 'crm' ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-500'}`}>
+                                    <i className="fas fa-users-cog text-sm"></i>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                    <p className={`text-sm font-semibold truncate ${currentMode === 'crm' ? 'text-blue-800' : 'text-gray-600'}`}>
+                                        CRM & Leads
+                                    </p>
+                                    <p className="text-xs text-gray-400 mt-0.5 truncate">Gerencie seus contatos</p>
+                                </div>
+                            </button>
+                        </>
+                    )}
                 </div>
 
                 {/* Menu Extra (Mobile Only) */}

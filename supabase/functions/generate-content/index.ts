@@ -8,7 +8,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { GoogleGenAI } from "npm:@google/genai";
 // Importar templates de currículo (necessário para o backend)
 import { CURRICULUM_TEMPLATES } from "../../../components/resume/templates.ts"; // Ajustar caminho conforme a estrutura real
-// FIX: Correctly import GenerateContentOptions type
+// FIX: Correctly import GenerateContentOptions type using type-only import to avoid runtime issues in Deno if path is tricky
 import type { GenerateContentOptions } from "../../../services/geminiService.ts";
 
 
