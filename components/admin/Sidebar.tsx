@@ -11,6 +11,7 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
   const navItems: { key: AdminView; label: string; icon: string }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
     { key: 'users', label: 'Usuários', icon: 'fas fa-users-cog' },
+    { key: 'crm', label: 'CRM / Leads', icon: 'fas fa-funnel-dollar' }, // NOVO
     { key: 'notifications_push', label: 'Notificações Push', icon: 'fas fa-paper-plane' },
     { key: 'news', label: 'Histórico', icon: 'fas fa-newspaper' },
     { key: 'payments', label: 'Pagamentos', icon: 'fas fa-credit-card' },

@@ -10,7 +10,7 @@ export type ServiceKey =
   | 'social_media_poster'
   | 'n8n_integration'
   | 'curriculum_generator'
-  | 'crm_suite';
+  | 'crm_suite'; // NOVO: CRM & Leads Management
 
 export interface ServicePermission {
   key: ServiceKey; // Nome em português

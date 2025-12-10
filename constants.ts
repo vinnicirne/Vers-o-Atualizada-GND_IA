@@ -72,7 +72,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   social_media_poster: 5, // Custo similar à geração de imagem
   curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
-  crm_suite: 0, // Recurso de acesso, sem custo de crédito por uso
+  crm_suite: 0, // Recurso de acesso (CRM), sem custo por uso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -105,7 +105,7 @@ const curriculumService: ServicePermission = { key: 'curriculum_generator', name
 // Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
 
-// Serviço CRM (Apenas Standard e Premium) - Adicionado para consistência
+// Serviço CRM (Apenas Basic, Standard e Premium)
 const crmService: ServicePermission = { key: 'crm_suite', name: 'CRM & Gestão de Leads', enabled: true, creditsPerUse: 0 };
 
 
@@ -121,8 +121,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     color: 'gray', // Cor Tailwind
     services: [
       ...commonServices,
-      promptService, // Adicionado ao Free
-      { ...crmService, enabled: false } // CRM Desabilitado no Free
+      promptService // Adicionado ao Free
     ]
   },
   basic: {
@@ -137,7 +136,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
-      { ...crmService, enabled: false } // CRM Desabilitado no Basic
+      crmService // CRM no Basic
     ]
   },
   standard: {
@@ -158,7 +157,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       siteBuilderService, // Usando o serviço unificado
       ...artServices, // Agora contém apenas o Editor Visual
       n8nService,
-      crmService, // Adicionado ao Standard (Habilitado)
+      crmService // CRM no Standard
     ]
   },
   premium: {
@@ -179,7 +178,7 @@ export const PLANS: Record<UserPlan, Plan> = {
       siteBuilderService, // Usando o serviço unificado
       ...artServices,
       n8nService,
-      crmService, // Adicionado ao Premium (Habilitado)
+      crmService // CRM no Premium
     ]
   }
 };
@@ -211,5 +210,5 @@ export const SERVICE_COLORS: Record<ServiceKey, string> = {
     social_media_poster: 'text-indigo-500 bg-indigo-50',
     curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
     n8n_integration: 'text-red-500 bg-red-50',
-    crm_suite: 'text-blue-600 bg-blue-50',
+    crm_suite: 'text-blue-700 bg-blue-100',
 };

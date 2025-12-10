@@ -156,7 +156,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onNavigate }) => {
   );
 };
 
-const FeatureCard: React.FC<{ icon: string, title: string, desc: string, color: string, bg: string }> = ({ icon, title, desc, color, bg }) => {
+function FeatureCard({ icon, title, desc, color, bg }: { icon: string, title: string, desc: string, color: string, bg: string }) {
     return (
         <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 hover:shadow-lg transition duration-300">
             <div className={`w-14 h-14 ${bg} ${color} rounded-xl flex items-center justify-center text-2xl mb-6`}>
@@ -166,6 +166,6 @@ const FeatureCard: React.FC<{ icon: string, title: string, desc: string, color: 
             <p className="text-gray-500 leading-relaxed">{desc}</p>
         </div>
     );
-};
+}
 
 export default LandingPage;

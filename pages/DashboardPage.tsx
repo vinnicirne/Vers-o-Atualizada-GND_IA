@@ -56,7 +56,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         onOpenAffiliates={() => toggleModal('affiliate', true)}
         onOpenIntegrations={() => toggleModal('integrations', true)}
         userCredits={isGuest ? guestCredits : user?.credits}
-        pageTitle={currentMode === 'crm_suite' ? 'CRM & Auto-Reply' : whiteLabelSettings.dashboardTitle}
+        pageTitle={currentMode === 'crm' ? 'Gestão de Leads' : whiteLabelSettings.dashboardTitle}
         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
       />
 
@@ -66,7 +66,7 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
         <DashboardSidebar 
             isOpen={sidebarOpen}
             setIsOpen={setSidebarOpen}
-            currentMode={currentMode as ServiceKey | 'crm_suite'}
+            currentMode={currentMode}
             onModeChange={handleModeChange}
             user={user}
             isGuest={isGuest}
@@ -86,13 +86,13 @@ export default function DashboardPage({ onNavigateToAdmin, onNavigateToLogin, on
             <div className="max-w-5xl mx-auto">
                 
                 {/* CONDITIONAL RENDER: CRM OR GENERATOR */}
-                {currentMode === 'crm_suite' ? (
+                {currentMode === 'crm' ? (
                     <div className="animate-fade-in-up">
                         <div className="mb-6">
                             <h2 className="text-2xl font-bold text-[#263238] flex items-center gap-2">
-                                <i className="fas fa-users-cog text-blue-600"></i> CRM & Gestão de Leads
+                                <i className="fas fa-users-cog text-blue-600"></i> CRM & Leads
                             </h2>
-                            <p className="text-gray-500 text-sm">Gerencie conversas e configure a Inteligência Artificial para auto-atendimento.</p>
+                            <p className="text-gray-500 text-sm">Gerencie os contatos capturados pelas suas landing pages.</p>
                         </div>
                         <CrmDashboard />
                     </div>

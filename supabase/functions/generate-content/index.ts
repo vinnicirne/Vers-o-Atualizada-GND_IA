@@ -1,4 +1,3 @@
-
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -587,23 +586,12 @@ serve(async (req) => {
         fullPrompt = curriculumDataPromptContent; // Override fullPrompt for curriculum mode
     }
 
-    // --- LEAD ANALYSIS LOGIC ---
-    if (mode === 'lead_analysis') {
-        fullPrompt = prompt; // Just use the prompt as is, it contains the data
-    }
-
     let config: any = {
         systemInstruction: systemPromptWithMemory
     };
     
     if (mode === 'news_generator') {
         config.tools = [{ googleSearch: {} }];
-    }
-
-    if (mode === 'lead_analysis') {
-        config = {
-             responseMimeType: "application/json"
-        };
     }
 
     // 5. Call Generate Content

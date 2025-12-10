@@ -1,8 +1,8 @@
 
 import { ReactNode } from 'react';
-import { Plan, ServiceKey, UserPlan } from './plan.types'; // Importar os novos tipos
+import { Plan, ServiceKey, UserPlan } from './plan.types';
 
-export type { Plan, ServiceKey, UserPlan }; // Re-exportar para uso em outros arquivos
+export type { Plan, ServiceKey, UserPlan };
 
 export interface BaseComponentProps {
   children?: ReactNode;
@@ -317,36 +317,40 @@ export interface WhiteLabelSettings {
 }
 
 // --- CRM & MARKETING TYPES ---
-// Updated to match SQL Schema: contacts, conversations, messages
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'lost';
 
-export interface ChatContact {
+export interface Lead {
   id: string;
-  phone: string;
+  owner_id: string; // User ID who owns this lead
+  email: string;
   name?: string;
-  created_at?: string;
-}
-
-export interface ChatConversation {
-  id: string;
-  contact_id: string;
-  last_message?: string;
-  last_message_at?: string;
-  unread_count: number;
+  phone?: string;
+  company?: string;
+  status: LeadStatus;
+  score: number;
+  source?: string; // 'landing_page', 'manual', 'import'
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  notes?: string;
   created_at: string;
-  contact?: ChatContact; // Join result
+  updated_at: string;
 }
 
-export interface ChatMessage {
+export interface MarketingEvent {
   id: string;
-  conversation_id: string;
-  direction: 'in' | 'out';
-  body: string;
+  lead_id: string;
+  event_type: 'page_view' | 'form_submit' | 'email_open' | 'click' | 'purchase';
+  metadata?: any;
   created_at: string;
 }
 
-export interface AiSettings {
-  user_id?: string;
-  enabled: boolean;
-  temperature: number;
-  system_prompt: string;
+export interface Deal {
+  id: string;
+  lead_id: string;
+  owner_id: string;
+  title: string;
+  value: number;
+  status: 'open' | 'won' | 'lost';
+  created_at: string;
 }
