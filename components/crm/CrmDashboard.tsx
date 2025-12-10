@@ -14,7 +14,8 @@ export function CrmDashboard() {
     const [conversations, setConversations] = useState<ChatConversation[]>([]);
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [qrCode, setQrCode] = useState("");
-    const [serverUrl, setServerUrl] = useState(localStorage.getItem('whatsapp_server_url') || 'http://localhost:3001');
+    // ATUALIZAÇÃO: URL padrão aponta para o Railway
+    const [serverUrl, setServerUrl] = useState(localStorage.getItem('whatsapp_server_url') || 'https://crm-whatsapp-backend-whatsapptoken.up.railway.app');
     const [status, setStatus] = useState("Desconectado");
     const [isServerOnline, setIsServerOnline] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -125,23 +126,32 @@ export function CrmDashboard() {
         }
 
         try {
-            // Envia para o servidor backend que conecta com o WhatsApp
+            // Formata o JID corretamente (adiciona @s.whatsapp.net se não tiver)
+            let jid = currentChat.contact.phone.replace(/\D/g, ''); // Limpa caracteres
+            if (!jid.includes('@s.whatsapp.net')) {
+                jid = `${jid}@s.whatsapp.net`;
+            }
+
+            // Envia para o servidor backend na Railway
             const res = await fetch(`${serverUrl}/send`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    to: currentChat.contact.phone,
-                    text: messageInput
+                    jid: jid,           // Formato atualizado
+                    message: messageInput // Formato atualizado
                 }),
             });
 
             if (res.ok) {
                 setMessageInput("");
+                // Opcional: Atualizar UI localmente ou esperar o Realtime do Supabase
             } else {
-                throw new Error("Falha no envio");
+                const errData = await res.json();
+                throw new Error(errData.message || "Falha no envio");
             }
-        } catch (e) {
-            setToast({ message: "Erro ao enviar. Verifique se o servidor local está rodando.", type: 'error' });
+        } catch (e: any) {
+            console.error(e);
+            setToast({ message: `Erro ao enviar: ${e.message}`, type: 'error' });
         }
     };
 
@@ -305,9 +315,8 @@ export function CrmDashboard() {
                                     {!isServerOnline && (
                                         <div className="text-left bg-red-50 p-3 rounded border border-red-100 text-xs text-red-700 max-w-xs">
                                             <strong>Servidor Offline?</strong><br/>
-                                            Certifique-se de rodar o script Node.js localmente na porta 3001.
-                                            <br/>
-                                            <span className="font-mono bg-red-100 px-1 rounded">node index.js</span>
+                                            O frontend não conseguiu conectar em:<br/>
+                                            <span className="font-mono bg-red-100 px-1 rounded break-all">{serverUrl}</span>
                                         </div>
                                     )}
                                 </div>
@@ -317,7 +326,7 @@ export function CrmDashboard() {
                         </div>
                     ) : (
                         <div className="p-6">
-                            <h3 className="font-bold text-gray-800 mb-4">Configurações Locais</h3>
+                            <h3 className="font-bold text-gray-800 mb-4">Configurações de Conexão</h3>
                             <div className="mb-4">
                                 <label className="block text-xs font-bold text-gray-500 mb-1">URL do Servidor Backend</label>
                                 <input 
@@ -325,9 +334,9 @@ export function CrmDashboard() {
                                     value={serverUrl} 
                                     onChange={(e) => setServerUrl(e.target.value)} 
                                     className="w-full border border-gray-300 rounded p-2 text-sm" 
-                                    placeholder="http://localhost:3001" 
+                                    placeholder="https://seu-backend.up.railway.app" 
                                 />
-                                <p className="text-[10px] text-gray-400 mt-1">Onde está rodando o script Baileys/Node.js?</p>
+                                <p className="text-[10px] text-gray-400 mt-1">Cole aqui a URL do seu Railway.</p>
                             </div>
                             <button onClick={handleSaveSettings} className="w-full bg-blue-600 text-white py-2 rounded text-sm font-bold">Salvar URL</button>
                         </div>
