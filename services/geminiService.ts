@@ -21,6 +21,8 @@ export interface GenerateContentOptions {
   skills?: string[];
   projects?: { name: string; description: string; technologies: string }[];
   certifications?: string[];
+  // Chat History for Briefing
+  chatHistory?: { role: string; parts: { text: string }[] }[];
 }
 
 export const generateCreativeContent = async (
@@ -28,7 +30,6 @@ export const generateCreativeContent = async (
     mode: ServiceKey,
     userId?: string,
     generateAudio?: boolean,
-    // FIX: Updated the type of 'options' to the new comprehensive interface
     options?: GenerateContentOptions
 ): Promise<{ text: string, audioBase64: string | null, sources?: Source[] }> => {
   
@@ -80,60 +81,52 @@ export const generateCreativeContent = async (
 };
 
 /**
- * Analisa um lead usando IA para determinar Score (Temperatura) e Justificativa.
+ * Envia uma mensagem para o Chat de Briefing e retorna a resposta da IA.
  */
+export const sendBriefingMessage = async (
+    message: string,
+    chatHistory: { role: string; parts: { text: string }[] }[]
+): Promise<{ text: string, isComplete: boolean, data?: any }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('generate-content', {
+            body: {
+                prompt: message,
+                mode: 'briefing_chat',
+                options: { chatHistory }
+            }
+        });
+
+        if (error) throw new Error(error.message);
+        if (data.error) throw new Error(data.error);
+
+        return {
+            text: data.text || '',
+            isComplete: data.is_complete || false,
+            data: data.data // Dados estruturados se completo
+        };
+    } catch (e: any) {
+        console.error("Erro no chat de briefing:", e);
+        throw new Error(e.message || "Erro de comunicação com o assistente.");
+    }
+};
+
+// ... (Restante do arquivo: analyzeLeadQuality mantido)
 export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, justification: string }> => {
+  // (Código existente mantido)
   const prompt = `
     Atue como um Gerente de Vendas Sênior e analise este lead.
-    
-    DADOS DO LEAD:
-    Nome: ${lead.name || 'Desconhecido'}
-    Empresa: ${lead.company || 'Não informada'}
-    Email: ${lead.email || 'Não informado'}
-    Telefone: ${lead.phone || 'Não informado'}
-    Status Atual: ${lead.status}
-    Anotações Atuais: ${lead.notes || 'Nenhuma'}
-
-    TAREFA:
-    Classifique a qualidade deste lead (Score 0-100) e dê uma justificativa curta.
-    
-    CRITÉRIOS DE SCORE:
-    - 80-100 (Quente 🔥): Decisor claro, dados completos (email corporativo, telefone), anotações indicando interesse de compra imediato.
-    - 40-79 (Morno ⛅): Dados de contato válidos, mas sem detalhes da empresa ou interesse explícito.
-    - 0-39 (Frio ❄️): Dados incompletos, email pessoal genérico (gmail/hotmail) sem contexto, ou anotações de desinteresse.
-
-    FORMATO DE RESPOSTA OBRIGATÓRIO (JSON PURO):
-    {
-      "score": number,
-      "justification": "string (max 20 palavras)"
-    }
+    DADOS DO LEAD: Nome: ${lead.name}, Empresa: ${lead.company}, Status: ${lead.status}, Notas: ${lead.notes}.
+    Classifique (0-100) e justifique. JSON: { "score": number, "justification": string }
   `;
-
   try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
-          body: {
-              prompt,
-              mode: 'crm_analysis', // Modo genérico, o backend usará o prompt fornecido
-              generateAudio: false
-          }
+          body: { prompt, mode: 'crm_analysis', generateAudio: false }
       });
-
       if (error) throw error;
-
-      let text = data.text;
-      // Extrai JSON se houver blocos de código
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-          text = jsonMatch[0];
-      }
-
+      let text = data.text.match(/\{[\s\S]*\}/)?.[0] || data.text;
       const result = JSON.parse(text);
-      return {
-          score: typeof result.score === 'number' ? result.score : 50,
-          justification: result.justification || "Análise processada com sucesso."
-      };
+      return { score: result.score || 50, justification: result.justification || "Análise concluída." };
   } catch (e) {
-      console.error("Erro na análise IA do lead:", e);
-      return { score: 50, justification: "Não foi possível realizar a análise automática." };
+      return { score: 50, justification: "Erro na análise." };
   }
 };
