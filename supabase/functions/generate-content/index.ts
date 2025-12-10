@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -387,11 +388,13 @@ MODOS DISPONÍVEIS (roteie baseado na query):
      - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
 
    **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
+   - Retorne APENAS o código HTML puro. 
+   - **NÃO** use blocos de código Markdown (\`\`\`html).
+   - **NÃO** escreva texto antes ou depois do HTML. Comece com <div> ou <section> e termine com </div> ou </section>.
    - Use font-sans (padrão moderno).
    - Espaçamento generoso (py-20, gap-8).
    - Sombras sofisticadas (shadow-2xl, shadow-inner).
    - Use <section> tags distintas para cada bloco de conteúdo para facilitar a edição visual.
-   - Retorne APENAS o HTML do <body>.
 
     4. **Studio de Arte IA (Image Generation)**:
        Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
@@ -403,6 +406,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
     6. **Editor Visual (Social Media)**:
        Gere APENAS o código HTML de uma <div> (1080x1080px) com Tailwind CSS.
        - Design vibrante, tipografia grande, contraste alto.
+       - **NÃO** use blocos de código Markdown. Retorne apenas o HTML puro.
 
     7. **Criador de Currículos (IA)**:
        Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
@@ -427,6 +431,7 @@ MODOS DISPONÍVEIS (roteie baseado na query):
        - Use classes Tailwind CSS para todo o estilo.
        - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
        - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+       - **RETORNE APENAS HTML PURO**, sem blocos de código Markdown.
 
     8. **Criador de Posts Sociais (Social Media Poster)**:
        [IMAGE_PROMPT] (Inglês técnico)
@@ -535,6 +540,7 @@ serve(async (req) => {
         - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
         - **Cor Primária**: ${options.primaryColor || '#10B981'}.
         - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
+        - **LEMBRE-SE:** Retorne APENAS o código HTML. Nada mais.
         `;
     }
 
@@ -620,11 +626,24 @@ serve(async (req) => {
         throw new Error('A API não retornou conteúdo de texto.');
     }
 
-    // Cleanup Logic
+    // Cleanup Logic (Updated for Robustness)
     if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
+        // 1. Remove Markdown Code Blocks
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
         
-        // Use explicit strings to avoid parser ambiguity if any
+        // 2. Extract HTML from conversational text
+        // Looks for the first occurrence of < and the last occurrence of >
+        const firstTag = text.indexOf('<');
+        const lastTag = text.lastIndexOf('>');
+
+        if (firstTag !== -1 && lastTag !== -1 && lastTag > firstTag) {
+            text = text.substring(firstTag, lastTag + 1);
+        } else {
+            // Fallback: If no tags found but it's supposed to be code, keep as is (trimmed)
+            // or perhaps log a warning.
+        }
+
+        // 3. Optional: Extract body content if present, but allow partials (sections/divs)
         const tagBodyStart = '<body';
         const tagBodyEnd = '</body>';
         
@@ -632,21 +651,9 @@ serve(async (req) => {
         const bodyEnd = text.lastIndexOf(tagBodyEnd);
 
         if (bodyStart !== -1 && bodyEnd !== -1 && (bodyEnd + tagBodyEnd.length) > bodyStart) {
-            text = text.substring(bodyStart, bodyEnd + tagBodyEnd.length);
-        } else {
-            // Fallback to div
-            const tagDivStart = '<div>';
-            const tagDivEnd = '</div>';
-            
-            const divStart = text.indexOf(tagDivStart);
-            const divEnd = text.lastIndexOf(tagDivEnd);
-            
-            if (divStart !== -1 && divEnd !== -1) {
-                const divEndPos = divEnd + tagDivEnd.length;
-                if (divEndPos > divStart) {
-                    text = text.substring(divStart, divEndPos);
-                }
-            }
+            // If body tags exist, extract content INSIDE body + the body tag itself for attributes
+            // Actually, GrapesJS handles <body> well if passed, but sometimes better without.
+            // Let's stick to the extracted block from < to > which covers <html>...</html> or <section>...</section>
         }
     }
 

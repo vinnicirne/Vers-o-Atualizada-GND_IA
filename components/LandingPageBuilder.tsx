@@ -55,11 +55,20 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       if (editorInstanceRef.current) return;
 
       let processedHtml = initialHtml;
-      // Se o HTML for curto (provavelmente vazio ou placeholder), mostra modal. Se for conteúdo real (ex: imagem gerada), esconde modal.
-      if (initialHtml && initialHtml.length > 100) {
-          processedHtml = sanitizeHtml(initialHtml);
-          setShowTemplateModal(false);
+      let shouldShowTemplateModal = true;
+
+      // Se o HTML for válido e tiver conteúdo substancial, usa ele.
+      // Se vier vazio ou muito curto (erro de geração), mostra o modal de templates.
+      if (initialHtml && initialHtml.length > 50 && initialHtml.trim() !== '') {
+          processedHtml = initialHtml; // Usa o HTML puro, deixe o GrapesJS sanitizar se precisar
+          shouldShowTemplateModal = false;
+      } else {
+          // Fallback visual para não ficar tela branca
+          processedHtml = '<body class="bg-gray-900"><div style="padding: 100px; text-align: center; color: white;"><h1>Conteúdo Vazio</h1><p>A IA não gerou código válido ou ocorreu um erro. Escolha um template abaixo.</p></div></body>';
+          shouldShowTemplateModal = true;
       }
+
+      setShowTemplateModal(shouldShowTemplateModal);
 
       try {
         // @ts-ignore
@@ -75,7 +84,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           height: '100%',
           width: 'auto',
           fromElement: false,
-          components: processedHtml || '<body class="bg-gray-900"><div style="padding: 50px; text-align: center; color: white;">Arraste blocos aqui...</div></body>',
+          components: processedHtml,
           // Desativa a UI padrão para usarmos customizada
           panels: { defaults: [] },
           storageManager: false,
@@ -237,7 +246,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
           const style = document.createElement('style');
           style.innerHTML = `
-            body { background-color: #111827; color: #f3f4f6; overflow-x: hidden; font-family: sans-serif; }
+            body { background-color: #111827; color: #f3f4f6; overflow-x: hidden; font-family: sans-serif; min-height: 100vh; }
             a { cursor: pointer; }
             /* Outline visual para facilitar edição */
             *:hover { outline: 1px dashed rgba(16, 185, 129, 0.3); }
