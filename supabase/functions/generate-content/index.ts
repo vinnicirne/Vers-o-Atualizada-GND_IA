@@ -540,7 +540,7 @@ serve(async (req) => {
         - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
         - **Cor Primária**: ${options.primaryColor || '#10B981'}.
         - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
-        - **LEMBRE-SE:** Retorne APENAS o código HTML. Nada mais.
+        - **LEMBRE-SE:** Retorne APENAS o código HTML. Nada mais. Não use backticks de markdown. Comece com <html> ou <section> e termine com </html> ou </section>.
         `;
     }
 
@@ -641,19 +641,6 @@ serve(async (req) => {
         } else {
             // Fallback: If no tags found but it's supposed to be code, keep as is (trimmed)
             // or perhaps log a warning.
-        }
-
-        // 3. Optional: Extract body content if present, but allow partials (sections/divs)
-        const tagBodyStart = '<body';
-        const tagBodyEnd = '</body>';
-        
-        const bodyStart = text.indexOf(tagBodyStart);
-        const bodyEnd = text.lastIndexOf(tagBodyEnd);
-
-        if (bodyStart !== -1 && bodyEnd !== -1 && (bodyEnd + tagBodyEnd.length) > bodyStart) {
-            // If body tags exist, extract content INSIDE body + the body tag itself for attributes
-            // Actually, GrapesJS handles <body> well if passed, but sometimes better without.
-            // Let's stick to the extracted block from < to > which covers <html>...</html> or <section>...</section>
         }
     }
 
