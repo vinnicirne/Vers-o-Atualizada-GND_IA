@@ -114,8 +114,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
     
     // Reset Chat when mode changes
     if (mode === 'landingpage_generator') {
-        // Updated initial message: clean text, single question
-        setMessages([{ role: 'model', text: 'Olá! Sou seu arquiteto virtual. Vamos criar o site perfeito.\n\nPara começar: Qual é o nome do seu negócio e o que vocês fazem?' }]);
+        // Updated initial message: humanized consultant persona
+        setMessages([{ role: 'model', text: 'Olá! Sou seu consultor de design. Vou te ajudar a criar um site profissional.\n\nPara começar, me diga: Qual é o nome do seu negócio e o que vocês oferecem?' }]);
         setIsChatting(false);
         setIsBriefingComplete(false);
     }
@@ -221,7 +221,7 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
                 {/* Reset Button */}
                 <button 
                     onClick={() => {
-                        setMessages([{ role: 'model', text: 'Olá! Vamos recomeçar. Qual o nome do seu negócio?' }]);
+                        setMessages([{ role: 'model', text: 'Olá! Sou seu consultor de design. Vou te ajudar a criar um site profissional.\n\nPara começar, me diga: Qual é o nome do seu negócio e o que vocês oferecem?' }]);
                         setIsBriefingComplete(false);
                     }}
                     className="ml-auto text-gray-400 hover:text-white text-xs bg-white/10 px-3 py-1 rounded-full transition"

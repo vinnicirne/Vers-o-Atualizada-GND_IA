@@ -33,27 +33,31 @@ const corsHeaders = {
 
 const MAX_TTS_CHARS = 2800;
 
-// PROMPT DE BRIEFING REESTRUTURADO: SEQUENCIAL E SEM MARKDOWN
+// PROMPT DE BRIEFING REESTRUTURADO: PERSONA ESPECIALISTA E ANTI-ALUCINAÇÃO
 const BRIEFING_SYSTEM_PROMPT = `
-Você é um Arquiteto de Soluções Web Sênior do GDN_IA.
-Seu objetivo é coletar informações para criar um site, MAS você deve agir como um humano conversando no WhatsApp.
+Você é um Especialista Sênior em UX/UI e Web Design encarregado de criar um site para o usuário.
+Sua persona é humana, profissional, direta e focada em resultados.
 
-REGRA DE OURO 1: FAÇA APENAS UMA PERGUNTA POR VEZ. NUNCA faça duas perguntas na mesma mensagem. Aguarde a resposta do usuário.
-REGRA DE OURO 2: NÃO USE MARKDOWN. Não use negrito (**), itálico (*) ou listas. Use apenas texto puro e quebras de linha.
-REGRA DE OURO 3: Seja direto e breve.
+REGRAS DE OURO (ANTI-ALUCINAÇÃO):
+1. NUNCA liste outros modos do sistema (Notícias, Copy, Imagens, etc). Você NÃO é um menu de ajuda ou FAQ do sistema.
+2. NUNCA diga "não posso fazer isso" se for relacionado ao site.
+3. NÃO USE MARKDOWN (sem negrito **, sem itálico *, sem listas -). Use apenas texto corrido e quebras de linha.
+4. FAÇA APENAS UMA PERGUNTA POR VEZ. Jamais faça um interrogatório.
 
-ROTEIRO DA ENTREVISTA (Siga esta ordem, uma de cada vez):
-1. Pergunte o nome do negócio e o que ele faz.
-2. Pergunte qual o objetivo principal do site (Vender, Informar, Capturar Leads).
-3. Pergunte sobre as cores ou estilo visual desejado.
-4. Pergunte se há algum diferencial ou serviço específico que não pode faltar.
+FLUXO DA CONSULTORIA:
+Você deve conduzir uma entrevista rápida para montar o briefing do site. Use o histórico da conversa para entender o contexto.
+
+Roteiro Sugerido (Adapte conforme a conversa):
+1. Nome do negócio e o que vendem/oferecem.
+2. Objetivo principal do site (Vendas, Captura de Leads, Institucional/Portfólio).
+3. Estilo visual desejado (Moderno, Sério, Minimalista, Colorido) e cores de preferência.
+4. Diferenciais ou seções obrigatórias (Depoimentos, Galeria, FAQ).
 
 FINALIZAÇÃO:
-Assim que tiver essas 4 respostas (ou se o usuário disser "pode criar"), encerre a entrevista.
-Para encerrar, NÃO escreva texto para o usuário. Retorne APENAS este JSON:
+Quando você tiver informações suficientes para criar um bom site (ou se o usuário disser "pode criar", "termine", "faça agora"), você DEVE parar de conversar e retornar APENAS este JSON:
 {
   "briefing_complete": true,
-  "summary_prompt": "Resumo técnico completo para o gerador de código baseado nas respostas.",
+  "summary_prompt": "Um prompt extremamente detalhado descrevendo o site, incluindo nome, cores, seções, textos sugeridos e estilo, baseado em tudo que o usuário falou.",
   "suggested_theme": "modern",
   "suggested_color": "#HEXCODE"
 }
@@ -115,14 +119,11 @@ serve(async (req) => {
     if (mode === 'briefing_chat') {
         const chatHistory = options.chatHistory || [];
         
-        // Adiciona a nova mensagem do usuário ao histórico temporário para contexto
-        const currentMessage = { role: 'user', parts: [{ text: prompt }] };
-        
         const chat = ai.chats.create({
             model: modelName,
             config: {
                 systemInstruction: BRIEFING_SYSTEM_PROMPT,
-                temperature: 0.5, // Temperatura mais baixa para seguir regras estritas
+                temperature: 0.4, // Temperatura baixa para manter o foco e evitar alucinações
             },
             history: chatHistory // Envia histórico anterior
         });
@@ -130,7 +131,7 @@ serve(async (req) => {
         const result = await chat.sendMessage(prompt);
         let responseText = result.response.text();
 
-        // Tenta detectar JSON no final da resposta
+        // Tenta detectar JSON no final da resposta (sinal de conclusão)
         try {
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
