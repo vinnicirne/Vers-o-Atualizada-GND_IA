@@ -30,7 +30,7 @@ serve(async (req) => {
       });
     }
 
-    // Inicializa Supabase Admin (Bypass RLS para inserir lead sem estar logado)
+    // Inicializa Supabase Admin (Bypass RLS para inserir lead sem estar logado e buscar email do owner)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -58,9 +58,7 @@ serve(async (req) => {
         });
     }
 
-    // 1. Inserir Lead
-    // Verifica se já existe para este owner (upsert ou ignore)
-    // Aqui faremos um insert simples, o frontend/admin lida com duplicatas depois se necessário
+    // 1. Inserir Lead no Banco de Dados
     const { data: leadData, error: leadError } = await supabaseAdmin
         .from('leads')
         .insert({
@@ -79,7 +77,7 @@ serve(async (req) => {
 
     if (leadError) {
         console.error("Erro ao salvar lead:", leadError);
-        // Se for erro de duplicidade (unique constraint), não falha, apenas avisa
+        // Se for erro de duplicidade, não falha, apenas segue (para não perder a notificação se for o caso)
         if (!leadError.message.includes('duplicate')) {
              throw new Error("Erro ao salvar lead no banco de dados.");
         }
@@ -94,7 +92,66 @@ serve(async (req) => {
         });
     }
 
-    // 3. Resposta (Redirecionamento ou JSON)
+    // 3. ENVIO DE E-MAIL DE NOTIFICAÇÃO (Lógica Nova)
+    const resendApiKey = Deno.env.get("RESEND_API_KEY");
+    
+    if (resendApiKey) {
+        // A. Buscar e-mail do dono do site (seu cliente)
+        const { data: ownerProfile } = await supabaseAdmin
+            .from('app_users')
+            .select('email, full_name')
+            .eq('id', ownerId)
+            .single();
+
+        if (ownerProfile && ownerProfile.email) {
+            console.log(`Enviando notificação de lead para: ${ownerProfile.email}`);
+            
+            // B. Enviar e-mail via Resend API
+            try {
+                const emailResponse = await fetch("https://api.resend.com/emails", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${resendApiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        from: "GDN Leads <onboarding@resend.dev>", // Substitua pelo seu domínio verificado em produção
+                        to: [ownerProfile.email],
+                        subject: `🔔 Novo Lead Capturado: ${name || email}`,
+                        html: `
+                            <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                                <h2 style="color: #10B981;">Novo Contato Recebido!</h2>
+                                <p>Olá <strong>${ownerProfile.full_name || 'Parceiro'}</strong>,</p>
+                                <p>Um novo cliente preencheu o formulário do seu site gerado no GDN_IA.</p>
+                                
+                                <div style="background: #f3f4f6; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                                    <p><strong>Nome:</strong> ${name || 'Não informado'}</p>
+                                    <p><strong>E-mail:</strong> ${email}</p>
+                                    <p><strong>Telefone:</strong> ${phone || 'Não informado'}</p>
+                                    ${company ? `<p><strong>Empresa:</strong> ${company}</p>` : ''}
+                                </div>
+
+                                <p>Acesse seu painel CRM para gerenciar este lead.</p>
+                                <br/>
+                                <small>Enviado automaticamente por GDN_IA Creator Suite.</small>
+                            </div>
+                        `,
+                    }),
+                });
+
+                if (!emailResponse.ok) {
+                    const errTxt = await emailResponse.text();
+                    console.error("Erro ao enviar email Resend:", errTxt);
+                }
+            } catch (emailErr) {
+                console.error("Exceção no envio de email:", emailErr);
+            }
+        }
+    } else {
+        console.warn("RESEND_API_KEY não configurada. E-mail de notificação não enviado.");
+    }
+
+    // 4. Resposta para o usuário final (Redirecionamento ou JSON)
     if (redirectUrl) {
         return Response.redirect(redirectUrl, 303); // 303 See Other para GET após POST
     }

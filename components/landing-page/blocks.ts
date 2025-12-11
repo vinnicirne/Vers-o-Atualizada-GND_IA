@@ -54,7 +54,7 @@ export const addBlocks = (editor: any, userId: string, supabaseUrl: string) => {
     // =========================================
 
     bm.add('lead-capture-form', {
-        label: icon('fas fa-envelope-open-text', 'Captura Lead'),
+        label: icon('fas fa-database', 'CRM Interno'),
         category: 'Lead Capture',
         content: `
             <section class="py-16 bg-gray-50 w-full font-sans">
@@ -77,14 +77,55 @@ export const addBlocks = (editor: any, userId: string, supabaseUrl: string) => {
                             <input type="tel" name="phone" placeholder="(11) 99999-9999" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
                         </div>
                         
-                        <!-- Redirecionamento Opcional (Descomente e edite value para ativar) -->
-                        <!-- <input type="hidden" name="redirect" value="https://seusite.com/obrigado.html" /> -->
-
                         <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg shadow-md transition transform hover:-translate-y-0.5">
                             Enviar Dados
                         </button>
                         <p class="text-center text-[10px] text-gray-400 mt-3">
-                            <i class="fas fa-lock"></i> Seus dados estão seguros.
+                            <i class="fas fa-lock"></i> Salvo no seu CRM interno.
+                        </p>
+                    </form>
+                </div>
+            </section>
+        `
+    });
+
+    bm.add('external-contact-form', {
+        label: icon('fas fa-paper-plane', 'Formulário (Exportar)'),
+        category: 'Lead Capture',
+        content: `
+            <section class="py-16 bg-white w-full font-sans">
+                <div class="max-w-md mx-auto bg-gray-50 p-8 rounded-xl shadow-lg border border-gray-200">
+                    <div class="text-center mb-6">
+                        <h3 class="text-2xl font-bold text-gray-800">Fale Conosco</h3>
+                        <p class="text-gray-500 text-sm mt-1">Envie uma mensagem diretamente para nosso e-mail.</p>
+                    </div>
+                    
+                    <!-- IMPORTANTE: O cliente deve alterar o e-mail no atributo action abaixo -->
+                    <form action="https://formsubmit.co/SEU_EMAIL_AQUI" method="POST" class="space-y-4">
+                        
+                        <!-- Configurações Ocultas do FormSubmit -->
+                        <input type="hidden" name="_subject" value="Novo contato do seu Site!">
+                        <input type="hidden" name="_captcha" value="false">
+                        <input type="hidden" name="_template" value="table">
+                        
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nome</label>
+                            <input type="text" name="name" placeholder="Seu nome" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition" required />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">E-mail</label>
+                            <input type="email" name="email" placeholder="seu@email.com" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition" required />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Mensagem</label>
+                            <textarea name="message" rows="3" placeholder="Como podemos ajudar?" class="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none transition" required></textarea>
+                        </div>
+                        
+                        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg shadow-md transition transform hover:-translate-y-0.5">
+                            Enviar Mensagem
+                        </button>
+                        <p class="text-center text-[10px] text-gray-400 mt-3">
+                            <i class="fas fa-bolt"></i> Enviado via e-mail.
                         </p>
                     </form>
                 </div>
