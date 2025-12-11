@@ -3,8 +3,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { Toast } from './admin/Toast';
 import { TEMPLATES } from './landing-page/templates';
 import { addBlocks } from './landing-page/blocks';
-import { useUser } from '../contexts/UserContext';
-import { supabaseUrl } from '../services/supabaseClient';
+import { useUser } from '../contexts/UserContext'; // Importar contexto de usuário
+import { supabaseUrl } from '../services/supabaseClient'; // Importar URL do supabase
 
 interface LandingPageBuilderProps {
   initialHtml: string;
@@ -23,7 +23,7 @@ const sanitizeHtml = (html: string): string => {
 };
 
 export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderProps) {
-  const { user } = useUser();
+  const { user } = useUser(); // Obter usuário
   const editorRef = useRef<HTMLDivElement>(null);
   
   // Refs para os Containers de UI
@@ -50,29 +50,6 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
   useEffect(() => {
     let isMounted = true;
 
-    const loadScript = (src: string) => {
-        return new Promise((resolve, reject) => {
-            if (document.querySelector(`script[src="${src}"]`)) {
-                resolve(true);
-                return;
-            }
-            const script = document.createElement('script');
-            script.src = src;
-            script.onload = () => resolve(true);
-            script.onerror = () => reject(new Error(`Failed to load ${src}`));
-            document.body.appendChild(script);
-        });
-    };
-
-    const loadCss = (href: string) => {
-        if (!document.querySelector(`link[href="${href}"]`)) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = href;
-            document.head.appendChild(link);
-        }
-    };
-
     const initializeEditor = async () => {
       if (!editorRef.current) return;
       if (editorInstanceRef.current) return;
@@ -81,42 +58,38 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       let shouldShowTemplateModal = true;
 
       // Se o HTML for válido e tiver conteúdo substancial, usa ele.
+      // Se vier vazio ou muito curto (erro de geração), mostra o modal de templates e um fallback.
       if (initialHtml && initialHtml.length > 50 && initialHtml.trim() !== '') {
-          processedHtml = initialHtml;
+          processedHtml = initialHtml; // Usa o HTML puro
           shouldShowTemplateModal = false;
       } else {
+          // Fallback visual para não ficar tela branca
           processedHtml = `
             <body class="bg-gray-900 text-gray-300 font-sans">
                 <div class="flex flex-col items-center justify-center min-h-screen p-10 text-center">
                     <div class="bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-xl max-w-lg">
                         <h1 class="text-3xl font-bold text-white mb-4">Conteúdo Não Gerado</h1>
-                        <p class="mb-6 text-gray-400">A Inteligência Artificial não retornou um código válido para este pedido. Escolha um template abaixo.</p>
+                        <p class="mb-6 text-gray-400">A Inteligência Artificial não retornou um código válido para este pedido. Isso pode acontecer se o prompt for muito complexo ou se houve um erro momentâneo.</p>
+                        <div class="p-4 bg-gray-900/50 rounded-lg border border-gray-700 text-sm text-yellow-500 mb-6">
+                            <i class="fas fa-exclamation-triangle mr-2"></i> Dica: Tente simplificar seu pedido ou escolha um template pronto abaixo.
+                        </div>
                         <button class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-500 transition">Escolher Template</button>
                     </div>
                 </div>
             </body>
           `;
           shouldShowTemplateModal = true;
-          if (initialHtml) { // Só mostra erro se tentou gerar algo e falhou
-             setToast({ message: "Conteúdo gerado vazio. Carregando modo de recuperação.", type: 'error' });
-          }
+          setToast({ message: "O conteúdo gerado estava vazio. Carregando modo de recuperação.", type: 'error' });
       }
 
       setShowTemplateModal(shouldShowTemplateModal);
 
       try {
-        // Carrega recursos CDN manualmente para evitar erros de importação dinâmica (MIME type)
-        loadCss('https://unpkg.com/grapesjs/dist/css/grapes.min.css');
-        await loadScript('https://unpkg.com/grapesjs');
-        await loadScript('https://unpkg.com/grapesjs-preset-webpage');
+        // @ts-ignore
+        const grapesjsModule = await import('grapesjs');
+        const GrapesJS: any = grapesjsModule.default || grapesjsModule;
 
         if (!isMounted) return;
-
-        const GrapesJS = (window as any).grapesjs;
-        
-        if (!GrapesJS) {
-            throw new Error("GrapesJS não carregou corretamente.");
-        }
 
         if(editorRef.current) editorRef.current.innerHTML = '';
 
@@ -126,13 +99,24 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           width: 'auto',
           fromElement: false,
           components: processedHtml,
+          // Desativa a UI padrão para usarmos customizada
           panels: { defaults: [] },
           storageManager: false,
+          
           // Configuração dos Painéis
-          blockManager: { appendTo: blocksRef.current },
-          layerManager: { appendTo: layersRef.current },
-          traitManager: { appendTo: traitsRef.current },
-          selectorManager: { appendTo: '#selectors-container', componentFirst: true },
+          blockManager: {
+            appendTo: blocksRef.current,
+          },
+          layerManager: {
+            appendTo: layersRef.current,
+          },
+          traitManager: {
+            appendTo: traitsRef.current,
+          },
+          selectorManager: {
+            appendTo: '#selectors-container', // Container auxiliar se necessário
+            componentFirst: true,
+          },
           styleManager: {
             appendTo: stylesRef.current,
             sectors: [
@@ -144,20 +128,70 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                         { name: 'Display', property: 'display', type: 'select', defaults: 'block', list: [ { value: 'block', name: 'Bloco' }, { value: 'flex', name: 'Flex' }, { value: 'grid', name: 'Grid' }, { value: 'inline-block', name: 'Inline' } ] }
                     ]
                 },
-                { name: 'Dimensões', open: false, buildProps: ['width', 'height', 'min-height', 'margin', 'padding'] },
+                {
+                    name: 'Dimensões',
+                    open: false,
+                    buildProps: ['width', 'height', 'min-height', 'margin', 'padding'],
+                },
                 {
                     name: 'Tipografia',
-                    open: true,
+                    open: true, // Aberto por padrão
                     buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration'],
-                    properties: [{ name: 'Cor do Texto', property: 'color', type: 'color' }]
+                    properties: [
+                        { name: 'Cor do Texto', property: 'color', type: 'color' }
+                    ]
                 },
                 {
                     name: 'Decoração',
                     open: true,
                     buildProps: ['background-color', 'background-image', 'border-radius', 'border', 'box-shadow'],
-                    properties: [{ name: 'Cor de Fundo', property: 'background-color', type: 'color', defaults: 'none' }]
+                    properties: [
+                        { 
+                            name: 'Cor de Fundo', 
+                            property: 'background-color', 
+                            type: 'color', 
+                            defaults: 'none'
+                        }
+                    ]
                 },
-                { name: 'Extra', open: false, buildProps: ['opacity', 'cursor', 'transition', 'transform'] }
+                {
+                    name: 'Filtros & Efeitos',
+                    open: true,
+                    buildProps: ['opacity', 'mix-blend-mode', 'cursor', 'filter', 'transform'],
+                    properties: [
+                        { 
+                            name: 'Filtros (CSS)', 
+                            property: 'filter', 
+                            type: 'text', 
+                            defaults: '', 
+                            placeholder: 'ex: brightness(1.2) contrast(1.5) blur(5px)' 
+                        },
+                        { 
+                            name: 'Blend Mode', 
+                            property: 'mix-blend-mode', 
+                            type: 'select', 
+                            defaults: 'normal', 
+                            list: [
+                                { value: 'normal', name: 'Normal' },
+                                { value: 'multiply', name: 'Multiply' },
+                                { value: 'screen', name: 'Screen' },
+                                { value: 'overlay', name: 'Overlay' },
+                                { value: 'darken', name: 'Darken' },
+                                { value: 'lighten', name: 'Lighten' },
+                                { value: 'difference', name: 'Difference' },
+                                { value: 'exclusion', name: 'Exclusion' },
+                                { value: 'hue', name: 'Hue' },
+                                { value: 'saturation', name: 'Saturation' },
+                                { value: 'luminosity', name: 'Luminosity' }
+                            ] 
+                        }
+                    ]
+                },
+                {
+                    name: 'Extra',
+                    open: false,
+                    buildProps: ['transition', 'overflow'],
+                }
             ]
           },
           deviceManager: {
@@ -177,12 +211,17 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           setIsEditorReady(true);
           
           try {
+            // Passa userId (se existir, ou string vazia) e supabaseUrl para o gerador de blocos
             addBlocks(editorInstance, user?.id || '', supabaseUrl);
             injectTailwind(editorInstance);
             
+            // Auto-seleção de aba
             editorInstance.on('component:selected', () => {
                 const selected = editorInstance.getSelected();
-                if (selected) setRightTab('styles');
+                if (selected) {
+                    // Sempre foca em estilos ao selecionar
+                    setRightTab('styles');
+                }
             });
           } catch(e) {
             console.warn("Erro config editor:", e);
@@ -191,7 +230,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
       } catch (error: any) {
         console.error('Erro GrapesJS:', error);
-        setToast({ message: "Falha ao carregar editor. Verifique sua conexão.", type: 'error' });
+        setToast({ message: "Falha crítica ao carregar editor.", type: 'error' });
       }
     };
 
@@ -204,7 +243,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         editorInstanceRef.current = null;
       }
     };
-  }, [user]);
+  }, [user]); // Re-executa se user mudar (para pegar o ID)
 
   const injectTailwind = (ed: any) => {
       const frameEl = ed.Canvas.getFrameEl();
@@ -223,6 +262,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           style.innerHTML = `
             body { background-color: #111827; color: #f3f4f6; overflow-x: hidden; font-family: sans-serif; min-height: 100vh; }
             a { cursor: pointer; }
+            /* Outline visual para facilitar edição */
             *:hover { outline: 1px dashed rgba(16, 185, 129, 0.3); }
             .gjs-selected { outline: 2px solid #10b981 !important; outline-offset: -2px; }
           `;
@@ -253,6 +293,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       case 'undo': editor.runCommand('core:undo'); break;
       case 'redo': editor.runCommand('core:redo'); break;
       case 'view': 
+        // Toggle Preview Mode
         const nextState = !isPreviewMode;
         setIsPreviewMode(nextState);
         if (nextState) {
@@ -346,6 +387,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
         
         {/* === COLUNA ESQUERDA: BLOCOS E LAYERS === */}
         <div className={`w-[280px] bg-gray-900 border-r border-gray-800 flex flex-col shrink-0 z-10 transition-all duration-300 ${isPreviewMode ? 'hidden' : 'flex'}`}>
+            {/* Tabs Esquerda */}
             <div className="flex border-b border-gray-800 bg-gray-950">
                 <button 
                     onClick={() => setLeftTab('blocks')} 
@@ -361,6 +403,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 </button>
             </div>
             
+            {/* Conteúdo Esquerda */}
             <div className="flex-1 overflow-y-auto custom-scrollbar relative p-2">
                 <div ref={blocksRef} className={leftTab === 'blocks' ? 'block' : 'hidden'}></div>
                 <div ref={layersRef} className={leftTab === 'layers' ? 'block' : 'hidden'}></div>
@@ -380,6 +423,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
         {/* === COLUNA DIREITA: ESTILOS E CONFIGURAÇÕES === */}
         <div className={`w-[300px] bg-gray-900 border-l border-gray-800 flex flex-col shrink-0 z-10 transition-all duration-300 ${isPreviewMode ? 'hidden' : 'flex'}`}>
+            {/* Tabs Direita */}
             <div className="flex border-b border-gray-800 bg-gray-950">
                 <button 
                     onClick={() => setRightTab('styles')} 
@@ -395,16 +439,19 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 </button>
             </div>
 
+            {/* Conteúdo Direita */}
             <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                {/* Estilos */}
                 <div className={rightTab === 'styles' ? 'block' : 'hidden'}>
                     <div id="selectors-container" className="p-2 border-b border-gray-800"></div>
                     <div ref={stylesRef}></div>
                 </div>
 
+                {/* Traits / Configs */}
                 <div className={rightTab === 'traits' ? 'block' : 'hidden'}>
                     <div className="p-4 text-center">
                         <div className="mb-4 text-gray-500 text-xs">
-                            <i className="fas fa-info-circle mr-1"></i> Selecione um elemento para configurar.
+                            <i className="fas fa-info-circle mr-1"></i> Selecione um elemento para configurar atributos (Links, IDs, etc).
                         </div>
                     </div>
                     <div ref={traitsRef}></div>
@@ -421,7 +468,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
                 <div className="p-6 border-b border-gray-800 flex justify-between items-center bg-gray-900">
                     <div>
                         <h3 className="text-xl font-bold text-white">Escolha um Template</h3>
-                        <p className="text-sm text-gray-400">Comece com uma estrutura profissional.</p>
+                        <p className="text-sm text-gray-400">Comece com uma estrutura profissional de alta conversão.</p>
                     </div>
                     <button onClick={() => setShowTemplateModal(false)} className="text-gray-500 hover:text-white"><i className="fas fa-times text-xl"></i></button>
                 </div>
