@@ -114,7 +114,8 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
     
     // Reset Chat when mode changes
     if (mode === 'landingpage_generator') {
-        setMessages([{ role: 'model', text: 'Olá! Sou seu arquiteto virtual. Vamos criar o site perfeito para você.\n\nPara começar, qual é o **Nome do seu Negócio** e o que vocês fazem?' }]);
+        // Updated initial message: clean text, single question
+        setMessages([{ role: 'model', text: 'Olá! Sou seu arquiteto virtual. Vamos criar o site perfeito.\n\nPara começar: Qual é o nome do seu negócio e o que vocês fazem?' }]);
         setIsChatting(false);
         setIsBriefingComplete(false);
     }

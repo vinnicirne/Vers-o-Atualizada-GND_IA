@@ -26,12 +26,6 @@ export interface GenerateContentOptions {
   chatHistory?: { role: string; parts: { text: string }[] }[];
 }
 
-// Inline CURRICULUM_TEMPLATES (Mantido igual, omitido por brevidade se não alterado, mas incluído para garantir integridade)
-const CURRICULUM_TEMPLATES = {
-    minimalist: `...`, // (Conteúdo existente mantido)
-    // ... (outros templates mantidos)
-};
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -39,43 +33,53 @@ const corsHeaders = {
 
 const MAX_TTS_CHARS = 2800;
 
+// PROMPT DE BRIEFING REESTRUTURADO: SEQUENCIAL E SEM MARKDOWN
 const BRIEFING_SYSTEM_PROMPT = `
-Você é um Arquiteto de Soluções Web Sênior do GDN_IA. Seu objetivo é entrevistar o usuário para criar o site perfeito.
-Aja como um consultor humano, simpático e profissional.
+Você é um Arquiteto de Soluções Web Sênior do GDN_IA.
+Seu objetivo é coletar informações para criar um site, MAS você deve agir como um humano conversando no WhatsApp.
 
-**SUA MISSÃO:**
-Conduza uma entrevista curta (4 a 5 perguntas no máximo) para coletar:
-1. Nome do Negócio e Ramo de Atuação.
-2. Público Alvo e Objetivo Principal (Venda, Institucional, Captura de Leads).
-3. Diferenciais Competitivos (O que torna a empresa única?).
-4. Preferências Visuais (Cores, Estilo: Moderno, Minimalista, Luxo, etc).
+REGRA DE OURO 1: FAÇA APENAS UMA PERGUNTA POR VEZ. NUNCA faça duas perguntas na mesma mensagem. Aguarde a resposta do usuário.
+REGRA DE OURO 2: NÃO USE MARKDOWN. Não use negrito (**), itálico (*) ou listas. Use apenas texto puro e quebras de linha.
+REGRA DE OURO 3: Seja direto e breve.
 
-**REGRAS DE COMPORTAMENTO:**
-- Faça APENAS UMA pergunta por vez. Não sobrecarregue o usuário.
-- Se o usuário der uma resposta curta, tente inferir detalhes ou peça confirmação gentilmente.
-- Adapte seu tom ao do usuário.
+ROTEIRO DA ENTREVISTA (Siga esta ordem, uma de cada vez):
+1. Pergunte o nome do negócio e o que ele faz.
+2. Pergunte qual o objetivo principal do site (Vender, Informar, Capturar Leads).
+3. Pergunte sobre as cores ou estilo visual desejado.
+4. Pergunte se há algum diferencial ou serviço específico que não pode faltar.
 
-**DETECTANDO O FIM:**
-Quando você tiver informações suficientes para criar um site incrível (ou se o usuário pedir para gerar), você DEVE encerrar a conversa retornando um JSON.
-
-**FORMATO DE RESPOSTA (JSON FINAL):**
-Se a entrevista acabou, NÃO escreva texto conversacional. Retorne APENAS este JSON:
+FINALIZAÇÃO:
+Assim que tiver essas 4 respostas (ou se o usuário disser "pode criar"), encerre a entrevista.
+Para encerrar, NÃO escreva texto para o usuário. Retorne APENAS este JSON:
 {
   "briefing_complete": true,
-  "summary_prompt": "Um prompt detalhado e técnico em terceira pessoa resumindo tudo que foi coletado para ser enviado ao gerador de código.",
-  "suggested_theme": "modern | minimalist | luxury | corporate | startup",
+  "summary_prompt": "Resumo técnico completo para o gerador de código baseado nas respostas.",
+  "suggested_theme": "modern",
   "suggested_color": "#HEXCODE"
 }
-
-Se a entrevista NÃO acabou, retorne apenas o texto da sua próxima pergunta.
 `;
 
 const CREATOR_SUITE_SYSTEM_PROMPT = `
-Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
-(Mantido o resto do prompt original...)
-...
-3. **Criador de Sites (Web)**:
-   (Lógica original mantida...)
+Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva.
+
+DIRETRIZES GERAIS DE SEGURANÇA E FORMATO:
+1. NUNCA use formatação Markdown (como **, *, #, ##) no meio do código HTML ou CSS gerado.
+2. Para geração de Sites/Landing Pages/Social Media, retorne APENAS o código HTML final. Não coloque blocos de código (\`\`\`) e não coloque textos explicativos antes ou depois.
+3. Se for texto (Notícia/Copy), use HTML semântico (h1, h2, p, ul, li) mas SEM os caracteres de markdown.
+
+MODOS ESPECÍFICOS:
+
+1. **Criador de Sites (Web) / Landing Pages**:
+   - Gere um arquivo HTML único, responsivo e moderno.
+   - Use Tailwind CSS via CDN.
+   - Use FontAwesome para ícones.
+   - O design deve ser profissional, com seções de Hero, Features, Sobre e Contato/Footer.
+   - NÃO use Markdown no texto visível do site (ex: não use **Título** dentro de uma tag <h1>).
+
+2. **Social Media Poster**:
+   - Crie um layout HTML/CSS quadrado (ou formato pedido) usando Tailwind.
+   - Deve parecer uma imagem pronta para o Instagram/Linkedin.
+   - Use tipografia grande e cores contrastantes.
 `;
 
 serve(async (req) => {
@@ -107,19 +111,18 @@ serve(async (req) => {
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
     const modelName = 'gemini-2.5-flash';
 
-    // --- NEW: BRIEFING CHAT MODE ---
+    // --- BRIEFING CHAT MODE ---
     if (mode === 'briefing_chat') {
         const chatHistory = options.chatHistory || [];
         
         // Adiciona a nova mensagem do usuário ao histórico temporário para contexto
         const currentMessage = { role: 'user', parts: [{ text: prompt }] };
-        const fullHistory = [...chatHistory, currentMessage];
-
+        
         const chat = ai.chats.create({
             model: modelName,
             config: {
                 systemInstruction: BRIEFING_SYSTEM_PROMPT,
-                temperature: 0.7, // Criativo mas focado
+                temperature: 0.5, // Temperatura mais baixa para seguir regras estritas
             },
             history: chatHistory // Envia histórico anterior
         });
@@ -129,7 +132,6 @@ serve(async (req) => {
 
         // Tenta detectar JSON no final da resposta
         try {
-            // Limpeza básica para encontrar JSON caso a IA coloque markdown
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 const jsonContent = JSON.parse(jsonMatch[0]);
@@ -144,17 +146,19 @@ serve(async (req) => {
             // Se falhar o parse, assume que é conversa normal
         }
 
+        // Limpeza extra para garantir que não vá markdown para o chat
+        responseText = responseText.replace(/\*\*/g, '').replace(/\*/g, '').trim();
+
         return new Response(JSON.stringify({ 
             is_complete: false, 
             text: responseText 
         }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
-    // --- MANTÉM LÓGICA ORIGINAL PARA OUTROS MODOS ---
+    // --- OUTROS MODOS ---
     
-    // ... (Lógica de Text to Speech mantida igual ao arquivo original)
+    // ... (Lógica de Text to Speech mantida igual)
     if (mode === 'text_to_speech') {
-        // ... (código existente TTS)
         const voiceName = options?.voice || 'Kore';
         const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
         try {
@@ -183,26 +187,29 @@ serve(async (req) => {
 
     let fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: ${mode}`;
 
-    // ... (Lógica de montagem de prompts específicos mantida: Image, Social, LandingPage, Curriculum)
     if (mode === 'image_generation' && options) {
         fullPrompt += `\nCONTEXTO IMAGEM: Estilo: ${options.imageStyle || 'Photorealistic'}, Proporção: ${options.aspectRatio || '1:1'}`;
     }
     if (mode === 'social_media_poster' && options) {
-        fullPrompt += `\nCONTEXTO POSTER: Plataforma: ${options.platform}, Tema: ${options.theme}`;
+        fullPrompt += `\nCONTEXTO POSTER: Plataforma: ${options.platform}, Tema: ${options.theme}. GERE APENAS CÓDIGO HTML/TAILWIND SEM MARKDOWN.`;
     }
     if (mode === 'landingpage_generator' && options) {
         fullPrompt += `
-        **DIRETRIZES VISUAIS (DO BRIEFING):**
-        - **Tema/Estilo**: ${options.theme || 'Moderno'}.
-        - **Cor Primária**: ${options.primaryColor || '#10B981'}.
-        - **Conteúdo Base**: Use estritamente as informações coletadas no briefing: ${prompt}.
-        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
-        - **LEMBRE-SE:** Retorne APENAS o código HTML. Nada mais.
+        **INSTRUÇÕES CRÍTICAS PARA GERAÇÃO DO SITE:**
+        1. Utilize as informações do briefing: ${prompt}.
+        2. Tema sugerido: ${options.theme || 'Moderno'}. Cor: ${options.primaryColor || '#10B981'}.
+        3. RETORNE APENAS O CÓDIGO HTML PURO.
+        4. NÃO use Markdown (sem \`\`\`html, sem **, sem ##).
+        5. Certifique-se que o fundo tenha cor definida (ex: bg-gray-900 ou bg-white).
         `;
     }
-    // ... (Curriculum logic mantida)
-
-    let config: any = { systemInstruction: systemPromptWithMemory };
+    
+    // Configuração para geração de texto/código
+    let config: any = { 
+        systemInstruction: systemPromptWithMemory,
+        temperature: 0.7 
+    };
+    
     if (mode === 'news_generator') { config.tools = [{ googleSearch: {} }]; }
 
     const response = await ai.models.generateContent({
@@ -227,20 +234,27 @@ serve(async (req) => {
 
     if (!text) throw new Error('A API não retornou conteúdo de texto.');
 
-    // Cleanup Logic
+    // --- LIMPEZA AGRESSIVA DE MARKDOWN ---
+    // Remove blocos de código
+    text = text.replace(/```html/g, '').replace(/```/g, '').trim();
+    
+    // Se for geração visual (Site/Poster), remove qualquer texto antes do <html> ou <div
     if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
-        text = text.replace(/```html/g, '').replace(/```/g, '').trim();
-        const firstTag = text.indexOf('<');
+        const firstTag = text.search(/<(html|div|body|section)/i);
         const lastTag = text.lastIndexOf('>');
+        
         if (firstTag !== -1 && lastTag !== -1 && lastTag > firstTag) {
             text = text.substring(firstTag, lastTag + 1);
         }
+        
+        // Remove markdown residuals like **Title** inside HTML attributes or text
+        // (Cuidado para não quebrar CSS, remove apenas ** duplos soltos)
+        text = text.replace(/\*\*/g, ''); 
     }
 
     // Audio Generation for News (Mantido)
     let audioBase64 = null;
     if (generateAudio && mode === 'news_generator') {
-        // ... (Lógica existente de áudio para notícias)
         try {
             const newsVoice = options?.voice || 'Kore';
             const textForAudio = text.length > MAX_TTS_CHARS ? text.substring(0, MAX_TTS_CHARS) + "..." : text;
