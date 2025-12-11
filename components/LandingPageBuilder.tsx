@@ -55,34 +55,11 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
       if (editorInstanceRef.current) return;
 
       let processedHtml = initialHtml;
-      let shouldShowTemplateModal = true;
-
-      // Se o HTML for válido e tiver conteúdo substancial, usa ele.
-      // Se vier vazio ou muito curto (erro de geração), mostra o modal de templates e um fallback.
-      if (initialHtml && initialHtml.length > 50 && initialHtml.trim() !== '') {
-          processedHtml = initialHtml; // Usa o HTML puro
-          shouldShowTemplateModal = false;
-      } else {
-          // Fallback visual para não ficar tela branca
-          processedHtml = `
-            <body class="bg-gray-900 text-gray-300 font-sans">
-                <div class="flex flex-col items-center justify-center min-h-screen p-10 text-center">
-                    <div class="bg-gray-800 p-8 rounded-xl border border-gray-700 shadow-xl max-w-lg">
-                        <h1 class="text-3xl font-bold text-white mb-4">Conteúdo Não Gerado</h1>
-                        <p class="mb-6 text-gray-400">A Inteligência Artificial não retornou um código válido para este pedido. Isso pode acontecer se o prompt for muito complexo ou se houve um erro momentâneo.</p>
-                        <div class="p-4 bg-gray-900/50 rounded-lg border border-gray-700 text-sm text-yellow-500 mb-6">
-                            <i class="fas fa-exclamation-triangle mr-2"></i> Dica: Tente simplificar seu pedido ou escolha um template pronto abaixo.
-                        </div>
-                        <button class="bg-green-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-green-500 transition">Escolher Template</button>
-                    </div>
-                </div>
-            </body>
-          `;
-          shouldShowTemplateModal = true;
-          setToast({ message: "O conteúdo gerado estava vazio. Carregando modo de recuperação.", type: 'error' });
+      // Se o HTML for curto (provavelmente vazio ou placeholder), mostra modal. Se for conteúdo real (ex: imagem gerada), esconde modal.
+      if (initialHtml && initialHtml.length > 100) {
+          processedHtml = sanitizeHtml(initialHtml);
+          setShowTemplateModal(false);
       }
-
-      setShowTemplateModal(shouldShowTemplateModal);
 
       try {
         // @ts-ignore
@@ -98,7 +75,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
           height: '100%',
           width: 'auto',
           fromElement: false,
-          components: processedHtml,
+          components: processedHtml || '<body class="bg-gray-900"><div style="padding: 50px; text-align: center; color: white;">Arraste blocos aqui...</div></body>',
           // Desativa a UI padrão para usarmos customizada
           panels: { defaults: [] },
           storageManager: false,
@@ -230,7 +207,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
       } catch (error: any) {
         console.error('Erro GrapesJS:', error);
-        setToast({ message: "Falha crítica ao carregar editor.", type: 'error' });
+        setToast({ message: "Falha ao carregar editor.", type: 'error' });
       }
     };
 
@@ -260,7 +237,7 @@ export function LandingPageBuilder({ initialHtml, onClose }: LandingPageBuilderP
 
           const style = document.createElement('style');
           style.innerHTML = `
-            body { background-color: #111827; color: #f3f4f6; overflow-x: hidden; font-family: sans-serif; min-height: 100vh; }
+            body { background-color: #111827; color: #f3f4f6; overflow-x: hidden; font-family: sans-serif; }
             a { cursor: pointer; }
             /* Outline visual para facilitar edição */
             *:hover { outline: 1px dashed rgba(16, 185, 129, 0.3); }
