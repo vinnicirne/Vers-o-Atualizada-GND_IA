@@ -134,16 +134,20 @@ export function useDashboard() {
         setResults(prev => ({ ...prev, text: null, title: null, audioBase64: null, imagePrompt: null }));
         setShowFeedback(false);
 
-        // Validation
-        const cost = getCreditsCostForService(mode) + (generateAudio ? getCreditsCostForService('text_to_speech') : 0);
+        // Validation & Cost Calculation
+        // CORREÇÃO: Só adiciona custo extra de áudio se o modo principal NÃO for text_to_speech
+        const isTTSMode = mode === 'text_to_speech';
+        const baseCost = getCreditsCostForService(mode);
+        const extraAudioCost = (generateAudio && !isTTSMode) ? getCreditsCostForService('text_to_speech') : 0;
+        const totalCost = baseCost + extraAudioCost;
         
         if (isGuest) {
-            if (guestCredits < cost) {
+            if (guestCredits < totalCost) {
                 toggleModal('guestLimit', true);
                 return;
             }
         } else {
-            if (!hasEnoughCredits(mode)) { // hasEnoughCredits agora também verifica o custo correto
+            if (user && (user.credits !== -1 && user.credits < totalCost)) {
                 setToast({ message: "Saldo insuficiente.", type: 'error' });
                 toggleModal('plans', true);
                 return;
@@ -187,13 +191,13 @@ export function useDashboard() {
                 imagePrompt: newImagePrompt,
                 imageDimensions: imgDims,
                 metadata: isGuest 
-                    ? { plan: 'Visitante', credits: guestCredits - cost } // Deduz o custo total para guest
-                    : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
+                    ? { plan: 'Visitante', credits: guestCredits - totalCost }
+                    : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - totalCost }
             });
 
             // Consume Credits
             if (isGuest) {
-                const newCredits = guestCredits - cost; // Deduz o custo total para guest
+                const newCredits = guestCredits - totalCost;
                 setGuestCredits(newCredits);
                 localStorage.setItem('gdn_guest_credits', newCredits.toString());
             } else {
