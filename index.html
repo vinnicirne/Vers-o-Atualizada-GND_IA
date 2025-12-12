@@ -5,13 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="var(--brand-primary)" />
     
-    <!-- SECURITY: Content Security Policy (CSP) Updated to allow AI Studio resources and data URIs -->
+    <!-- SECURITY: Content Security Policy (CSP) Updated -->
     <meta http-equiv="Content-Security-Policy" content="
       default-src 'self' https://ai.studio https://*.ai.studio https://*.googleusercontent.com;
       script-src 'self' 'unsafe-inline' 'unsafe-eval' data: https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://unpkg.com https://sdk.mercadopago.com https://www.googletagmanager.com https://aistudiocdn.com https://cdn.jsdelivr.net https://esm.sh https://ai.studio https://*.ai.studio https://*.googleusercontent.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://unpkg.com https://cdn.tailwindcss.com https://ai.studio https://*.ai.studio;
       font-src 'self' https://fonts.gstatic.com https://cdnjs.cloudflare.com;
       img-src 'self' data: blob: https://cdn-icons-png.flaticon.com https://image.pollinations.ai https://via.placeholder.com https://github.com https://ai.studio https://*.ai.studio;
+      media-src 'self' data: blob: https://*.googleusercontent.com;
       frame-src 'self' https://www.youtube.com https://sdk.mercadopago.com;
       connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.mercadopago.com https://events.mercadopago.com https://www.google-analytics.com https://image.pollinations.ai https://ai.studio https://*.ai.studio https://*.googleusercontent.com *;
       manifest-src 'self' https://ai.studio https://*.ai.studio;
@@ -43,7 +44,6 @@
         console.error("🔍 Stack:", error);
         
         const root = document.getElementById('root');
-        // Only show if root is empty (app hasn't loaded)
         if (root && root.innerHTML.trim() === '') {
             root.innerHTML = `
                 <div style="font-family: sans-serif; padding: 2rem; background: #FEF2F2; color: #991B1B; border: 2px solid #EF4444; border-radius: 8px; margin: 20px; max-width: 800px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -55,10 +55,6 @@
                         <p style="margin: 0 0 0.5rem 0; font-weight: bold; color: #DC2626;">${message}</p>
                         <p style="margin: 0; font-size: 0.875rem; color: #4B5563; font-family: monospace;">${source}:${lineno}</p>
                     </div>
-                    <details style="margin-top: 1rem;">
-                        <summary style="cursor: pointer; font-weight: bold; color: #7F1D1D;">Ver detalhes técnicos (Stack Trace)</summary>
-                        <pre style="background: rgba(0,0,0,0.05); padding: 1rem; border-radius: 4px; overflow: auto; margin-top: 0.5rem; font-size: 0.75rem; color: #374151;">${error?.stack || 'Nenhuma stacktrace disponível.'}</pre>
-                    </details>
                     <p style="margin-top: 1.5rem; font-size: 0.875rem; color: #4B5563;">
                         Tente recarregar a página. Se o erro persistir, verifique o console do desenvolvedor (F12).
                     </p>
@@ -66,10 +62,6 @@
             `;
         }
       };
-
-      window.addEventListener('unhandledrejection', function(event) {
-        console.error("🚨 PROMISE REJEITADA NÃO TRATADA:", event.reason);
-      });
     </script>
 
     <script type="importmap">
