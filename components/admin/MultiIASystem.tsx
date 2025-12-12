@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { getMultiAISettings, updateMultiAISettings, getAILogs } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
-import { MultiAISettings, AIPlatform, AIModel, AILog } from '../../types';
+import { MultiAISettings, AIPlatform, AIModel, AILog, AIPlatformSettings } from '../../types';
 import { Toast } from './Toast';
 import { Pagination } from './Pagination';
 
@@ -85,7 +85,7 @@ export function MultiIASystem() {
   const handlePlatformChange = (platform: keyof MultiAISettings['platforms'], field: keyof AIPlatform, value: any) => {
     setSettings(prev => {
         if (!prev) return null;
-        const numericValue = ['costPerMillionTokens', 'maxTokens'].includes(field) ? parseFloat(value) || 0 : value;
+        const numericValue = ['costPerMillionTokens', 'maxTokens'].includes(field as string) ? parseFloat(value) || 0 : value;
         return {
             ...prev,
             platforms: {
@@ -342,4 +342,4 @@ export function MultiIASystem() {
       </div>
     </div>
   );
-};
+}

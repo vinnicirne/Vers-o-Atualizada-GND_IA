@@ -1,5 +1,4 @@
 {
-  "requestFramePermissions": [],
-  "name": "Empty React Scaffold",
-  "description": ""
+  "name": "Empty Starter Project",
+  "description": "A pristine, empty React starter template configured with TypeScript and Tailwind CSS, ready for development."
 }
