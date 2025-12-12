@@ -17,6 +17,9 @@ const VOICES = [
     { value: 'Fenrir', label: 'Fenrir (Masculina - Intensa)' },
 ];
 
+// Limite seguro para evitar timeouts e erros de API
+const MAX_CHARS = 2500;
+
 export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormProps) {
     const [prompt, setPrompt] = useState('');
     const [selectedVoice, setSelectedVoice] = useState('Kore');
@@ -27,6 +30,13 @@ export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormPr
         e.preventDefault();
         // CORREÇÃO: Passamos 'true' para generateAudio explicitamente, pois o objetivo desta ferramenta é criar áudio.
         onGenerate(prompt, mode, true, { voice: selectedVoice });
+    };
+
+    const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const text = e.target.value;
+        if (text.length <= MAX_CHARS) {
+            setPrompt(text);
+        }
     };
 
     return (
@@ -46,12 +56,18 @@ export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormPr
                 </label>
                 <textarea
                     value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
+                    onChange={handlePromptChange}
                     placeholder="Insira o texto que você deseja transformar em áudio..."
                     rows={5}
+                    maxLength={MAX_CHARS}
                     className="w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-4 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300 placeholder-gray-400 disabled:opacity-50 disabled:bg-gray-50 resize-y"
                     disabled={isLoading || isLocked}
                 />
+                <div className="flex justify-end mt-1">
+                    <span className={`text-xs font-bold ${prompt.length >= MAX_CHARS ? 'text-red-500' : 'text-gray-400'}`}>
+                        {prompt.length} / {MAX_CHARS} caracteres
+                    </span>
+                </div>
             </div>
 
             <button
