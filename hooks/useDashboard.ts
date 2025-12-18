@@ -4,6 +4,7 @@ import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
 import { usePlan } from './usePlan';
 import { generateCreativeContent } from '../services/geminiService';
+import { geminiTTSService } from '../services/ttsService';
 
 // Helper para extrair título e conteúdo
 const extractTitleAndContent = (text: string): { title: string | null, content: string } => {
@@ -15,12 +16,10 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
 
   if (lines.length > 0) {
       const firstLine = lines[0].trim();
-      // Remove marcadores comuns de MD/Text gerados por IA
       const cleanLine = firstLine.replace(/^(\*\*|#|Título:|Subject:|Headline:)\s*/i, '').replace(/\*\*$/, '');
       
       if (cleanLine.length > 5 && cleanLine.length < 100 && !cleanLine.includes('<')) {
           title = cleanLine;
-          // Remove a primeira linha e quebras subsequentes
           content = lines.slice(1).join('\n').trim();
       }
   }
@@ -32,15 +31,12 @@ export function useDashboard() {
     const { user, refresh } = useUser();
     const { currentPlan, hasAccessToService, hasEnoughCredits, getCreditsCostForService } = usePlan();
 
-    // UI Control
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    // Allow 'crm' as a valid mode for the dashboard state
     const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm'>('news_generator');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-    // Results State
     const [results, setResults] = useState<{
         text: string | null;
         title: string | null;
@@ -58,7 +54,6 @@ export function useDashboard() {
     });
     const [showFeedback, setShowFeedback] = useState(false);
 
-    // Modals State
     const [modals, setModals] = useState({
         plans: false,
         history: false,
@@ -69,7 +64,6 @@ export function useDashboard() {
         featureLock: false
     });
 
-    // Guest Logic
     const [isGuest, setIsGuest] = useState(false);
     const [guestCredits, setGuestCredits] = useState(0);
     const GUEST_ALLOWED_MODES: ServiceKey[] = ['news_generator', 'copy_generator', 'prompt_generator', 'text_to_speech'];
@@ -89,14 +83,12 @@ export function useDashboard() {
     };
 
     const handleModeChange = (mode: ServiceKey | 'crm') => {
-        // Special handling for CRM
         if (mode === 'crm') {
             setCurrentMode(mode);
             setSidebarOpen(false);
             return;
         }
 
-        // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
         if (!hasAccessToService(mode)) {
             if (isGuest) {
                 toggleModal('featureLock', true);
@@ -107,7 +99,6 @@ export function useDashboard() {
         }
         
         setCurrentMode(mode);
-        // Clear results
         setResults(prev => ({
             ...prev,
             text: null,
@@ -117,7 +108,7 @@ export function useDashboard() {
         }));
         setShowFeedback(false);
         setError(null);
-        setSidebarOpen(false); // Fecha sidebar no mobile
+        setSidebarOpen(false);
     };
 
     const updateResultText = (text: string | null) => {
@@ -134,20 +125,15 @@ export function useDashboard() {
         setResults(prev => ({ ...prev, text: null, title: null, audioBase64: null, imagePrompt: null }));
         setShowFeedback(false);
 
-        // Validation & Cost Calculation
-        // CORREÇÃO: Só adiciona custo extra de áudio se o modo principal NÃO for text_to_speech
-        const isTTSMode = mode === 'text_to_speech';
-        const baseCost = getCreditsCostForService(mode);
-        const extraAudioCost = (generateAudio && !isTTSMode) ? getCreditsCostForService('text_to_speech') : 0;
-        const totalCost = baseCost + extraAudioCost;
+        const cost = getCreditsCostForService(mode) + (generateAudio ? getCreditsCostForService('text_to_speech') : 0);
         
         if (isGuest) {
-            if (guestCredits < totalCost) {
+            if (guestCredits < cost) {
                 toggleModal('guestLimit', true);
                 return;
             }
         } else {
-            if (user && (user.credits !== -1 && user.credits < totalCost)) {
+            if (!hasEnoughCredits(mode)) { 
                 setToast({ message: "Saldo insuficiente.", type: 'error' });
                 toggleModal('plans', true);
                 return;
@@ -157,47 +143,50 @@ export function useDashboard() {
         setIsLoading(true);
 
         try {
-            // Image specific config
-            let imgDims = { width: 1024, height: 1024 };
-            if (mode === 'image_generation' && options?.aspectRatio) {
-                const [wRatio, hRatio] = options.aspectRatio.split(':').map(Number);
-                const base = 1024;
-                let w = base, h = base;
-                if (wRatio > hRatio) { h = Math.round(base * (hRatio / wRatio)); }
-                else if (hRatio > wRatio) { w = Math.round(base * (wRatio / hRatio)); }
-                imgDims = { width: w, height: h };
-            }
+            let apiResultText = '';
+            let audioBase64 = null;
+            let sources = [];
 
-            const apiResult = await generateCreativeContent(prompt, mode, user?.id, generateAudio, options);
+            // Se for modo TTS puro, usamos o serviço especializado
+            if (mode === 'text_to_speech') {
+                audioBase64 = await geminiTTSService.generateSingleSpeaker(prompt, options?.voice || 'Kore', options?.tone);
+                apiResultText = "Áudio gerado com sucesso.";
+            } else {
+                // Outros modos continuam usando o gerador de conteúdo criativo
+                const result = await generateCreativeContent(prompt, mode, user?.id, generateAudio, options);
+                apiResultText = result.text;
+                audioBase64 = result.audioBase64;
+                sources = result.sources || [];
+            }
             
             let newText = null;
             let newTitle = null;
             let newImagePrompt = null;
 
             if (mode === 'image_generation' || mode === 'social_media_poster') {
-                newText = apiResult.text;
-                newImagePrompt = apiResult.text;
-            } else {
-                const extracted = extractTitleAndContent(apiResult.text);
+                newText = apiResultText;
+                newImagePrompt = apiResultText;
+            } else if (mode !== 'text_to_speech') {
+                const extracted = extractTitleAndContent(apiResultText);
                 newTitle = extracted.title;
                 newText = extracted.content;
+            } else {
+                newText = apiResultText;
             }
 
-            // Update State
-            setResults({
+            setResults(prev => ({
+                ...prev,
                 text: newText,
                 title: newTitle,
-                audioBase64: apiResult.audioBase64 || null,
+                audioBase64,
                 imagePrompt: newImagePrompt,
-                imageDimensions: imgDims,
                 metadata: isGuest 
-                    ? { plan: 'Visitante', credits: guestCredits - totalCost }
-                    : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - totalCost }
-            });
+                    ? { plan: 'Visitante', credits: guestCredits - cost } 
+                    : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
+            }));
 
-            // Consume Credits
             if (isGuest) {
-                const newCredits = guestCredits - totalCost;
+                const newCredits = guestCredits - cost;
                 setGuestCredits(newCredits);
                 localStorage.setItem('gdn_guest_credits', newCredits.toString());
             } else {
@@ -227,7 +216,7 @@ export function useDashboard() {
         toast,
         setToast,
         results,
-        updateResultText, // Exposed setter for text clearing
+        updateResultText,
         showFeedback,
         setShowFeedback,
         modals,

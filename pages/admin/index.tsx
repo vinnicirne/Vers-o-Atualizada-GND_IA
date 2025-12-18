@@ -44,9 +44,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const [realtimeStatus, setRealtimeStatus] = useState<string>('CONNECTING');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   
-  // Estado para controlar tentativas de reconexão do Realtime
-  const [retryCount, setRetryCount] = useState(0);
-  
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const refreshData = () => {
@@ -58,8 +55,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   };
 
   useEffect(() => {
-      console.log(`[Admin] Inicializando conexão Realtime (Tentativa ${retryCount + 1})...`);
-
       const channel = supabase.channel('admin_dashboard_global')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'news' }, refreshData)
@@ -67,30 +62,16 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, refreshData) // Monitorar system_config
-          .subscribe((status, err) => {
-              // LOG CORRIGIDO E STATUS
+          .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
-
-              // TRATAMENTO DE ERROS E RECONEXÃO
-              if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-                  console.error('Erro na conexão realtime:', err);
-                  
-                  // Tentar reconectar após 5 segundos
-                  setTimeout(() => {
-                      console.log('Tentando reconectar...');
-                      // Incrementa o contador para forçar o useEffect a rodar novamente e recriar o canal
-                      setRetryCount(prev => prev + 1);
-                  }, 5000);
-              }
           });
 
       return () => {
-          console.log('[Admin] Limpando canal Realtime...');
           supabase.removeChannel(channel);
           if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
       };
-  }, [retryCount]); // Adicionado retryCount como dependência para recriar o efeito
+  }, []);
 
   const handleLogout = async () => {
     await signOut();

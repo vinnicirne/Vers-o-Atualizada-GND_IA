@@ -1,35 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-
-// Base64 to Uint8Array decoding function with sanitization
-function decode(base64: string): Uint8Array {
-  // Remove spaces, newlines, and other whitespace chars that might corrupt base64 decoding
-  const cleanBase64 = base64.replace(/\s/g, '');
-  const binaryString = atob(cleanBase64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
-
-// Raw PCM data to AudioBuffer decoding function
-async function decodeAudioData(
-  data: Uint8Array,
-  ctx: AudioContext
-): Promise<AudioBuffer> {
-  const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length; // Assuming single channel
-  const buffer = ctx.createBuffer(1, frameCount, 24000); // Gemini TTS sample rate is 24kHz
-
-  const channelData = buffer.getChannelData(0);
-  for (let i = 0; i < frameCount; i++) {
-    channelData[i] = dataInt16[i] / 32768.0;
-  }
-  return buffer;
-}
-
+import { decode, decodeAudioData, audioBufferToWav } from '../services/ttsService';
 
 interface AudioPlayerProps {
   audioBase64: string;
@@ -39,6 +10,7 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [duration, setDuration] = useState(0);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
@@ -47,19 +19,18 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
   useEffect(() => {
     if (!audioBase64) return;
 
-    // Initialize AudioContext on first interaction or effect run
-    if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    const audioContext = audioContextRef.current;
-
     const processAudio = async () => {
       setIsLoading(true);
       setError(null);
       try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        
         const decodedBytes = decode(audioBase64);
-        const buffer = await decodeAudioData(decodedBytes, audioContext);
+        const buffer = await decodeAudioData(decodedBytes, audioContextRef.current, 24000, 1);
         audioBufferRef.current = buffer;
+        setDuration(buffer.duration);
       } catch (err) {
         console.error("Failed to decode audio:", err);
         setError("Falha ao processar o áudio.");
@@ -70,66 +41,102 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
 
     processAudio();
 
-    // Cleanup function
     return () => {
-      if (sourceRef.current) {
-        sourceRef.current.stop();
-        sourceRef.current.disconnect();
-        sourceRef.current = null;
-      }
-      setIsPlaying(false);
+      stopAudio();
     };
   }, [audioBase64]);
+
+  const stopAudio = () => {
+    if (sourceRef.current) {
+      try {
+        sourceRef.current.stop();
+      } catch (e) {}
+      sourceRef.current.disconnect();
+      sourceRef.current = null;
+    }
+    setIsPlaying(false);
+  };
 
   const togglePlayPause = () => {
     if (!audioBufferRef.current || !audioContextRef.current) return;
     
     if (isPlaying) {
-      if (sourceRef.current) {
-        sourceRef.current.stop();
-        sourceRef.current = null;
-      }
-      setIsPlaying(false);
+      stopAudio();
     } else {
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
       source.connect(audioContextRef.current.destination);
-      source.onended = () => {
-        setIsPlaying(false);
-        sourceRef.current = null;
-      };
+      source.onended = () => setIsPlaying(false);
       source.start(0);
       sourceRef.current = source;
       setIsPlaying(true);
     }
   };
 
+  const handleDownload = () => {
+    if (!audioBufferRef.current) return;
+    const wavBlob = audioBufferToWav(audioBufferRef.current);
+    const url = URL.createObjectURL(wavBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audio-gdn-${Date.now()}.wav`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (error) {
     return (
-        <div className="mt-4 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-center" role="alert">
-            <strong className="font-bold">Erro: </strong>
-            <span className="block sm:inline">{error}</span>
-        </div>
+      <div className="mt-4 bg-red-900/10 border border-red-500/20 text-red-600 px-4 py-3 rounded-lg text-center text-sm">
+        <i className="fas fa-exclamation-circle mr-2"></i>{error}
+      </div>
     );
   }
 
   return (
-    <div className="mt-6 bg-black/50 p-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.2)] border border-green-900/30 flex items-center justify-center animate-fade-in">
+    <div className="mt-6 bg-white p-5 rounded-2xl shadow-lg border border-gray-100 flex flex-col sm:flex-row items-center gap-4 animate-fade-in">
       {isLoading ? (
-        <div className="flex items-center space-x-3 text-gray-400">
+        <div className="flex items-center space-x-3 text-gray-400 py-2">
           <i className="fas fa-spinner fa-spin text-xl"></i>
-          <span>Processando áudio...</span>
+          <span className="text-sm font-medium">Processando áudio neural...</span>
         </div>
       ) : (
-        <button
-          onClick={togglePlayPause}
-          className="flex items-center space-x-3 px-6 py-3 bg-green-900/30 hover:bg-green-900/60 border border-green-700/50 rounded-lg text-green-300 font-bold transition-colors"
-          aria-label={isPlaying ? 'Pausar áudio' : 'Tocar áudio'}
-        >
-          <i className={`fas ${isPlaying ? 'fa-pause-circle' : 'fa-play-circle'} text-3xl`}></i>
-          <span>{isPlaying ? 'Pausar Áudio' : 'Ouvir a Matéria'}</span>
-        </button>
+        <>
+          <div className="flex items-center gap-4 flex-1 w-full">
+            <button
+              onClick={togglePlayPause}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-md ${
+                isPlaying 
+                ? 'bg-red-500 hover:bg-red-600 text-white' 
+                : 'bg-[var(--brand-tertiary)] hover:bg-green-600 text-white'
+              }`}
+            >
+              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-xl ${!isPlaying ? 'ml-1' : ''}`}></i>
+            </button>
+            
+            <div className="flex-1">
+              <p className="text-sm font-bold text-[var(--brand-secondary)] mb-1">Narração Digital</p>
+              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
+                <span>0:00</span>
+                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full bg-[var(--brand-tertiary)] transition-all duration-300 ${isPlaying ? 'animate-progress' : ''}`}
+                    style={{ width: isPlaying ? '100%' : '0%', animationDuration: `${duration}s` }}
+                  ></div>
+                </div>
+                <span>{duration.toFixed(1)}s</span>
+              </div>
+            </div>
+          </div>
+
+          <button
+            onClick={handleDownload}
+            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-colors w-full sm:w-auto justify-center"
+          >
+            <i className="fas fa-download"></i>
+            <span>Baixar .WAV</span>
+          </button>
+        </>
       )}
     </div>
   );
-};
+}

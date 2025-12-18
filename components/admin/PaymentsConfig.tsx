@@ -1,5 +1,4 @@
 
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPaymentSettings, saveGatewaySettings, saveCreditPackages } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
@@ -65,7 +64,8 @@ export function PaymentsConfig() {
             if (!prev) return null;
             const newPackages = [...prev.packages];
             // Ensure numeric values are stored as numbers
-            const numericValue = ['quantidade', 'preco'].includes(field) ? parseFloat(value) || 0 : value;
+            /* Fixed: Cast field to string for .includes() compatibility */
+            const numericValue = ['quantidade', 'preco'].includes(field as string) ? parseFloat(value) || 0 : value;
             (newPackages[index] as any)[field] = numericValue;
             return { ...prev, packages: newPackages };
         });

@@ -39,6 +39,7 @@ const TASK_COSTS: Record<string, number> = {
   crm_suite: 0,
 };
 
+// Inline CURRICULUM_TEMPLATES
 const CURRICULUM_TEMPLATES = {
     minimalist: `
     <div class="bg-white p-8 max-w-3xl mx-auto font-sans text-gray-800 shadow-lg rounded-lg my-8">
@@ -158,8 +159,96 @@ const corsHeaders = {
 
 const MAX_TTS_CHARS = 2800;
 
-// ... (CREATOR_SUITE_SYSTEM_PROMPT mantido igual, omitido para brevidade) ...
-const CREATOR_SUITE_SYSTEM_PROMPT = `Você é o GDN_IA Creator Suite... (System prompt completo)`;
+const CREATOR_SUITE_SYSTEM_PROMPT = `
+Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
+
+## PROCESSO DE APRENDIZADO E EVOLUÇÃO (RAG)
+Você possui uma memória persistente das preferências do usuário. Antes de gerar qualquer coisa, analise a seção "Histórico de Aprendizado do Usuário" abaixo.
+1. Se houver feedbacks com "✅ [PADRÃO DE SUCESSO]", tente replicar o estilo, tom ou estrutura que agradou.
+2. Se houver feedbacks com "❌ [PADRÃO DE ERRO]", EVITE cometer os mesmos erros.
+3. A cada nova geração, você deve tentar superar a anterior baseada nesses feedbacks.
+
+## DIRETRIZES GERAIS DE SEO (PARA TEXTOS)
+Ao gerar notícias, artigos ou copy:
+1. **Palavra-chave Foco:** Identifique o tema principal e certifique-se de que ele apareça no **TÍTULO** e na **PRIMEIRA FRASE** do primeiro parágrafo. Isso é crucial para o SEO.
+2. **Estrutura:** Use parágrafos curtos e legíveis.
+3. **Imparcialidade:** Mantenha um tom jornalístico profissional para notícias.
+
+MODOS DISPONÍVEIS (roteie baseado na query):
+
+1. **GDN Notícias**: 
+   - Escreva uma notícia completa baseada nos dados fornecidos ou em seu conhecimento.
+   - **OBRIGATÓRIO:** O primeiro parágrafo deve conter a palavra-chave principal do assunto (ex: se é sobre Flamengo, a palavra "Flamengo" deve estar na primeira linha).
+   - Use formatação Markdown (Negrito para ênfase).
+
+2. **Gerador de Prompts**: Gere prompts otimizados para IAs como Gemini/ChatGPT, detalhando persona, tarefa, contexto e formato de saída.
+
+3. **Criador de Sites (Web)**:
+   Você é um **Diretor de Arte Premiado** e um **Copywriter de Resposta Direta**.
+   Sua tarefa é criar um site responsivo e profissional usando HTML e Tailwind CSS.
+
+   **LÓGICA INTELIGENTE (Decida o tipo de site com base no prompt):**
+   - **SE** o prompt do usuário solicitar um "site institucional", "site corporativo", "site para empresa", ou mencionar múltiplas seções como "sobre nós", "serviços", "contato", etc., então crie uma estrutura de **Site Institucional** com:
+     - **HEADER:** Inclua um menu de navegação responsivo (pelo menos 3 links).
+     - Múltiplas **SECTIONS** para Home, Sobre, Serviços, Contato.
+     - Design limpo, profissional e elegante.
+   - **CASO CONTRÁRIO (se o foco é produto/venda)**, crie uma **Landing Page de Alta Conversão** com:
+     - **HEADER (Minimalista & Focado):**
+       - **NUNCA** use tags de navegação (<nav>, <ul>, <li>) no topo.
+       - Apenas: Uma <div> com o Logo (texto estilizado, ex: font-extrabold tracking-tighter) à esquerda e um botão CTA (ex: "Falar com Consultor") à direita.
+     - **HERO SECTION (Impacto Visual):** Headline grande com gradientes, CTA principal.
+     - **PROVA SOCIAL (Autoridade):** Faixa discreta "Empresas que confiam em nós".
+     - **BENEFÍCIOS (Não Features):** Use GRID, cards com Glassmorphism.
+     - **OFERTA & GARANTIA (Risco Zero):** Seção destacada com selo visual.
+     - **FAQ (Quebra de Objeções):** Use tags HTML nativas <details> e <summary>.
+     - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
+
+   **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
+   - Use font-sans (padrão moderno).
+   - Espaçamento generoso (py-20, gap-8).
+   - Sombras sofisticadas (shadow-2xl, shadow-inner).
+   - Use <section> tags distintas para cada bloco de conteúdo para facilitar a edição visual.
+   - Retorne APENAS o HTML do <body>.
+
+    4. **Studio de Arte IA (Image Generation)**:
+       Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
+       - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
+       - Retorne APENAS o prompt em inglês.
+
+    5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
+
+    6. **Editor Visual (Social Media)**:
+       Gere APENAS o código HTML de uma <div> (1080x1080px) com Tailwind CSS.
+       - Design vibrante, tipografia grande, contraste alto.
+
+    7. **Criador de Currículos (IA)**:
+       Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
+       Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
+
+       **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
+       - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
+       - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
+       - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
+       - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
+       - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
+       - **Tom de Voz:** Profissional, confiante e orientado a resultados.
+
+       **REGRAS ESTRUTURAIS E DE PREENCHIMENTO HTML (Tailwind CSS):**
+       - Utilize o TEMPLATE HTML fornecido como base.
+       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: "<span id='resume-name'></span>", "<div id='experience-list'></div>").
+       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o "innerHTML"** do elemento com o ID.
+       - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
+       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu "innerHTML" vazio** ou remova o elemento se for mais limpo.
+       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere o HTML completo para todos os itens da lista e seus itens** (ex: "<div>...</div>" para cada experiência, "<span>...</span>" para cada skill) diretamente dentro do "div" de placeholder da lista.
+       - **NÃO inclua tags "<html>", "<head>" ou "<body>" externas.** Apenas o conteúdo interno.
+       - Use classes Tailwind CSS para todo o estilo.
+       - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
+       - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
+
+    8. **Criador de Posts Sociais (Social Media Poster)**:
+       [IMAGE_PROMPT] (Inglês técnico)
+       [COPY] (Português persuasivo, tom de autoridade).
+    `;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -178,6 +267,7 @@ serve(async (req) => {
     const options: GenerateContentOptions = rawOptions || {};
     mode = mode?.trim();
     
+    // 0. Initialize Supabase Admin (Required for credit deduction)
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -186,19 +276,27 @@ serve(async (req) => {
     // 1. Credit Check Logic
     let cost = 0;
     if (userId) {
+        // Calculate cost based on mode and audio
         const baseCost = TASK_COSTS[mode] || 1; 
         const audioCost = generateAudio ? (TASK_COSTS['text_to_speech'] || 2) : 0;
         cost = baseCost + audioCost;
 
+        // Fetch current credits
         const { data: creditData, error: creditError } = await supabaseAdmin
             .from('user_credits')
             .select('credits')
             .eq('user_id', userId)
             .single();
 
-        if (creditError) throw new Error("Erro ao verificar saldo de créditos. Tente novamente.");
+        if (creditError) {
+            console.error("Erro ao verificar créditos:", creditError);
+            // Allow if checking fails? No, safer to block.
+            throw new Error("Erro ao verificar saldo de créditos. Tente novamente.");
+        }
 
         const currentCredits = creditData?.credits ?? 0;
+
+        // -1 means unlimited (Admin/Super Admin)
         if (currentCredits !== -1 && currentCredits < cost) {
             throw new Error(`Saldo insuficiente. Necessário: ${cost}, Disponível: ${currentCredits}.`);
         }
@@ -206,18 +304,18 @@ serve(async (req) => {
 
     // 2. Generation Logic
     const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("Erro de Configuração: GEMINI_API_KEY não encontrada no servidor.");
+    if (!apiKey) {
+        throw new Error("Erro de Configuração: GEMINI_API_KEY não encontrada no servidor.");
+    }
 
     const ai = new GoogleGenAI({ apiKey: apiKey as string });
     
-    // --- AUDIO GENERATION (TTS) ---
+    // ... (Existing text_to_speech handling) ...
     if (mode === 'text_to_speech') {
         const voiceName = options?.voice || 'Kore';
         const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
 
         try {
-            console.log(`Gerando áudio (TTS) com voz: ${voiceName}`);
-            
             const audioResponse = await ai.models.generateContent({
                 model: "gemini-2.5-flash-preview-tts",
                 contents: [{ parts: [{ text: safePrompt }] }],
@@ -234,26 +332,12 @@ serve(async (req) => {
             const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
             
             if (!audioBase64) {
-                console.error("Gemini Response sem áudio:", JSON.stringify(audioResponse));
-                throw new Error("O modelo não retornou dados de áudio. Tente novamente.");
+                throw new Error("O modelo não retornou áudio.");
             }
 
-            if (userId && cost > 0) await deductCredits(supabaseAdmin, userId, cost);
-
-            // NEW: Save to History for TTS
-            if (userId) {
-                try {
-                    await supabaseAdmin.from('news').insert({
-                        author_id: userId,
-                        titulo: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
-                        conteudo: "Áudio gerado a partir do texto: " + safePrompt.substring(0, 100) + "...",
-                        tipo: mode,
-                        status: 'approved',
-                        criado_em: new Date().toISOString()
-                    });
-                } catch(logErr) {
-                    console.warn("Falha ao salvar histórico de áudio:", logErr);
-                }
+            // DEDUCT CREDITS FOR TTS
+            if (userId && cost > 0) {
+                await deductCredits(supabaseAdmin, userId, cost);
             }
 
             return new Response(JSON.stringify({ 
@@ -265,47 +349,61 @@ serve(async (req) => {
             });
 
         } catch (ttsError: any) {
-            console.error("TTS Critical Error:", ttsError);
-            const errorMsg = ttsError.message || "Erro desconhecido na geração de áudio";
-            // Return explicit error to UI
-            return new Response(JSON.stringify({ error: `Falha na geração de áudio: ${errorMsg}` }), {
-                status: 500,
-                headers: { ...corsHeaders, "Content-Type": "application/json" },
-            });
+            console.error("TTS Error:", ttsError);
+            throw new Error(`Falha na geração de áudio: ${ttsError.message}`);
         }
     }
 
-    // --- TEXT / CODE GENERATION ---
     const modelName = 'gemini-2.5-flash';
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
-    let fullPrompt = `Query do usuário: ${prompt}\nModo de Geração: ${mode}`;
+    let fullPrompt = `
+      Query do usuário: ${prompt}
+      Modo de Geração: ${mode}
+    `;
 
+    // ... (Prompt adjustments based on mode - unchanged) ...
     if (mode === 'image_generation' && options) {
-        fullPrompt += `\nCONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:\n- Estilo Artístico: ${options.imageStyle || 'Photorealistic'}\n- Proporção: ${options.aspectRatio || '1:1'}`;
+        fullPrompt += `
+        CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
+        - Estilo Artístico: ${options.imageStyle || 'Photorealistic'}
+        - Proporção: ${options.aspectRatio || '1:1'}
+        `;
     }
 
     if (mode === 'social_media_poster' && options) {
-        fullPrompt += `\nCONTEXTO PARA POSTER:\n- Plataforma: ${options.platform || 'Instagram'}\n- Tema: ${options.theme || 'Modern'}`;
+        fullPrompt += `
+        CONTEXTO PARA POSTER:
+        - Plataforma: ${options.platform || 'Instagram'}
+        - Tema: ${options.theme || 'Modern'}
+        `;
     }
 
     if (mode === 'landingpage_generator' && options) { 
-        fullPrompt += `\n**DIRETRIZES VISUAIS ESPECÍFICAS:**\n- **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.\n- **Cor Primária**: ${options.primaryColor || '#10B981'}.`;
+        fullPrompt += `
+        **DIRETRIZES VISUAIS ESPECÍFICAS:**
+        - **Tema/Estilo Visual**: ${options.theme || 'Moderno'}.
+        - **Cor Primária**: ${options.primaryColor || '#10B981'}.
+        - **IMPORTANTE:** O design deve ser IMPRESSIONANTE. Use sombras, gradientes, bordas arredondadas e bom espaçamento.
+        `;
     }
 
     if (mode === 'curriculum_generator' && options) {
         const templateKey = options.template as keyof typeof CURRICULUM_TEMPLATES;
         const selectedTemplate = CURRICULUM_TEMPLATES[templateKey];
-        if (!selectedTemplate) throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
 
-        fullPrompt = `
+        if (!selectedTemplate) {
+            throw new Error(`Template de currículo '${templateKey}' não encontrado.`);
+        }
+
+        const curriculumDataPromptContent = `
         Por favor, gere um currículo profissional em HTML com Tailwind CSS. Utilize o TEMPLATE HTML a seguir como ESTRUTURA BASE e preencha o conteúdo de cada elemento com IDs específicos com as informações fornecidas, otimizando conforme as diretrizes de ATS (palavras-chave, verbos de ação, resultados quantificáveis) e o objetivo de carreira.
 
-        **TEMPLATE HTML A SER PREENCHIDO:**
+        **TEMPLATE HTML A SER PREENCHIDO (Não modifique a estrutura dos IDs, apenas o conteúdo interno):**
         ${selectedTemplate}
 
-        **INFORMAÇÕES DO USUÁRIO:**
-        - **Objetivo de Carreira:** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
+        **INFORMAÇÕES DO USUÁRIO PARA PREENCHIMENTO:**
+        - **Objetivo de Carreira (Prompt Geral para Resumo):** ${prompt || 'Não fornecido, crie um objetivo padrão profissional.'}
         - **Dados Pessoais:**
             Nome: ${options.personalInfo?.name || ''}
             Email: ${options.personalInfo?.email || ''}
@@ -317,16 +415,30 @@ serve(async (req) => {
             ${options.experience?.map((exp: any) => `  - Cargo: ${exp.title}, Empresa: ${exp.company}, Período: ${exp.dates}, Descrição: ${exp.description}`).join('\n') || 'Nenhuma experiência fornecida.'}
         - **Formação Acadêmica:**
             ${options.education?.map((edu: any) => `  - Grau: ${edu.degree}, Instituição: ${edu.institution}, Período: ${edu.dates}, Descrição: ${edu.description}`).join('\n') || 'Nenhuma formação fornecida.'}
-        - **Habilidades:** ${options.skills?.join(', ') || 'Não fornecido, sugira habilidades relevantes.'}
+        - **Habilidades (separadas por vírgula):** ${options.skills?.join(', ') || 'Não fornecido, a IA deve sugerir habilidades técnicas e comportamentais relevantes para o objetivo.'}
         - **Projetos:**
             ${options.projects?.map((proj: any) => `  - Nome: ${proj.name}, Tecnologias: ${proj.technologies}, Descrição: ${proj.description}`).join('\n') || 'Nenhum projeto fornecido.'}
-        - **Certificações:** ${options.certifications?.join(', ') || 'Nenhuma.'}
+        - **Certificações (separadas por vírgula):** ${options.certifications?.join(', ') || 'Nenhuma.'}
 
-        O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo.
+        **LEMBRE-SE DE CADA ETAPA:**
+        1.  Inicie com o template HTML fornecido.
+        2.  Encontre cada elemento HTML que possui um atributo \`id\` e que é um placeholder para o conteúdo.
+        3.  Para cada ID de placeholder, **gere o conteúdo HTML apropriado (ex: "<p>Seu resumo aqui</p>" ou "<div><h3>Cargo</h3><p>Empresa</p></div>")** e insira-o como o "innerHTML" desse elemento.
+        4.  Para listas como Experiência, Educação, Habilidades, Projetos e Certificações:
+            -   Gere o HTML completo para todos os itens da lista.
+            -   Para experiência e educação, cada item deve ter um "div" ou "p" formatado com classes Tailwind para o título/grau, empresa/instituição, datas e descrição.
+            -   Para habilidades e certificações, gere '<span>' ou '<li>' tags conforme o estilo do template e insira-as dentro do seu "div" ou "ul" de placeholder.
+        5.  Se não houver dados para uma seção de placeholder (ex: nenhum projeto), **deixe o "innerHTML" desse elemento vazio**.
+        6.  Para links (LinkedIn, Portfólio), atualize o atributo \`href\` e o texto do link no elemento \`<a>\` correspondente, ou deixe o \`href\` como "#" e o texto vazio se a URL não for fornecida.
+        7.  O retorno DEVE ser APENAS o código HTML FINAL e COMPLETO do currículo, sem qualquer texto adicional, explicações, ou blocos de código Markdown.
         `;
+        fullPrompt = curriculumDataPromptContent;
     }
 
-    let config: any = { systemInstruction: systemPromptWithMemory };
+    let config: any = {
+        systemInstruction: systemPromptWithMemory
+    };
+    
     if (mode === 'news_generator') {
         config.tools = [{ googleSearch: {} }];
     }
@@ -351,11 +463,31 @@ serve(async (req) => {
             .filter((s: any) => s !== null);
     }
 
-    if (!text) throw new Error('A API não retornou conteúdo de texto.');
+    if (!text) {
+        throw new Error('A API não retornou conteúdo de texto.');
+    }
 
-    // Cleanup Logic
+    // Cleanup Logic (Unchanged)
     if (mode === 'landingpage_generator' || mode === 'canva_structure' || mode === 'curriculum_generator') { 
         text = text.replace(/```html/g, '').replace(/```/g, '').trim();
+        const tagBodyStart = '<body';
+        const tagBodyEnd = '</body>';
+        const bodyStart = text.indexOf(tagBodyStart);
+        const bodyEnd = text.lastIndexOf(tagBodyEnd);
+        if (bodyStart !== -1 && bodyEnd !== -1 && (bodyEnd + tagBodyEnd.length) > bodyStart) {
+            text = text.substring(bodyStart, bodyEnd + tagBodyEnd.length);
+        } else {
+            const tagDivStart = '<div>';
+            const tagDivEnd = '</div>';
+            const divStart = text.indexOf(tagDivStart);
+            const divEnd = text.lastIndexOf(tagDivEnd);
+            if (divStart !== -1 && divEnd !== -1) {
+                const divEndPos = divEnd + tagDivEnd.length;
+                if (divEndPos > divStart) {
+                    text = text.substring(divStart, divEndPos);
+                }
+            }
+        }
     }
 
     let audioBase64 = null;
@@ -379,12 +511,15 @@ serve(async (req) => {
             audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
         } catch (audioError: any) {
             console.error("Failed to generate audio on backend:", audioError);
-            // Non-critical failure for news audio (text was generated)
         }
     }
 
-    if (userId && cost > 0) await deductCredits(supabaseAdmin, userId, cost);
+    // 3. Deduct Credits (Successful Generation)
+    if (userId && cost > 0) {
+        await deductCredits(supabaseAdmin, userId, cost);
+    }
 
+    // 4. Log generation history (Always for logged users)
     if (userId) {
         try {
             await supabaseAdmin.from('news').insert({
@@ -392,7 +527,7 @@ serve(async (req) => {
                 titulo: mode === 'image_generation' ? prompt.substring(0, 50) : (text.split('\n')[0].substring(0, 100) || 'Sem título'),
                 conteudo: text,
                 tipo: mode,
-                status: 'approved',
+                status: 'approved', // Auto-approve for now
                 criado_em: new Date().toISOString()
             });
         } catch(logErr) {
@@ -413,15 +548,21 @@ serve(async (req) => {
   }
 });
 
+// Helper function to deduct credits
 async function deductCredits(supabaseAdmin: any, userId: string, cost: number) {
     const { data: creditData } = await supabaseAdmin
         .from('user_credits')
         .select('credits')
         .eq('user_id', userId)
         .single();
+        
     const currentCredits = creditData?.credits ?? 0;
+    
     if (currentCredits !== -1) {
         const newBalance = Math.max(0, currentCredits - cost);
-        await supabaseAdmin.from('user_credits').update({ credits: newBalance }).eq('user_id', userId);
+        await supabaseAdmin
+            .from('user_credits')
+            .update({ credits: newBalance })
+            .eq('user_id', userId);
     }
 }
