@@ -88,7 +88,8 @@ export class GeminiTTSService {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+    // A chave deve ser passada diretamente da variável de ambiente sem fallback
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async generateSingleSpeaker(text: string, voice: VoiceName, tone?: string): Promise<string> {
