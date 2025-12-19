@@ -12,13 +12,6 @@ export interface GenerateContentOptions {
   platform?: string;
   voice?: string;
   template?: string;
-  personalInfo?: any;
-  summary?: string;
-  experience?: any[];
-  education?: any[];
-  skills?: string[];
-  projects?: any[];
-  certifications?: string[];
 }
 
 export const generateCreativeContent = async (
@@ -34,18 +27,20 @@ export const generateCreativeContent = async (
     try {
         userMemory = await getUserPreferences(userId);
     } catch (e) {
-        console.warn('Memory error, skipping.', e);
+        console.warn('[Memory] Falhou, ignorando contexto.', e);
     }
   }
 
   try {
+      // Chama a Edge Function no Supabase
       const { data, error } = await supabase.functions.invoke('generate-content', {
           body: { prompt, mode, userId, generateAudio, options, userMemory }
       });
 
-      if (error) throw new Error(error.message || "Erro no servidor de IA.");
+      if (error) throw new Error(error.message || "Erro na Edge Function.");
       if (data.error) throw new Error(data.error);
 
+      // Salva na memória do usuário para contexto futuro
       if (userId && data.text) {
           saveGenerationResult(userId, data.text.substring(0, 500));
       }
@@ -57,7 +52,7 @@ export const generateCreativeContent = async (
       };
 
   } catch (err: any) {
-      console.error("Génération error:", err);
+      console.error("[GeminiService] Erro fatal:", err);
       throw err;
   }
 };
@@ -66,16 +61,16 @@ export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, ju
   try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
           body: {
-              prompt: `Analise este lead e retorne um JSON {score, justification}. Dados: ${JSON.stringify(lead)}`,
-              mode: 'copy_generator', // Reusando modo de texto para análise
+              prompt: `Analise o perfil deste lead: ${JSON.stringify(lead)}. Retorne um JSON com score (0-100) e uma justificativa curta.`,
+              mode: 'copy_generator', // Reuso do motor de texto
               generateAudio: false
           }
       });
 
       if (error) throw error;
-      const result = JSON.parse(data.text.match(/\{[\s\S]*\}/)?.[0] || '{"score":50,"justification":"N/A"}');
+      const result = JSON.parse(data.text.match(/\{[\s\S]*\}/)?.[0] || '{"score":50,"justification":"Não foi possível analisar."}');
       return { score: result.score, justification: result.justification };
   } catch (e) {
-      return { score: 50, justification: "Erro na análise." };
+      return { score: 50, justification: "Erro na análise automática." };
   }
 };

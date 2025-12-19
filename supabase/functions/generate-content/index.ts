@@ -4,24 +4,12 @@ declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenAI } from "npm:@google/genai";
+import { GoogleGenAI, Modality } from "npm:@google/genai";
 
-export interface GenerateContentOptions {
-  theme?: string;
-  primaryColor?: string;
-  aspectRatio?: string;
-  imageStyle?: string;
-  platform?: string;
-  voice?: string;
-  template?: string;
-  personalInfo?: any;
-  summary?: string;
-  experience?: any[];
-  education?: any[];
-  skills?: string[];
-  projects?: any[];
-  certifications?: string[];
-}
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 const TASK_COSTS: Record<string, number> = {
   news_generator: 1,
@@ -35,17 +23,26 @@ const TASK_COSTS: Record<string, number> = {
   curriculum_generator: 8,
 };
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+// Helper robusto para extração de áudio base64
+function extractAudioData(response: any): string | null {
+  try {
+    // Caminho padrão candidates[0].content.parts[0].inlineData.data
+    const data = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData?.data;
+    if (data) return data;
 
-const MAX_TTS_CHARS = 2800;
+    // Fallback: busca profunda no primeiro candidato
+    const parts = response.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData?.data) return part.inlineData.data;
+    }
+  } catch (e) {
+    console.error("[TTS] Erro na extração do áudio:", e);
+  }
+  return null;
+}
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
     const { prompt, mode, userId, generateAudio, options, userMemory } = await req.json();
@@ -56,68 +53,70 @@ serve(async (req) => {
     );
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY not found");
+    if (!apiKey) throw new Error("GEMINI_API_KEY not found in environment");
 
     const ai = new GoogleGenAI({ apiKey });
 
-    // --- LÓGICA DE ÁUDIO EXCLUSIVA (Modo TTS Direto) ---
+    // 1. MODO TTS DIRETO
     if (mode === 'text_to_speech') {
+      console.log("[TTS] Gerando áudio direto...");
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: prompt.substring(0, MAX_TTS_CHARS) }] }],
+        contents: [{ parts: [{ text: prompt.substring(0, 3000) }] }],
         config: {
-          responseModalities: ["AUDIO"],
+          responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: options?.voice || 'Kore' },
-            },
+            voiceConfig: { prebuiltVoiceConfig: { voiceName: options?.voice || 'Kore' } },
           },
         },
       });
 
-      const audioData = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (!audioData) throw new Error("IA não retornou dados de áudio.");
+      const audioBase64 = extractAudioData(response);
+      if (!audioBase64) throw new Error("A IA não gerou dados de áudio válidos.");
 
       if (userId) await deductCredits(supabaseAdmin, userId, TASK_COSTS.text_to_speech);
 
-      return new Response(JSON.stringify({ text: "Áudio gerado.", audioBase64: audioData }), {
+      return new Response(JSON.stringify({ text: "Áudio gerado com sucesso.", audioBase64 }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // --- LÓGICA DE TEXTO / IMAGEM / SITE ---
-    const response = await ai.models.generateContent({
+    // 2. GERAÇÃO DE CONTEÚDO (Texto/Imagem/Site)
+    console.log(`[Gen] Gerando conteúdo modo: ${mode}`);
+    const genResponse = await ai.models.generateContent({
       model: mode === 'image_generation' ? 'gemini-2.5-flash-image' : 'gemini-2.5-flash',
       contents: prompt,
       config: {
-        systemInstruction: `Você é o GDN_IA. Modo: ${mode}. Memória: ${userMemory || 'n/a'}.`,
+        systemInstruction: `Você é o GDN_IA. Modo: ${mode}. Memória Recente: ${userMemory || 'nula'}.`,
         tools: mode === 'news_generator' ? [{ googleSearch: {} }] : []
       }
     });
 
-    let text = response.text || "";
+    const text = genResponse.text || "";
     let audioBase64 = null;
 
-    // Geração de áudio acoplada (opcional para notícias)
+    // 3. TTS ACOPLADO (Para notícias)
     if (generateAudio && mode === 'news_generator' && text) {
+      console.log("[TTS] Gerando áudio acoplado para notícia...");
       try {
         const audioResp = await ai.models.generateContent({
           model: "gemini-2.5-flash-preview-tts",
-          contents: [{ parts: [{ text: text.substring(0, MAX_TTS_CHARS) }] }],
+          contents: [{ parts: [{ text: text.substring(0, 3000) }] }],
           config: {
-            responseModalities: ["AUDIO"],
+            responseModalities: [Modality.AUDIO],
             speechConfig: {
               voiceConfig: { prebuiltVoiceConfig: { voiceName: options?.voice || 'Kore' } },
             },
           },
         });
-        audioBase64 = audioResp.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+        audioBase64 = extractAudioData(audioResp);
       } catch (e) {
-        console.error("Erro TTS acoplado:", e);
+        console.error("[TTS Acoplado] Falhou:", e);
       }
     }
 
     const cost = (TASK_COSTS[mode] || 1) + (audioBase64 ? TASK_COSTS.text_to_speech : 0);
+    
     if (userId) {
       await deductCredits(supabaseAdmin, userId, cost);
       await supabaseAdmin.from('news').insert({
@@ -134,6 +133,7 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error("[Edge Function Error]:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -144,6 +144,7 @@ serve(async (req) => {
 async function deductCredits(supabaseAdmin: any, userId: string, cost: number) {
   const { data } = await supabaseAdmin.from('user_credits').select('credits').eq('user_id', userId).single();
   if (data && data.credits !== -1) {
-    await supabaseAdmin.from('user_credits').update({ credits: Math.max(0, data.credits - cost) }).eq('user_id', userId);
+    const newBalance = Math.max(0, data.credits - cost);
+    await supabaseAdmin.from('user_credits').update({ credits: newBalance }).eq('user_id', userId);
   }
 }
