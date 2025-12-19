@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-/**
- * Decodifica Base64 para Uint8Array
- * Implementação manual para evitar dependências externas e garantir compatibilidade.
- */
-export function decode(base64: string): Uint8Array {
-  const binaryString = atob(base64.replace(/\s/g, ''));
+// Base64 to Uint8Array decoding function with sanitization
+function decode(base64: string): Uint8Array {
+  // Remove spaces, newlines, and other whitespace chars that might corrupt base64 decoding
+  const cleanBase64 = base64.replace(/\s/g, '');
+  const binaryString = atob(cleanBase64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {
@@ -15,71 +14,22 @@ export function decode(base64: string): Uint8Array {
   return bytes;
 }
 
-/**
- * Decodifica Raw PCM 16-bit para AudioBuffer
- * Gemini 2.5 TTS retorna Raw PCM em 24kHz.
- */
-export async function decodeAudioData(
+// Raw PCM data to AudioBuffer decoding function
+async function decodeAudioData(
   data: Uint8Array,
-  ctx: AudioContext,
-  sampleRate: number,
-  numChannels: number,
+  ctx: AudioContext
 ): Promise<AudioBuffer> {
   const dataInt16 = new Int16Array(data.buffer);
-  const frameCount = dataInt16.length / numChannels;
-  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+  const frameCount = dataInt16.length; // Assuming single channel
+  const buffer = ctx.createBuffer(1, frameCount, 24000); // Gemini TTS sample rate is 24kHz
 
-  for (let channel = 0; channel < numChannels; channel++) {
-    const channelData = buffer.getChannelData(channel);
-    for (let i = 0; i < frameCount; i++) {
-      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
-    }
+  const channelData = buffer.getChannelData(0);
+  for (let i = 0; i < frameCount; i++) {
+    channelData[i] = dataInt16[i] / 32768.0;
   }
   return buffer;
 }
 
-/**
- * Converte AudioBuffer para Blob em formato WAVE (WAV)
- * Útil para permitir que o usuário baixe e utilize o áudio externamente.
- */
-export function audioBufferToWav(buffer: AudioBuffer): Blob {
-  const numOfChan = buffer.numberOfChannels;
-  const length = buffer.length * numOfChan * 2 + 44;
-  const buffer_arr = new ArrayBuffer(length);
-  const view = new DataView(buffer_arr);
-  const channels = [];
-  let i, sample, offset = 0, pos = 0;
-
-  const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2; };
-  const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4; };
-
-  setUint32(0x46464952); // "RIFF"
-  setUint32(length - 8);
-  setUint32(0x45564157); // "WAVE"
-  setUint32(0x20746d66); // "fmt "
-  setUint32(16);
-  setUint16(1); // PCM
-  setUint16(numOfChan);
-  setUint32(buffer.sampleRate);
-  setUint32(buffer.sampleRate * 2 * numOfChan);
-  setUint16(numOfChan * 2);
-  setUint16(16);
-  setUint32(0x61746164); // "data"
-  setUint32(length - pos - 4);
-
-  for (i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
-
-  while (pos < length) {
-    for (i = 0; i < numOfChan; i++) {
-      sample = Math.max(-1, Math.min(1, channels[i][offset]));
-      sample = (sample < 0 ? sample * 0x8000 : sample * 0x7fff) | 0;
-      view.setInt16(pos, sample, true);
-      pos += 2;
-    }
-    offset++;
-  }
-  return new Blob([buffer_arr], { type: 'audio/wav' });
-}
 
 interface AudioPlayerProps {
   audioBase64: string;
@@ -97,22 +47,22 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
   useEffect(() => {
     if (!audioBase64) return;
 
+    // Initialize AudioContext on first interaction or effect run
+    if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const audioContext = audioContextRef.current;
+
     const processAudio = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-        }
-        const ctx = audioContextRef.current;
         const decodedBytes = decode(audioBase64);
-        
-        // Gemini TTS utiliza Raw PCM 24kHz Mono
-        const buffer = await decodeAudioData(decodedBytes, ctx, 24000, 1);
+        const buffer = await decodeAudioData(decodedBytes, audioContext);
         audioBufferRef.current = buffer;
       } catch (err) {
-        console.error("Erro ao decodificar áudio:", err);
-        setError("Não foi possível processar o áudio gerado.");
+        console.error("Failed to decode audio:", err);
+        setError("Falha ao processar o áudio.");
       } finally {
         setIsLoading(false);
       }
@@ -120,10 +70,14 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
 
     processAudio();
 
+    // Cleanup function
     return () => {
       if (sourceRef.current) {
-        try { sourceRef.current.stop(); } catch(e) {}
+        sourceRef.current.stop();
+        sourceRef.current.disconnect();
+        sourceRef.current = null;
       }
+      setIsPlaying(false);
     };
   }, [audioBase64]);
 
@@ -137,63 +91,45 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
       }
       setIsPlaying(false);
     } else {
-      const ctx = audioContextRef.current;
-      const source = ctx.createBufferSource();
+      const source = audioContextRef.current.createBufferSource();
       source.buffer = audioBufferRef.current;
-      source.connect(ctx.destination);
-      source.onended = () => setIsPlaying(false);
+      source.connect(audioContextRef.current.destination);
+      source.onended = () => {
+        setIsPlaying(false);
+        sourceRef.current = null;
+      };
       source.start(0);
       sourceRef.current = source;
       setIsPlaying(true);
     }
   };
 
-  const handleDownload = () => {
-    if (!audioBufferRef.current) return;
-    const wavBlob = audioBufferToWav(audioBufferRef.current);
-    const url = URL.createObjectURL(wavBlob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `narracao-gdn-${Date.now()}.wav`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  if (error) return <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg text-sm text-center font-bold border border-red-200">{error}</div>;
+  if (error) {
+    return (
+        <div className="mt-4 bg-red-900/20 border border-red-500/30 text-red-400 px-4 py-3 rounded-lg text-center" role="alert">
+            <strong className="font-bold">Erro: </strong>
+            <span className="block sm:inline">{error}</span>
+        </div>
+    );
+  }
 
   return (
-    <div className="mt-6 bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center gap-6 animate-fade-in-up">
-      <div className="flex-1 text-center md:text-left">
-          <h4 className="font-bold text-gray-800 text-sm uppercase tracking-widest mb-1">Player Neural GDN</h4>
-          <p className="text-xs text-gray-500">Narração gerada via Gemini 2.5 TTS (24kHz Mono).</p>
-      </div>
-
-      <div className="flex items-center gap-3">
-        {isLoading ? (
-          <div className="flex items-center space-x-2 text-[var(--brand-primary)]">
-            <i className="fas fa-spinner fa-spin text-xl"></i>
-            <span className="text-xs font-bold uppercase tracking-tighter">Processando Áudio...</span>
-          </div>
-        ) : (
-          <>
-            <button
-              onClick={togglePlayPause}
-              className="flex items-center space-x-3 px-8 py-3 bg-[var(--brand-primary)] hover:bg-orange-500 text-white rounded-lg font-bold transition-all shadow-md active:scale-95"
-            >
-              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
-              <span>{isPlaying ? 'Pausar' : 'Ouvir Narração'}</span>
-            </button>
-            
-            <button
-              onClick={handleDownload}
-              className="p-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors border border-gray-200 group"
-              title="Baixar Arquivo .WAV"
-            >
-              <i className="fas fa-download group-hover:scale-110 transition-transform"></i>
-            </button>
-          </>
-        )}
-      </div>
+    <div className="mt-6 bg-black/50 p-4 rounded-xl shadow-[0_0_15px_rgba(34,197,94,0.2)] border border-green-900/30 flex items-center justify-center animate-fade-in">
+      {isLoading ? (
+        <div className="flex items-center space-x-3 text-gray-400">
+          <i className="fas fa-spinner fa-spin text-xl"></i>
+          <span>Processando áudio...</span>
+        </div>
+      ) : (
+        <button
+          onClick={togglePlayPause}
+          className="flex items-center space-x-3 px-6 py-3 bg-green-900/30 hover:bg-green-900/60 border border-green-700/50 rounded-lg text-green-300 font-bold transition-colors"
+          aria-label={isPlaying ? 'Pausar áudio' : 'Tocar áudio'}
+        >
+          <i className={`fas ${isPlaying ? 'fa-pause-circle' : 'fa-play-circle'} text-3xl`}></i>
+          <span>{isPlaying ? 'Pausar Áudio' : 'Ouvir a Matéria'}</span>
+        </button>
+      )}
     </div>
   );
 };
