@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ServiceKey, VoiceName } from '../../types/plan.types';
+import { ServiceKey } from '../../types/plan.types';
 
 interface AudioFormProps {
     mode: ServiceKey;
@@ -15,62 +15,28 @@ const VOICES = [
     { value: 'Puck', label: 'Puck (Masculina - Energética)' },
     { value: 'Charon', label: 'Charon (Masculina - Profunda)' },
     { value: 'Fenrir', label: 'Fenrir (Masculina - Intensa)' },
-    { value: 'Zephyr', label: 'Zephyr (Masculina - Elegante)' },
-];
-
-const TONES = [
-    { value: '', label: 'Natural' },
-    { value: 'cheerfully', label: 'Alegre' },
-    { value: 'sadly', label: 'Triste' },
-    { value: 'excitedly', label: 'Animado' },
-    { value: 'calmly', label: 'Calmo' },
-    { value: 'seriously', label: 'Sério' },
 ];
 
 export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormProps) {
     const [prompt, setPrompt] = useState('');
-    const [selectedVoice, setSelectedVoice] = useState<VoiceName>('Kore');
-    const [selectedTone, setSelectedTone] = useState('');
+    const [selectedVoice, setSelectedVoice] = useState('Kore');
 
     const selectClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onGenerate(prompt, mode, false, { 
-            voice: selectedVoice, 
-            tone: selectedTone 
-        });
+        onGenerate(prompt, mode, false, { voice: selectedVoice });
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
-                        Voz Neural
-                    </label>
-                    <select 
-                        value={selectedVoice} 
-                        onChange={e => setSelectedVoice(e.target.value as VoiceName)} 
-                        className={selectClasses} 
-                        disabled={isLoading || isLocked}
-                    >
-                        {VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-                    </select>
-                </div>
-                <div>
-                    <label className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
-                        Tom da Narração
-                    </label>
-                    <select 
-                        value={selectedTone} 
-                        onChange={e => setSelectedTone(e.target.value)} 
-                        className={selectClasses} 
-                        disabled={isLoading || isLocked}
-                    >
-                        {TONES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                </div>
+            <div>
+                <label className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
+                    Selecione a Voz
+                </label>
+                <select value={selectedVoice} onChange={e => setSelectedVoice(e.target.value)} className={selectClasses} disabled={isLoading || isLocked}>
+                    {VOICES.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                </select>
             </div>
 
             <div>
@@ -93,7 +59,7 @@ export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormPr
                 disabled={isLoading || isLocked || !prompt.trim()}
             >
                 {isLoading ? (
-                    <><i className="fas fa-spinner fa-spin mr-2"></i>Sintetizando...</>
+                    <>Processando...</>
                 ) : (
                     <>
                         {isLocked ? <><i className="fas fa-lock mr-2"></i> Recurso Bloqueado</> : <><i className="fas fa-microphone mr-2"></i> Gerar Áudio</>}

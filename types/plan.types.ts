@@ -12,9 +12,6 @@ export type ServiceKey =
   | 'curriculum_generator'
   | 'crm_suite'; // NOVO: CRM & Leads Management
 
-/* Added VoiceName export for neural TTS processing */
-export type VoiceName = 'Kore' | 'Aoede' | 'Puck' | 'Charon' | 'Fenrir' | 'Zephyr';
-
 export interface ServicePermission {
   key: ServiceKey; // Nome em português
   name: string; // Nome em português

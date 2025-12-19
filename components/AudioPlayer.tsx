@@ -1,6 +1,85 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { decode, decodeAudioData, audioBufferToWav } from '../services/ttsService';
+
+/**
+ * Decodifica Base64 para Uint8Array
+ * Implementação manual para evitar dependências externas e garantir compatibilidade.
+ */
+export function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64.replace(/\s/g, ''));
+  const len = binaryString.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+/**
+ * Decodifica Raw PCM 16-bit para AudioBuffer
+ * Gemini 2.5 TTS retorna Raw PCM em 24kHz.
+ */
+export async function decodeAudioData(
+  data: Uint8Array,
+  ctx: AudioContext,
+  sampleRate: number,
+  numChannels: number,
+): Promise<AudioBuffer> {
+  const dataInt16 = new Int16Array(data.buffer);
+  const frameCount = dataInt16.length / numChannels;
+  const buffer = ctx.createBuffer(numChannels, frameCount, sampleRate);
+
+  for (let channel = 0; channel < numChannels; channel++) {
+    const channelData = buffer.getChannelData(channel);
+    for (let i = 0; i < frameCount; i++) {
+      channelData[i] = dataInt16[i * numChannels + channel] / 32768.0;
+    }
+  }
+  return buffer;
+}
+
+/**
+ * Converte AudioBuffer para Blob em formato WAVE (WAV)
+ * Útil para permitir que o usuário baixe e utilize o áudio externamente.
+ */
+export function audioBufferToWav(buffer: AudioBuffer): Blob {
+  const numOfChan = buffer.numberOfChannels;
+  const length = buffer.length * numOfChan * 2 + 44;
+  const buffer_arr = new ArrayBuffer(length);
+  const view = new DataView(buffer_arr);
+  const channels = [];
+  let i, sample, offset = 0, pos = 0;
+
+  const setUint16 = (data: number) => { view.setUint16(pos, data, true); pos += 2; };
+  const setUint32 = (data: number) => { view.setUint32(pos, data, true); pos += 4; };
+
+  setUint32(0x46464952); // "RIFF"
+  setUint32(length - 8);
+  setUint32(0x45564157); // "WAVE"
+  setUint32(0x20746d66); // "fmt "
+  setUint32(16);
+  setUint16(1); // PCM
+  setUint16(numOfChan);
+  setUint32(buffer.sampleRate);
+  setUint32(buffer.sampleRate * 2 * numOfChan);
+  setUint16(numOfChan * 2);
+  setUint16(16);
+  setUint32(0x61746164); // "data"
+  setUint32(length - pos - 4);
+
+  for (i = 0; i < buffer.numberOfChannels; i++) channels.push(buffer.getChannelData(i));
+
+  while (pos < length) {
+    for (i = 0; i < numOfChan; i++) {
+      sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      sample = (sample < 0 ? sample * 0x8000 : sample * 0x7fff) | 0;
+      view.setInt16(pos, sample, true);
+      pos += 2;
+    }
+    offset++;
+  }
+  return new Blob([buffer_arr], { type: 'audio/wav' });
+}
 
 interface AudioPlayerProps {
   audioBase64: string;
@@ -10,7 +89,6 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [duration, setDuration] = useState(0);
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
@@ -26,14 +104,15 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
         if (!audioContextRef.current) {
           audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
         }
-        
+        const ctx = audioContextRef.current;
         const decodedBytes = decode(audioBase64);
-        const buffer = await decodeAudioData(decodedBytes, audioContextRef.current, 24000, 1);
+        
+        // Gemini TTS utiliza Raw PCM 24kHz Mono
+        const buffer = await decodeAudioData(decodedBytes, ctx, 24000, 1);
         audioBufferRef.current = buffer;
-        setDuration(buffer.duration);
       } catch (err) {
-        console.error("Failed to decode audio:", err);
-        setError("Falha ao processar o áudio.");
+        console.error("Erro ao decodificar áudio:", err);
+        setError("Não foi possível processar o áudio gerado.");
       } finally {
         setIsLoading(false);
       }
@@ -42,30 +121,26 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
     processAudio();
 
     return () => {
-      stopAudio();
+      if (sourceRef.current) {
+        try { sourceRef.current.stop(); } catch(e) {}
+      }
     };
   }, [audioBase64]);
-
-  const stopAudio = () => {
-    if (sourceRef.current) {
-      try {
-        sourceRef.current.stop();
-      } catch (e) {}
-      sourceRef.current.disconnect();
-      sourceRef.current = null;
-    }
-    setIsPlaying(false);
-  };
 
   const togglePlayPause = () => {
     if (!audioBufferRef.current || !audioContextRef.current) return;
     
     if (isPlaying) {
-      stopAudio();
+      if (sourceRef.current) {
+        sourceRef.current.stop();
+        sourceRef.current = null;
+      }
+      setIsPlaying(false);
     } else {
-      const source = audioContextRef.current.createBufferSource();
+      const ctx = audioContextRef.current;
+      const source = ctx.createBufferSource();
       source.buffer = audioBufferRef.current;
-      source.connect(audioContextRef.current.destination);
+      source.connect(ctx.destination);
       source.onended = () => setIsPlaying(false);
       source.start(0);
       sourceRef.current = source;
@@ -79,64 +154,46 @@ export function AudioPlayer({ audioBase64 }: AudioPlayerProps) {
     const url = URL.createObjectURL(wavBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `audio-gdn-${Date.now()}.wav`;
+    a.download = `narracao-gdn-${Date.now()}.wav`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  if (error) {
-    return (
-      <div className="mt-4 bg-red-900/10 border border-red-500/20 text-red-600 px-4 py-3 rounded-lg text-center text-sm">
-        <i className="fas fa-exclamation-circle mr-2"></i>{error}
-      </div>
-    );
-  }
+  if (error) return <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-lg text-sm text-center font-bold border border-red-200">{error}</div>;
 
   return (
-    <div className="mt-6 bg-white p-5 rounded-2xl shadow-lg border border-gray-100 flex flex-col sm:flex-row items-center gap-4 animate-fade-in">
-      {isLoading ? (
-        <div className="flex items-center space-x-3 text-gray-400 py-2">
-          <i className="fas fa-spinner fa-spin text-xl"></i>
-          <span className="text-sm font-medium">Processando áudio neural...</span>
-        </div>
-      ) : (
-        <>
-          <div className="flex items-center gap-4 flex-1 w-full">
+    <div className="mt-6 bg-white p-6 rounded-xl shadow-lg border border-gray-200 flex flex-col md:flex-row items-center gap-6 animate-fade-in-up">
+      <div className="flex-1 text-center md:text-left">
+          <h4 className="font-bold text-gray-800 text-sm uppercase tracking-widest mb-1">Player Neural GDN</h4>
+          <p className="text-xs text-gray-500">Narração gerada via Gemini 2.5 TTS (24kHz Mono).</p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        {isLoading ? (
+          <div className="flex items-center space-x-2 text-[var(--brand-primary)]">
+            <i className="fas fa-spinner fa-spin text-xl"></i>
+            <span className="text-xs font-bold uppercase tracking-tighter">Processando Áudio...</span>
+          </div>
+        ) : (
+          <>
             <button
               onClick={togglePlayPause}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all shadow-md ${
-                isPlaying 
-                ? 'bg-red-500 hover:bg-red-600 text-white' 
-                : 'bg-[var(--brand-tertiary)] hover:bg-green-600 text-white'
-              }`}
+              className="flex items-center space-x-3 px-8 py-3 bg-[var(--brand-primary)] hover:bg-orange-500 text-white rounded-lg font-bold transition-all shadow-md active:scale-95"
             >
-              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-xl ${!isPlaying ? 'ml-1' : ''}`}></i>
+              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`}></i>
+              <span>{isPlaying ? 'Pausar' : 'Ouvir Narração'}</span>
             </button>
             
-            <div className="flex-1">
-              <p className="text-sm font-bold text-[var(--brand-secondary)] mb-1">Narração Digital</p>
-              <div className="flex items-center gap-2 text-[10px] text-gray-400 font-mono">
-                <span>0:00</span>
-                <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full bg-[var(--brand-tertiary)] transition-all duration-300 ${isPlaying ? 'animate-progress' : ''}`}
-                    style={{ width: isPlaying ? '100%' : '0%', animationDuration: `${duration}s` }}
-                  ></div>
-                </div>
-                <span>{duration.toFixed(1)}s</span>
-              </div>
-            </div>
-          </div>
-
-          <button
-            onClick={handleDownload}
-            className="flex items-center gap-2 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-xl text-xs font-bold transition-colors w-full sm:w-auto justify-center"
-          >
-            <i className="fas fa-download"></i>
-            <span>Baixar .WAV</span>
-          </button>
-        </>
-      )}
+            <button
+              onClick={handleDownload}
+              className="p-3 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-lg transition-colors border border-gray-200 group"
+              title="Baixar Arquivo .WAV"
+            >
+              <i className="fas fa-download group-hover:scale-110 transition-transform"></i>
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
-}
+};

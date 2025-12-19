@@ -1,8 +1,8 @@
 
 import { ReactNode } from 'react';
-import { Plan, ServiceKey, UserPlan, VoiceName } from './types/plan.types';
+import { Plan, ServiceKey, UserPlan } from './types/plan.types'; // Importar os novos tipos
 
-export type { Plan, ServiceKey, UserPlan, VoiceName };
+export type { Plan, ServiceKey, UserPlan }; // Re-exportar para uso em outros arquivos
 
 export interface BaseComponentProps {
   children?: ReactNode;
@@ -22,8 +22,8 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-  tipo?: string; 
-  author_id?: string;
+  tipo?: string; // Tipo do conteúdo (news, image, landing_page, etc)
+  author_id?: string; // ID do autor
   criado_em?: string;
   author?: {
     email: string;
@@ -43,16 +43,16 @@ export interface User {
   plan: UserPlan; 
   created_at?: string;
   last_login?: string;
+  // Affiliate System
   affiliate_code?: string;
   referred_by?: string;
   affiliate_balance?: number;
-  asaas_customer_id?: string;
-  subscription_id?: string;
-  subscription_status?: string;
+  asaas_customer_id?: string; // Novo campo para Asaas Customer ID
+  // Subscription System
+  subscription_id?: string; // ID da assinatura recorrente (Asaas)
+  subscription_status?: string; // ACTIVE, EXPIRED, etc.
   mercadopago_customer_id?: string;
 }
-
-/* Consolidating all types previously missing from the root types.ts */
 
 export interface AffiliateLog {
   id: string;
@@ -61,7 +61,7 @@ export interface AffiliateLog {
   amount: number;
   description: string;
   created_at: string;
-  source_email?: string; 
+  source_email?: string; // Enriched field
 }
 
 export interface Log {
@@ -69,6 +69,7 @@ export interface Log {
   usuario_id: string;
   acao: string;
   modulo: string;
+  // FIX: Replaced 'jsonb' with 'any' as 'jsonb' is a PostgreSQL type, not a TypeScript type.
   detalhes?: any;
   data: string;
   user_email?: string;
@@ -96,19 +97,22 @@ export interface Transaction {
   metodo: PaymentMethod;
   status: TransactionStatus;
   data: string;
-  external_id?: string;
-  metadata?: {
+  external_id?: string; // Mercado Pago ID, Asaas ID
+  metadata?: { // Dados extras
     item_type?: 'plan' | 'credits';
-    item_id?: string;
-    provider?: string;
-    description?: string;
-    plan_id?: string;
-    credits_amount?: number;
-    payment_method_id?: string;
-    issuer_id?: string;
+    item_id?: string; // ID do plano ou pacote de créditos
+    provider?: string; // Ex: 'mercado_pago', 'asaas'
+    description?: string; // Descrição do item comprado
+    plan_id?: string; // ID do plano, se for compra de plano
+    credits_amount?: number; // Quantidade de créditos, se for compra de créditos
+    // Mercado Pago specific
+    payment_method_id?: string; // e.g., 'visa'
+    issuer_id?: string; // e.g., '24' for Visa
     installments?: number;
+    // Asaas specific
     card_token_id?: string;
-    customer_id?: string;
+    customer_id?: string; // Asaas customer ID
+    // Any other relevant data
     [key: string]: any;
   };
   user?: {
@@ -181,11 +185,13 @@ export interface AILog {
   };
 }
 
+// --- FEEDBACK TYPES ---
 export interface FeedbackData {
   rating: number;
   comment: string;
 }
 
+// Nova interface para Feedbacks do Sistema (Depoimentos)
 export interface SystemFeedback {
   id: string;
   user_id: string;
@@ -199,6 +205,7 @@ export interface SystemFeedback {
   };
 }
 
+// --- WORDPRESS INTEGRATION ---
 export interface WordPressConfig {
   siteUrl: string;
   username: string;
@@ -206,17 +213,20 @@ export interface WordPressConfig {
   isConnected: boolean;
 }
 
+// --- ANALYTICS INTEGRATION ---
 export interface AnalyticsConfig {
-  measurementId: string;
+  measurementId: string; // G-XXXXXXXXXX
   isConnected: boolean;
 }
 
+// --- N8N / WEBHOOK INTEGRATION ---
 export interface N8nConfig {
   webhookUrl: string;
-  autoSend: boolean;
+  autoSend: boolean; // Se true, envia automaticamente após gerar
   isConnected: boolean;
 }
 
+// --- POPUP SYSTEM ---
 export interface Popup {
   id: string;
   title: string;
@@ -231,26 +241,28 @@ export interface Popup {
     theme?: 'default' | 'dark_gold';
   };
   trigger_settings: {
-    delay: number;
+    delay: number; // segundos
     frequency: 'once' | 'always' | 'daily';
-    button_link?: string;
-    button_text?: string;
+    button_link?: string; // Link do botão de ação
+    button_text?: string; // Texto do botão
   };
   is_active: boolean;
   created_at?: string;
 }
 
+// --- DEVELOPER API ---
 export interface ApiKey {
   id: string;
   user_id?: string;
   name: string;
-  key_prefix: string;
-  full_key?: string;
+  key_prefix: string; // Mostramos apenas o começo ou fim
+  full_key?: string; // Usado apenas na criação para mostrar uma vez
   created_at: string;
   last_used_at?: string;
   status: 'active' | 'revoked';
 }
 
+// --- NOTIFICATION SYSTEM ---
 export interface AppNotification {
   id: string;
   user_id: string;
@@ -262,11 +274,13 @@ export interface AppNotification {
   created_at: string;
 }
 
+// --- GLOBAL TOOL SETTINGS ---
 export interface ToolSetting {
   key: ServiceKey;
   enabled: boolean;
 }
 
+// --- WHITE LABEL SETTINGS ---
 export interface WhiteLabelSettings {
   appName: string;
   appTagline: string;
@@ -302,18 +316,19 @@ export interface WhiteLabelSettings {
   guestMarketingFooterCtaLink: string;
 }
 
+// --- CRM & MARKETING TYPES ---
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'lost';
 
 export interface Lead {
   id: string;
-  owner_id: string; 
+  owner_id: string; // User ID who owns this lead
   email: string;
   name?: string;
   phone?: string;
   company?: string;
   status: LeadStatus;
   score: number;
-  source?: string;
+  source?: string; // 'landing_page', 'manual', 'import'
   utm_source?: string;
   utm_medium?: string;
   utm_campaign?: string;

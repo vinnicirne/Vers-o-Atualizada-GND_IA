@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getMultiAISettings, updateMultiAISettings, getAILogs } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
@@ -84,14 +85,12 @@ export function MultiIASystem() {
   const handlePlatformChange = (platform: keyof MultiAISettings['platforms'], field: keyof AIPlatform, value: any) => {
     setSettings(prev => {
         if (!prev) return null;
-        /* Fixed: Cast field to string for .includes() compatibility */
-        const numericValue = ['costPerMillionTokens', 'maxTokens'].includes(field as string) ? parseFloat(value) || 0 : value;
+        const numericValue = ['costPerMillionTokens', 'maxTokens'].includes(field) ? parseFloat(value) || 0 : value;
         return {
             ...prev,
             platforms: {
                 ...prev.platforms,
-                /* Fixed: Cast index signatures to string to satisfy TypeScript indexing rules */
-                [platform as string]: { ...prev.platforms[platform], [field as string]: numericValue },
+                [platform]: { ...prev.platforms[platform], [field]: numericValue },
             },
         };
     });
@@ -177,8 +176,7 @@ export function MultiIASystem() {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 bg-white p-6 rounded-b-lg rounded-tr-lg shadow-sm border border-gray-200">
             {platforms.map(({ key, name, icon }) => (
-                 /* Fixed: Cast key to string for list mapping */
-                 <div key={key as string} className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm transition hover:border-gray-300">
+                 <div key={key} className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm transition hover:border-gray-300">
                     <div className="flex justify-between items-center mb-6">
                         <div className="flex items-center space-x-3">
                             <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center border border-gray-200 shadow-sm text-green-600">
@@ -193,14 +191,12 @@ export function MultiIASystem() {
                             <label className="text-xs text-gray-500 font-bold uppercase mb-1 block">Chave de API</label>
                             <div className="relative">
                                 <input 
-                                    /* Fixed: Cast index to string */
-                                    type={visibleKeys[key as string] ? 'text' : 'password'} 
+                                    type={visibleKeys[key] ? 'text' : 'password'} 
                                     value={settings.platforms[key].apiKey} 
                                     onChange={(e) => handlePlatformChange(key, 'apiKey', e.target.value)} 
                                     className="w-full bg-white border border-gray-300 rounded p-2 text-sm pr-10 text-gray-700 focus:ring-green-500 focus:border-green-500" />
-                                /* Fixed: Cast index to string for visibility toggle */
-                                <button onClick={() => setVisibleKeys(p => ({ ...p, [key as string]: !p[key as string]}))} className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
-                                    <i className={`fas ${visibleKeys[key as string] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                <button onClick={() => setVisibleKeys(p => ({ ...p, [key]: !p[key]}))} className="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600">
+                                    <i className={`fas ${visibleKeys[key] ? 'fa-eye-slash' : 'fa-eye'}`}></i>
                                 </button>
                             </div>
                         </div>
@@ -235,7 +231,7 @@ export function MultiIASystem() {
                             <th className="px-4 py-3 font-semibold">Contexto</th>
                             <th className="px-4 py-3 font-semibold">Capacidades</th>
                             <th className="px-4 py-3 text-center font-semibold">Status</th>
-                            <th className="px-4 py-3 text-right font-semibold">Ações</th>
+                            <th className="px-4 py-3 text-right font-semibold">Ação</th>
                         </tr>
                     </thead>
                     <tbody>
