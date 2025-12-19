@@ -14,6 +14,10 @@ export interface GenerateContentOptions {
   template?: string;
 }
 
+/**
+ * Serviço unificado para geração de conteúdo via Gemini.
+ * Todas as requisições passam pela Edge Function para controle de créditos e segurança.
+ */
 export const generateCreativeContent = async (
     prompt: string, 
     mode: ServiceKey,
@@ -27,20 +31,24 @@ export const generateCreativeContent = async (
     try {
         userMemory = await getUserPreferences(userId);
     } catch (e) {
-        console.warn('[Memory] Falhou, ignorando contexto.', e);
+        console.warn('[Memory] Falha ao carregar preferências, seguindo sem contexto.', e);
     }
   }
 
   try {
-      // Chama a Edge Function no Supabase
+      // Invocação da Edge Function 'generate-content'
       const { data, error } = await supabase.functions.invoke('generate-content', {
           body: { prompt, mode, userId, generateAudio, options, userMemory }
       });
 
-      if (error) throw new Error(error.message || "Erro na Edge Function.");
+      if (error) {
+          console.error("[Supabase Function Error]:", error);
+          throw new Error(error.message || "Erro na comunicação com o servidor de IA.");
+      }
+
       if (data.error) throw new Error(data.error);
 
-      // Salva na memória do usuário para contexto futuro
+      // Persistência na memória para contexto futuro
       if (userId && data.text) {
           saveGenerationResult(userId, data.text.substring(0, 500));
       }

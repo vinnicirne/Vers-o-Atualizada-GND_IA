@@ -1,5 +1,4 @@
 
-// supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -23,26 +22,40 @@ const TASK_COSTS: Record<string, number> = {
   curriculum_generator: 8,
 };
 
-// Helper robusto para extração de áudio base64
-function extractAudioData(response: any): string | null {
-  try {
-    // Caminho padrão candidates[0].content.parts[0].inlineData.data
-    const data = response.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData?.data;
-    if (data) return data;
+const MAX_TTS_CHARS = 3000;
 
-    // Fallback: busca profunda no primeiro candidato
-    const parts = response.candidates?.[0]?.content?.parts || [];
-    for (const part of parts) {
-      if (part.inlineData?.data) return part.inlineData.data;
+// Função utilitária defensiva para extrair o áudio Base64 de qualquer parte da resposta
+function extractAudioBase64(resp: any): string | null {
+  if (!resp) return null;
+  
+  // 1. Caminho padrão oficial do SDK
+  const standardPath = resp.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData?.data;
+  if (standardPath) return standardPath;
+
+  // 2. Busca exaustiva em todos os candidatos e partes
+  if (Array.isArray(resp.candidates)) {
+    for (const cand of resp.candidates) {
+      if (cand.content?.parts) {
+        for (const part of cand.content.parts) {
+          if (part.inlineData?.data) return part.inlineData.data;
+          if (part.audioData) return part.audioData;
+        }
+      }
     }
-  } catch (e) {
-    console.error("[TTS] Erro na extração do áudio:", e);
   }
+
+  // 3. Caminho alternativo de versões experimentais ou retornos de output
+  if (resp.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data) {
+      return resp.candidates[0].content.parts[0].inlineData.data;
+  }
+
   return null;
 }
 
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
 
   try {
     const { prompt, mode, userId, generateAudio, options, userMemory } = await req.json();
@@ -53,55 +66,62 @@ serve(async (req) => {
     );
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("GEMINI_API_KEY not found in environment");
+    if (!apiKey) throw new Error("Configuração GEMINI_API_KEY não encontrada no servidor.");
 
     const ai = new GoogleGenAI({ apiKey });
 
-    // 1. MODO TTS DIRETO
+    // --- MODO TTS DIRETO (Apenas Áudio) ---
     if (mode === 'text_to_speech') {
-      console.log("[TTS] Gerando áudio direto...");
+      console.log(`[TTS] Iniciando geração de voz: ${options?.voice || 'Kore'}`);
+      
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
-        contents: [{ parts: [{ text: prompt.substring(0, 3000) }] }],
+        contents: [{ parts: [{ text: prompt.substring(0, MAX_TTS_CHARS) }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
-            voiceConfig: { prebuiltVoiceConfig: { voiceName: options?.voice || 'Kore' } },
+            voiceConfig: {
+              prebuiltVoiceConfig: { voiceName: options?.voice || 'Kore' },
+            },
           },
         },
       });
 
-      const audioBase64 = extractAudioData(response);
-      if (!audioBase64) throw new Error("A IA não gerou dados de áudio válidos.");
+      const audioData = extractAudioBase64(response);
+      if (!audioData) {
+        console.error("[TTS] Resposta bruta da IA sem áudio:", JSON.stringify(response));
+        throw new Error("O servidor de IA não retornou os dados de áudio esperados.");
+      }
 
       if (userId) await deductCredits(supabaseAdmin, userId, TASK_COSTS.text_to_speech);
 
-      return new Response(JSON.stringify({ text: "Áudio gerado com sucesso.", audioBase64 }), {
+      return new Response(JSON.stringify({ text: "Áudio gerado.", audioBase64: audioData }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // 2. GERAÇÃO DE CONTEÚDO (Texto/Imagem/Site)
-    console.log(`[Gen] Gerando conteúdo modo: ${mode}`);
-    const genResponse = await ai.models.generateContent({
+    // --- MODO TEXTO / IMAGEM / SITE ---
+    console.log(`[Gen] Modo: ${mode} | GenerateAudio: ${generateAudio}`);
+    
+    const response = await ai.models.generateContent({
       model: mode === 'image_generation' ? 'gemini-2.5-flash-image' : 'gemini-2.5-flash',
       contents: prompt,
       config: {
-        systemInstruction: `Você é o GDN_IA. Modo: ${mode}. Memória Recente: ${userMemory || 'nula'}.`,
+        systemInstruction: `Você é o GDN_IA. Modo: ${mode}. Contexto anterior: ${userMemory || 'nulo'}.`,
         tools: mode === 'news_generator' ? [{ googleSearch: {} }] : []
       }
     });
 
-    const text = genResponse.text || "";
+    const text = response.text || "";
     let audioBase64 = null;
 
-    // 3. TTS ACOPLADO (Para notícias)
+    // Geração de áudio acoplada (Notícias narradas)
     if (generateAudio && mode === 'news_generator' && text) {
-      console.log("[TTS] Gerando áudio acoplado para notícia...");
       try {
+        console.log("[TTS] Gerando áudio acoplado para notícia...");
         const audioResp = await ai.models.generateContent({
           model: "gemini-2.5-flash-preview-tts",
-          contents: [{ parts: [{ text: text.substring(0, 3000) }] }],
+          contents: [{ parts: [{ text: text.substring(0, MAX_TTS_CHARS) }] }],
           config: {
             responseModalities: [Modality.AUDIO],
             speechConfig: {
@@ -109,7 +129,7 @@ serve(async (req) => {
             },
           },
         });
-        audioBase64 = extractAudioData(audioResp);
+        audioBase64 = extractAudioBase64(audioResp);
       } catch (e) {
         console.error("[TTS Acoplado] Falhou:", e);
       }
