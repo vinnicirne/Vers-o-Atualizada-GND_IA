@@ -1,4 +1,4 @@
-
+// supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
@@ -27,27 +27,34 @@ const MAX_TTS_CHARS = 3000;
 // Função utilitária defensiva para extrair o áudio Base64 de qualquer parte da resposta
 function extractAudioBase64(resp: any): string | null {
   if (!resp) return null;
-  
-  // 1. Caminho padrão oficial do SDK
-  const standardPath = resp.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData?.data;
-  if (standardPath) return standardPath;
 
-  // 2. Busca exaustiva em todos os candidatos e partes
-  if (Array.isArray(resp.candidates)) {
-    for (const cand of resp.candidates) {
-      if (cand.content?.parts) {
-        for (const part of cand.content.parts) {
-          if (part.inlineData?.data) return part.inlineData.data;
-          if (part.audioData) return part.audioData;
-        }
+  // Caminho mais comum esperado pela SDK atual (Nano Banana Series)
+  const candidateInline = resp?.candidates?.[0]?.content?.parts;
+  if (Array.isArray(candidateInline)) {
+    for (const p of candidateInline) {
+      if (p?.inlineData?.data) return p.inlineData.data;
+      if (p?.audioData) return p.audioData;
+      if (p?.text && p.type === "audio") return p.text;
+    }
+    if (candidateInline[0]?.inlineData?.data) return candidateInline[0].inlineData.data;
+  }
+
+  // Alguns retornos colocam audio em resp.output / resp.outputs
+  const outputs = resp?.output ?? resp?.outputs ?? resp?.response;
+  if (Array.isArray(outputs)) {
+    for (const out of outputs) {
+      if (out?.audioData) return out.audioData;
+      if (out?.content) {
+        const found = out.content.find((c: any) => c?.type === "audio" && (c?.audioData || c?.data));
+        if (found) return found.audioData || found.data;
       }
     }
   }
 
-  // 3. Caminho alternativo de versões experimentais ou retornos de output
-  if (resp.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data) {
-      return resp.candidates[0].content.parts[0].inlineData.data;
-  }
+  // Campos alternativos
+  if (resp?.audio) return resp.audio;
+  if (resp?.audioBase64) return resp.audioBase64;
+  if (resp?.data) return resp.data;
 
   return null;
 }
@@ -59,7 +66,7 @@ serve(async (req) => {
 
   try {
     const { prompt, mode, userId, generateAudio, options, userMemory } = await req.json();
-    
+
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -73,7 +80,7 @@ serve(async (req) => {
     // --- MODO TTS DIRETO (Apenas Áudio) ---
     if (mode === 'text_to_speech') {
       console.log(`[TTS] Iniciando geração de voz: ${options?.voice || 'Kore'}`);
-      
+
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash-preview-tts",
         contents: [{ parts: [{ text: prompt.substring(0, MAX_TTS_CHARS) }] }],
@@ -102,7 +109,7 @@ serve(async (req) => {
 
     // --- MODO TEXTO / IMAGEM / SITE ---
     console.log(`[Gen] Modo: ${mode} | GenerateAudio: ${generateAudio}`);
-    
+
     const response = await ai.models.generateContent({
       model: mode === 'image_generation' ? 'gemini-2.5-flash-image' : 'gemini-2.5-flash',
       contents: prompt,
@@ -130,13 +137,16 @@ serve(async (req) => {
           },
         });
         audioBase64 = extractAudioBase64(audioResp);
+        if (!audioBase64) {
+          console.warn("[TTS] Nenhum áudio na resposta acoplada:", JSON.stringify(audioResp));
+        }
       } catch (e) {
         console.error("[TTS Acoplado] Falhou:", e);
       }
     }
 
     const cost = (TASK_COSTS[mode] || 1) + (audioBase64 ? TASK_COSTS.text_to_speech : 0);
-    
+
     if (userId) {
       await deductCredits(supabaseAdmin, userId, cost);
       await supabaseAdmin.from('news').insert({
