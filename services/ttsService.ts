@@ -84,18 +84,16 @@ export function audioBufferToWav(buffer: AudioBuffer): Blob {
 
 // --- Serviço Gemini TTS ---
 
-export class GeminiTTSService {
-  private ai: GoogleGenAI;
-
-  constructor() {
-    // A chave deve ser passada diretamente da variável de ambiente sem fallback
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-  }
-
+export const geminiTTSService = {
+  /**
+   * Gera áudio para um único locutor.
+   * Instancia o cliente GoogleGenAI internamente para garantir acesso correto à API_KEY.
+   */
   async generateSingleSpeaker(text: string, voice: VoiceName, tone?: string): Promise<string> {
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const prompt = tone ? `Say ${tone}: ${text}` : text;
     
-    const response = await this.ai.models.generateContent({
+    const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: prompt }] }],
       config: {
@@ -110,10 +108,8 @@ export class GeminiTTSService {
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) {
-      throw new Error("Não foi possível gerar o áudio.");
+      throw new Error("Não foi possível obter os dados de áudio da resposta.");
     }
     return base64Audio;
   }
-}
-
-export const geminiTTSService = new GeminiTTSService();
+};
