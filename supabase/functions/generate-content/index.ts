@@ -44,14 +44,16 @@ serve(async (req) => {
 
     // --- MODO EXTRAÇÃO (LÊ PDF E PREENCHE FORMULÁRIO) ---
     if (mode === 'curriculum_extraction' && file) {
-        systemInstruction = `Você é um Analista de RH Sênior e Especialista em Recrutamento Tecnológico.
-        Sua tarefa é extrair dados de currículos PDF para preenchimento de formulários.
-        Extraia o Nome, Contatos, e crie um Sumário/Perfil Profissional conciso baseado no histórico.
-        Normalize todas as informações.`;
+        // Instrução extremamente rígida para evitar conversas
+        systemInstruction = `Você é um extrator de dados puramente técnico. 
+        Sua única tarefa é ler o PDF e gerar um JSON. 
+        PROIBIDO: Não responda com "Aqui está o seu currículo", "Desculpe", ou qualquer texto humano. 
+        Sua saída deve conter APENAS o objeto JSON definido no schema. 
+        Se não encontrar um dado, use string vazia.`;
 
         contents = [
             { inlineData: { data: file.data, mimeType: file.mimeType } },
-            { text: "Extraia todos os dados disponíveis (nome, email, telefone, linkedin, localização, sumário/perfil, lista de experiências, educação e habilidades) para o JSON." }
+            { text: "Extraia os dados profissionais deste documento seguindo o schema JSON estritamente." }
         ];
 
         config = {
@@ -64,7 +66,7 @@ serve(async (req) => {
                     phone: { type: Type.STRING },
                     linkedin: { type: Type.STRING },
                     location: { type: Type.STRING },
-                    summary: { type: Type.STRING, description: "Resumo executivo da carreira do usuário" },
+                    summary: { type: Type.STRING },
                     experience: {
                         type: Type.ARRAY,
                         items: {

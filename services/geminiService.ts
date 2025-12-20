@@ -58,6 +58,7 @@ export const generateCreativeContent = async (
 
 /**
  * Extrai dados estruturados de um PDF para preencher o formulário
+ * Adicionado: Limpeza robusta de JSON via Regex
  */
 export const extractCurriculumData = async (fileBase64: string, mimeType: string): Promise<any> => {
     try {
@@ -74,8 +75,17 @@ export const extractCurriculumData = async (fileBase64: string, mimeType: string
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
-        // O Gemini retorna o JSON como string no campo text
-        return JSON.parse(data.text);
+        const rawText = data.text || "";
+        
+        // REGEX ROBUSTO: Procura pelo primeiro { e o último } para extrair apenas o JSON
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+        
+        if (!jsonMatch) {
+            console.error("[GeminiService] Nenhum JSON encontrado na resposta:", rawText);
+            throw new Error("A IA não retornou um formato de dados válido.");
+        }
+
+        return JSON.parse(jsonMatch[0]);
     } catch (err: any) {
         console.error("[GeminiService] Erro na extração:", err);
         throw err;
@@ -92,7 +102,8 @@ export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, ju
       });
 
       if (error) throw error;
-      const result = JSON.parse(data.text.match(/\{[\s\S]*\}/)?.[0] || '{"score":50,"justification":"N/A"}');
+      const jsonMatch = data.text.match(/\{[\s\S]*\}/);
+      const result = JSON.parse(jsonMatch ? jsonMatch[0] : '{"score":50,"justification":"N/A"}');
       return { score: result.score, justification: result.justification };
   } catch (e) {
       return { score: 50, justification: "Erro na análise." };
