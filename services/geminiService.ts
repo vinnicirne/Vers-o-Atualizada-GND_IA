@@ -10,6 +10,11 @@ export interface GenerateContentOptions {
   imageStyle?: string;
   platform?: string;
   template?: string;
+  personalInfo?: any;
+  experience?: any[];
+  education?: any[];
+  skills?: string[];
+  targetJob?: string;
 }
 
 export const generateCreativeContent = async (
@@ -53,6 +58,31 @@ export const generateCreativeContent = async (
       console.error("[GeminiService] Erro fatal:", err);
       throw err;
   }
+};
+
+/**
+ * Novo: Extrai dados estruturados de um PDF de currículo
+ */
+export const extractCurriculumData = async (fileBase64: string, mimeType: string): Promise<any> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('generate-content', {
+            body: { 
+                mode: 'curriculum_extraction',
+                file: {
+                    data: fileBase64,
+                    mimeType: mimeType
+                }
+            }
+        });
+
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+
+        return JSON.parse(data.text);
+    } catch (err: any) {
+        console.error("[GeminiService] Erro na extração:", err);
+        throw err;
+    }
 };
 
 export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, justification: string }> => {

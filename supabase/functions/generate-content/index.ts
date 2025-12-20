@@ -3,7 +3,7 @@ declare const Deno: any;
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { GoogleGenAI } from "npm:@google/genai";
+import { GoogleGenAI, Type } from "npm:@google/genai";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -27,7 +27,7 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, mode, userId, options, userMemory } = await req.json();
+    const { prompt, mode, userId, options, userMemory, file } = await req.json();
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -38,28 +38,88 @@ serve(async (req) => {
     if (!apiKey) throw new Error("Configuração GEMINI_API_KEY não encontrada no servidor.");
 
     const ai = new GoogleGenAI({ apiKey });
+    let systemInstruction = `Você é o GDN_IA. Modo: ${mode}. Contexto: ${userMemory || 'Geral'}.`;
+    let config: any = {};
+    let contents: any = prompt;
 
-    // --- DEFINIÇÃO DE SYSTEM INSTRUCTION POR MODO ---
-    let systemInstruction = `Você é o GDN_IA. Modo: ${mode}. Contexto anterior: ${userMemory || 'nulo'}.`;
+    // --- LÓGICA DE EXTRAÇÃO DE CURRÍCULO (OCR + JSON) ---
+    if (mode === 'curriculum_extraction' && file) {
+        systemInstruction = `Você é um extrator de dados especializado em currículos profissionais. 
+        Analise o documento fornecido e extraia as informações seguindo EXATAMENTE a estrutura JSON solicitada.
+        Se não encontrar uma informação, deixe o campo como string vazia ou array vazio. 
+        Normalize datas para o formato "Mês/Ano - Mês/Ano" ou "Ano - Presente".`;
 
-    if (mode === 'curriculum_generator') {
-      systemInstruction = `Aja como o Diretor de Recrutamento de uma Big Tech e Especialista em Algoritmos ATS (Applicant Tracking Systems). 
-      Seu objetivo é transformar dados brutos no currículo mais competitivo do mercado internacional.
+        contents = {
+            parts: [
+                { inlineData: { data: file.data, mimeType: file.mimeType } },
+                { text: "Extraia todos os dados deste currículo para o formato JSON definido no schema." }
+            ]
+        };
+
+        config = {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    name: { type: Type.STRING },
+                    email: { type: Type.STRING },
+                    phone: { type: Type.STRING },
+                    linkedin: { type: Type.STRING },
+                    location: { type: Type.STRING },
+                    experience: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                title: { type: Type.STRING },
+                                company: { type: Type.STRING },
+                                dates: { type: Type.STRING },
+                                description: { type: Type.STRING }
+                            }
+                        }
+                    },
+                    education: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                degree: { type: Type.STRING },
+                                institution: { type: Type.STRING },
+                                dates: { type: Type.STRING }
+                            }
+                        }
+                    },
+                    skills: {
+                        type: Type.ARRAY,
+                        items: { type: Type.STRING }
+                    }
+                }
+            }
+        };
+    }
+
+    // --- LÓGICA DE GERAÇÃO DE CURRÍCULO ---
+    else if (mode === 'curriculum_generator') {
+      systemInstruction = `Você é o Diretor de Recrutamento de uma Big Tech (Google/Amazon) e um Especialista em Algoritmos ATS.
+      Seu objetivo é transformar dados de um usuário no currículo mais competitivo do mercado internacional.
 
       REGRAS DE OURO:
-      1. FÓRMULA X-Y-Z: Toda conquista deve seguir: "Alcancei [X] medido por [Y] ao realizar [Z]". Ex: "Aumentei a conversão em 20% (R$ 1M) liderando a reestruturação do checkout".
-      2. KEYWORD INJECTION: Se uma "Job Description" for fornecida, identifique as 5 habilidades mais críticas e garanta que elas apareçam organicamente no Resumo e nas Experiências.
-      3. VERBOS DE PODER: Use apenas verbos de ação fortes no início dos bullets (Liderei, Orquestrei, Maximizei, Projetei).
-      4. ZERO CLICHÊS: Remova termos vazios como "apaixonado por", "focado em resultados", "proativo". Prove com dados.
-      5. FORMATO: Preencha o modelo HTML fornecido. Mantenha as classes CSS intactas. Retorne APENAS o HTML.`;
+      1. FÓRMULA X-Y-Z DO GOOGLE: Toda conquista deve seguir: "Alcancei [X] medido por [Y] ao realizar [Z]". 
+         Ex: "Aumentei a retenção de clientes em 20% liderando a implementação de um novo CRM".
+      2. KEYWORD INJECTION: Se uma 'Vaga Alvo' for fornecida, identifique as 5 palavras-chave mais importantes e garanta que elas apareçam no Resumo e nas Experiências.
+      3. VERBOS DE PODER: Inicie cada bullet point com verbos fortes (Liderei, Orquestrei, Maximizei).
+      4. ZERO CLICHÊS: Remova termos como "apaixonado", "proativo", "focado". Prove com dados.
+      5. FORMATO: Preencha o modelo HTML fornecido, preenchendo os IDs: personal-info-name, summary-content, experience-list, education-list, skills-list.
+      6. RETORNO: Retorne APENAS o código HTML final.`;
     }
 
     console.log(`[Gen] Modo: ${mode}`);
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: prompt,
+      contents: contents,
       config: {
+        ...config,
         systemInstruction,
         tools: mode === 'news_generator' ? [{ googleSearch: {} }] : []
       }
@@ -68,11 +128,13 @@ serve(async (req) => {
     const text = response.text || "";
     const cost = TASK_COSTS[mode] || 1;
 
-    if (userId) {
-      await deductCredits(supabaseAdmin, userId, cost);
+    // Apenas deduz créditos e salva no histórico se não for apenas extração
+    if (userId && mode !== 'curriculum_extraction') {
+      await supabaseAdmin.rpc('deduct_credits_v2', { p_user_id: userId, p_amount: cost });
+      
       await supabaseAdmin.from('news').insert({
         author_id: userId,
-        titulo: text.split('\n')[0].substring(0, 100),
+        titulo: text.substring(0, 100),
         conteudo: text,
         tipo: mode,
         status: 'approved'
@@ -91,11 +153,3 @@ serve(async (req) => {
     });
   }
 });
-
-async function deductCredits(supabaseAdmin: any, userId: string, cost: number) {
-  const { data } = await supabaseAdmin.from('user_credits').select('credits').eq('user_id', userId).single();
-  if (data && data.credits !== -1) {
-    const newBalance = Math.max(0, data.credits - cost);
-    await supabaseAdmin.from('user_credits').update({ credits: newBalance }).eq('user_id', userId);
-  }
-}
