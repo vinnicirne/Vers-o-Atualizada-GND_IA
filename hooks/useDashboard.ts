@@ -141,31 +141,30 @@ export function useDashboard() {
             let finalPrompt = prompt;
             let finalOptions = options;
 
-            // Lógica Especial para Currículo
+            // Lógica Especial para Currículo de Elite
             if (mode === 'curriculum_generator' && options) {
-                const templateHtml = (CURRICULUM_TEMPLATES as any)[options.template] || CURRICULUM_TEMPLATES.minimalist;
+                // Fix: Changed non-existent 'minimalist' template fallback to 'modern_standard' to resolve property mismatch error.
+                const templateHtml = (CURRICULUM_TEMPLATES as any)[options.template] || CURRICULUM_TEMPLATES.modern_standard;
                 finalPrompt = `
-                DADOS DO USUÁRIO PARA O CURRÍCULO:
+                DADOS DO CANDIDATO:
                 Nome: ${options.personalInfo?.name}
                 Email: ${options.personalInfo?.email}
-                Telefone: ${options.personalInfo?.phone}
                 LinkedIn: ${options.personalInfo?.linkedin}
-                Portfólio: ${options.personalInfo?.portfolio}
+                Localização: ${options.personalInfo?.location}
                 
-                RESUMO ATUAL: ${options.summary || 'Não fornecido'}
-                OBJETIVO ADICIONAL: ${prompt || 'Foco em mercado internacional'}
+                ESTRATÉGIA:
+                Vaga Alvo / Job Description: ${options.targetJob || 'Foco em posições sênior'}
+                Objetivo do Candidato: ${prompt}
                 
-                EXPERIÊNCIA:
-                ${options.experience?.map((e: any) => `- ${e.title} na ${e.company} (${e.dates}): ${e.description}`).join('\n')}
+                HISTÓRICO PROFISSIONAL:
+                ${options.experience?.map((e: any) => `- ${e.title} na ${e.company}: ${e.description}`).join('\n')}
                 
                 FORMAÇÃO:
-                ${options.education?.map((e: any) => `- ${e.degree} na ${e.institution} (${e.dates}): ${e.description}`).join('\n')}
+                ${options.education?.map((e: any) => `- ${e.degree} na ${e.institution}`).join('\n')}
                 
-                HABILIDADES: ${options.skills?.join(', ')}
-                PROJETOS: ${options.projects?.map((p: any) => `- ${p.name}: ${p.description} (Techs: ${p.technologies})`).join('\n')}
-                CERTIFICAÇÕES: ${options.certifications?.join(', ')}
+                COMPETÊNCIAS: ${options.skills?.join(', ')}
                 
-                MODELO HTML BASE PARA PREENCHER:
+                MODELO HTML PARA PREENCHER:
                 ${templateHtml}
                 `;
             }

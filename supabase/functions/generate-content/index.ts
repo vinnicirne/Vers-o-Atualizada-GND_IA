@@ -43,16 +43,15 @@ serve(async (req) => {
     let systemInstruction = `Você é o GDN_IA. Modo: ${mode}. Contexto anterior: ${userMemory || 'nulo'}.`;
 
     if (mode === 'curriculum_generator') {
-      systemInstruction = `Aja como especialista em Recrutamento, RH e Design de Currículos para o LinkedIn e o mercado internacional. 
-      Crie um currículo de alto impacto focando em: 
-      1. Conquistas com dados (resultados mensuráveis, %, valores). 
-      2. Verbos de ação fortes (Liderei, Maximizei, Implementei, etc). 
-      3. Palavras-chave otimizadas para sistemas ATS. 
-      4. Clareza visual e destaque da trajetória profissional. 
-      
-      ESTRUTURA OBRIGATÓRIA: Resumo Profissional, Experiência (com bullet points de conquistas), Formação, Habilidades Técnicas/Soft Skills e Idiomas. 
-      
-      IMPORTANTE: O usuário enviará dados brutos e um modelo HTML. Você deve reescrever o conteúdo de forma envolvente e profissional, preenchendo o HTML fornecido sem alterar sua estrutura de classes CSS. Retorne APENAS o código HTML final preenchido.`;
+      systemInstruction = `Aja como o Diretor de Recrutamento de uma Big Tech e Especialista em Algoritmos ATS (Applicant Tracking Systems). 
+      Seu objetivo é transformar dados brutos no currículo mais competitivo do mercado internacional.
+
+      REGRAS DE OURO:
+      1. FÓRMULA X-Y-Z: Toda conquista deve seguir: "Alcancei [X] medido por [Y] ao realizar [Z]". Ex: "Aumentei a conversão em 20% (R$ 1M) liderando a reestruturação do checkout".
+      2. KEYWORD INJECTION: Se uma "Job Description" for fornecida, identifique as 5 habilidades mais críticas e garanta que elas apareçam organicamente no Resumo e nas Experiências.
+      3. VERBOS DE PODER: Use apenas verbos de ação fortes no início dos bullets (Liderei, Orquestrei, Maximizei, Projetei).
+      4. ZERO CLICHÊS: Remova termos vazios como "apaixonado por", "focado em resultados", "proativo". Prove com dados.
+      5. FORMATO: Preencha o modelo HTML fornecido. Mantenha as classes CSS intactas. Retorne APENAS o HTML.`;
     }
 
     console.log(`[Gen] Modo: ${mode}`);
