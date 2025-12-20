@@ -35,26 +35,23 @@ serve(async (req) => {
     );
 
     const apiKey = Deno.env.get("GEMINI_API_KEY");
-    if (!apiKey) throw new Error("Configuração GEMINI_API_KEY não encontrada no servidor.");
+    if (!apiKey) throw new Error("GEMINI_API_KEY não encontrada.");
 
     const ai = new GoogleGenAI({ apiKey });
     let systemInstruction = `Você é o GDN_IA. Modo: ${mode}. Contexto: ${userMemory || 'Geral'}.`;
     let config: any = {};
-    let contents: any = prompt;
+    let contents: any = [{ text: prompt }];
 
-    // --- LÓGICA DE EXTRAÇÃO DE CURRÍCULO (OCR + JSON) ---
+    // --- MODO EXTRAÇÃO (LÊ PDF E PREENCHE FORMULÁRIO) ---
     if (mode === 'curriculum_extraction' && file) {
-        systemInstruction = `Você é um extrator de dados especializado em currículos profissionais. 
-        Analise o documento fornecido e extraia as informações seguindo EXATAMENTE a estrutura JSON solicitada.
-        Se não encontrar uma informação, deixe o campo como string vazia ou array vazio. 
-        Normalize datas para o formato "Mês/Ano - Mês/Ano" ou "Ano - Presente".`;
+        systemInstruction = `Você é um Analista de RH Sênior especializado em leitura de currículos.
+        Sua tarefa é ler o arquivo PDF e extrair os dados para um formato JSON estrito para preencher um formulário.
+        Normalize todas as informações. Se não encontrar algo, retorne string vazia.`;
 
-        contents = {
-            parts: [
-                { inlineData: { data: file.data, mimeType: file.mimeType } },
-                { text: "Extraia todos os dados deste currículo para o formato JSON definido no schema." }
-            ]
-        };
+        contents = [
+            { inlineData: { data: file.data, mimeType: file.mimeType } },
+            { text: "Extraia nome, email, telefone, linkedin, localização, lista de experiências (cargo, empresa, datas, descrição), educação e habilidades deste currículo." }
+        ];
 
         config = {
             responseMimeType: "application/json",
@@ -89,35 +86,28 @@ serve(async (req) => {
                             }
                         }
                     },
-                    skills: {
-                        type: Type.ARRAY,
-                        items: { type: Type.STRING }
-                    }
+                    skills: { type: Type.STRING }
                 }
             }
         };
     }
 
-    // --- LÓGICA DE GERAÇÃO DE CURRÍCULO ---
+    // --- MODO GERAÇÃO (CRIA O DESIGN FINAL "ELITE") ---
     else if (mode === 'curriculum_generator') {
-      systemInstruction = `Você é o Diretor de Recrutamento de uma Big Tech (Google/Amazon) e um Especialista em Algoritmos ATS.
-      Seu objetivo é transformar dados de um usuário no currículo mais competitivo do mercado internacional.
-
-      REGRAS DE OURO:
-      1. FÓRMULA X-Y-Z DO GOOGLE: Toda conquista deve seguir: "Alcancei [X] medido por [Y] ao realizar [Z]". 
-         Ex: "Aumentei a retenção de clientes em 20% liderando a implementação de um novo CRM".
-      2. KEYWORD INJECTION: Se uma 'Vaga Alvo' for fornecida, identifique as 5 palavras-chave mais importantes e garanta que elas apareçam no Resumo e nas Experiências.
-      3. VERBOS DE PODER: Inicie cada bullet point com verbos fortes (Liderei, Orquestrei, Maximizei).
-      4. ZERO CLICHÊS: Remova termos como "apaixonado", "proativo", "focado". Prove com dados.
-      5. FORMATO: Preencha o modelo HTML fornecido, preenchendo os IDs: personal-info-name, summary-content, experience-list, education-list, skills-list.
-      6. RETORNO: Retorne APENAS o código HTML final.`;
+      systemInstruction = `Você é um Diretor de Design e RH de Big Tech.
+      Crie um currículo de ALTO IMPACTO visualmente idêntico aos modelos profissionais da Zety/Canva.
+      
+      DIRETRIZES DE DESIGN:
+      1. HEADER: Nome grande, negrito, centralizado ou alinhado à esquerda com uma linha divisória sólida abaixo.
+      2. COLUNAS: Use um layout limpo. Seções principais (Experiência, Educação) em destaque.
+      3. TEXTO: Use tipografia Sans-Serif moderna. Aplique a FÓRMULA X-Y-Z do Google em todos os bullet points.
+      4. CORES: Use a cor primária fornecida (${options?.primaryColor || '#2563eb'}) para títulos de seção.
+      5. FORMATO: Retorne código HTML com Tailwind CSS. IDs obrigatórios: personal-info-name, summary-content, experience-list, education-list, skills-list.`;
     }
-
-    console.log(`[Gen] Modo: ${mode}`);
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: contents,
+      contents: { parts: contents },
       config: {
         ...config,
         systemInstruction,
@@ -128,13 +118,11 @@ serve(async (req) => {
     const text = response.text || "";
     const cost = TASK_COSTS[mode] || 1;
 
-    // Apenas deduz créditos e salva no histórico se não for apenas extração
     if (userId && mode !== 'curriculum_extraction') {
       await supabaseAdmin.rpc('deduct_credits_v2', { p_user_id: userId, p_amount: cost });
-      
       await supabaseAdmin.from('news').insert({
         author_id: userId,
-        titulo: text.substring(0, 100),
+        titulo: `Currículo: ${text.substring(0, 30)}...`,
         conteudo: text,
         tipo: mode,
         status: 'approved'
@@ -146,7 +134,6 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    console.error("[Edge Function Error]:", error);
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

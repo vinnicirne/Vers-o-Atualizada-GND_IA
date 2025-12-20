@@ -29,7 +29,7 @@ export const generateCreativeContent = async (
     try {
         userMemory = await getUserPreferences(userId);
     } catch (e) {
-        console.warn('[Memory] Falha ao carregar preferências, seguindo sem contexto.', e);
+        console.warn('[Memory] Falha ao carregar preferências.', e);
     }
   }
 
@@ -38,11 +38,7 @@ export const generateCreativeContent = async (
           body: { prompt, mode, userId, options, userMemory }
       });
 
-      if (error) {
-          console.error("[Supabase Function Error]:", error);
-          throw new Error(error.message || "Erro na comunicação com o servidor de IA.");
-      }
-
+      if (error) throw new Error(error.message);
       if (data.error) throw new Error(data.error);
 
       if (userId && data.text) {
@@ -55,13 +51,13 @@ export const generateCreativeContent = async (
       };
 
   } catch (err: any) {
-      console.error("[GeminiService] Erro fatal:", err);
+      console.error("[GeminiService] Erro:", err);
       throw err;
   }
 };
 
 /**
- * Novo: Extrai dados estruturados de um PDF de currículo
+ * Extrai dados estruturados de um PDF para preencher o formulário
  */
 export const extractCurriculumData = async (fileBase64: string, mimeType: string): Promise<any> => {
     try {
@@ -78,6 +74,7 @@ export const extractCurriculumData = async (fileBase64: string, mimeType: string
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
+        // O Gemini retorna o JSON como string no campo text
         return JSON.parse(data.text);
     } catch (err: any) {
         console.error("[GeminiService] Erro na extração:", err);
@@ -95,9 +92,9 @@ export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, ju
       });
 
       if (error) throw error;
-      const result = JSON.parse(data.text.match(/\{[\s\S]*\}/)?.[0] || '{"score":50,"justification":"Não foi possível analisar."}');
+      const result = JSON.parse(data.text.match(/\{[\s\S]*\}/)?.[0] || '{"score":50,"justification":"N/A"}');
       return { score: result.score, justification: result.justification };
   } catch (e) {
-      return { score: 50, justification: "Erro na análise automática." };
+      return { score: 50, justification: "Erro na análise." };
   }
 };
