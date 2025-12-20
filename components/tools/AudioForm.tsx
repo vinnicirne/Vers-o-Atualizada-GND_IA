@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 
@@ -25,7 +24,7 @@ export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormPr
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        // Passa voice dentro de options para a Edge Function capturar
+        // Envia generateAudio = true para indicar intenção de gerar áudio
         onGenerate(prompt, mode, true, { voice: selectedVoice });
     };
 

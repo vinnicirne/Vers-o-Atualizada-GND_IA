@@ -1,3 +1,4 @@
+
 // supabase/functions/generate-content/index.ts
 declare const Deno: any;
 
@@ -28,7 +29,7 @@ const MAX_TTS_CHARS = 3000;
 function extractAudioBase64(resp: any): string | null {
   if (!resp) return null;
 
-  // Caminho mais comum esperado pela SDK atual (Nano Banana Series)
+  // Caminho mais comum esperado pela SDK atual
   const candidateInline = resp?.candidates?.[0]?.content?.parts;
   if (Array.isArray(candidateInline)) {
     for (const p of candidateInline) {
@@ -75,6 +76,7 @@ serve(async (req) => {
     const apiKey = Deno.env.get("GEMINI_API_KEY");
     if (!apiKey) throw new Error("Configuração GEMINI_API_KEY não encontrada no servidor.");
 
+    // Fix: Initialization according to guidelines.
     const ai = new GoogleGenAI({ apiKey });
 
     // --- MODO TTS DIRETO (Apenas Áudio) ---
@@ -110,8 +112,10 @@ serve(async (req) => {
     // --- MODO TEXTO / IMAGEM / SITE ---
     console.log(`[Gen] Modo: ${mode} | GenerateAudio: ${generateAudio}`);
 
+    // Fix: Updated model name to gemini-3-flash-preview for text tasks.
+    // For image_generation, we use the text model to refine the prompt for the Pollinations engine.
     const response = await ai.models.generateContent({
-      model: mode === 'image_generation' ? 'gemini-2.5-flash-image' : 'gemini-2.5-flash',
+      model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
         systemInstruction: `Você é o GDN_IA. Modo: ${mode}. Contexto anterior: ${userMemory || 'nulo'}.`,
@@ -119,6 +123,7 @@ serve(async (req) => {
       }
     });
 
+    // Fix: Correct property access for text result.
     const text = response.text || "";
     let audioBase64 = null;
 

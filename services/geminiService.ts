@@ -1,4 +1,3 @@
-
 import { ServiceKey } from '../types/plan.types';
 import { Source } from '../types';
 import { supabase } from './supabaseClient';
@@ -70,7 +69,7 @@ export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, ju
       const { data, error } = await supabase.functions.invoke('generate-content', {
           body: {
               prompt: `Analise o perfil deste lead: ${JSON.stringify(lead)}. Retorne um JSON com score (0-100) e uma justificativa curta.`,
-              mode: 'copy_generator', // Reuso do motor de texto
+              mode: 'copy_generator', 
               generateAudio: false
           }
       });

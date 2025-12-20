@@ -26,16 +26,14 @@ export function AudioPlayer({ audioBase64 }: { audioBase64: string }) {
 
         const bytes = decodeBase64ToUint8(audioBase64);
 
-        // Tenta decodificar via decodeAudioData (aceita WAV/MP3/OGG)
+        // Tenta decodificar via decodeAudioData (aceita WAV/MP3/OGG), que é o mais robusto.
         try {
           const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer.slice(0));
+          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
           bufferRef.current = decoded;
         } catch (err) {
-          // Se falhar, tenta interpretar como PCM16 raw (padrão do Gemini 2.5 Flash TTS)
+          // Se falhar, tenta interpretar como PCM16 raw (fallback padrão Gemini)
           console.warn("decodeAudioData falhou, tentando fallback PCM16:", err);
-          
-          // Gemini retorna 16-bit signed PCM, mono, 24kHz
           const dataInt16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
           const frameCount = dataInt16.length;
           const sampleRate = 24000; 
