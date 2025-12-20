@@ -58,13 +58,13 @@ export const generateCreativeContent = async (
 
 /**
  * Extrai dados estruturados de um PDF para preencher o formulário
- * Adicionado: Limpeza robusta de JSON via Regex
  */
 export const extractCurriculumData = async (fileBase64: string, mimeType: string): Promise<any> => {
     try {
         const { data, error } = await supabase.functions.invoke('generate-content', {
             body: { 
                 mode: 'curriculum_extraction',
+                prompt: 'Extraia os dados profissionais do PDF para JSON.',
                 file: {
                     data: fileBase64,
                     mimeType: mimeType
@@ -77,15 +77,21 @@ export const extractCurriculumData = async (fileBase64: string, mimeType: string
 
         const rawText = data.text || "";
         
-        // REGEX ROBUSTO: Procura pelo primeiro { e o último } para extrair apenas o JSON
+        // REGEX ROBUSTO: Procura pelo primeiro { e o último } para isolar o JSON
+        // Isso resolve o erro de quando a IA responde "Desculpe, o modo... { JSON }"
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         
         if (!jsonMatch) {
-            console.error("[GeminiService] Nenhum JSON encontrado na resposta:", rawText);
-            throw new Error("A IA não retornou um formato de dados válido.");
+            console.error("[GeminiService] Falha na extração. Resposta da IA:", rawText);
+            throw new Error("A IA não conseguiu ler este formato de PDF corretamente.");
         }
 
-        return JSON.parse(jsonMatch[0]);
+        try {
+            return JSON.parse(jsonMatch[0]);
+        } catch (parseErr) {
+            console.error("[GeminiService] JSON inválido extraído:", jsonMatch[0]);
+            throw new Error("Erro ao interpretar os dados extraídos.");
+        }
     } catch (err: any) {
         console.error("[GeminiService] Erro na extração:", err);
         throw err;

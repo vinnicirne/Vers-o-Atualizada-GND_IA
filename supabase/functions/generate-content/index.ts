@@ -38,22 +38,26 @@ serve(async (req) => {
     if (!apiKey) throw new Error("GEMINI_API_KEY não encontrada.");
 
     const ai = new GoogleGenAI({ apiKey });
-    let systemInstruction = `Você é o GDN_IA. Modo: ${mode}. Contexto: ${userMemory || 'Geral'}.`;
+    
+    // Configuração inicial padrão
+    let systemInstruction = `Você é o GDN_IA. Contexto: ${userMemory || 'Geral'}.`;
     let config: any = {};
-    let contents: any = [{ text: prompt }];
+    let contentsParts: any[] = [{ text: prompt || "Gerar conteúdo profissional." }];
 
-    // --- MODO EXTRAÇÃO (LÊ PDF E PREENCHE FORMULÁRIO) ---
-    if (mode === 'curriculum_extraction' && file) {
-        // Instrução extremamente rígida para evitar conversas
-        systemInstruction = `Você é um extrator de dados puramente técnico. 
-        Sua única tarefa é ler o PDF e gerar um JSON. 
-        PROIBIDO: Não responda com "Aqui está o seu currículo", "Desculpe", ou qualquer texto humano. 
-        Sua saída deve conter APENAS o objeto JSON definido no schema. 
-        Se não encontrar um dado, use string vazia.`;
+    // --- LOGICA DE PRIORIDADE: EXTRAÇÃO DE PDF ---
+    if (file && (mode === 'curriculum_extraction' || mode === 'curriculum_generator')) {
+        // Se houver arquivo, ignoramos a conversa fiada e vamos direto para a extração técnica
+        systemInstruction = `Você é um Robô Extrator de Dados JSON. 
+        Sua única função é ler o PDF fornecido e extrair as informações profissionais. 
+        REGRAS CRÍTICAS:
+        1. Responda APENAS com o objeto JSON.
+        2. Não diga "Desculpe", "Aqui está" ou qualquer texto humano.
+        3. Se não encontrar um dado, use "".
+        4. O modo "curriculum_extraction" é VÁLIDO e sua função principal agora.`;
 
-        contents = [
+        contentsParts = [
             { inlineData: { data: file.data, mimeType: file.mimeType } },
-            { text: "Extraia os dados profissionais deste documento seguindo o schema JSON estritamente." }
+            { text: "Extraia nome, email, phone, linkedin, location, summary, experience, education e skills deste documento PDF." }
         ];
 
         config = {
@@ -94,23 +98,18 @@ serve(async (req) => {
                 }
             }
         };
-    }
-
-    // --- MODO GERAÇÃO (CRIA O DESIGN FINAL "ELITE") ---
+    } 
+    // --- MODOS DE GERAÇÃO TEXTUAL ---
     else if (mode === 'curriculum_generator') {
-      systemInstruction = `Você é um Diretor de Design e RH de Big Tech.
-      Crie um currículo de ALTO IMPACTO visualmente impecável.
-      
-      REGRAS DE OURO:
-      1. FÓRMULA X-Y-Z: Para experiências, use "Alcancei [X] medido por [Y] ao realizar [Z]".
-      2. KEYWORD INJECTION: Injete palavras-chave da vaga alvo (Job Match).
-      3. DESIGN: Retorne HTML com Tailwind. Preencha os IDs: personal-info-name, personal-info-location, personal-info-email, personal-info-phone, personal-info-linkedin, summary-content, experience-list, education-list, skills-list.
-      4. CORES: Use variações de azul e cinza escuro para um look executivo.`;
+      systemInstruction = `Você é um Diretor de Design e RH de Big Tech. Crie um currículo HTML/Tailwind de ALTO IMPACTO. Use a FÓRMULA X-Y-Z do Google.`;
+    } else {
+        // Fallback para outros modos (news, copy, etc)
+        systemInstruction = `Você é o assistente GDN_IA focado em: ${mode}.`;
     }
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
-      contents: { parts: contents },
+      contents: { parts: contentsParts },
       config: {
         ...config,
         systemInstruction,
@@ -121,6 +120,7 @@ serve(async (req) => {
     const text = response.text || "";
     const cost = TASK_COSTS[mode] || 1;
 
+    // Apenas deduz créditos se não for apenas extração de dados
     if (userId && mode !== 'curriculum_extraction') {
       await supabaseAdmin.rpc('deduct_credits_v2', { p_user_id: userId, p_amount: cost });
       await supabaseAdmin.from('news').insert({
