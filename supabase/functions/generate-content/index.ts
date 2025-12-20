@@ -39,25 +39,24 @@ serve(async (req) => {
 
     const ai = new GoogleGenAI({ apiKey });
     
-    // Configuração inicial padrão
+    // Configurações Padrão
     let systemInstruction = `Você é o GDN_IA. Contexto: ${userMemory || 'Geral'}.`;
     let config: any = {};
-    let contentsParts: any[] = [{ text: prompt || "Gerar conteúdo profissional." }];
+    let contentsParts: any[] = [{ text: prompt || "Gerar conteúdo." }];
 
-    // --- LOGICA DE PRIORIDADE: EXTRAÇÃO DE PDF ---
-    if (file && (mode === 'curriculum_extraction' || mode === 'curriculum_generator')) {
-        // Se houver arquivo, ignoramos a conversa fiada e vamos direto para a extração técnica
-        systemInstruction = `Você é um Robô Extrator de Dados JSON. 
-        Sua única função é ler o PDF fornecido e extrair as informações profissionais. 
-        REGRAS CRÍTICAS:
-        1. Responda APENAS com o objeto JSON.
-        2. Não diga "Desculpe", "Aqui está" ou qualquer texto humano.
-        3. Se não encontrar um dado, use "".
-        4. O modo "curriculum_extraction" é VÁLIDO e sua função principal agora.`;
+    // --- MODO EXTRAÇÃO (LÊ PDF E PREENCHE FORMULÁRIO) ---
+    // Se houver arquivo, mudamos radicalmente o sistema para não confundir a IA com nomes de modos
+    if (file && mode === 'curriculum_extraction') {
+        systemInstruction = `Você é um Analista de Dados Técnico focado em extração de informações de currículos.
+        Sua tarefa é ler o documento e converter em um JSON estruturado.
+        REGRAS:
+        1. Ignore qualquer saudação ou conversa.
+        2. Retorne APENAS o objeto JSON.
+        3. Campos ausentes devem ser retornados como "".`;
 
         contentsParts = [
             { inlineData: { data: file.data, mimeType: file.mimeType } },
-            { text: "Extraia nome, email, phone, linkedin, location, summary, experience, education e skills deste documento PDF." }
+            { text: "Extraia todos os dados profissionais deste currículo para o formato JSON solicitado." }
         ];
 
         config = {
@@ -99,12 +98,11 @@ serve(async (req) => {
             }
         };
     } 
-    // --- MODOS DE GERAÇÃO TEXTUAL ---
+    // --- MODOS DE GERAÇÃO (SITES, CURRÍCULOS FINAIS, ETC) ---
     else if (mode === 'curriculum_generator') {
-      systemInstruction = `Você é um Diretor de Design e RH de Big Tech. Crie um currículo HTML/Tailwind de ALTO IMPACTO. Use a FÓRMULA X-Y-Z do Google.`;
-    } else {
-        // Fallback para outros modos (news, copy, etc)
-        systemInstruction = `Você é o assistente GDN_IA focado em: ${mode}.`;
+      systemInstruction = `Você é um Diretor de Design e RH de Big Tech. 
+      Crie um currículo de ALTO IMPACTO visualmente impecável. 
+      Use HTML com Tailwind. Preencha os IDs: personal-info-name, personal-info-location, personal-info-email, personal-info-phone, personal-info-linkedin, summary-content, experience-list, education-list, skills-list.`;
     }
 
     const response = await ai.models.generateContent({
@@ -120,7 +118,7 @@ serve(async (req) => {
     const text = response.text || "";
     const cost = TASK_COSTS[mode] || 1;
 
-    // Apenas deduz créditos se não for apenas extração de dados
+    // Deduz créditos apenas se for uma geração final (não extração)
     if (userId && mode !== 'curriculum_extraction') {
       await supabaseAdmin.rpc('deduct_credits_v2', { p_user_id: userId, p_amount: cost });
       await supabaseAdmin.from('news').insert({
