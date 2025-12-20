@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { CURRICULUM_TEMPLATES } from '../resume/templates';
@@ -44,7 +43,7 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
             {/* Template Selection */}
             <div>
                 <label htmlFor="curriculumTemplate" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
-                    Escolha um Template
+                    Design do Currículo
                 </label>
                 <select 
                     id="curriculumTemplate" 
@@ -60,28 +59,26 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
             </div>
 
             {/* Personal Info */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Informações Pessoais</h3>
+            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 shadow-inner">
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <i className="fas fa-user-circle text-blue-500"></i> Informações Pessoais
+                </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Nome Completo</label>
                         <input type="text" value={personalInfo.name} onChange={e => setPersonalInfo({...personalInfo, name: e.target.value})} className={inputClasses} placeholder="Seu nome" disabled={isLoading || isLocked} />
                     </div>
                     <div>
-                        <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Email</label>
+                        <label className="block text-xs uppercase font-bold mb-1 text-gray-500">E-mail Profissional</label>
                         <input type="email" value={personalInfo.email} onChange={e => setPersonalInfo({...personalInfo, email: e.target.value})} className={inputClasses} placeholder="seu@email.com" disabled={isLoading || isLocked} />
                     </div>
                     <div>
-                        <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Telefone</label>
+                        <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Telefone / WhatsApp</label>
                         <input type="tel" value={personalInfo.phone} onChange={e => setPersonalInfo({...personalInfo, phone: e.target.value})} className={inputClasses} placeholder="(XX) XXXXX-XXXX" disabled={isLoading || isLocked} />
                     </div>
                     <div>
                         <label className="block text-xs uppercase font-bold mb-1 text-gray-500">LinkedIn URL</label>
-                        <input type="url" value={personalInfo.linkedin} onChange={e => setPersonalInfo({...personalInfo, linkedin: e.target.value})} className={inputClasses} placeholder="https://linkedin.com/in/seu_perfil" disabled={isLoading || isLocked} />
-                    </div>
-                    <div className="md:col-span-2">
-                        <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Portfólio/Website URL</label>
-                        <input type="url" value={personalInfo.portfolio} onChange={e => setPersonalInfo({...personalInfo, portfolio: e.target.value})} className={inputClasses} placeholder="https://seuportfolio.com" disabled={isLoading || isLocked} />
+                        <input type="url" value={personalInfo.linkedin} onChange={e => setPersonalInfo({...personalInfo, linkedin: e.target.value})} className={inputClasses} placeholder="https://linkedin.com/in/perfil" disabled={isLoading || isLocked} />
                     </div>
                 </div>
             </div>
@@ -89,13 +86,13 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
             {/* Main Prompt (Objective) */}
             <div>
                 <label htmlFor="prompt" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">
-                    Seu Objetivo de Carreira (Opcional, para refinar o resumo)
+                    Destaque de Carreira ou Foco Específico (Instrução para a IA)
                 </label>
                 <textarea
                     id="prompt"
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
-                    placeholder="Ex: 'Busco uma posição desafiadora em uma empresa inovadora onde possa aplicar minhas habilidades em IA e Machine Learning para impulsionar o crescimento do produto.'"
+                    placeholder="Ex: 'Enfatize minha experiência com liderança de equipes remotas e expansão de mercado para os EUA.' ou 'Torne o texto mais sênior e focado em resultados financeiros.'"
                     rows={3}
                     className="w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-4 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300 placeholder-gray-400 disabled:opacity-50 disabled:bg-gray-50 resize-y"
                     disabled={isLoading || isLocked}
@@ -104,121 +101,77 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
 
             {/* Summary */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Resumo Profissional / Objetivo</h3>
-                <textarea value={summary} onChange={e => setSummary(e.target.value)} className={inputClasses} rows={3} placeholder="Desenvolvedor Fullstack com foco em ... busca oportunidade para ..." disabled={isLoading || isLocked} />
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <i className="fas fa-feather-alt text-orange-500"></i> Seu Resumo Base
+                </h3>
+                <textarea value={summary} onChange={e => setSummary(e.target.value)} className={inputClasses} rows={3} placeholder="Escreva um rascunho curto do seu resumo. A IA irá refiná-lo profissionalmente." disabled={isLoading || isLocked} />
             </div>
 
             {/* Work Experience */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Experiência Profissional</h3>
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <i className="fas fa-briefcase text-green-600"></i> Histórico Profissional
+                </h3>
+                <p className="text-[10px] text-gray-400 mb-3 uppercase font-bold">Liste suas tarefas básicas e a IA criará conquistas com métricas.</p>
                 {experience.map((exp, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 border border-gray-100 rounded-md bg-white">
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 border border-gray-100 rounded-md bg-white shadow-sm">
                         <div>
                             <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Cargo</label>
-                            <input type="text" value={exp.title} onChange={e => { const newExp = [...experience]; newExp[index].title = e.target.value; setExperience(newExp); }} className={inputClasses} placeholder="Desenvolvedor Sênior" disabled={isLoading || isLocked} />
+                            <input type="text" value={exp.title} onChange={e => { const newExp = [...experience]; newExp[index].title = e.target.value; setExperience(newExp); }} className={inputClasses} placeholder="Ex: Gerente de Vendas" disabled={isLoading || isLocked} />
                         </div>
                         <div>
                             <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Empresa</label>
-                            <input type="text" value={exp.company} onChange={e => { const newExp = [...experience]; newExp[index].company = e.target.value; setExperience(newExp); }} className={inputClasses} placeholder="Empresa X S.A." disabled={isLoading || isLocked} />
+                            <input type="text" value={exp.company} onChange={e => { const newExp = [...experience]; newExp[index].company = e.target.value; setExperience(newExp); }} className={inputClasses} placeholder="Nome da Organização" disabled={isLoading || isLocked} />
                         </div>
                         <div>
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Período (Ex: Jan 2020 - Presente)</label>
-                            <input type="text" value={exp.dates} onChange={e => { const newExp = [...experience]; newExp[index].dates = e.target.value; setExperience(newExp); }} className={inputClasses} placeholder="Jan 2020 - Presente" disabled={isLoading || isLocked} />
+                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Período</label>
+                            <input type="text" value={exp.dates} onChange={e => { const newExp = [...experience]; newExp[index].dates = e.target.value; setExperience(newExp); }} className={inputClasses} placeholder="2020 - 2024" disabled={isLoading || isLocked} />
                         </div>
                         <div className="md:col-span-2">
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Descrição / Conquistas (Palavras-chave e números)</label>
-                            <textarea value={exp.description} onChange={e => { const newExp = [...experience]; newExp[index].description = e.target.value; setExperience(newExp); }} className={inputClasses} rows={3} placeholder="Desenvolvi features que aumentaram a conversão em 15%..." disabled={isLoading || isLocked} />
+                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Atividades Principais</label>
+                            <textarea value={exp.description} onChange={e => { const newExp = [...experience]; newExp[index].description = e.target.value; setExperience(newExp); }} className={inputClasses} rows={2} placeholder="O que você fazia? A IA reescreverá como conquista." disabled={isLoading || isLocked} />
                         </div>
                         {experience.length > 1 && (
-                            <button type="button" onClick={() => setExperience(experience.filter((_, i) => i !== index))} className="md:col-span-2 text-red-500 hover:text-red-700 text-sm mt-2">Remover Experiência</button>
+                            <button type="button" onClick={() => setExperience(experience.filter((_, i) => i !== index))} className="md:col-span-2 text-red-400 hover:text-red-600 text-[10px] font-bold uppercase mt-1 text-right">Excluir Experiência</button>
                         )}
                     </div>
                 ))}
-                <button type="button" onClick={() => setExperience([...experience, { title: '', company: '', dates: '', description: '' }])} className="w-full bg-blue-100 text-blue-700 py-2 rounded-lg text-sm font-bold hover:bg-blue-200 transition-colors flex items-center justify-center gap-2" disabled={isLoading || isLocked}>
-                    <i className="fas fa-plus"></i> Adicionar Experiência
+                <button type="button" onClick={() => setExperience([...experience, { title: '', company: '', dates: '', description: '' }])} className="w-full bg-blue-50 text-blue-700 py-2 rounded-lg text-xs font-bold hover:bg-blue-100 transition-colors flex items-center justify-center gap-2" disabled={isLoading || isLocked}>
+                    <i className="fas fa-plus"></i> Adicionar Cargo
                 </button>
             </div>
 
             {/* Education */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Formação Acadêmica</h3>
+                <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                    <i className="fas fa-graduation-cap text-indigo-500"></i> Formação Acadêmica
+                </h3>
                 {education.map((edu, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 border border-gray-100 rounded-md bg-white">
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 border border-gray-100 rounded-md bg-white shadow-sm">
                         <div>
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Curso / Grau</label>
-                            <input type="text" value={edu.degree} onChange={e => { const newEdu = [...education]; newEdu[index].degree = e.target.value; setEducation(newEdu); }} className={inputClasses} placeholder="Bacharelado em Ciência da Computação" disabled={isLoading || isLocked} />
+                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Curso</label>
+                            <input type="text" value={edu.degree} onChange={e => { const newEdu = [...education]; newEdu[index].degree = e.target.value; setEducation(newEdu); }} className={inputClasses} placeholder="Bacharelado em..." disabled={isLoading || isLocked} />
                         </div>
                         <div>
                             <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Instituição</label>
-                            <input type="text" value={edu.institution} onChange={e => { const newEdu = [...education]; newEdu[index].institution = e.target.value; setEducation(newEdu); }} className={inputClasses} placeholder="Universidade XYZ" disabled={isLoading || isLocked} />
+                            <input type="text" value={edu.institution} onChange={e => { const newEdu = [...education]; newEdu[index].institution = e.target.value; setEducation(newEdu); }} className={inputClasses} placeholder="Universidade" disabled={isLoading || isLocked} />
                         </div>
-                        <div>
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Período (Ex: 2015 - 2019)</label>
-                            <input type="text" value={edu.dates} onChange={e => { const newEdu = [...education]; newEdu[index].dates = e.target.value; setEducation(newEdu); }} className={inputClasses} placeholder="2015 - 2019" disabled={isLoading || isLocked} />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Detalhes / Projetos Relevantes</label>
-                            <textarea value={edu.description} onChange={e => { const newEdu = [...education]; newEdu[index].description = e.target.value; setEducation(newEdu); }} className={inputClasses} rows={2} placeholder="TCC sobre IA e visão computacional..." disabled={isLoading || isLocked} />
-                        </div>
-                        {education.length > 1 && (
-                            <button type="button" onClick={() => setEducation(education.filter((_, i) => i !== index))} className="md:col-span-2 text-red-500 hover:text-red-700 text-sm mt-2">Remover Formação</button>
-                        )}
                     </div>
                 ))}
-                <button type="button" onClick={() => setEducation([...education, { degree: '', institution: '', dates: '', description: '' }])} className="w-full bg-blue-100 text-blue-700 py-2 rounded-lg text-sm font-bold hover:bg-blue-200 transition-colors flex items-center justify-center gap-2" disabled={isLoading || isLocked}>
-                    <i className="fas fa-plus"></i> Adicionar Formação
-                </button>
             </div>
 
             {/* Skills */}
             <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Habilidades (Separadas por vírgula)</h3>
+                <h3 className="text-sm font-bold text-gray-700 mb-1 flex items-center gap-2">
+                    <i className="fas fa-tools text-yellow-600"></i> Competências Técnicas & Idiomas
+                </h3>
+                <label className="block text-[10px] uppercase font-bold mb-3 text-gray-400">Separe por vírgulas.</label>
                 <textarea 
                     value={skills.join(', ')} 
                     onChange={e => setSkills(e.target.value.split(',').map(s => s.trim()))} 
                     className={inputClasses} 
                     rows={2} 
-                    placeholder="React, Node.js, Python, AWS, Comunicação, Liderança" 
-                    disabled={isLoading || isLocked} 
-                />
-            </div>
-
-            {/* Projects */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Projetos (Opcional)</h3>
-                {projects.map((proj, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-3 border border-gray-100 rounded-md bg-white">
-                        <div>
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Nome do Projeto</label>
-                            <input type="text" value={proj.name} onChange={e => { const newProj = [...projects]; newProj[index].name = e.target.value; setProjects(newProj); }} className={inputClasses} placeholder="Sistema de E-commerce B2B" disabled={isLoading || isLocked} />
-                        </div>
-                        <div>
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Tecnologias</label>
-                            <input type="text" value={proj.technologies} onChange={e => { const newProj = [...projects]; newProj[index].technologies = e.target.value; setProjects(newProj); }} className={inputClasses} placeholder="React, Express, PostgreSQL" disabled={isLoading || isLocked} />
-                        </div>
-                        <div className="md:col-span-2">
-                            <label className="block text-xs uppercase font-bold mb-1 text-gray-500">Descrição</label>
-                            <textarea value={proj.description} onChange={e => { const newProj = [...projects]; newProj[index].description = e.target.value; setProjects(newProj); }} className={inputClasses} rows={2} placeholder="Desenvolvimento de plataforma para gestão de pedidos..." disabled={isLoading || isLocked} />
-                        </div>
-                        {projects.length > 1 && (
-                            <button type="button" onClick={() => setProjects(projects.filter((_, i) => i !== index))} className="md:col-span-2 text-red-500 hover:text-red-700 text-sm mt-2">Remover Projeto</button>
-                        )}
-                    </div>
-                ))}
-                <button type="button" onClick={() => setProjects([...projects, { name: '', description: '', technologies: '' }])} className="w-full bg-blue-100 text-blue-700 py-2 rounded-lg text-sm font-bold hover:bg-blue-200 transition-colors flex items-center justify-center gap-2" disabled={isLoading || isLocked}>
-                    <i className="fas fa-plus"></i> Adicionar Projeto
-                </button>
-            </div>
-
-            {/* Certifications */}
-            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                <h3 className="text-sm font-bold text-gray-700 mb-3">Certificações / Prêmios (Separadas por vírgula)</h3>
-                <textarea 
-                    value={certifications.join(', ')} 
-                    onChange={e => setCertifications(e.target.value.split(',').map(s => s.trim()))} 
-                    className={inputClasses} 
-                    rows={2} 
-                    placeholder="Certificação AWS Solutions Architect, Prêmio de Melhor Projeto Acadêmico" 
+                    placeholder="Python, Gestão Ágil, Inglês Fluente, Excel Avançado..." 
                     disabled={isLoading || isLocked} 
                 />
             </div>
@@ -229,10 +182,10 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
                 disabled={isLoading || isLocked || !personalInfo.name || !personalInfo.email}
             >
                 {isLoading ? (
-                    <>Processando...</>
+                    <>Processando com IA de Elite...</>
                 ) : (
                     <>
-                        {isLocked ? <><i className="fas fa-lock mr-2"></i> Recurso Bloqueado</> : <><i className="fas fa-file-alt mr-2"></i> Gerar Currículo</>}
+                        {isLocked ? <><i className="fas fa-lock mr-2"></i> Plano Insuficiente</> : <><i className="fas fa-magic mr-2"></i> Gerar Currículo de Elite (8 Créditos)</>}
                     </>
                 )}
             </button>

@@ -39,19 +39,34 @@ serve(async (req) => {
 
     const ai = new GoogleGenAI({ apiKey });
 
+    // --- DEFINIÇÃO DE SYSTEM INSTRUCTION POR MODO ---
+    let systemInstruction = `Você é o GDN_IA. Modo: ${mode}. Contexto anterior: ${userMemory || 'nulo'}.`;
+
+    if (mode === 'curriculum_generator') {
+      systemInstruction = `Aja como especialista em Recrutamento, RH e Design de Currículos para o LinkedIn e o mercado internacional. 
+      Crie um currículo de alto impacto focando em: 
+      1. Conquistas com dados (resultados mensuráveis, %, valores). 
+      2. Verbos de ação fortes (Liderei, Maximizei, Implementei, etc). 
+      3. Palavras-chave otimizadas para sistemas ATS. 
+      4. Clareza visual e destaque da trajetória profissional. 
+      
+      ESTRUTURA OBRIGATÓRIA: Resumo Profissional, Experiência (com bullet points de conquistas), Formação, Habilidades Técnicas/Soft Skills e Idiomas. 
+      
+      IMPORTANTE: O usuário enviará dados brutos e um modelo HTML. Você deve reescrever o conteúdo de forma envolvente e profissional, preenchendo o HTML fornecido sem alterar sua estrutura de classes CSS. Retorne APENAS o código HTML final preenchido.`;
+    }
+
     console.log(`[Gen] Modo: ${mode}`);
 
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
       config: {
-        systemInstruction: `Você é o GDN_IA. Modo: ${mode}. Contexto anterior: ${userMemory || 'nulo'}.`,
+        systemInstruction,
         tools: mode === 'news_generator' ? [{ googleSearch: {} }] : []
       }
     });
 
     const text = response.text || "";
-
     const cost = TASK_COSTS[mode] || 1;
 
     if (userId) {

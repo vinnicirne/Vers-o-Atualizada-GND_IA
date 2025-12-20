@@ -3,6 +3,7 @@ import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
 import { usePlan } from './usePlan';
 import { generateCreativeContent } from '../services/geminiService';
+import { CURRICULUM_TEMPLATES } from '../components/resume/templates';
 
 const extractTitleAndContent = (text: string): { title: string | null, content: string } => {
   if (!text) return { title: null, content: '' };
@@ -137,6 +138,38 @@ export function useDashboard() {
         setIsLoading(true);
 
         try {
+            let finalPrompt = prompt;
+            let finalOptions = options;
+
+            // Lógica Especial para Currículo
+            if (mode === 'curriculum_generator' && options) {
+                const templateHtml = (CURRICULUM_TEMPLATES as any)[options.template] || CURRICULUM_TEMPLATES.minimalist;
+                finalPrompt = `
+                DADOS DO USUÁRIO PARA O CURRÍCULO:
+                Nome: ${options.personalInfo?.name}
+                Email: ${options.personalInfo?.email}
+                Telefone: ${options.personalInfo?.phone}
+                LinkedIn: ${options.personalInfo?.linkedin}
+                Portfólio: ${options.personalInfo?.portfolio}
+                
+                RESUMO ATUAL: ${options.summary || 'Não fornecido'}
+                OBJETIVO ADICIONAL: ${prompt || 'Foco em mercado internacional'}
+                
+                EXPERIÊNCIA:
+                ${options.experience?.map((e: any) => `- ${e.title} na ${e.company} (${e.dates}): ${e.description}`).join('\n')}
+                
+                FORMAÇÃO:
+                ${options.education?.map((e: any) => `- ${e.degree} na ${e.institution} (${e.dates}): ${e.description}`).join('\n')}
+                
+                HABILIDADES: ${options.skills?.join(', ')}
+                PROJETOS: ${options.projects?.map((p: any) => `- ${p.name}: ${p.description} (Techs: ${p.technologies})`).join('\n')}
+                CERTIFICAÇÕES: ${options.certifications?.join(', ')}
+                
+                MODELO HTML BASE PARA PREENCHER:
+                ${templateHtml}
+                `;
+            }
+
             let imgDims = { width: 1024, height: 1024 };
             if (mode === 'image_generation' && options?.aspectRatio) {
                 const [wRatio, hRatio] = options.aspectRatio.split(':').map(Number);
@@ -147,7 +180,7 @@ export function useDashboard() {
                 imgDims = { width: w, height: h };
             }
 
-            const apiResult = await generateCreativeContent(prompt, mode, user?.id, options);
+            const apiResult = await generateCreativeContent(finalPrompt, mode, user?.id, finalOptions);
             
             let newText = null;
             let newTitle = null;
