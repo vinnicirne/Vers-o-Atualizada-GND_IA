@@ -44,13 +44,14 @@ serve(async (req) => {
 
     // --- MODO EXTRAÇÃO (LÊ PDF E PREENCHE FORMULÁRIO) ---
     if (mode === 'curriculum_extraction' && file) {
-        systemInstruction = `Você é um Analista de RH Sênior especializado em leitura de currículos.
-        Sua tarefa é ler o arquivo PDF e extrair os dados para um formato JSON estrito para preencher um formulário.
-        Normalize todas as informações. Se não encontrar algo, retorne string vazia.`;
+        systemInstruction = `Você é um Analista de RH Sênior e Especialista em Recrutamento Tecnológico.
+        Sua tarefa é extrair dados de currículos PDF para preenchimento de formulários.
+        Extraia o Nome, Contatos, e crie um Sumário/Perfil Profissional conciso baseado no histórico.
+        Normalize todas as informações.`;
 
         contents = [
             { inlineData: { data: file.data, mimeType: file.mimeType } },
-            { text: "Extraia nome, email, telefone, linkedin, localização, lista de experiências (cargo, empresa, datas, descrição), educação e habilidades deste currículo." }
+            { text: "Extraia todos os dados disponíveis (nome, email, telefone, linkedin, localização, sumário/perfil, lista de experiências, educação e habilidades) para o JSON." }
         ];
 
         config = {
@@ -63,6 +64,7 @@ serve(async (req) => {
                     phone: { type: Type.STRING },
                     linkedin: { type: Type.STRING },
                     location: { type: Type.STRING },
+                    summary: { type: Type.STRING, description: "Resumo executivo da carreira do usuário" },
                     experience: {
                         type: Type.ARRAY,
                         items: {
@@ -95,14 +97,13 @@ serve(async (req) => {
     // --- MODO GERAÇÃO (CRIA O DESIGN FINAL "ELITE") ---
     else if (mode === 'curriculum_generator') {
       systemInstruction = `Você é um Diretor de Design e RH de Big Tech.
-      Crie um currículo de ALTO IMPACTO visualmente idêntico aos modelos profissionais da Zety/Canva.
+      Crie um currículo de ALTO IMPACTO visualmente impecável.
       
-      DIRETRIZES DE DESIGN:
-      1. HEADER: Nome grande, negrito, centralizado ou alinhado à esquerda com uma linha divisória sólida abaixo.
-      2. COLUNAS: Use um layout limpo. Seções principais (Experiência, Educação) em destaque.
-      3. TEXTO: Use tipografia Sans-Serif moderna. Aplique a FÓRMULA X-Y-Z do Google em todos os bullet points.
-      4. CORES: Use a cor primária fornecida (${options?.primaryColor || '#2563eb'}) para títulos de seção.
-      5. FORMATO: Retorne código HTML com Tailwind CSS. IDs obrigatórios: personal-info-name, summary-content, experience-list, education-list, skills-list.`;
+      REGRAS DE OURO:
+      1. FÓRMULA X-Y-Z: Para experiências, use "Alcancei [X] medido por [Y] ao realizar [Z]".
+      2. KEYWORD INJECTION: Injete palavras-chave da vaga alvo (Job Match).
+      3. DESIGN: Retorne HTML com Tailwind. Preencha os IDs: personal-info-name, personal-info-location, personal-info-email, personal-info-phone, personal-info-linkedin, summary-content, experience-list, education-list, skills-list.
+      4. CORES: Use variações de azul e cinza escuro para um look executivo.`;
     }
 
     const response = await ai.models.generateContent({
@@ -122,7 +123,7 @@ serve(async (req) => {
       await supabaseAdmin.rpc('deduct_credits_v2', { p_user_id: userId, p_amount: cost });
       await supabaseAdmin.from('news').insert({
         author_id: userId,
-        titulo: `Currículo: ${text.substring(0, 30)}...`,
+        titulo: `Elite Resume: ${text.substring(0, 30)}...`,
         conteudo: text,
         tipo: mode,
         status: 'approved'
