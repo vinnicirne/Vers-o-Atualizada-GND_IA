@@ -9,21 +9,15 @@ export interface GenerateContentOptions {
   aspectRatio?: string;
   imageStyle?: string;
   platform?: string;
-  voice?: string;
   template?: string;
 }
 
-/**
- * Serviço unificado para geração de conteúdo via Gemini.
- * Todas as requisições passam pela Edge Function para controle de créditos e segurança.
- */
 export const generateCreativeContent = async (
     prompt: string, 
     mode: ServiceKey,
     userId?: string,
-    generateAudio?: boolean,
     options?: GenerateContentOptions
-): Promise<{ text: string, audioBase64: string | null, sources?: Source[] }> => {
+): Promise<{ text: string, sources?: Source[] }> => {
   
   let userMemory = '';
   if (userId) {
@@ -35,9 +29,8 @@ export const generateCreativeContent = async (
   }
 
   try {
-      // Invocação da Edge Function 'generate-content'
       const { data, error } = await supabase.functions.invoke('generate-content', {
-          body: { prompt, mode, userId, generateAudio, options, userMemory }
+          body: { prompt, mode, userId, options, userMemory }
       });
 
       if (error) {
@@ -47,14 +40,12 @@ export const generateCreativeContent = async (
 
       if (data.error) throw new Error(data.error);
 
-      // Persistência na memória para contexto futuro
       if (userId && data.text) {
           saveGenerationResult(userId, data.text.substring(0, 500));
       }
 
       return {
           text: data.text || "",
-          audioBase64: data.audioBase64 || null,
           sources: data.sources || []
       };
 
@@ -69,8 +60,7 @@ export const analyzeLeadQuality = async (lead: any): Promise<{ score: number, ju
       const { data, error } = await supabase.functions.invoke('generate-content', {
           body: {
               prompt: `Analise o perfil deste lead: ${JSON.stringify(lead)}. Retorne um JSON com score (0-100) e uma justificativa curta.`,
-              mode: 'copy_generator', 
-              generateAudio: false
+              mode: 'copy_generator'
           }
       });
 

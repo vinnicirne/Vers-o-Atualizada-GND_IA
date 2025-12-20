@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { CREATOR_SUITE_MODES } from '../constants';
 import { ServiceKey } from '../types/plan.types';
@@ -6,7 +5,6 @@ import { usePlan } from '../hooks/usePlan';
 import { StandardForm } from './tools/StandardForm';
 import { VisualForm } from './tools/VisualForm';
 import { WebsiteForm } from './tools/WebsiteForm';
-import { AudioForm } from './tools/AudioForm';
 import { CurriculumForm } from './tools/CurriculumForm';
 
 interface ContentGeneratorProps {
@@ -44,13 +42,10 @@ export function ContentGenerator({ mode, onGenerate, isLoading, isGuest = false,
           <p className="text-sm text-gray-500">Preencha os detalhes abaixo para gerar seu conteúdo.</p>
       </div>
 
-      {/* Roteador de Formulários */}
       {mode === 'landingpage_generator' ? (
           <WebsiteForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
       ) : (mode === 'image_generation' || mode === 'social_media_poster') ? (
           <VisualForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
-      ) : mode === 'text_to_speech' ? (
-          <AudioForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
       ) : mode === 'curriculum_generator' ? (
           <CurriculumForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
       ) : (

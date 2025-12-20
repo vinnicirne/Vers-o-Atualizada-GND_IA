@@ -1,8 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { CREATOR_SUITE_MODES } from '../../constants';
-import { usePlan } from '../../hooks/usePlan';
 
 interface StandardFormProps {
     mode: ServiceKey;
@@ -15,21 +13,17 @@ interface StandardFormProps {
 
 export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, hasAccessToService }: StandardFormProps) {
     const [prompt, setPrompt] = useState('');
-    const [generateAudio, setGenerateAudio] = useState(false);
     const [placeholder, setPlaceholder] = useState('');
-    const { getCreditsCostForService } = usePlan();
-    const ttsCost = getCreditsCostForService('text_to_speech');
 
     useEffect(() => {
         const selectedMode = CREATOR_SUITE_MODES.find(m => m.value === mode);
         setPlaceholder(selectedMode?.placeholder || '');
         setPrompt('');
-        setGenerateAudio(false);
     }, [mode]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onGenerate(prompt, mode, generateAudio);
+        onGenerate(prompt, mode, false);
     };
 
     return (
@@ -48,26 +42,6 @@ export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, h
                     disabled={isLoading || isLocked}
                 />
             </div>
-
-            {/* Gerar áudio só se o serviço text_to_speech estiver ativo e o modo for news_generator */}
-            {mode === 'news_generator' && !isLocked && (
-                (isGuest || hasAccessToService('text_to_speech')) && (
-                    <div className="flex flex-col pt-2 animate-fade-in">
-                        <label htmlFor="generate-audio" className="flex items-center cursor-pointer text-sm text-gray-600 hover:text-gray-900 transition-colors bg-gray-50 p-3 rounded-lg border border-gray-100">
-                            <input
-                                id="generate-audio"
-                                type="checkbox"
-                                checked={generateAudio}
-                                onChange={(e) => setGenerateAudio(e.target.checked)}
-                                className="h-5 w-5 bg-white border border-gray-300 rounded text-[var(--brand-primary)] focus:ring-[var(--brand-primary)] transition duration-200"
-                                disabled={isLoading}
-                            />
-                            <span className="ml-3 font-medium">Gerar áudio da matéria</span>
-                            <span className="text-xs text-[var(--brand-primary)] font-bold ml-2 bg-orange-50 px-2 py-0.5 rounded border border-orange-100">+{ttsCost} créditos</span>
-                        </label>
-                    </div>
-                )
-            )}
 
             <button
                 type="submit"
