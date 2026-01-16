@@ -361,19 +361,14 @@ serve(async (req) => {
     const modelName = 'gemini-1.5-flash';
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
-    let contentsParts: any[] = [{ text: "" }];
+    let contentsParts: any[] = [];
     
     if (file && (mode === 'curriculum_generator' || mode === 'curriculum_parse')) {
-        contentsParts = [
-            { inlineData: { data: file.data, mimeType: file.mimeType } },
-            { text: "Analise este currículo e extraia os dados profissionais. Se o modo for 'curriculum_parse', retorne APENAS um JSON com os campos: personalInfo, summary, experience, education, skills, projects, certifications. Se for 'curriculum_generator', use os dados para preencher o template solicitado." }
-        ];
-    } else {
-        contentsParts = [{ text: prompt }];
+        console.log(`[File] Arquivo recebido para ${mode}: ${file.mimeType} (${file.data.length} bytes)`);
+        contentsParts.push({ inlineData: { data: file.data, mimeType: file.mimeType } });
     }
 
     let fullPrompt = prompt;
-    // ... (Prompt adjustments based on mode - unchanged) ...
     if (mode === 'image_generation' && options) {
         fullPrompt += `
         CONTEXTO ADICIONAL PARA O PROMPT DE IMAGEM:
@@ -446,23 +441,39 @@ serve(async (req) => {
         fullPrompt = curriculumDataPromptContent;
     }
 
-    let config: any = {
-        systemInstruction: systemPromptWithMemory
-    };
-    
+    let generationTools: any[] | undefined = undefined;
     if (mode === 'news_generator' || mode === 'copy_generator' || mode === 'landingpage_generator') {
-        config.tools = [{ googleSearch: {} }];
+        generationTools = [{ googleSearch: {} }];
     }
 
     console.log(`[Generation] Iniciando geração de conteúdo para o modo: ${mode}`);
-    const response = await ai.models.generateContent({
-        model: modelName,
-        contents: contentsParts.length > 1 
-            ? [{ role: "user", parts: contentsParts }] 
-            : [{ role: "user", parts: [{ text: fullPrompt }] }], 
-        config: config,
-    });
-    console.log("[Generation] Conteúdo gerado com sucesso.");
+    
+    // Build parts array: [optional file, prompt text]
+    const finalParts = [...contentsParts];
+    if (mode === 'curriculum_parse' && file) {
+        finalParts.push({ text: "Analise este currículo e extraia os dados profissionais. Retorne APENAS um JSON com os campos: personalInfo, summary, experience, education, skills, projects, certifications." });
+    } else {
+        finalParts.push({ text: fullPrompt });
+    }
+
+    let response;
+    try {
+        const generationOptions: any = {
+            model: modelName,
+            contents: [{ role: "user", parts: finalParts }],
+            systemInstruction: systemPromptWithMemory,
+        };
+
+        if (generationTools) {
+            generationOptions.tools = generationTools;
+        }
+
+        response = await ai.models.generateContent(generationOptions);
+        console.log("[Generation] Sucesso na resposta da API.");
+    } catch (apiError: any) {
+        console.error("GOOGLE API ERROR:", apiError);
+        throw new Error(`Erro na API do Google: ${apiError.message || "Erro desconhecido"}`);
+    }
 
     let text: string = typeof response.text === 'string' ? response.text : '';
     

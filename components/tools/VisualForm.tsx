@@ -4,7 +4,7 @@ import { ServiceKey } from '../../types/plan.types';
 
 interface VisualFormProps {
     mode: ServiceKey;
-    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any) => void;
+    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any, file?: { data: string, mimeType: string } | null) => Promise<any>;
     isLoading: boolean;
     isLocked: boolean;
 }
@@ -56,10 +56,10 @@ export function VisualForm({ mode, onGenerate, isLoading, isLocked }: VisualForm
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        const options = mode === 'image_generation' 
-            ? { imageStyle, aspectRatio } 
+        const options = mode === 'image_generation'
+            ? { imageStyle, aspectRatio }
             : { platform, theme };
-        
+
         onGenerate(prompt, mode, false, options);
     };
 

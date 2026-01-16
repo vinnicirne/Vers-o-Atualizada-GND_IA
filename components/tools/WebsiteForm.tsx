@@ -4,7 +4,7 @@ import { ServiceKey } from '../../types/plan.types';
 
 interface WebsiteFormProps {
     mode: ServiceKey;
-    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any) => void;
+    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any, file?: { data: string, mimeType: string } | null) => Promise<any>;
     isLoading: boolean;
     isLocked: boolean;
 }

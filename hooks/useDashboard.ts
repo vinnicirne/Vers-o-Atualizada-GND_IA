@@ -45,7 +45,7 @@ export function useDashboard() {
     // UI Control
     const [sidebarOpen, setSidebarOpen] = useState(false);
     // Allow 'crm' as a valid mode for the dashboard state
-    const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm'>('news_generator');
+    const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm' | 'home'>('home');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -102,9 +102,9 @@ export function useDashboard() {
         setModals(prev => ({ ...prev, [modal]: value }));
     };
 
-    const handleModeChange = (mode: ServiceKey | 'crm') => {
-        // Special handling for CRM
-        if (mode === 'crm') {
+    const handleModeChange = (mode: ServiceKey | 'crm' | 'home') => {
+        // Special handling for CRM or Home
+        if (mode === 'crm' || mode === 'home') {
             setCurrentMode(mode);
             setSidebarOpen(false);
             return;
@@ -197,29 +197,30 @@ export function useDashboard() {
                 newText = extracted.content;
             }
 
-            // Update State
-            setResults({
-                text: newText,
-                title: newTitle,
-                audioBase64: apiResult.audioBase64 || null,
-                imagePrompt: newImagePrompt,
-                imageDimensions: imgDims,
-                seoMetadata: apiResult.seoMetadata || null,
-                metadata: isGuest 
-                    ? { plan: 'Visitante', credits: guestCredits - cost } // Deduz o custo total para guest
-                    : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
-            });
+            // Update State (Skip for internal parse mode)
+            if (mode !== 'curriculum_parse') {
+                setResults({
+                    text: newText,
+                    title: newTitle,
+                    audioBase64: apiResult.audioBase64 || null,
+                    imagePrompt: newImagePrompt,
+                    imageDimensions: imgDims,
+                    seoMetadata: apiResult.seoMetadata || null,
+                    metadata: isGuest 
+                        ? { plan: 'Visitante', credits: guestCredits - cost }
+                        : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
+                });
+                setShowFeedback(true);
+            }
 
             // Consume Credits
             if (isGuest) {
-                const newCredits = guestCredits - cost; // Deduz o custo total para guest
+                const newCredits = guestCredits - cost;
                 setGuestCredits(newCredits);
                 localStorage.setItem('gdn_guest_credits', newCredits.toString());
             } else {
                 await refresh();
             }
-
-            setShowFeedback(true);
             return apiResult;
 
         } catch (err: any) {

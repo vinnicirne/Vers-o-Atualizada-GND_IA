@@ -16,8 +16,9 @@ interface ContentGeneratorProps {
     prompt: string,
     mode: ServiceKey,
     generateAudio: boolean,
-    options?: any
-  ) => void;
+    options?: any,
+    file?: { data: string, mimeType: string } | null
+  ) => Promise<any>;
   isLoading: boolean;
   isGuest?: boolean;
   guestAllowedModes?: ServiceKey[];
