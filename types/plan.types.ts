@@ -7,12 +7,13 @@ export type ServiceKey =
   | 'canva_structure'
   | 'copy_generator'
   | 'image_generation'
-  | 'social_media_poster' // Nova ferramenta
-  | 'institutional_website_generator'
-  | 'n8n_integration';
+  | 'social_media_poster'
+  | 'n8n_integration'
+  | 'curriculum_generator'
+  | 'crm_suite'; // NOVO: CRM & Leads Management
 
 export interface ServicePermission {
-  key: ServiceKey;
+  key: ServiceKey; // Nome em português
   name: string; // Nome em português
   enabled: boolean;
   creditsPerUse?: number; // Opcional, custo em créditos por uso

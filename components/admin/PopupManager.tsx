@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { getPopups, createPopup, updatePopup, deletePopup } from '../../services/adminService';
 import { Popup } from '../../types';
@@ -81,10 +82,36 @@ export function PopupManager() {
     const fetchPopups = useCallback(async () => {
         setLoading(true);
         try {
-            const data = await getPopups();
-            setPopups(data);
-        } catch (error: any) {
-            setToast({ message: "Erro ao carregar popups. Execute o SQL na aba Updates.", type: 'error' });
+            const data = await getPopups(true); // Fetch only active
+            
+            // Filter logic based on localStorage/frequency
+            const validPopups = data.filter(popup => {
+                const lastShown = localStorage.getItem(`gdn_popup_${popup.id}`);
+                
+                if (popup.trigger_settings.frequency === 'always') return true;
+                
+                if (popup.trigger_settings.frequency === 'once') {
+                    return !lastShown;
+                }
+                
+                if (popup.trigger_settings.frequency === 'daily') {
+                    if (!lastShown) return true;
+                    const lastDate = new Date(lastShown);
+                    const now = new Date();
+                    return now.toDateString() !== lastDate.toDateString();
+                }
+                
+                return true;
+            });
+
+            if (validPopups.length > 0) {
+                // Show the first eligible popup
+                // schedulePopup(validPopups[0]); // This is client-side in PopupRenderer
+            }
+
+            setPopups(data); // Set all popups for admin to view
+        } catch (e) {
+            console.warn("Failed to load popups:", e);
         } finally {
             setLoading(false);
         }

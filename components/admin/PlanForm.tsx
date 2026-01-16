@@ -18,9 +18,10 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'canva_structure',
   'copy_generator',
   'image_generation',
-  'social_media_poster', // Adicionado aqui
-  'institutional_website_generator',
+  'social_media_poster', 
+  'curriculum_generator', // NOVO
   'n8n_integration',
+  'crm_suite', // NOVO: CRM
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil
@@ -29,6 +30,7 @@ const serviceKeyToNameMap = new Map(
 );
 // Adiciona manualmente serviços que não são modos de criação (não estão na sidebar)
 serviceKeyToNameMap.set('n8n_integration', 'Integração N8N / Webhooks');
+serviceKeyToNameMap.set('crm_suite', 'CRM & Leads');
 
 // Cores padrão para os planos (pode ser expandido)
 const PLAN_COLORS = [

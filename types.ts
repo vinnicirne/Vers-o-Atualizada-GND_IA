@@ -75,7 +75,7 @@ export interface Log {
   user_email?: string;
 }
 
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push';
+export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings' | 'crm';
 
 export interface AllowedDomain {
   id: string;
@@ -271,5 +271,86 @@ export interface AppNotification {
   type: 'info' | 'success' | 'warning' | 'error';
   is_read: boolean;
   action_link?: string;
+  created_at: string;
+}
+
+// --- GLOBAL TOOL SETTINGS ---
+export interface ToolSetting {
+  key: ServiceKey;
+  enabled: boolean;
+}
+
+// --- WHITE LABEL SETTINGS ---
+export interface WhiteLabelSettings {
+  appName: string;
+  appTagline: string;
+  logoTextPart1: string;
+  logoTextPart2: string;
+  primaryColorHex: string;
+  secondaryColorHex: string;
+  tertiaryColorHex: string;
+  faviconUrl: string;
+  ogImageUrl: string;
+  wordpressPluginName: string;
+  copyrightText: string;
+  appVersion: string;
+  dashboardTitle: string; 
+  
+  landingPageEnabled: boolean; 
+  heroSectionTitle: string;
+  heroSectionSubtitle: string;
+  heroCtaPrimaryText: string;
+  heroCtaPrimaryLink: string;
+  heroCtaSecondaryText: string;
+  heroCtaSecondaryLink: string;
+  featureSectionTitle: string;
+  featureSectionSubtitle: string;
+  landingPageFeatures: Array<{ id: string; icon: string, title: string, description: string, color: string, bgColor: string }>;
+  pricingSectionTitle: string;
+  pricingSectionSubtitle: string;
+  landingPageFooterLinks: Array<{ id: string; text: string, link: string }>;
+  
+  guestMarketingFooterTitle: string;
+  guestMarketingFooterSubtitle: string;
+  guestMarketingFooterCtaText: string;
+  guestMarketingFooterCtaLink: string;
+}
+
+// --- CRM & MARKETING TYPES ---
+export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'lost';
+
+export interface Lead {
+  id: string;
+  owner_id: string; // User ID who owns this lead
+  email: string;
+  name?: string;
+  phone?: string;
+  company?: string;
+  status: LeadStatus;
+  score: number;
+  source?: string; // 'landing_page', 'manual', 'import'
+  utm_source?: string;
+  utm_medium?: string;
+  utm_campaign?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MarketingEvent {
+  id: string;
+  lead_id: string;
+  event_type: 'page_view' | 'form_submit' | 'email_open' | 'click' | 'purchase';
+  metadata?: any;
+  created_at: string;
+}
+
+export interface Deal {
+  id: string;
+  lead_id: string;
+  owner_id: string;
+  title: string;
+  value: number;
+  status: 'open' | 'won' | 'lost';
   created_at: string;
 }

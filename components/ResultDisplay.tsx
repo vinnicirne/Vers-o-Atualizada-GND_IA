@@ -1,3 +1,5 @@
+
+
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../types/plan.types';
 import { getWordPressConfig, postToWordPress } from '../services/wordpressService';
@@ -88,13 +90,15 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       setSendingToN8n(true);
       setN8nStatus(null);
 
-      const result = await sendToN8nWebhook({
+      const payloadToSend = {
           title,
           content: text,
           mode,
           generated_at: new Date().toISOString(),
           userId: user?.id
-      });
+      };
+
+      const result = await sendToN8nWebhook(payloadToSend);
 
       if (result.success) {
           setN8nStatus({ success: true, message: 'Enviado!' });
@@ -104,6 +108,11 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       setSendingToN8n(false);
   };
 
+  // CORREÇÃO: Oculta a caixa de texto no modo de áudio para focar no player
+  if (mode === 'text_to_speech') {
+      return null;
+  }
+
   const getTitleLabel = () => {
       if (mode === 'news_generator') return 'Título / Manchete';
       if (mode === 'prompt_generator') return 'Prompt Otimizado';
@@ -112,7 +121,8 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
   };
 
   const getContentLabel = () => {
-      if (mode === 'landingpage_generator' || mode === 'institutional_website_generator') return 'Código HTML Gerado';
+      // FIX: Changed 'institutional_website_generator' to 'landingpage_generator' to match ServiceKey type.
+      if (mode === 'landingpage_generator') return 'Código HTML Gerado';
       if (mode === 'news_generator') return 'Corpo da Matéria';
       if (mode === 'copy_generator') return 'Corpo do Texto';
       return 'Conteúdo Gerado';
@@ -134,8 +144,8 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
                   onClick={handleCopyTitle}
                   className={`flex items-center gap-2 px-3 py-1 rounded-lg text-xs font-bold transition-all duration-200 border ${
                       copiedTitle
-                      ? 'bg-green-100 text-green-700 border-green-200'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-[var(--brand-tertiary)]/[0.1] text-[var(--brand-tertiary)] border-[var(--brand-tertiary)]/[0.2]'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-[var(--brand-secondary)]'
                   }`}
                >
                   <i className={`fas ${copiedTitle ? 'fa-check-circle' : 'fa-copy'} text-xs`}></i>
@@ -143,7 +153,7 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
                </button>
             </div>
             <div className="p-6 bg-white">
-                <h3 className="text-lg font-bold text-[#263238] leading-tight font-poppins">{title}</h3>
+                <h3 className="text-lg font-bold text-[var(--brand-secondary)] leading-tight font-poppins">{title}</h3>
             </div>
         </div>
       )}
@@ -185,7 +195,7 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
                         disabled={postingToWp}
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
                             wpStatus?.success 
-                            ? 'bg-green-100 text-green-600 border-green-200'
+                            ? 'bg-[var(--brand-tertiary)]/[0.1] text-[var(--brand-tertiary)] border-[var(--brand-tertiary)]/[0.2]'
                             : 'bg-white text-gray-600 border-gray-300 hover:bg-blue-600 hover:text-white hover:border-blue-600'
                         } disabled:opacity-50`}
                    >
@@ -203,8 +213,8 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
                   onClick={handleCopyText}
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-200 border ${
                       copiedText
-                      ? 'bg-green-100 text-green-700 border-green-200 shadow-sm'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-900'
+                      ? 'bg-[var(--brand-tertiary)]/[0.1] text-[var(--brand-tertiary)] border-[var(--brand-tertiary)]/[0.2] shadow-sm'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-[var(--brand-secondary)]'
                   }`}
                >
                   <i className={`fas ${copiedText ? 'fa-check-circle' : 'fa-copy'} text-sm`}></i>
@@ -235,21 +245,21 @@ export function ResultDisplay({ text, title, mode, metadata }: ResultDisplayProp
       {metadata && (
         <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-500 shadow-sm">
             <div className="flex items-center gap-2">
-                <i className="fas fa-info-circle text-gray-400"></i>
+                <i className="fas fa-info-circle text-[var(--brand-secondary)]"></i>
                 <span className="uppercase tracking-wider font-bold">Informações de Consumo</span>
             </div>
             
             <div className="flex items-center gap-6">
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="text-gray-500">Plano Utilizado:</span>
-                    <span className="font-bold text-[#263238] bg-[#F5F7FA] px-2 py-0.5 rounded border border-gray-200 uppercase">
+                    <span className="font-bold text-[var(--brand-secondary)] bg-[#F5F7FA] px-2 py-0.5 rounded border border-gray-200 uppercase">
                         {metadata.plan}
                     </span>
                 </div>
                 <div className="h-4 w-px bg-gray-300 hidden sm:block"></div>
                 <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                     <span className="text-gray-500">Créditos Restantes:</span>
-                    <span className={`font-bold px-2 py-0.5 rounded border ${metadata.credits === 'Ilimitado' ? 'text-green-600 bg-green-50 border-green-100' : 'text-[#F39C12] bg-orange-50 border-orange-100'}`}>
+                    <span className={`font-bold px-2 py-0.5 rounded border ${metadata.credits === 'Ilimitado' ? 'text-[var(--brand-tertiary)] bg-[var(--brand-tertiary)]/[0.1] border-[var(--brand-tertiary)]/[0.2]' : 'text-[var(--brand-primary)] bg-[var(--brand-primary)]/[0.1] border-[var(--brand-primary)]/[0.2]'}`}>
                         {metadata.credits}
                     </span>
                 </div>

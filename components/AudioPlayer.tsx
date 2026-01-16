@@ -1,8 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 
-// Base64 to Uint8Array decoding function
+// Base64 to Uint8Array decoding function with sanitization
 function decode(base64: string): Uint8Array {
-  const binaryString = atob(base64);
+  // Remove spaces, newlines, and other whitespace chars that might corrupt base64 decoding
+  const cleanBase64 = base64.replace(/\s/g, '');
+  const binaryString = atob(cleanBase64);
   const len = binaryString.length;
   const bytes = new Uint8Array(len);
   for (let i = 0; i < len; i++) {

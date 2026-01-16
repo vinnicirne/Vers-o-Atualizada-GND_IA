@@ -26,26 +26,26 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Gerador de Prompts',
     placeholder: 'Descreva a tarefa para a qual você precisa de um prompt. Ex: "um prompt para criar um carrossel de 5 posts no Instagram sobre produtividade".',
   },
-  // --- OPÇÕES PREMIUM / AVANÇADAS ---
+  // --- OPÇÕES PREMIUM / AVANÇADAS (REORDERED FOR VISIBILITY) ---
+  {
+    value: 'curriculum_generator',
+    label: 'Criador de Currículos (IA)', // NOVO
+    placeholder: 'Descreva seu perfil e objetivo (ex: "Currículo para Desenvolvedor Fullstack com 5 anos de experiência, focado em React e Node.js. Objetivo: vaga em startup de tecnologia.").',
+  },
   {
     value: 'social_media_poster',
     label: 'Criador de Posts Sociais',
     placeholder: 'Descreva o post. Ex: "Promoção de Black Friday para loja de sapatos, fundo preto e dourado, foto do produto".',
   },
   {
-    value: 'institutional_website_generator',
-    label: 'Site Institucional',
-    placeholder: 'Nome da Empresa, Ramo de Atuação e Diferenciais. Ex: "TechSoluções, consultoria de TI focada em segurança cibernética para pequenas empresas".',
+    value: 'landingpage_generator',
+    label: 'Criador de Sites (Web)', // Unificado: Landing Page e Site Institucional
+    placeholder: 'Descreva o site (empresa, produto, público, seções). Ex: "Site institucional para uma consultoria de TI focada em segurança cibernética" ou "Landing Page de vendas para um e-book de receitas veganas".',
   },
   {
     value: 'image_generation',
     label: 'Studio de Arte IA',
     placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
-  },
-  {
-    value: 'landingpage_generator',
-    label: 'Gerador de Landing Page',
-    placeholder: 'Descreva o produto ou serviço e o público-alvo. Ex: "Página de vendas para um e-book de receitas veganas para iniciantes".',
   },
   {
     value: 'canva_structure',
@@ -63,15 +63,16 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
 // Estes valores são a fonte da verdade. O Admin deve sincronizar os planos para aplicar mudanças no DB.
 export const TASK_COSTS: Record<ServiceKey, number> = {
   news_generator: 1,
-  text_to_speech: 2,
+  text_to_speech: 2, // Custo atualizado de 1 para 2 créditos
   copy_generator: 1,
   prompt_generator: 1,
   canva_structure: 3,
-  landingpage_generator: 15,
-  institutional_website_generator: 25,
+  landingpage_generator: 25, // Custo maior para cobrir sites institucionais mais complexos
   image_generation: 5,
   social_media_poster: 5, // Custo similar à geração de imagem
+  curriculum_generator: 8, // Custo para o novo gerador de currículos
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
+  crm_suite: 0, // Recurso de acesso (CRM), sem custo por uso
 };
 
 // --- HIERARQUIA DE PLANOS (PADRÃO/INICIAL) ---
@@ -95,12 +96,17 @@ const imageService: ServicePermission = { key: 'image_generation', name: 'Studio
 // Nova feature de Social Media Poster
 const socialPosterService: ServicePermission = { key: 'social_media_poster', name: 'Criador de Posts Sociais', enabled: true, creditsPerUse: TASK_COSTS.social_media_poster };
 
-const landingPageService: ServicePermission = { key: 'landingpage_generator', name: 'Gerador de Landing Page', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
+// Agora apenas um serviço para sites
+const siteBuilderService: ServicePermission = { key: 'landingpage_generator', name: 'Criador de Sites (Web)', enabled: true, creditsPerUse: TASK_COSTS.landingpage_generator };
 
-const institutionalSiteService: ServicePermission = { key: 'institutional_website_generator', name: 'Site Institucional', enabled: true, creditsPerUse: TASK_COSTS.institutional_website_generator };
+// Novo serviço de currículo
+const curriculumService: ServicePermission = { key: 'curriculum_generator', name: 'Criador de Currículos (IA)', enabled: true, creditsPerUse: TASK_COSTS.curriculum_generator };
 
 // Serviço N8N (Apenas Standard e Premium)
 const n8nService: ServicePermission = { key: 'n8n_integration', name: 'Integração N8N / Webhooks', enabled: true, creditsPerUse: 0 };
+
+// Serviço CRM (Apenas Basic, Standard e Premium)
+const crmService: ServicePermission = { key: 'crm_suite', name: 'CRM & Gestão de Leads', enabled: true, creditsPerUse: 0 };
 
 
 export const PLANS: Record<UserPlan, Plan> = {
@@ -130,6 +136,7 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
+      crmService // CRM no Basic
     ]
   },
   standard: {
@@ -144,11 +151,13 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
-      ...artServices, // Agora contém apenas o Editor Visual
-      imageService, 
+      curriculumService, // Adicionado ao Standard
       socialPosterService, // Adicionado ao Standard
-      institutionalSiteService, 
-      n8nService 
+      imageService, 
+      siteBuilderService, // Usando o serviço unificado
+      ...artServices, // Agora contém apenas o Editor Visual
+      n8nService,
+      crmService // CRM no Standard
     ]
   },
   premium: {
@@ -163,12 +172,43 @@ export const PLANS: Record<UserPlan, Plan> = {
     services: [
       ...commonServices,
       promptService,
-      ...artServices,
-      imageService,
+      curriculumService, // Adicionado ao Premium
       socialPosterService, // Adicionado ao Premium
-      landingPageService,
-      institutionalSiteService, 
-      n8nService 
+      imageService,
+      siteBuilderService, // Usando o serviço unificado
+      ...artServices,
+      n8nService,
+      crmService // CRM no Premium
     ]
   }
+};
+
+// Mapeamento de Ícones
+export const SERVICE_ICONS: Record<ServiceKey, string> = {
+    news_generator: 'fa-newspaper',
+    text_to_speech: 'fa-microphone-lines',
+    copy_generator: 'fa-pen-nib',
+    prompt_generator: 'fa-terminal',
+    landingpage_generator: 'fa-code', // Icone para Criador de Sites (Web)
+    canva_structure: 'fa-vector-square',
+    image_generation: 'fa-paint-brush',
+    social_media_poster: 'fa-share-alt',
+    curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
+    n8n_integration: 'fa-plug',
+    crm_suite: 'fa-users-cog',
+};
+
+// Cores para os ícones
+export const SERVICE_COLORS: Record<ServiceKey, string> = {
+    news_generator: 'text-green-500 bg-green-50',
+    text_to_speech: 'text-blue-500 bg-blue-50',
+    copy_generator: 'text-purple-500 bg-purple-50',
+    prompt_generator: 'text-yellow-500 bg-yellow-50',
+    landingpage_generator: 'text-orange-500 bg-orange-50', // Cor para Criador de Sites (Web)
+    canva_structure: 'text-cyan-500 bg-cyan-50',
+    image_generation: 'text-rose-500 bg-rose-50',
+    social_media_poster: 'text-indigo-500 bg-indigo-50',
+    curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
+    n8n_integration: 'text-red-500 bg-red-50',
+    crm_suite: 'text-blue-700 bg-blue-100',
 };

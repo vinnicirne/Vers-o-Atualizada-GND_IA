@@ -1,3 +1,5 @@
+
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -65,98 +67,308 @@ body {
 }
 
 /* =========================================
-    GrapesJS Light Theme Overrides 
-    ========================================= */
+    GrapesJS UI Overrides - Dark Theme PRO
+   ========================================= */
 
-/* Main UI Backgrounds */
+/* Containers Gerais */
+.gjs-cv-canvas {
+    background-color: #111827 !important; /* Fundo do Canvas (Cinza muito escuro) */
+    width: 100%;
+    height: 100%;
+    top: 0;
+}
+
 .gjs-one-bg {
-  background-color: #FFFFFF !important;
+    background-color: #1f2937; /* Combinar com Tailwind gray-800 */
 }
 
 .gjs-two-color {
-  color: #546E7A !important;
+    color: #e5e7eb; /* Texto claro */
 }
 
 .gjs-three-bg {
-  background-color: #F39C12 !important; /* Orange Primary */
-  color: white !important;
+    background-color: #10b981; /* Cor primária (Verde) */
+    color: white;
 }
 
-.gjs-four-color,
-.gjs-four-color-h:hover {
-  color: #F39C12 !important;
+.gjs-four-color, .gjs-four-color-h:hover {
+    color: #10b981; /* Hover color */
 }
 
-/* Canvas Area */
-.gjs-cv-canvas {
-  top: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #ECEFF1 !important;
+/* --- BLOCOS (BLOCK MANAGER GRID) --- */
+
+/* Category Containers */
+.gjs-block-category {
+    background-color: transparent !important;
+    border: none !important;
+    border-bottom: 1px solid #374151 !important;
 }
 
-/* Panels & toolbars */
-.gjs-pn-panel {
-  background-color: #FFFFFF !important;
-  border-bottom: 1px solid #CFD8DC;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+.gjs-block-category .gjs-title {
+    background-color: #111827 !important;
+    border-bottom: none !important;
+    color: #9ca3af;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 12px 10px;
+    font-weight: 700;
 }
 
-.gjs-pn-buttons {
-  border-right: 1px solid #CFD8DC;
+/* Blocks Grid Container */
+.gjs-blocks-c {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important; /* 2 Colunas */
+    gap: 8px !important;
+    padding: 10px !important;
 }
 
-/* Icons */
-.gjs-pn-btn {
-  color: #546E7A !important;
-}
-.gjs-pn-btn:hover {
-  color: #263238 !important;
-  background-color: #ECEFF1 !important;
-}
-.gjs-pn-btn.gjs-pn-active {
-  color: #F39C12 !important;
-  background-color: #FFF3E0 !important;
-  box-shadow: none !important;
+/* Individual Block Card */
+.gjs-block {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    
+    background-color: #1f2937 !important; /* gray-800 */
+    border: 1px solid #374151 !important; /* gray-700 */
+    border-radius: 8px !important;
+    
+    width: 100% !important;
+    min-height: 90px !important;
+    padding: 16px 8px !important;
+    margin: 0 !important;
+    
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1) !important;
+    color: #9ca3af !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: grab !important;
+    position: relative;
+    overflow: hidden;
 }
 
-/* Toolbars */
-.gjs-toolbar {
-  background-color: #263238 !important;
-  border-radius: 4px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+.gjs-block:hover {
+    background-color: #374151 !important; /* gray-700 */
+    border-color: #10b981 !important; /* green-500 */
+    color: #fff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3) !important;
+    z-index: 10;
 }
 
-.gjs-toolbar-item {
-  color: white !important;
+.gjs-block:active {
+    cursor: grabbing !important;
 }
 
-/* Inputs & Fields */
+/* Internal Elements of Block (Handled via HTML in label mostly, but defaults here) */
+.gjs-block-label {
+    margin-top: 8px;
+    font-size: 11px;
+    font-weight: 500;
+    line-height: 1.3;
+}
+
+/* --- ESTILOS & INPUTS (Direita) --- */
+
+/* Setores (Categorias de Estilo) */
+.gjs-sm-sector .gjs-sm-title {
+    background-color: #1f2937 !important;
+    border-bottom: 1px solid #374151;
+    color: #e5e7eb;
+    font-weight: 600;
+}
+
+/* Inputs Gerais */
 .gjs-field {
-  background-color: #F5F7FA !important;
-  color: #263238 !important;
-  border: 1px solid #CFD8DC !important;
-  border-radius: 4px;
+    background-color: #111827 !important;
+    border: 1px solid #374151;
+    border-radius: 4px;
 }
 
+.gjs-field input, .gjs-field select {
+    color: #f3f4f6 !important;
+    background-color: transparent !important;
+}
+
+/* COLOR PICKER FIXES */
 .gjs-field-color-picker {
-  background-color: #F5F7FA !important;
+    border-right: 1px solid #374151;
+    overflow: visible !important; /* Allow color picker to pop out */
 }
 
-/* Layers & Classes */
-.gjs-layer-name, .gjs-layer-count {
-  color: #263238 !important;
+/* Ensure the spectrum color picker container is on top of everything */
+.sp-container {
+    background-color: #1f2937 !important;
+    border-color: #374151 !important;
+    color: #f3f4f6 !important;
+    z-index: 10000 !important; /* High z-index to show above sidebar */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Fix preset specific styles */
-.gjs-pn-views-container {
-    background-color: #FFFFFF !important;
-    border-left: 1px solid #CFD8DC;
-    padding: 0 !important;
-    box-shadow: -5px 0 10px rgba(0,0,0,0.05);
+/* Fix for color input holder to prevent clipping */
+.gjs-input-holder {
+    overflow: visible !important;
+}
+
+/* Color Picker Específico */
+.gjs-input-holder {
+    color: #f3f4f6 !important;
+}
+
+.gjs-field-color {
+    background-image: none !important;
+    background-color: #111827 !important;
+    cursor: pointer;
+}
+
+/* Select Arrows */
+.gjs-field-select .gjs-sel-arrow {
+    color: #9ca3af !important;
+}
+
+/* Labels de Propriedade */
+.gjs-sm-label {
+    color: #9ca3af !important;
+    font-size: 11px;
+}
+
+/* Checkboxes & Radios */
+.gjs-radio-item input:checked + .gjs-radio-item-label {
+    background-color: #10b981;
+    color: white;
+}
+
+/* Scrollbars na sidebar */
+.gjs-blocks-c::-webkit-scrollbar,
+.gjs-sm-sectors::-webkit-scrollbar,
+.gjs-layers-c::-webkit-scrollbar {
+    width: 6px;
+}
+.gjs-blocks-c::-webkit-scrollbar-thumb,
+.gjs-sm-sectors::-webkit-scrollbar-thumb,
+.gjs-layers-c::-webkit-scrollbar-thumb {
+    background-color: #4b5563;
+    border-radius: 3px;
+}
+
+/* Ícones de Toolbar no Canvas */
+.gjs-toolbar {
+    background-color: #10b981 !important;
+    color: white !important;
+    border-radius: 4px;
 }
 
 .fa {
   width: auto;
   height: auto;
 }
+
+/* Resume Template Basic Styles */
+.resume-section { border-bottom: 1px solid #e0e0e0; padding-bottom: 1rem; margin-bottom: 1rem; }
+.resume-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.resume-header { text-align: center; margin-bottom: 2rem; }
+.resume-header h1 { font-size: 2.5rem; font-weight: 700; color: #2d3748; margin-bottom: 0.5rem; }
+.resume-header p { font-size: 0.9rem; color: #4a5568; }
+.section-title { font-size: 1.25rem; font-weight: 600; color: #2d3748; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; }
+.job-title { font-weight: 600; color: #333; margin-bottom: 0.25rem; }
+.company-info { font-style: italic; color: #555; margin-bottom: 0.5rem; }
+.job-description ul { list-style: disc; margin-left: 1.5rem; }
+.job-description li { margin-bottom: 0.5rem; }
+.skill-list { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.skill-item { background-color: #edf2f7; color: #2d3748; padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; }
+
+/* Professional Template Specific Styles */
+.section-header-prof { background-color: #f8f8f8; padding: 0.75rem 1.25rem; margin-left: -1.25rem; margin-right: -1.25rem; border-left: 5px solid #3b82f6; margin-bottom: 1.5rem; }
+.section-header-prof h2 { font-size: 1.4rem; font-weight: 700; color: #1f2937; margin: 0; }
+.item-header-prof { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+.item-header-prof h3 { font-size: 1.1rem; font-weight: 600; color: #2d3748; margin: 0; }
+.item-header-prof span { font-size: 0.9rem; color: #4a5568; }
+.item-description-prof ul { list-style: disc; margin-left: 1.5rem; }
+.item-description-prof li { margin-bottom: 0.4rem; }
+.skill-item-prof { background-color: #e0e7ff; color: #3b82f6; padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.85rem; font-weight: 500; }
+
+/* Modern Template Specific Styles */
+.resume-grid-modern { display: grid; grid-template-columns: 1fr 3fr; gap: 2rem; }
+.sidebar-modern { background-color: #2d3748; color: #fff; padding: 2rem 1.5rem; border-radius: 8px; }
+.section-title-sidebar-modern { font-size: 1rem; font-weight: 700; color: #cbd5e0; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #4a5568; padding-bottom: 0.5rem; }
+.section-title-main-modern { font-size: 1.5rem; font-weight: 700; color: #2d3748; margin-bottom: 1.5rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 2px solid #3b82f6; padding-bottom: 0.5rem; }
+.personal-info-item-modern { margin-bottom: 0.75rem; display: flex; align-items: center; }
+.personal-info-item-modern i { margin-right: 0.75rem; color: #3b82f6; }
+.personal-info-item-modern a { color: #3b82f6; text-decoration: none; }
+.personal-info-item-modern a:hover { text-decoration: underline; }
+.skill-tag-modern { background-color: #4a5568; color: #fff; padding: 0.3rem 0.7rem; border-radius: 4px; font-size: 0.85rem; margin-right: 0.5rem; margin-bottom: 0.5rem; display: inline-block; }
+.job-header-modern { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+.job-header-modern h3 { font-size: 1.2rem; font-weight: 600; color: #2d3748; margin: 0; }
+.job-header-modern span { font-size: 0.9rem; color: #4a5568; }
+.job-details-modern { font-size: 0.95rem; color: #555; margin-bottom: 0.75rem; }
+
+/* Creative Template Specific Styles */
+.resume-header-creative-base { text-align: center; margin-bottom: 3rem; background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+.resume-header-creative-base h1 { font-size: 3rem; font-weight: 800; color: #4c51bf; text-shadow: 1px 1px 2px rgba(0,0,0,0.1); margin-bottom: 0.5rem; }
+.resume-header-creative-base p { font-size: 1rem; color: #667eea; font-weight: 500; }
+.resume-section-creative-base { background-color: #fff; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 2rem; }
+.section-title-creative-base { font-size: 1.75rem; font-weight: 700; color: #4c51bf; margin-bottom: 1.5rem; text-align: center; position: relative; }
+.section-title-creative-base::after { content: ''; display: block; width: 50px; height: 3px; background-color: #667eea; margin: 0.5rem auto 0; border-radius: 2px; }
+.job-item-creative-base { margin-bottom: 1.5rem; border-bottom: 1px dashed #e2e8f0; padding-bottom: 1.5rem; }
+.job-item-creative-base:last-child { border-bottom: none; padding-bottom: 0; margin-bottom: 0; }
+.job-header-creative-base { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+.job-header-creative-base h3 { font-size: 1.2rem; font-weight: 700; color: #2d3748; margin: 0; }
+.job-header-creative-base span { font-size: 0.9rem; color: #718096; }
+.company-creative-base { font-style: italic; color: #555; margin-bottom: 0.75rem; }
+.description-creative-base ul { list-style: none; padding-left: 0; }
+.description-creative-base li { position: relative; padding-left: 1.5rem; margin-bottom: 0.5rem; }
+.description-creative-base li::before { content: '•'; position: absolute; left: 0; color: #667eea; font-weight: bold; }
+.skill-category-creative-base { font-weight: 700; color: #2d3748; margin-bottom: 0.75rem; font-size: 1.1rem; }
+.skill-list-creative-base { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.skill-item-creative-base { background-color: #e0e7ff; color: #4c51bf; padding: 0.4rem 1rem; border-radius: 25px; font-size: 0.85rem; font-weight: 600; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+
+/* Tech Template Specific Styles */
+.section-title-tech { font-size: 1.5rem; font-weight: 700; color: #10b981; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.1em; border-bottom: 1px dashed #374151; padding-bottom: 0.5rem; }
+.personal-info-tech p { margin-bottom: 0.5rem; }
+.personal-info-tech a { color: #34d399; text-decoration: none; }
+.personal-info-tech a:hover { text-decoration: underline; }
+.job-header-tech { display: flex; justify-content: space-between; margin-bottom: 0.25rem; }
+.job-header-tech h3 { font-size: 1.1rem; font-weight: 700; color: #e2e8f0; margin: 0; }
+.job-header-tech span { font-size: 0.8rem; color: #9ca3af; }
+.job-details-tech { font-size: 0.9rem; color: #a0aec0; margin-bottom: 0.5rem; }
+.job-description-tech ul { list-style: none; padding-left: 0; }
+.job-description-tech li { position: relative; padding-left: 1.25rem; margin-bottom: 0.4rem; }
+.job-description-tech li::before { content: '>'; position: absolute; left: 0; color: #10b981; font-weight: bold; }
+.skill-list-tech { display: flex; flex-wrap: wrap; gap: 0.6rem; }
+.skill-item-tech { background-color: #374151; color: #34d399; padding: 0.3rem 0.8rem; border-radius: 4px; font-size: 0.8rem; border: 1px solid #4b5563; }
+
+/* Compact Template Specific Styles */
+.resume-header-compact { margin-bottom: 1.5rem; }
+.resume-header-compact h1 { font-size: 2rem; font-weight: 700; color: #2d3748; margin-bottom: 0.25rem; }
+.resume-header-compact p { font-size: 0.85rem; color: #4a5568; }
+.section-title-compact { font-size: 1.1rem; font-weight: 600; color: #333; margin-top: 1.25rem; margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; border-bottom: 1px solid #e0e0e0; padding-bottom: 0.5rem; }
+.item-header-compact { font-weight: 600; color: #2d3748; }
+.item-subheader-compact { font-style: italic; color: #555; margin-bottom: 0.25rem; }
+.item-description-compact ul { list-style: disc; margin-left: 1.25rem; }
+.item-description-compact li { margin-bottom: 0.3rem; }
+.skill-list-compact { display: inline; }
+.skill-item-compact { margin-right: 0.5rem; margin-bottom: 0.5rem; display: inline-block; font-size: 0.85rem; }
+.skill-item-compact::after { content: '•'; margin-left: 0.5rem; }
+.skill-item-compact:last-child::after { content: ''; }
+
+/* Creative Sidebar Template Specific Styles */
+.sidebar-creative-split { width: 30%; background-color: #e0e7ff; color: #2d3748; padding: 2rem; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+.main-content-creative-split { width: 70%; padding: 2rem; }
+.photo-frame-creative { width: 120px; height: 120px; border-radius: 50%; overflow: hidden; margin: 0 auto 1.5rem; border: 4px solid #a7b4f5; box-shadow: 0 0 0 2px #e0e7ff; }
+.photo-frame-creative img { width: 100%; height: 100%; object-fit: cover; }
+.name-creative-split { font-size: 2rem; font-weight: 700; color: #4c51bf; text-align: center; margin-bottom: 0.5rem; }
+.title-creative-split { font-size: 1rem; color: #667eea; text-align: center; margin-bottom: 1.5rem; }
+.contact-item-creative { margin-bottom: 1rem; display: flex; align-items: center; font-size: 0.95rem; }
+.contact-item-creative i { margin-right: 0.75rem; color: #4c51bf; }
+.contact-item-creative a { color: #4c51bf; text-decoration: none; }
+.contact-item-creative a:hover { text-decoration: underline; }
+.section-title-sidebar-creative-split { font-size: 1.1rem; font-weight: 700; color: #4c51bf; margin-top: 2rem; margin-bottom: 1rem; border-bottom: 1px solid #a7b4f5; padding-bottom: 0.5rem; }
+.skill-item-creative-split { background-color: #a7b4f5; color: #fff; padding: 0.3rem 0.7rem; border-radius: 4px; font-size: 0.85rem; margin-right: 0.5rem; margin-bottom: 0.5rem; display: inline-block; }
+.main-section-title-creative-split { font-size: 1.5rem; font-weight: 700; color: #2d3748; margin-bottom: 1.5rem; border-bottom: 2px solid #a7b4f5; padding-bottom: 0.5rem; }
+.job-header-creative-main-split { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.5rem; }
+.job-header-creative-main-split h3 { font-size: 1.1rem; font-weight: 600; color: #2d3748; margin: 0; }
+.job-header-creative-main-split span { font-size: 0.9rem; color: #718096; }
+.job-details-creative-main-split { font-size: 0.95rem; color: #555; margin-bottom: 0.75rem; }
+.job-description-creative-main-split ul { list-style: disc; margin-left: 1.5rem; }
+.job-description-creative-main-split li { margin-bottom: 0.4rem; }

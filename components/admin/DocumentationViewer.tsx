@@ -8,7 +8,7 @@ import { supabaseUrl, supabaseAnonKey } from '../../services/supabaseClient';
 
 export function DocumentationViewer() {
   const { user } = useUser();
-  const [activeTab, setActiveTab] = useState<'user_manual' | 'technical' | 'api' | 'updates' | 'n8n_guide'>('user_manual');
+  const [activeTab, setActiveTab] = useState<'user_manual' | 'technical' | 'api' | 'updates' | 'setup' | 'n8n_guide'>('user_manual');
   
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
   const [loadingKeys, setLoadingKeys] = useState(false);
@@ -100,128 +100,81 @@ export function DocumentationViewer() {
   const getTabClass = (tabName: string) => `px-4 py-2 rounded-md text-sm font-bold transition whitespace-nowrap ${activeTab === tabName ? 'bg-green-600 text-white shadow-md' : 'text-gray-500 hover:bg-gray-100 hover:text-gray-700'}`;
 
   const schemaSql = `
--- === 🚨 CORREÇÃO URGENTE: PERMISSÃO NOTIFICAÇÕES (RLS) ===
--- Execute este bloco se estiver recebendo erro ao enviar Push Notifications.
+-- =========================================================
+-- 🚨 PACOTE DE CORREÇÃO (RESET) - CRM & LEADS
+-- Use este script se encontrar erros como "column owner_id does not exist".
+-- =========================================================
 
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+-- 1. LIMPEZA (Apaga versões incompatíveis)
+DROP TABLE IF EXISTS public.marketing_events CASCADE;
+DROP TABLE IF EXISTS public.deals CASCADE;
+DROP TABLE IF EXISTS public.leads CASCADE;
 
--- Remove políticas antigas e restritivas
-DROP POLICY IF EXISTS "Users manage own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can view own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Users can update own notifications" ON public.notifications;
-DROP POLICY IF EXISTS "Admins can insert notifications" ON public.notifications;
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- 1. Leitura: Usuário vê as suas, Admin vê todas
-CREATE POLICY "Users can view own notifications" ON public.notifications
-FOR SELECT USING (
-  auth.uid() = user_id OR
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+-- 2. TABELA DE LEADS (Corrigida)
+create table public.leads (
+  id uuid default gen_random_uuid() primary key,
+  owner_id uuid references public.app_users(id) not null,
+  email text not null,
+  name text,
+  phone text,
+  company text,
+  status text default 'new',
+  score int default 0,
+  source text,
+  utm_source text,
+  utm_medium text,
+  utm_campaign text,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
 );
 
--- 2. Inserção: Apenas Admins podem criar notificações (para qualquer um)
-CREATE POLICY "Admins can insert notifications" ON public.notifications
-FOR INSERT WITH CHECK (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+-- 3. TABELA DE EVENTOS DE MARKETING
+create table public.marketing_events (
+  id uuid default gen_random_uuid() primary key,
+  lead_id uuid references public.leads(id) on delete cascade,
+  event_type text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
 );
 
--- 3. Atualização: Usuário marca como lida (suas), Admin edita qualquer uma
-CREATE POLICY "Users can update own notifications" ON public.notifications
-FOR UPDATE USING (
-  auth.uid() = user_id OR
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
+-- 4. TABELA DE DEALS (NEGÓCIOS)
+create table public.deals (
+  id uuid default gen_random_uuid() primary key,
+  lead_id uuid references public.leads(id) on delete cascade,
+  owner_id uuid references public.app_users(id) not null,
+  title text not null,
+  value numeric default 0,
+  status text default 'open',
+  created_at timestamptz default now()
 );
 
+-- 5. HABILITAR RLS
+alter table public.leads enable row level security;
+alter table public.marketing_events enable row level security;
+alter table public.deals enable row level security;
 
--- === ATUALIZAÇÃO CADASTRO (NOME E TELEFONE) ===
+-- 6. POLÍTICAS DE SEGURANÇA
+create policy "Users manage own leads" on public.leads
+  for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
--- 1. ADICIONAR COLUNA TELEFONE
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS phone text;
+create policy "Users manage own deals" on public.deals
+  for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
 
--- 2. ATUALIZAR TRIGGER DE NOVO USUÁRIO
--- Esta função pega os metadados (nome/telefone) enviados pelo formulário de cadastro
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.app_users (id, email, full_name, phone, role, credits, status, plan)
-  VALUES (
-    new.id,
-    new.email,
-    new.raw_user_meta_data->>'full_name', -- Pega o nome do metadata
-    new.raw_user_meta_data->>'phone',     -- Pega o telefone do metadata
-    'user',
-    3, -- Créditos iniciais (Free)
-    'active',
-    'free'
-  );
-  
-  -- Inicializa tabela de créditos
-  INSERT INTO public.user_credits (user_id, credits)
-  VALUES (new.id, 3);
+create policy "Read events" on public.marketing_events
+  for select using (exists (select 1 from public.leads where id = lead_id and (owner_id = auth.uid() or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')))));
 
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+create policy "Insert events" on public.marketing_events for insert with check (true);
 
-
--- === ATUALIZAÇÕES ANTERIORES (Para integridade) ===
-
--- NOTIFICAÇÕES E REALTIME
-CREATE TABLE IF NOT EXISTS public.notifications (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id uuid REFERENCES public.app_users(id) NOT NULL,
-    title text NOT NULL,
-    message text NOT NULL,
-    type text DEFAULT 'info',
-    is_read boolean DEFAULT false,
-    action_link text,
-    created_at timestamp with time zone DEFAULT now()
-);
-ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
-GRANT ALL ON public.notifications TO authenticated;
-GRANT ALL ON public.notifications TO service_role;
-
-begin;
-  drop publication if exists supabase_realtime;
-  create publication supabase_realtime;
-commit;
-alter publication supabase_realtime add table public.notifications;
-
--- TABELA DE FEEDBACKS
-CREATE TABLE IF NOT EXISTS public.system_feedbacks (
-    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id uuid REFERENCES public.app_users(id),
-    content text NOT NULL,
-    rating int DEFAULT 5,
-    status text DEFAULT 'pending',
-    created_at timestamp with time zone DEFAULT now()
-);
-ALTER TABLE public.system_feedbacks ENABLE ROW LEVEL SECURITY;
-GRANT ALL ON public.system_feedbacks TO authenticated;
-GRANT ALL ON public.system_feedbacks TO service_role;
-GRANT SELECT ON public.system_feedbacks TO anon;
-
-DROP POLICY IF EXISTS "Anyone can read approved feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Anyone can read approved feedbacks" ON public.system_feedbacks FOR SELECT USING (status = 'approved');
-
-DROP POLICY IF EXISTS "Users can create feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Users can create feedbacks" ON public.system_feedbacks FOR INSERT TO authenticated WITH CHECK (auth.uid() = user_id);
-
-DROP POLICY IF EXISTS "Admins manage all feedbacks" ON public.system_feedbacks;
-CREATE POLICY "Admins manage all feedbacks" ON public.system_feedbacks FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.app_users WHERE id = auth.uid() AND role IN ('admin', 'super_admin'))
-);
-
--- CAMPOS EXTRAS
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS affiliate_code text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS referred_by uuid REFERENCES public.app_users(id);
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS affiliate_balance numeric DEFAULT 0;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS asaas_customer_id text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS subscription_id text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS subscription_status text;
-ALTER TABLE public.app_users ADD COLUMN IF NOT EXISTS mercadopago_customer_id text;
-
-ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS external_id text;
-ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
+-- 7. PERMISSÕES
+grant all on public.leads to authenticated;
+grant all on public.marketing_events to authenticated;
+grant all on public.deals to authenticated;
+grant all on public.leads to service_role;
+grant all on public.marketing_events to service_role;
+grant all on public.deals to service_role;
 `;
 
   return (
@@ -302,12 +255,24 @@ ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS metadata jsonb;
             </div>
         )}
 
+        {activeTab === 'setup' && (
+            <div className="prose prose-slate max-w-none">
+                <h1 className="text-3xl font-bold text-[#263238] mb-4">Instalação Limpa (Full Setup)</h1>
+                <p className="text-gray-600 mb-4">
+                    Utilize este script para configurar um projeto Supabase <strong>totalmente novo</strong>.
+                </p>
+                <div className="bg-yellow-50 p-4 border border-yellow-200 rounded text-sm text-yellow-800">
+                    <strong>Nota:</strong> O script completo está disponível no arquivo <code>Admin/DocumentationViewer.tsx</code>.
+                </div>
+            </div>
+        )}
+
         {activeTab === 'updates' && (
             <div className="prose prose-slate max-w-none">
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
-                    Para corrigir o erro de envio de Notificações, copie o SQL abaixo e execute no editor SQL do Supabase.
+                    Use este script para corrigir tabelas de CRM quebradas (erro "column does not exist").
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>

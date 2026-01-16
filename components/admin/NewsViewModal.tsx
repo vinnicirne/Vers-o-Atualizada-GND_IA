@@ -1,4 +1,5 @@
 
+
 import React, { useEffect } from 'react';
 import { NewsArticle } from '../../types';
 
@@ -20,9 +21,9 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
       if(!type) return 'GERAL';
       if(type === 'news_generator') return 'NOTÍCIA';
       if(type === 'image_generation') return 'IMAGEM (PROMPT)';
-      if(type === 'landingpage_generator') return 'LANDING PAGE (CÓDIGO)';
-      if(type === 'institutional_website_generator') return 'SITE INSTITUCIONAL (CÓDIGO)';
+      if(type === 'landingpage_generator') return 'CRIADOR DE SITES (CÓDIGO)'; // Unificado
       if(type === 'canva_structure') return 'SOCIAL MEDIA (CÓDIGO)';
+      if(type === 'curriculum_generator') return 'CURRÍCULO (CÓDIGO)'; // NOVO
       return type.toUpperCase().replace('_', ' ');
   };
 
@@ -47,7 +48,7 @@ export function NewsViewModal({ article, onClose }: NewsViewModalProps) {
         </div>
         <div className="p-6 overflow-y-auto">
           {/* Renderização condicional para código */}
-          {(article.tipo === 'landingpage_generator' || article.tipo === 'institutional_website_generator' || article.tipo === 'canva_structure') ? (
+          {(article.tipo === 'landingpage_generator' || article.tipo === 'canva_structure' || article.tipo === 'curriculum_generator') ? (
               <div className="bg-gray-900 p-4 rounded border border-gray-700">
                   <p className="text-xs text-gray-500 mb-2 uppercase">Código HTML Gerado:</p>
                   <pre className="text-xs text-green-300 font-mono whitespace-pre-wrap overflow-x-auto max-h-96">

@@ -1,6 +1,8 @@
 
+
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
+import { useWhiteLabel } from '../../contexts/WhiteLabelContext'; // NOVO
 
 interface SeoHeadProps {
   title: string;
@@ -16,13 +18,15 @@ export function SeoHead({
   title, 
   description, 
   canonicalUrl, 
-  ogImage = 'https://gdn.ia/default-og.jpg', 
+  ogImage, // Removido default aqui para usar o do WhiteLabelSettings
   type = 'article',
   publishedTime,
   author
 }: SeoHeadProps) {
-  const siteName = 'GDN_IA - Gerador de Notícias';
+  const { settings } = useWhiteLabel(); // NOVO
+  const siteName = settings.appName; // Usa o nome do app configurado
   const currentUrl = window.location.href;
+  const finalOgImage = ogImage || settings.ogImageUrl; // Usa a imagem OG do settings como fallback
 
   return (
     <Helmet>
@@ -39,7 +43,7 @@ export function SeoHead({
       <meta property="og:description" content={description.substring(0, 200)} />
       <meta property="og:url" content={currentUrl} />
       <meta property="og:site_name" content={siteName} />
-      <meta property="og:image" content={ogImage} />
+      <meta property="og:image" content={finalOgImage} />
       <meta property="og:image:width" content="1200" />
       <meta property="og:image:height" content="630" />
       
@@ -50,7 +54,7 @@ export function SeoHead({
       <meta name="twitter:card" content="summary_large_image" />
       <meta name="twitter:title" content={title} />
       <meta name="twitter:description" content={description.substring(0, 200)} />
-      <meta name="twitter:image" content={ogImage} />
+      <meta name="twitter:image" content={finalOgImage} />
     </Helmet>
   );
 }

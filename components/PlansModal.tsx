@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect } from 'react';
 import { UserPlan } from '../types/plan.types';
 import { PlanCard } from './PlanCard';
@@ -8,6 +9,7 @@ import { Toast } from './admin/Toast';
 import { getPaymentSettings } from '../services/adminService'; // For fetching public keys
 import CheckoutCompleto from './CheckoutCompleto'; // Import the new combined checkout component
 import { cancelSubscription } from '../services/userService'; // New service
+import { useWhiteLabel } from '../contexts/WhiteLabelContext'; // NOVO
 
 interface PlansModalProps {
   currentPlanId: UserPlan;
@@ -18,6 +20,7 @@ interface PlansModalProps {
 
 export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits: onBuyCreditsProp }: PlansModalProps) {
   const { user, refresh } = useUser();
+  const { settings: whiteLabelSettings } = useWhiteLabel(); // NOVO
   const { allPlans, loading: loadingPlans, error: plansError } = usePlans();
   
   const [expressAmount, setExpressAmount] = useState(10);
@@ -140,7 +143,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
     return (
       <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
         <div className="text-center bg-white border border-gray-200 p-6 rounded-lg shadow-xl">
-          <i className="fas fa-spinner fa-spin text-4xl text-[#F39C12]"></i>
+          <i className="fas fa-spinner fa-spin text-4xl text-[var(--brand-primary)]"></i>
           <p className="mt-4 text-gray-500 text-lg">Carregando planos e configurações...</p>
         </div>
       </div>
@@ -191,10 +194,10 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
         {/* Header - Light Theme */}
         <div className="p-6 bg-white border-b border-gray-200 flex justify-between items-center sticky top-0 z-10">
           <div>
-            <h2 className="text-2xl font-bold text-[#263238]">Escolha seu Plano</h2>
+            <h2 className="text-2xl font-bold text-[var(--brand-secondary)]">Escolha seu Plano</h2>
             <p className="text-sm text-gray-500">Cada nível superior desbloqueia novas IAs e recursos exclusivos.</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-[#263238] transition">
+          <button onClick={onClose} className="text-gray-400 hover:text-[var(--brand-secondary)] transition">
             <i className="fas fa-times text-2xl"></i>
           </button>
         </div>
@@ -206,7 +209,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
               <div className="mb-8 bg-green-50 border border-green-200 p-4 rounded-xl flex flex-col md:flex-row justify-between items-center gap-4">
                   <div className="flex items-center gap-3">
                       <div className="bg-green-100 p-2 rounded-full">
-                          <i className="fas fa-check-circle text-green-600 text-xl"></i>
+                          <i className="fas fa-check-circle text-[var(--brand-tertiary)] text-xl"></i>
                       </div>
                       <div>
                           <h3 className="text-green-800 font-bold">Assinatura Ativa</h3>
@@ -245,8 +248,8 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
              {/* Left Content */}
              <div className="flex-1 relative z-10">
                 <div className="flex items-center gap-2 mb-2">
-                    <i className="fas fa-bolt text-[#F39C12]"></i>
-                    <h3 className="text-[#F39C12] font-bold uppercase tracking-wider text-lg">
+                    <i className="fas fa-bolt text-[var(--brand-primary)]"></i>
+                    <h3 className="text-[var(--brand-primary)] font-bold uppercase tracking-wider text-lg">
                       RECARGA EXPRESSA
                     </h3>
                 </div>
@@ -258,8 +261,8 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
                 
                 <div className="inline-flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-md px-4 py-2">
                    <span className="text-gray-500 text-xs uppercase font-bold">CUSTO ATUAL:</span>
-                   <span className="text-xl font-bold text-[#F39C12]">R$ {activePlanConfig.expressCreditPrice.toFixed(2).replace('.', ',')}</span>
-                   <span className="text-xs text-[#F39C12] opacity-80">/crédito</span>
+                   <span className="text-xl font-bold text-[var(--brand-primary)]">R$ {activePlanConfig.expressCreditPrice.toFixed(2).replace('.', ',')}</span>
+                   <span className="text-xs text-[var(--brand-primary)] opacity-80">/crédito</span>
                 </div>
              </div>
 
@@ -267,7 +270,7 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
              <div className="flex-1 w-full max-w-md bg-[#F8FAFC] p-6 rounded-xl border border-gray-200 relative z-10 shadow-inner">
                 <div className="flex justify-between items-center mb-3">
                     <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">QUANTIDADE DESEJADA</label>
-                    <span className="text-xs font-bold text-[#263238] bg-white border border-gray-300 px-2 py-1 rounded shadow-sm">{expressAmount} créditos</span>
+                    <span className="text-xs font-bold text-[var(--brand-secondary)] bg-white border border-gray-300 px-2 py-1 rounded shadow-sm">{expressAmount} créditos</span>
                 </div>
                 
                 <div className="mb-8">
@@ -278,9 +281,9 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
                         step="5" 
                         value={expressAmount} 
                         onChange={handleExpressChange}
-                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#F39C12]"
+                        className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[var(--brand-primary)]"
                         style={{
-                            background: `linear-gradient(to right, #F39C12 0%, #F39C12 ${(expressAmount - 5) / (100 - 5) * 100}%, #e2e8f0 ${(expressAmount - 5) / (100 - 5) * 100}%, #e2e8f0 100%)`
+                            background: `linear-gradient(to right, ${whiteLabelSettings.primaryColorHex} 0%, ${whiteLabelSettings.primaryColorHex} ${(expressAmount - 5) / (100 - 5) * 100}%, #e2e8f0 ${(expressAmount - 5) / (100 - 5) * 100}%, #e2e8f0 100%)`
                         }}
                     />
                 </div>
@@ -288,11 +291,11 @@ export function PlansModal({ currentPlanId, onClose, onSelectPlan, onBuyCredits:
                 <div className="flex justify-between items-end">
                   <div>
                     <p className="text-[10px] text-gray-500 font-bold uppercase mb-1">Total a pagar</p>
-                    <p className="text-3xl font-bold text-[#263238] tracking-tight">R$ {calculateExpressTotal().toFixed(2).replace('.', ',')}</p>
+                    <p className="text-3xl font-bold text-[var(--brand-secondary)] tracking-tight">R$ {calculateExpressTotal().toFixed(2).replace('.', ',')}</p>
                   </div>
                   <button 
                     onClick={() => handleOpenCheckoutCompleto({ type: 'credits', data: { amount: expressAmount, price: calculateExpressTotal() } })}
-                    className="bg-[#D97706] hover:bg-[#F59E0B] text-white font-bold px-6 py-3 rounded-lg transition-all shadow-lg shadow-orange-200 flex items-center gap-2 transform hover:-translate-y-0.5"
+                    className="bg-[var(--brand-primary)] hover:bg-orange-500 text-white font-bold px-6 py-3 rounded-lg transition-all shadow-lg shadow-orange-200 flex items-center gap-2 transform hover:-translate-y-0.5"
                   >
                     Recarregar Créditos <i className="fas fa-arrow-right"></i>
                   </button>

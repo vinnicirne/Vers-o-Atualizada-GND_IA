@@ -16,11 +16,15 @@ import { SecurityManager } from '../../components/admin/SecurityManager';
 import { DocumentationViewer } from '../../components/admin/DocumentationViewer'; 
 import { PopupManager } from '../../components/admin/PopupManager'; 
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
-import { NotificationManager } from '../../components/admin/NotificationManager'; // NOVO IMPORT
+import { NotificationManager } from '../../components/admin/NotificationManager'; 
+import { ToolManager } from '../../components/admin/ToolManager'; 
+import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager';
+import { CrmDashboard } from '../../components/crm/CrmDashboard'; // NOVO IMPORT
 import { Toast } from '../../components/admin/Toast';
 import { NewsArticle, AdminView } from '../../types';
-import { updateNewsArticle, createUser, CreateUserPayload } from '../../services/adminService';
+import { CreateUserPayload, updateNewsArticle, createUser } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
+import { useWhiteLabel } from '../../contexts/WhiteLabelContext';
 import { downloadSitemap } from '../../services/sitemapService'; 
 import { supabase } from '../../services/supabaseClient';
 
@@ -30,6 +34,7 @@ interface AdminPageProps {
 
 function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const { user, signOut } = useUser();
+  const { settings: whiteLabelSettings } = useWhiteLabel(); // Use White Label settings
   const [currentView, setCurrentView] = useState<AdminView>('dashboard');
   
   const [editingNews, setEditingNews] = useState<NewsArticle | null>(null);
@@ -38,16 +43,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   const [dataVersion, setDataVersion] = useState(0);
   const [realtimeStatus, setRealtimeStatus] = useState<string>('CONNECTING');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [metadata, setMetadata] = useState<{ version: string }>({ version: 'N/A' }); 
   
   const refreshTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    fetch('/metadata.json')
-      .then(response => response.ok ? response.json() : { version: 'Error' })
-      .then(data => setMetadata(data))
-      .catch(err => setMetadata({ version: 'Erro' }));
-  }, []);
 
   const refreshData = () => {
       if (refreshTimeout.current) clearTimeout(refreshTimeout.current);
@@ -64,6 +61,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
           .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'logs' }, refreshData)
           .on('postgres_changes', { event: '*', schema: 'public', table: 'system_feedbacks' }, refreshData) 
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'system_config' }, refreshData) // Monitorar system_config
           .subscribe((status) => {
               console.log(`[Admin] Realtime status: ${status}`);
               setRealtimeStatus(status);
@@ -132,7 +130,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
                     onClick={handleDownloadSitemap}
                     className="bg-white hover:bg-gray-50 text-gray-600 px-4 py-2 rounded-lg text-sm border border-gray-200 shadow-sm flex items-center gap-2 transition-colors"
                 >
-                    <i className="fas fa-sitemap text-[#F39C12]"></i> Download Sitemap.xml
+                    <i className="fas fa-sitemap text-[var(--brand-primary)]"></i> Download Sitemap.xml
                 </button>
             </div>
             <MetricsCards dataVersion={dataVersion} />
@@ -147,11 +145,15 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
+      case 'tool_settings': 
+        return <ToolManager />;
+      case 'white_label_settings': 
+        return <WhiteLabelManager />;
       case 'popups': 
         return <PopupManager />;
       case 'feedbacks':
         return <FeedbackManager />;
-      case 'notifications_push': // RENDERIZAÇÃO DO NOVO COMPONENTE
+      case 'notifications_push':
         return <NotificationManager />;
       case 'multi_ia_system':
         return <MultiIASystem />;
@@ -161,6 +163,8 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <LogsViewer dataVersion={dataVersion} />;
       case 'docs': 
         return <DocumentationViewer />;
+      case 'crm': // NOVO CASE
+        return <CrmDashboard isAdminView={true} />;
       default:
         return (
           <>
@@ -182,10 +186,9 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         onLogout={handleLogout}
         onNavigateToDashboard={onNavigateToDashboard}
         onNewUserClick={() => setCreateUserModalOpen(true)}
-        pageTitle="Painel Administrativo"
+        pageTitle={whiteLabelSettings.appName + " Admin"} 
         userCredits={user.credits}
         userRole={user.role}
-        metadata={metadata} 
         realtimeStatus={realtimeStatus} 
       />
       <div className="flex flex-col md:flex-row min-h-[calc(100vh-64px)]">
