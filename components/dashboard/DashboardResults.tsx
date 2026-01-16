@@ -1,15 +1,7 @@
-<<<<<<< HEAD
-
-
 import React from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
 import { AudioPlayer } from '../AudioPlayer';
-=======
-import React from 'react';
-import { ServiceKey } from '../../types/plan.types';
-import { ResultDisplay } from '../ResultDisplay';
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
 import { LandingPageBuilder } from '../LandingPageBuilder';
 import { SeoScorecard } from '../SEO/SeoScorecard';
 import { FeedbackWidget } from '../FeedbackWidget';
@@ -21,10 +13,7 @@ interface DashboardResultsProps {
     results: {
         text: string | null;
         title: string | null;
-<<<<<<< HEAD
         audioBase64: string | null;
-=======
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
         imagePrompt: string | null;
         imageDimensions: { width: number; height: number };
         metadata: { plan: string; credits: string | number } | null;
@@ -36,11 +25,11 @@ interface DashboardResultsProps {
     onCloseFeedback: () => void;
 }
 
-export function DashboardResults({ 
-    currentMode, 
-    results, 
-    isLoading, 
-    user, 
+export function DashboardResults({
+    currentMode,
+    results,
+    isLoading,
+    user,
     onCloseEditor,
     showFeedback,
     onCloseFeedback
@@ -50,7 +39,6 @@ export function DashboardResults({
         return <Loader mode={currentMode} />;
     }
 
-<<<<<<< HEAD
     if (!results.text && !results.imagePrompt && !results.audioBase64) {
         return null;
     }
@@ -58,27 +46,15 @@ export function DashboardResults({
     // --- LOGIC: Image Generation & Social Media Poster now use LandingPageBuilder ---
     if ((currentMode === 'image_generation' || currentMode === 'social_media_poster') && results.imagePrompt) {
         // Construct Image URL dynamically
-=======
-    if (!results.text && !results.imagePrompt) {
-        return null;
-    }
-
-    if ((currentMode === 'image_generation' || currentMode === 'social_media_poster') && results.imagePrompt) {
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
         const prompt = results.text || results.imagePrompt || '';
         const encodedPrompt = encodeURIComponent(prompt);
         const width = results.imageDimensions.width || 1024;
         const height = results.imageDimensions.height || 1024;
-<<<<<<< HEAD
-        
+
         // Generating Pollinations URL
         const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`;
 
         // Create HTML wrapper for the builder
-=======
-        const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`;
-
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
         const initialHtml = `
             <div class="flex items-center justify-center min-h-screen bg-gray-900 p-8">
                 <div class="relative group">
@@ -90,8 +66,8 @@ export function DashboardResults({
 
         return (
             <div className="mt-8 space-y-8 pb-12">
-                <LandingPageBuilder 
-                    initialHtml={initialHtml} 
+                <LandingPageBuilder
+                    initialHtml={initialHtml}
                     onClose={onCloseEditor}
                 />
             </div>
@@ -100,19 +76,15 @@ export function DashboardResults({
 
     return (
         <div className="mt-8 space-y-8 pb-12">
-            
-<<<<<<< HEAD
+
             {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL & CRIADOR DE CURRÍCULOS */}
-=======
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
             {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && results.text && (
-                <LandingPageBuilder 
-                    initialHtml={results.text} 
+                <LandingPageBuilder
+                    initialHtml={results.text}
                     onClose={onCloseEditor}
                 />
             )}
 
-<<<<<<< HEAD
             {/* DIAGNOSTIC ALERT FOR TTS FAILURE */}
             {currentMode === 'text_to_speech' && results.text && !results.audioBase64 && (
                 <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-r shadow-sm animate-fade-in">
@@ -133,59 +105,45 @@ export function DashboardResults({
             )}
 
             {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
-=======
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
-            {currentMode !== 'landingpage_generator' && 
-             currentMode !== 'image_generation' && 
-             currentMode !== 'social_media_poster' &&
-             currentMode !== 'canva_structure' && 
-<<<<<<< HEAD
-             currentMode !== 'curriculum_generator' && // Hide for curriculum
-             // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.
-             // Se for TTS mas falhou (sem áudio), mostra o texto para debug.
-             (currentMode !== 'text_to_speech' || !results.audioBase64) &&
-=======
-             currentMode !== 'curriculum_generator' &&
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
-             results.text && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
-                    <div className="lg:col-span-2">
-                        <ResultDisplay 
-                            title={results.title} 
-                            text={results.text} 
-                            mode={currentMode} 
-                            metadata={results.metadata || undefined}
-                        />
-                    </div>
-                    
-<<<<<<< HEAD
-                    {/* SEO Scorecard - Útil para notícias e copy */}
-=======
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
-                    {(currentMode === 'news_generator' || currentMode === 'copy_generator') && (
-                        <div className="lg:col-span-1">
-                            <SeoScorecard 
-                                title={results.title || "Sem Título"} 
-                                content={results.text} 
+            {currentMode !== 'landingpage_generator' &&
+                currentMode !== 'image_generation' &&
+                currentMode !== 'social_media_poster' &&
+                currentMode !== 'canva_structure' &&
+                currentMode !== 'curriculum_generator' && // Hide for curriculum
+                // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.
+                // Se for TTS mas falhou (sem áudio), mostra o texto para debug.
+                (currentMode !== 'text_to_speech' || !results.audioBase64) &&
+                results.text && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
+                        <div className="lg:col-span-2">
+                            <ResultDisplay
+                                title={results.title}
+                                text={results.text}
+                                mode={currentMode}
+                                metadata={results.metadata || undefined}
                             />
                         </div>
-                    )}
-                </div>
-            )}
-<<<<<<< HEAD
+
+                        {/* SEO Scorecard - Útil para notícias e copy */}
+                        {(currentMode === 'news_generator' || currentMode === 'copy_generator') && (
+                            <div className="lg:col-span-1">
+                                <SeoScorecard
+                                    title={results.title || "Sem Título"}
+                                    content={results.text}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
 
             {/* AUDIO PLAYER */}
             {results.audioBase64 && <AudioPlayer audioBase64={results.audioBase64} />}
-            
+
             {/* FEEDBACK WIDGET */}
             {(results.text || results.imagePrompt || results.audioBase64) && showFeedback && user && (
-=======
-            
-            {(results.text || results.imagePrompt) && showFeedback && user && (
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
-                <FeedbackWidget 
-                    userId={user.id} 
-                    onClose={onCloseFeedback} 
+                <FeedbackWidget
+                    userId={user.id}
+                    onClose={onCloseFeedback}
                 />
             )}
         </div>

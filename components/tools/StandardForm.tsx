@@ -1,14 +1,7 @@
-<<<<<<< HEAD
-
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { CREATOR_SUITE_MODES } from '../../constants';
 import { usePlan } from '../../hooks/usePlan';
-=======
-import React, { useState, useEffect } from 'react';
-import { ServiceKey } from '../../types/plan.types';
-import { CREATOR_SUITE_MODES } from '../../constants';
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
 
 interface StandardFormProps {
     mode: ServiceKey;
@@ -21,32 +14,21 @@ interface StandardFormProps {
 
 export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, hasAccessToService }: StandardFormProps) {
     const [prompt, setPrompt] = useState('');
-<<<<<<< HEAD
     const [generateAudio, setGenerateAudio] = useState(false);
     const [placeholder, setPlaceholder] = useState('');
     const { getCreditsCostForService } = usePlan();
     const ttsCost = getCreditsCostForService('text_to_speech');
-=======
-    const [placeholder, setPlaceholder] = useState('');
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
 
     useEffect(() => {
         const selectedMode = CREATOR_SUITE_MODES.find(m => m.value === mode);
         setPlaceholder(selectedMode?.placeholder || '');
         setPrompt('');
-<<<<<<< HEAD
         setGenerateAudio(false);
-=======
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
     }, [mode]);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-<<<<<<< HEAD
         onGenerate(prompt, mode, generateAudio);
-=======
-        onGenerate(prompt, mode, false);
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
     };
 
     return (
@@ -66,7 +48,6 @@ export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, h
                 />
             </div>
 
-<<<<<<< HEAD
             {/* Gerar áudio só se o serviço text_to_speech estiver ativo e o modo for news_generator */}
             {mode === 'news_generator' && !isLocked && (
                 (isGuest || hasAccessToService('text_to_speech')) && (
@@ -86,9 +67,6 @@ export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, h
                     </div>
                 )
             )}
-
-=======
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
             <button
                 type="submit"
                 className="w-full bg-[var(--brand-primary)] hover:bg-orange-500 text-white font-bold py-4 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-orange-100 transition-all duration-300 disabled:opacity-50 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md transform hover:-translate-y-0.5"
@@ -120,8 +98,4 @@ export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, h
             </button>
         </form>
     );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d

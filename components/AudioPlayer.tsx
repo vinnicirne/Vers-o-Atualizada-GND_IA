@@ -1,22 +1,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-<<<<<<< HEAD
-// Base64 to Uint8Array decoding function with sanitization
-function decode(base64: string): Uint8Array {
-  // Remove spaces, newlines, and other whitespace chars that might corrupt base64 decoding
-  const cleanBase64 = base64.replace(/\s/g, '');
-  const binaryString = atob(cleanBase64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-=======
+// Base64 to Uint8Array decoding function
 function decodeBase64ToUint8(base64: string): Uint8Array {
   const cleanBase64 = base64.replace(/\s/g, '');
   const binaryString = atob(cleanBase64);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
     bytes[i] = binaryString.charCodeAt(i);
   }
   return bytes;
@@ -41,14 +31,14 @@ export function AudioPlayer({ audioBase64 }: { audioBase64: string }) {
         // Tenta decodificar via decodeAudioData (aceita WAV/MP3/OGG), que é o mais robusto.
         try {
           const arrayBuffer = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer);
+          const decoded = await audioCtxRef.current.decodeAudioData(arrayBuffer as ArrayBuffer);
           bufferRef.current = decoded;
         } catch (err) {
           // Se falhar, tenta interpretar como PCM16 raw (fallback padrão Gemini)
           console.warn("decodeAudioData falhou, tentando fallback PCM16:", err);
           const dataInt16 = new Int16Array(bytes.buffer, bytes.byteOffset, bytes.byteLength / 2);
           const frameCount = dataInt16.length;
-          const sampleRate = 24000; 
+          const sampleRate = 24000;
           const buffer = audioCtxRef.current.createBuffer(1, frameCount, sampleRate);
           const channelData = buffer.getChannelData(0);
           for (let i = 0; i < frameCount; i++) {
@@ -71,10 +61,10 @@ export function AudioPlayer({ audioBase64 }: { audioBase64: string }) {
     if (sourceRef.current) {
       try {
         sourceRef.current.stop();
-      } catch {}
+      } catch { }
       try {
         sourceRef.current.disconnect();
-      } catch {}
+      } catch { }
       sourceRef.current = null;
     }
     setIsPlaying(false);
@@ -108,23 +98,19 @@ export function AudioPlayer({ audioBase64 }: { audioBase64: string }) {
         </div>
       ) : (
         <>
-            <div className="text-center">
-                <h4 className="font-bold text-gray-800 text-sm">Narração Inteligente</h4>
-                <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Sintetizado via Gemini 2.5</p>
-            </div>
-            <button
-              onClick={togglePlay}
-              className="flex items-center gap-4 px-10 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full font-bold shadow-xl shadow-orange-200 transition-all active:scale-95 transform hover:-translate-y-0.5"
-            >
-              <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-xl`}></i>
-              <span>{isPlaying ? 'Pausar Áudio' : 'Ouvir Agora'}</span>
-            </button>
+          <div className="text-center">
+            <h4 className="font-bold text-gray-800 text-sm">Narração Inteligente</h4>
+            <p className="text-[10px] text-gray-400 uppercase font-bold tracking-widest">Sintetizado via Gemini 2.5</p>
+          </div>
+          <button
+            onClick={togglePlay}
+            className="flex items-center gap-4 px-10 py-4 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white rounded-full font-bold shadow-xl shadow-orange-200 transition-all active:scale-95 transform hover:-translate-y-0.5"
+          >
+            <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-xl`}></i>
+            <span>{isPlaying ? 'Pausar Áudio' : 'Ouvir Agora'}</span>
+          </button>
         </>
       )}
     </div>
   );
-<<<<<<< HEAD
-};
-=======
 }
->>>>>>> 838df02e050608b556d51e29ad6aa6c7dd11052d
