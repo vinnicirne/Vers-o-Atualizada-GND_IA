@@ -14,14 +14,24 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
   let content = text;
 
   if (lines.length > 0) {
-      const firstLine = lines[0].trim();
-      // Remove marcadores comuns de MD/Text gerados por IA
-      const cleanLine = firstLine.replace(/^(\*\*|#|Título:|Subject:|Headline:)\s*/i, '').replace(/\*\*$/, '');
-      
-      if (cleanLine.length > 5 && cleanLine.length < 100 && !cleanLine.includes('<')) {
-          title = cleanLine;
-          // Remove a primeira linha e quebras subsequentes
-          content = lines.slice(1).join('\n').trim();
+      // Find first non-empty line
+      let titleLineIndex = 0;
+      while (titleLineIndex < lines.length && lines[titleLineIndex].trim() === '') {
+          titleLineIndex++;
+      }
+
+      if (titleLineIndex < lines.length) {
+          const firstLine = lines[titleLineIndex].trim();
+          // Remove marcadores comuns de MD/Text gerados por IA
+          const cleanLine = firstLine.replace(/^(\*\*|#|Título:|Subject:|Headline:)\s*/i, '').replace(/\*\*$/, '');
+          
+          if (cleanLine.length > 5 && cleanLine.length < 150 && !cleanLine.includes('<')) {
+              title = cleanLine;
+              // Content is everything AFTER this title line
+              const remainingLines = lines.slice(titleLineIndex + 1);
+              // Remove empty lines at start of content
+              content = remainingLines.join('\n').trim();
+          }
       }
   }
 
@@ -48,14 +58,18 @@ export function useDashboard() {
         imagePrompt: string | null;
         imageDimensions: { width: number; height: number };
         metadata: { plan: string; credits: string | number } | null;
+        seoMetadata: any | null;
     }>({
         text: null,
         title: null,
         audioBase64: null,
         imagePrompt: null,
         imageDimensions: { width: 1024, height: 1024 },
-        metadata: null
+        metadata: null,
+        seoMetadata: null
     });
+
+
     const [showFeedback, setShowFeedback] = useState(false);
 
     // Modals State
@@ -128,7 +142,8 @@ export function useDashboard() {
         prompt: string, 
         mode: ServiceKey, 
         generateAudio: boolean, 
-        options?: any
+        options?: any,
+        file?: { data: string, mimeType: string } | null
     ) => {
         setError(null);
         setResults(prev => ({ ...prev, text: null, title: null, audioBase64: null, imagePrompt: null }));
@@ -164,7 +179,7 @@ export function useDashboard() {
                 imgDims = { width: w, height: h };
             }
 
-            const apiResult = await generateCreativeContent(prompt, mode, user?.id, generateAudio, options);
+            const apiResult = await generateCreativeContent(prompt, mode, user?.id, generateAudio, options, file || undefined);
             
             let newText = null;
             let newTitle = null;
@@ -173,6 +188,9 @@ export function useDashboard() {
             if (mode === 'image_generation' || mode === 'social_media_poster') {
                 newText = apiResult.text;
                 newImagePrompt = apiResult.text;
+            } else if (mode === 'curriculum_parse') {
+                // For parsing, we keep the original text (which is JSON)
+                newText = apiResult.text;
             } else {
                 const extracted = extractTitleAndContent(apiResult.text);
                 newTitle = extracted.title;
@@ -186,6 +204,7 @@ export function useDashboard() {
                 audioBase64: apiResult.audioBase64 || null,
                 imagePrompt: newImagePrompt,
                 imageDimensions: imgDims,
+                seoMetadata: apiResult.seoMetadata || null,
                 metadata: isGuest 
                     ? { plan: 'Visitante', credits: guestCredits - cost } // Deduz o custo total para guest
                     : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
@@ -201,10 +220,12 @@ export function useDashboard() {
             }
 
             setShowFeedback(true);
+            return apiResult;
 
         } catch (err: any) {
             console.error("Erro na geração:", err);
             setError(err.message || 'Erro ao gerar conteúdo.');
+            throw err;
         } finally {
             setIsLoading(false);
         }

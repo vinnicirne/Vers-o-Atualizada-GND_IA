@@ -4,7 +4,7 @@ import { CURRICULUM_TEMPLATES } from '../resume/templates';
 
 interface CurriculumFormProps {
     mode: ServiceKey;
-    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any) => void;
+    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any, file?: { data: string, mimeType: string } | null) => void;
     isLoading: boolean;
     isLocked: boolean;
 }
@@ -19,9 +19,24 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
     const [skills, setSkills] = useState<string[]>([]);
     const [projects, setProjects] = useState([{ name: '', description: '', technologies: '' }]);
     const [certifications, setCertifications] = useState<string[]>([]);
+    const [file, setFile] = useState<{ data: string, mimeType: string } | null>(null);
 
     const selectClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
     const inputClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFile = e.target.files?.[0];
+        if (selectedFile) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64String = reader.result?.toString().split(',')[1];
+                if (base64String) {
+                    setFile({ data: base64String, mimeType: selectedFile.type });
+                }
+            };
+            reader.readAsDataURL(selectedFile);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -35,11 +50,33 @@ export function CurriculumForm({ mode, onGenerate, isLoading, isLocked }: Curric
             projects: projects.filter(proj => proj.name || proj.description),
             certifications: certifications.filter(cert => cert.trim() !== ''),
         };
-        onGenerate(prompt, mode, false, options);
+        onGenerate(prompt, mode, false, options, file);
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-fade-in">
+            {/* PDF Upload */}
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <label className="block text-xs uppercase font-bold mb-2 tracking-wider text-blue-700">
+                    Extrair de Currículo Existente (PDF)
+                </label>
+                <div className="flex items-center gap-4">
+                    <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                        disabled={isLoading || isLocked}
+                    />
+                    {file && (
+                        <div className="text-xs text-green-600 font-bold flex items-center gap-1">
+                            <i className="fas fa-check-circle"></i> Arquivo pronto
+                        </div>
+                    )}
+                </div>
+                <p className="text-[10px] text-blue-600 mt-2">Dica: Ao anexar um PDF, a IA usará as informações dele para preencher o template.</p>
+            </div>
+
             {/* Template Selection */}
             <div>
                 <label htmlFor="curriculumTemplate" className="block text-xs uppercase font-bold mb-2 tracking-wider text-gray-500">

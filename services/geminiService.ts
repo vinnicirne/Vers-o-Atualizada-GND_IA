@@ -27,9 +27,9 @@ export const generateCreativeContent = async (
     mode: ServiceKey,
     userId?: string,
     generateAudio?: boolean,
-    // FIX: Updated the type of 'options' to the new comprehensive interface
-    options?: GenerateContentOptions
-): Promise<{ text: string, audioBase64: string | null, sources?: Source[] }> => {
+    options?: GenerateContentOptions,
+    file?: { data: string, mimeType: string }
+): Promise<{ text: string, audioBase64: string | null, sources?: Source[], seoMetadata?: any }> => {
   
   let userMemory = '';
   if (userId) {
@@ -42,7 +42,7 @@ export const generateCreativeContent = async (
 
   try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
-          body: { prompt, mode, userId, options, userMemory }
+          body: { prompt, mode, userId, generateAudio, options, userMemory, file }
       });
 
       if (error) throw new Error(error.message);
@@ -52,9 +52,38 @@ export const generateCreativeContent = async (
           saveGenerationResult(userId, data.text.substring(0, 500));
       }
 
+    // Extract SEO Metadata if present (JSON block at start)
+      let finalContent = data.text || "";
+      let seoMetadata = null;
+
+      // Regex mais permissiva: aceita ```json ou apenas ```
+      const jsonMatch = finalContent.match(/```(?:json)?\s*({[\s\S]*?})\s*```/);
+      
+      if (jsonMatch && jsonMatch[1]) {
+          try {
+              const possibleMetadata = JSON.parse(jsonMatch[1]);
+              // Verifica se tem chaves relevantes de SEO ou se é o objeto direto
+              if (possibleMetadata.seo_metadata) {
+                  seoMetadata = possibleMetadata.seo_metadata;
+              } else if (possibleMetadata.focus_keyword || possibleMetadata.seo_title) {
+                  // Caso a IA devolva o objeto plano sem a chave raiz "seo_metadata"
+                  seoMetadata = possibleMetadata;
+              }
+
+              if (seoMetadata) {
+                   // Remove the JSON block from the display text
+                  finalContent = finalContent.replace(jsonMatch[0], "").trim();
+              }
+          } catch (e) {
+              console.warn("Failed to parse SEO metadata JSON", e);
+          }
+      }
+
       return {
-          text: data.text || "",
-          sources: data.sources || []
+          text: finalContent,
+          audioBase64: data.audioBase64 || null,
+          sources: data.sources || [],
+          seoMetadata: seoMetadata
       };
 
   } catch (err: any) {

@@ -17,6 +17,7 @@ interface DashboardResultsProps {
         imagePrompt: string | null;
         imageDimensions: { width: number; height: number };
         metadata: { plan: string; credits: string | number } | null;
+        seoMetadata?: any;
     };
     isLoading: boolean;
     user: User | null;
@@ -130,6 +131,7 @@ export function DashboardResults({
                                 <SeoScorecard
                                     title={results.title || "Sem Título"}
                                     content={results.text}
+                                    backendMetadata={results.seoMetadata}
                                 />
                             </div>
                         )}

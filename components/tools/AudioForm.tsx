@@ -25,7 +25,7 @@ export function AudioForm({ mode, onGenerate, isLoading, isLocked }: AudioFormPr
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        onGenerate(prompt, mode, false, { voice: selectedVoice });
+        onGenerate(prompt, mode, true, { voice: selectedVoice });
     };
 
     return (

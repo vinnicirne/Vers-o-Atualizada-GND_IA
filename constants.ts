@@ -9,6 +9,7 @@ interface CreatorSuiteModeConfig {
 export const GUEST_ID = '00000000-0000-0000-0000-000000000000';
 
 export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
+  // --- TEXTO & PESQUISA ---
   {
     value: 'news_generator',
     label: 'GDN Notícias',
@@ -24,17 +25,22 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
     label: 'Gerador de Prompts',
     placeholder: 'Descreva a tarefa para a qual você precisa de um prompt.',
   },
+  
+  // --- VOZ & ÁUDIO ---
+  {
+    value: 'text_to_speech',
+    label: 'Texto para Fala (Voz Realista)',
+    placeholder: 'Cole o texto que você deseja transformar em narração humana.',
+  },
+
+  // --- CARREIRA ---
   {
     value: 'curriculum_generator',
     label: 'Criador de Currículos (IA)',
-    placeholder: 'Descreva seu perfil e objetivo profissional.',
+    placeholder: 'Descreva seu perfil e objetivo (ex: "Desenvolvedor Fullstack, 5 anos exp, React/Node.").',
   },
-  // --- OPÇÕES PREMIUM / AVANÇADAS (REORDERED FOR VISIBILITY) ---
-  {
-    value: 'curriculum_generator',
-    label: 'Criador de Currículos (IA)', // NOVO
-    placeholder: 'Descreva seu perfil e objetivo (ex: "Currículo para Desenvolvedor Fullstack com 5 anos de experiência, focado em React e Node.js. Objetivo: vaga em startup de tecnologia.").',
-  },
+
+  // --- VISUAL & WEB ---
   {
     value: 'social_media_poster',
     label: 'Criador de Posts Sociais',
@@ -42,18 +48,18 @@ export const CREATOR_SUITE_MODES: CreatorSuiteModeConfig[] = [
   },
   {
     value: 'landingpage_generator',
-    label: 'Criador de Sites (Web)', // Unificado: Landing Page e Site Institucional
-    placeholder: 'Descreva o site (empresa, produto, público, seções). Ex: "Site institucional para uma consultoria de TI focada em segurança cibernética" ou "Landing Page de vendas para um e-book de receitas veganas".',
+    label: 'Criador de Sites (Web)', 
+    placeholder: 'Descreva o site (empresa, produto, público, seções).',
   },
   {
     value: 'image_generation',
     label: 'Studio de Arte IA',
-    placeholder: 'Descreva a imagem que você quer criar. Ex: "Um gato astronauta flutuando em uma galáxia feita de doces, estilo cyberpunk 8k".',
+    placeholder: 'Descreva a imagem (ex: "Gato astronauta, cyberpunk, 8k").',
   },
   {
     value: 'canva_structure',
     label: 'Editor Visual (Social Media)',
-    placeholder: 'Descreva o post visualmente.',
+    placeholder: 'Descreva o layout visual do post.',
   }
 ];
 
@@ -67,6 +73,7 @@ export const TASK_COSTS: Record<ServiceKey, number> = {
   image_generation: 5,
   social_media_poster: 5, // Custo similar à geração de imagem
   curriculum_generator: 8, // Custo para o novo gerador de currículos
+  curriculum_parse: 2, // Custo para extração inteligente de dados do PDF
   n8n_integration: 0, // Recurso de acesso, sem custo de crédito por uso
   crm_suite: 0, // Recurso de acesso (CRM), sem custo por uso
 };
@@ -181,6 +188,7 @@ export const SERVICE_ICONS: Record<ServiceKey, string> = {
     image_generation: 'fa-paint-brush',
     social_media_poster: 'fa-share-alt',
     curriculum_generator: 'fa-file-alt', // Icone para Criador de Currículos (IA)
+    curriculum_parse: 'fa-file-import',
     n8n_integration: 'fa-plug',
     crm_suite: 'fa-users-cog',
 };
@@ -196,6 +204,7 @@ export const SERVICE_COLORS: Record<ServiceKey, string> = {
     image_generation: 'text-rose-500 bg-rose-50',
     social_media_poster: 'text-indigo-500 bg-indigo-50',
     curriculum_generator: 'text-blue-500 bg-blue-50', // Cor para Criador de Currículos (IA)
+    curriculum_parse: 'text-green-500 bg-green-50',
     n8n_integration: 'text-red-500 bg-red-50',
     crm_suite: 'text-blue-700 bg-blue-100',
 };

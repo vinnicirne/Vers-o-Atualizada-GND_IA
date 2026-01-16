@@ -52,7 +52,7 @@ export function DashboardSidebar({
         // Para usuários logados, ou guests em modos permitidos, hasAccessToService deve ser a única fonte de verdade
         if (!hasAccessToService(mode)) {
             // Se for um usuário logado sem acesso, ou um guest em um modo bloqueado globalmente, o onModeChange vai tratar
-            onModeChange(mode); 
+            onModeChange(mode);
             return;
         }
 
@@ -63,7 +63,7 @@ export function DashboardSidebar({
         <>
             {/* SIDEBAR OVERLAY (Mobile) */}
             {isOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
                     onClick={() => setIsOpen(false)}
                 ></div>
@@ -81,16 +81,16 @@ export function DashboardSidebar({
                         <i className="fas fa-times text-lg"></i>
                     </button>
                 </div>
-                
+
                 <div className="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
                     {CREATOR_SUITE_MODES.map((svc) => {
                         const isSelected = currentMode === svc.value;
-                        
+
                         // hasAccessToService já considera o estado global da ferramenta e o plano do usuário
-                        const isLocked = !hasAccessToService(svc.value); 
-                        
+                        const isLocked = !hasAccessToService(svc.value);
+
                         // Robust lookup for icon and use dynamic colors
-                        const iconClass = SERVICE_ICONS[svc.value] || 'fa-question'; 
+                        const iconClass = SERVICE_ICONS[svc.value] || 'fa-question';
 
                         // Determine colors based on active mode for icons, else a neutral gray
                         let iconBgColor = 'bg-gray-100';
@@ -114,8 +114,8 @@ export function DashboardSidebar({
                                 key={svc.value}
                                 onClick={() => handleModeSelection(svc.value)}
                                 className={`w-full flex items-center p-3 rounded-lg transition-all duration-200 text-left group
-                                    ${isSelected 
-                                        ? 'bg-gray-100 shadow-sm ring-1 ring-[var(--brand-primary)]' 
+                                    ${isSelected
+                                        ? 'bg-gray-100 shadow-sm ring-1 ring-[var(--brand-primary)]'
                                         : 'hover:bg-gray-50'
                                     }
                                     ${isLocked ? 'opacity-60 grayscale cursor-not-allowed' : ''}
@@ -125,7 +125,7 @@ export function DashboardSidebar({
                                 <div className={`w-8 h-8 rounded-md flex items-center justify-center mr-3 ${iconBgColor} ${iconTextColor}`}>
                                     <i className={`fas ${iconClass} text-sm`}></i>
                                 </div>
-                                
+
                                 <div className="flex-1 min-w-0">
                                     <p className={`text-sm font-semibold truncate ${isSelected ? 'text-[var(--brand-secondary)]' : 'text-gray-600 group-hover:text-[var(--brand-secondary)]'}`}>
                                         {svc.label}
@@ -166,7 +166,7 @@ export function DashboardSidebar({
                     <div className="px-2 py-1">
                         <span className="text-[10px] font-extrabold text-[var(--brand-secondary)] uppercase tracking-widest">Minha Conta</span>
                     </div>
-                    
+
                     <button
                         onClick={() => { onOpenPlans(); setIsOpen(false); }}
                         className="w-full flex items-center p-2 rounded-lg hover:bg-gray-50 text-[var(--brand-secondary)] transition-colors group"
@@ -230,11 +230,11 @@ export function DashboardSidebar({
                         <span className="text-sm font-bold">Mural do Cliente</span>
                     </button>
                 </div>
-                
+
                 {/* Link para Feedback Desktop */}
                 {user && (
                     <div className="hidden md:block p-4 border-t border-gray-200">
-                        <button 
+                        <button
                             onClick={onNavigateFeedback}
                             className="w-full bg-white border border-gray-300 text-gray-600 hover:text-[var(--brand-tertiary)] hover:border-[var(--brand-tertiary-dark)] px-4 py-2 rounded-lg text-xs font-bold transition flex items-center justify-center gap-2"
                         >

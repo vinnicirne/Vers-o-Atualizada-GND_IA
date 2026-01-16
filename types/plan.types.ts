@@ -10,6 +10,7 @@ export type ServiceKey =
   | 'social_media_poster'
   | 'n8n_integration'
   | 'curriculum_generator'
+  | 'curriculum_parse'
   | 'crm_suite'; // NOVO: CRM & Leads Management
 
 export interface ServicePermission {

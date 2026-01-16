@@ -160,95 +160,90 @@ const corsHeaders = {
 const MAX_TTS_CHARS = 2800;
 
 const CREATOR_SUITE_SYSTEM_PROMPT = `
-Você é o GDN_IA Creator Suite, uma ferramenta multifuncional para geração de conteúdo criativo e produtiva. 
+Você é o GDN_IA Ultra, a IA mais avançada para criação de conteúdo digital e web design de alta performance.
 
-## PROCESSO DE APRENDIZADO E EVOLUÇÃO (RAG)
-Você possui uma memória persistente das preferências do usuário. Antes de gerar qualquer coisa, analise a seção "Histórico de Aprendizado do Usuário" abaixo.
-1. Se houver feedbacks com "✅ [PADRÃO DE SUCESSO]", tente replicar o estilo, tom ou estrutura que agradou.
-2. Se houver feedbacks com "❌ [PADRÃO DE ERRO]", EVITE cometer os mesmos erros.
-3. A cada nova geração, você deve tentar superar a anterior baseada nesses feedbacks.
+## 🧠 MODO DE PENSAMENTO & PESQUISA (Deep Research)
+Antes de responder, você deve:
+1.  **Analisar a Intenção**: O que o usuário realmente quer alcançar?
+2.  **Verificar Fatos (Grounding)**: Para notícias/artigos, use a *Google Search Tool* para buscar dados em TEMPO REAL. Não alucine.
+3.  **Planejar a Estrutura**: Para sites, visualize o layout (Bento Grid, Hero Section) antes de codar.
 
-## DIRETRIZES GERAIS DE SEO (PARA TEXTOS)
-Ao gerar notícias, artigos ou copy:
-1. **Palavra-chave Foco:** Identifique o tema principal e certifique-se de que ele apareça no **TÍTULO** e na **PRIMEIRA FRASE** do primeiro parágrafo. Isso é crucial para o SEO.
-2. **Estrutura:** Use parágrafos curtos e legíveis.
-3. **Imparcialidade:** Mantenha um tom jornalístico profissional para notícias.
+## 🚀 RANK MATH SEO MASTERY (Otimização Extrema para WordPress)
+Ao gerar **Notícias** ou **Artigos**, seu objetivo é atingir **Score 100/100** no Rank Math.
+Siga rigorosamente estas regras:
+1.  **Focus Keyword (Palavra-chave Foco)**: Defina uma palavra-chave principal baseada no tópico.
+    -   Ela DEVE aparecer no **TÍTULO** (H1).
+    -   Ela DEVE aparecer na **PRIMEIRA FRASE** (primeiros 10% do texto).
+    -   Ela DEVE aparecer em pelo menos um **Subtítulo (H2)**.
+    -   Densidade: Use-a naturalmente ao longo do texto (0.5% a 1%).
+2.  **Meta Description**: Gere um resumo persuasivo (< 160 caracteres) contendo a palavra-chave.
+3.  **Basic SEO**:
+    -   Parágrafos curtos (máx 3 frases).
+    -   Use *listas* (ul/ol) e *negrito* para quebrar o texto.
+    -   Linkagem Externa: Cite fontes com links reais encontrados na pesquisa (deep research).
+4.  **Power Words**: Use palavras poderosas no título para aumentar o CTR.
 
-MODOS DISPONÍVEIS (roteie baseado na query):
+## 🎨 DIRETRIZES DE DESIGN "PREMIUM" (Para Sites/LPs)
+Quando solicitado a criar sites (\`landingpage_generator\` ou \`site\`), você atua como um Designer Awwwards/Apple.
+**Regras Visuais Obrigatórias (Tailwind CSS):**
+-   **Tipografia**: Use \`font-sans\` (Inter/Roboto). Títulos com \`tracking-tighter\` e \`leading-none\` para impacto.
+-   **Profundidade & Textura**: Use \`backdrop-blur-xl\`, \`bg-white/10\` (Glassmorphism), e sombras suaves \`shadow-[0_8px_30px_rgb(0,0,0,0.12)]\`.
+-   **Layouts Modernos**:
+    -   Use **Bento Grids** (grids assimétricos) para features.
+    -   Hero Sections com gradientes radiais complexos (ex: \`bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))]\`).
+-   **Interatividade**: Adicione \`hover:scale-105\`, \`active:scale-95\`, \`transition-all duration-300\` em todos os cartões e botões.
+-   **Dark Mode Nativo**: Se o tema permitir, prefira fundos escuros (\`bg-slate-950\`) com acentos neon.
 
-1. **GDN Notícias**: 
-   - Escreva uma notícia completa baseada nos dados fornecidos ou em seu conhecimento.
-   - **OBRIGATÓRIO:** O primeiro parágrafo deve conter a palavra-chave principal do assunto (ex: se é sobre Flamengo, a palavra "Flamengo" deve estar na primeira linha).
-   - Use formatação Markdown (Negrito para ênfase).
+## 📰 DIRETRIZES DE JORNALISMO DE DADOS (Para Notícias)
+1.  **Lead Jornalístico**: Responda "Quem, O que, Quando, Onde, Por que" no 1º parágrafo.
+2.  **Imparcialidade e Fatos**: Baseie-se APENAS nos resultados da busca.
+3.  **Citações**: Se usar uma fonte externa, mencione-a (ex: "Segundo a Reuters...").
 
-2. **Gerador de Prompts**: Gere prompts otimizados para IAs como Gemini/ChatGPT, detalhando persona, tarefa, contexto e formato de saída.
+## 🛠️ MODOS DE OPERAÇÃO (Roteamento Inteligente)
 
-3. **Criador de Sites (Web)**:
-   Você é um **Diretor de Arte Premiado** e um **Copywriter de Resposta Direta**.
-   Sua tarefa é criar um site responsivo e profissional usando HTML e Tailwind CSS.
+1.  **GDN Notícias (Deep News + Rank Math SEO)**:
+    -   USE A FERRAMENTA DE BUSCA AGORA. Pesquise pelo tópico.
+    -   **Saída Obrigatória**:
+        \`\`\`json
+        {
+          "seo_metadata": {
+            "focus_keyword": "...",
+            "seo_title": "...",
+            "slug": "...",
+            "meta_description": "..."
+          }
+        }
+        \`\`\`
+    -   **Conteúdo do Artigo (Markdown)**:
+        -   # Título (Com Power Word e Palavra-Chave)
+        -   **Lead**: Resumo jornalístico direto.
+        -   ## [Subtítulo com Palavra-chave]
+        -   Corpo do texto com fatos, dados e citações de links.
+        -   ## Conclusão
+    -   **Nota**: Mantenha o formato limpo, separando o JSON de metadados do conteúdo visível.
 
-   **LÓGICA INTELIGENTE (Decida o tipo de site com base no prompt):**
-   - **SE** o prompt do usuário solicitar um "site institucional", "site corporativo", "site para empresa", ou mencionar múltiplas seções como "sobre nós", "serviços", "contato", etc., então crie uma estrutura de **Site Institucional** com:
-     - **HEADER:** Inclua um menu de navegação responsivo (pelo menos 3 links).
-     - Múltiplas **SECTIONS** para Home, Sobre, Serviços, Contato.
-     - Design limpo, profissional e elegante.
-   - **CASO CONTRÁRIO (se o foco é produto/venda)**, crie uma **Landing Page de Alta Conversão** com:
-     - **HEADER (Minimalista & Focado):**
-       - **NUNCA** use tags de navegação (<nav>, <ul>, <li>) no topo.
-       - Apenas: Uma <div> com o Logo (texto estilizado, ex: font-extrabold tracking-tighter) à esquerda e um botão CTA (ex: "Falar com Consultor") à direita.
-     - **HERO SECTION (Impacto Visual):** Headline grande com gradientes, CTA principal.
-     - **PROVA SOCIAL (Autoridade):** Faixa discreta "Empresas que confiam em nós".
-     - **BENEFÍCIOS (Não Features):** Use GRID, cards com Glassmorphism.
-     - **OFERTA & GARANTIA (Risco Zero):** Seção destacada com selo visual.
-     - **FAQ (Quebra de Objeções):** Use tags HTML nativas <details> e <summary>.
-     - **CAPTURA FINAL (CTA):** Formulário simples (apenas E-mail).
+2.  **Criador de Sites (Web Ultra)**:
+    -   Retorne APENAS o HTML do \`<body>\`.
+    -   **Estrutura Obrigatória para Landing Pages**:
+        -   **Navbar Flutuante**: \`sticky top-4 z-50 mx-auto max-w-5xl rounded-full bg-white/80 backdrop-blur-md shadow-sm\`.
+        -   **Hero**: Headline gigante (\`text-6xl sm:text-7xl font-bold\`) + Subheadline + 2 CTAs (Primário/Secundário).
+        -   **Social Proof**: Logotipos de empresas (use FontAwesome icons ou texto estilizado) em escala de cinza opacity-50.
+        -   **Features (Bento Grid)**: Um grid \`grid-cols-1 md:grid-cols-3 gap-4\`. Alguns itens ocupam \`md:col-span-2\`.
+        -   **CTA Final**: Seção isolada com fundo contrastante.
 
-   **REGRAS TÉCNICAS GERAIS (HTML & Tailwind CSS):**
-   - Use font-sans (padrão moderno).
-   - Espaçamento generoso (py-20, gap-8).
-   - Sombras sofisticadas (shadow-2xl, shadow-inner).
-   - Use <section> tags distintas para cada bloco de conteúdo para facilitar a edição visual.
-   - Retorne APENAS o HTML do <body>.
+3.  **Studio de Arte IA**:
+    -   Traduza para Inglês. Adicione: "vibrant colors, volumetric lighting, 8k, unreal engine 5 render".
 
-    4. **Studio de Arte IA (Image Generation)**:
-       Traduza o pedido para um PROMPT TÉCNICO EM INGLÊS.
-       - Adicione: "cinematic lighting, 8k, photorealistic, octane render, masterpiece".
-       - Retorne APENAS o prompt em inglês.
+4.  **Criador de Currículos (ATS Friendly)**:
+    -   Mantenha o HTML semântico mas visualmente limpo. Foco em *conteúdo* legível por máquinas.
 
-    5. **Gerador de Copy**: Textos persuasivos (AIDA, PAS).
+5.  **Gerador de Copy**:
+    -   Use frameworks: AIDA (Atenção, Interesse, Desejo, Ação) ou PAS (Problema, Agitação, Solução).
 
-    6. **Editor Visual (Social Media)**:
-       Gere APENAS o código HTML de uma <div> (1080x1080px) com Tailwind CSS.
-       - Design vibrante, tipografia grande, contraste alto.
-
-    7. **Criador de Currículos (IA)**:
-       Você é um **Especialista em Otimização de Currículos (ATS - Applicant Tracking Systems)** e **Recrutamento**.
-       Sua tarefa é gerar um currículo profissional e persuasivo, no formato HTML usando Tailwind CSS, com base nas informações do usuário e no template escolhido.
-
-       **OBJETIVO PRINCIPAL:** Otimizar o currículo para passar em sistemas ATS e impressionar recrutadores, focando em:
-       - **Palavras-chave:** Integre palavras-chave relevantes para a área e objetivo do usuário de forma natural.
-       - **Verbos de Ação:** Comece descrições de experiência e projetos com verbos de ação fortes.
-       - **Resultados Quantificáveis:** Onde possível, transforme responsabilidades em conquistas com dados (números, porcentagens, prazos).
-       - **Clareza e Concision:** Remova jargões desnecessários e frases passivas.
-       - **Relevância:** Destaque as informações mais importantes para o objetivo de carreira.
-       - **Tom de Voz:** Profissional, confiante e orientado a resultados.
-
-       **REGRAS ESTRUTURAIS E DE PREENCHIMENTO HTML (Tailwind CSS):**
-       - Utilize o TEMPLATE HTML fornecido como base.
-       - **IDENTIFIQUE CADA SEÇÃO PELO SEU ID** (ex: "<span id='resume-name'></span>", "<div id='experience-list'></div>").
-       - Para cada ID, gere o **conteúdo HTML completo** (tags \`<p>\`, \`<ul><li>\`, \`<span>\`, \`<a>\`, etc.) que corresponde à seção e **insira esse HTML como o "innerHTML"** do elemento com o ID.
-       - **NÃO MANTENHA A SINTAXE DE PLACEHOLDER** como \`{{variavel}}\` ou \`{{#each}}\` na saída final. Substitua-os pelo conteúdo HTML.
-       - Se uma seção (com seu ID) não tiver dados correspondentes ou for opcional e vazia, **deixe seu "innerHTML" vazio** ou remova o elemento se for mais limpo.
-       - Para seções de listas (experiência, educação, projetos, habilidades, certificações), **gere o HTML completo para todos os itens da lista e seus itens** (ex: "<div>...</div>" para cada experiência, "<span>...</span>" para cada skill) diretamente dentro do "div" de placeholder da lista.
-       - **NÃO inclua tags "<html>", "<head>" ou "<body>" externas.** Apenas o conteúdo interno.
-       - Use classes Tailwind CSS para todo o estilo.
-       - Garanta que o currículo seja responsivo para diferentes tamanhos de tela.
-       - **NÃO inclua nenhuma imagem de perfil/foto** a menos que explicitamente solicitado pelo usuário, para evitar vieses em processos de seleção.
-
-    8. **Criador de Posts Sociais (Social Media Poster)**:
-       [IMAGE_PROMPT] (Inglês técnico)
-       [COPY] (Português persuasivo, tom de autoridade).
-    `;
+## INSTRUÇÕES FINAIS
+-   Não converse. Gere o resultado.
+-   Para SITES, não coloque tags \`<html>\` ou \`markdown\`. Apenas o código puro.
+`;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -263,7 +258,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ error: "Invalid JSON body" }), { status: 400, headers: corsHeaders });
     }
     
-    let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory } = reqBody;
+    let { prompt, mode, userId, generateAudio, options: rawOptions, userMemory, file } = reqBody;
     const options: GenerateContentOptions = rawOptions || {};
     mode = mode?.trim();
     
@@ -316,9 +311,10 @@ serve(async (req) => {
         const safePrompt = prompt.length > MAX_TTS_CHARS ? prompt.substring(0, MAX_TTS_CHARS) + "..." : prompt;
 
         try {
+            console.log(`[TTS] Gerando áudio para o prompt: "${safePrompt.substring(0, 50)}..." com a voz: ${voiceName}`);
             const audioResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash-preview-tts",
-                contents: [{ parts: [{ text: safePrompt }] }],
+                model: "gemini-1.5-flash",
+                contents: [{ role: "user", parts: [{ text: safePrompt }] }],
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
@@ -329,7 +325,15 @@ serve(async (req) => {
                 },
             });
             
-            const audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+            console.log("[TTS] Resposta recebida da API Gemini.");
+            const candidates = audioResponse.candidates;
+            if (!candidates || candidates.length === 0) {
+                console.error("[TTS] Nenhum candidato retornado.");
+                throw new Error("A IA não gerou candidatos de resposta.");
+            }
+
+            const audioPart = candidates[0].content?.parts?.find((p: any) => p.inlineData);
+            const audioBase64 = audioPart?.inlineData?.data || null;
             
             if (!audioBase64) {
                 throw new Error("O modelo não retornou áudio.");
@@ -354,14 +358,21 @@ serve(async (req) => {
         }
     }
 
-    const modelName = 'gemini-2.5-flash';
+    const modelName = 'gemini-1.5-flash';
     const systemPromptWithMemory = `${CREATOR_SUITE_SYSTEM_PROMPT}\n\n=== HISTÓRICO DE APRENDIZADO DO USUÁRIO ===\n${userMemory || "Nenhum histórico ainda (Modo Visitante ou Novo Usuário)."}`;
 
+    let contentsParts: any[] = [{ text: "" }];
+    
+    if (file && (mode === 'curriculum_generator' || mode === 'curriculum_parse')) {
         contentsParts = [
             { inlineData: { data: file.data, mimeType: file.mimeType } },
-            { text: "Extraia todos os dados profissionais deste currículo para o formato JSON solicitado." }
+            { text: "Analise este currículo e extraia os dados profissionais. Se o modo for 'curriculum_parse', retorne APENAS um JSON com os campos: personalInfo, summary, experience, education, skills, projects, certifications. Se for 'curriculum_generator', use os dados para preencher o template solicitado." }
         ];
+    } else {
+        contentsParts = [{ text: prompt }];
+    }
 
+    let fullPrompt = prompt;
     // ... (Prompt adjustments based on mode - unchanged) ...
     if (mode === 'image_generation' && options) {
         fullPrompt += `
@@ -439,15 +450,19 @@ serve(async (req) => {
         systemInstruction: systemPromptWithMemory
     };
     
-    if (mode === 'news_generator') {
+    if (mode === 'news_generator' || mode === 'copy_generator' || mode === 'landingpage_generator') {
         config.tools = [{ googleSearch: {} }];
     }
 
+    console.log(`[Generation] Iniciando geração de conteúdo para o modo: ${mode}`);
     const response = await ai.models.generateContent({
         model: modelName,
-        contents: fullPrompt, 
+        contents: contentsParts.length > 1 
+            ? [{ role: "user", parts: contentsParts }] 
+            : [{ role: "user", parts: [{ text: fullPrompt }] }], 
         config: config,
     });
+    console.log("[Generation] Conteúdo gerado com sucesso.");
 
     let text: string = typeof response.text === 'string' ? response.text : '';
     
@@ -496,9 +511,10 @@ serve(async (req) => {
             const newsVoice = options?.voice || 'Kore';
             const textForAudio = text.length > MAX_TTS_CHARS ? text.substring(0, MAX_TTS_CHARS) + "..." : text;
 
+            console.log("[Backend TTS] Gerando áudio de fallback para notícia...");
             const audioResponse = await ai.models.generateContent({
-                model: "gemini-2.5-flash-preview-tts",
-                contents: [{ parts: [{ text: textForAudio }] }],
+                model: "gemini-1.5-flash",
+                contents: [{ role: "user", parts: [{ text: textForAudio }] }],
                 config: {
                     responseModalities: ["AUDIO"],
                     speechConfig: {
@@ -508,7 +524,9 @@ serve(async (req) => {
                     },
                 },
             });
-            audioBase64 = audioResponse.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+            const audioPart = audioResponse.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData);
+            audioBase64 = audioPart?.inlineData?.data || null;
+            console.log("[Backend TTS] Áudio gerado:", !!audioBase64);
         } catch (audioError: any) {
             console.error("Failed to generate audio on backend:", audioError);
         }
@@ -540,7 +558,8 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("CRITICAL FUNCTION ERROR:", error);
+    return new Response(JSON.stringify({ error: error.message, stack: error.stack }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
