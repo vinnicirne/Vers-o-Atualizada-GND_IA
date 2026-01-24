@@ -1,4 +1,11 @@
+<<<<<<< HEAD
 
 {
   "requestFramePermissions": []
+=======
+{
+  "requestFramePermissions": [],
+  "name": "Empty React Scaffold",
+  "description": ""
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 }

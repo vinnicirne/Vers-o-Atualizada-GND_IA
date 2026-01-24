@@ -58,6 +58,26 @@ Cria imagens exclusivas a partir de texto.
 Cria páginas de vendas ou captura completas.
 *   **Editor Visual:** O sistema abre um editor onde você pode ver como fica no celular, copiar o código HTML ou exportar o arquivo pronto.
 
+<<<<<<< HEAD
+=======
+#### 📝 Formulários em Sites Exportados (Hospedagem Externa)
+Se você pretende exportar o código do seu site para hospedar em plataformas como Vercel, Hostgator ou GoDaddy, o formulário padrão (CRM Interno) não funcionará, pois ele depende do nosso sistema.
+
+**Solução:** Utilize o bloco especial **"Formulário (Exportar)"**.
+
+1.  **Arraste o Bloco:** Na categoria "Lead Capture", escolha o bloco "Formulário (Exportar)".
+2.  **Configure seu E-mail:**
+    *   Clique no formulário no editor.
+    *   Vá nas configurações (ícone de engrenagem ⚙️).
+    *   No campo **Action**, substitua o link padrão (`https://formsubmit.co/SEU_EMAIL_AQUI`) colocando o seu e-mail real após a barra.
+    *   Exemplo final: `https://formsubmit.co/joao@empresa.com`
+3.  **Ativação:**
+    *   Exporte e publique seu site.
+    *   Faça um teste preenchendo o formulário no site publicado.
+    *   Você receberá um e-mail do **FormSubmit** pedindo para confirmar a ativação. Clique no link de confirmação.
+    *   Pronto! Os próximos contatos chegarão direto na sua caixa de entrada.
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 ### 📱 5. Editor Visual (Social Media)
 Gera layouts prontos para redes sociais. Descreva o post (ex: "Promoção de Natal, fundo vermelho") e receba o design codificado.
 
@@ -128,4 +148,8 @@ Use os botões de "Copiar" individuais. Copie primeiro o **Título** para o camp
 
 ---
 
+<<<<<<< HEAD
 *GDN_IA - Potencializando sua criatividade com Inteligência Artificial.*
+=======
+*GDN_IA - Potencializando sua criatividade com Inteligência Artificial.*
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa

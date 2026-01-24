@@ -11,13 +11,21 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
   const navItems: { key: AdminView; label: string; icon: string }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: 'fas fa-tachometer-alt' },
     { key: 'users', label: 'Usuários', icon: 'fas fa-users-cog' },
+<<<<<<< HEAD
+=======
+    { key: 'crm', label: 'CRM / Leads', icon: 'fas fa-funnel-dollar' }, // NOVO
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     { key: 'notifications_push', label: 'Notificações Push', icon: 'fas fa-paper-plane' },
     { key: 'news', label: 'Histórico', icon: 'fas fa-newspaper' },
     { key: 'payments', label: 'Pagamentos', icon: 'fas fa-credit-card' },
     { key: 'plans', label: 'Planos', icon: 'fas fa-layer-group' },
+<<<<<<< HEAD
     // FIX: Add 'tool_settings' to AdminView
     { key: 'tool_settings', label: 'Gerenciar Ferramentas', icon: 'fas fa-toggle-on' }, 
     // FIX: Add 'white_label_settings' to AdminView
+=======
+    { key: 'tool_settings', label: 'Gerenciar Ferramentas', icon: 'fas fa-toggle-on' }, 
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     { key: 'white_label_settings', label: 'White Label', icon: 'fas fa-paint-roller' }, 
     { key: 'popups', label: 'Popups & Avisos', icon: 'fas fa-bullhorn' },
     { key: 'feedbacks', label: 'Depoimentos', icon: 'fas fa-comment-dots' },
@@ -54,4 +62,8 @@ export function Sidebar({ currentView, setCurrentView }: SidebarProps) {
       </nav>
     </aside>
   );
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa

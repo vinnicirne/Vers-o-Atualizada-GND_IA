@@ -14,9 +14,18 @@ const filesToDelete = [
   'components/admin/AllNewsViewer.tsx',
   'components/Layout.tsx',
   'components/EmptyState.tsx',
+<<<<<<< HEAD
   'Header.tsx', // Arquivo duplicado na raiz (o correto está em components/Header.tsx)
   'services/paymentService.ts', // Removido
   'components/MercadoPagoCheckout.tsx' // Removido
+=======
+  'Header.tsx',
+  'services/paymentService.ts',
+  'components/MercadoPagoCheckout.tsx',
+  'services/ttsService.ts',
+  'components/AudioPlayer.tsx',
+  'components/tools/AudioForm.tsx'
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 ];
 
 console.log('🧹 Iniciando limpeza de arquivos obsoletos (Lixo Digital)...');

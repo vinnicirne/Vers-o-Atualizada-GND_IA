@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 import React from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { ResultDisplay } from '../ResultDisplay';
@@ -19,6 +22,10 @@ interface DashboardResultsProps {
         imagePrompt: string | null;
         imageDimensions: { width: number; height: number };
         metadata: { plan: string; credits: string | number } | null;
+<<<<<<< HEAD
+=======
+        seoMetadata?: any;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     };
     isLoading: boolean;
     user: User | null;
@@ -27,11 +34,19 @@ interface DashboardResultsProps {
     onCloseFeedback: () => void;
 }
 
+<<<<<<< HEAD
 export function DashboardResults({ 
     currentMode, 
     results, 
     isLoading, 
     user, 
+=======
+export function DashboardResults({
+    currentMode,
+    results,
+    isLoading,
+    user,
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     onCloseEditor,
     showFeedback,
     onCloseFeedback
@@ -52,7 +67,11 @@ export function DashboardResults({
         const encodedPrompt = encodeURIComponent(prompt);
         const width = results.imageDimensions.width || 1024;
         const height = results.imageDimensions.height || 1024;
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         // Generating Pollinations URL
         const imageUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&nologo=true`;
 
@@ -68,8 +87,13 @@ export function DashboardResults({
 
         return (
             <div className="mt-8 space-y-8 pb-12">
+<<<<<<< HEAD
                 <LandingPageBuilder 
                     initialHtml={initialHtml} 
+=======
+                <LandingPageBuilder
+                    initialHtml={initialHtml}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                     onClose={onCloseEditor}
                 />
             </div>
@@ -78,11 +102,19 @@ export function DashboardResults({
 
     return (
         <div className="mt-8 space-y-8 pb-12">
+<<<<<<< HEAD
             
             {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL & CRIADOR DE CURRÍCULOS */}
             {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && results.text && (
                 <LandingPageBuilder 
                     initialHtml={results.text} 
+=======
+
+            {/* CRIADOR DE SITES (WEB) & EDITOR VISUAL & CRIADOR DE CURRÍCULOS */}
+            {(currentMode === 'landingpage_generator' || currentMode === 'canva_structure' || currentMode === 'curriculum_generator') && results.text && (
+                <LandingPageBuilder
+                    initialHtml={results.text}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                     onClose={onCloseEditor}
                 />
             )}
@@ -107,6 +139,7 @@ export function DashboardResults({
             )}
 
             {/* RESULT DISPLAY (TEXTO) & SEO WIDGET */}
+<<<<<<< HEAD
             {currentMode !== 'landingpage_generator' && 
              currentMode !== 'image_generation' && 
              currentMode !== 'social_media_poster' &&
@@ -146,6 +179,48 @@ export function DashboardResults({
                 <FeedbackWidget 
                     userId={user.id} 
                     onClose={onCloseFeedback} 
+=======
+            {currentMode !== 'landingpage_generator' &&
+                currentMode !== 'image_generation' &&
+                currentMode !== 'social_media_poster' &&
+                currentMode !== 'canva_structure' &&
+                currentMode !== 'curriculum_generator' && // Hide for curriculum
+                // LÓGICA DE CORREÇÃO: Esconde o texto apenas se for TTS E tiver áudio com sucesso.
+                // Se for TTS mas falhou (sem áudio), mostra o texto para debug.
+                (currentMode !== 'text_to_speech' || !results.audioBase64) &&
+                results.text && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 animate-fade-in-up">
+                        <div className="lg:col-span-2">
+                            <ResultDisplay
+                                title={results.title}
+                                text={results.text}
+                                mode={currentMode}
+                                metadata={results.metadata || undefined}
+                            />
+                        </div>
+
+                        {/* SEO Scorecard - Útil para notícias e copy */}
+                        {(currentMode === 'news_generator' || currentMode === 'copy_generator') && (
+                            <div className="lg:col-span-1">
+                                <SeoScorecard
+                                    title={results.title || "Sem Título"}
+                                    content={results.text}
+                                    backendMetadata={results.seoMetadata}
+                                />
+                            </div>
+                        )}
+                    </div>
+                )}
+
+            {/* AUDIO PLAYER */}
+            {results.audioBase64 && <AudioPlayer audioBase64={results.audioBase64} />}
+
+            {/* FEEDBACK WIDGET */}
+            {(results.text || results.imagePrompt || results.audioBase64) && showFeedback && user && (
+                <FeedbackWidget
+                    userId={user.id}
+                    onClose={onCloseFeedback}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 />
             )}
         </div>

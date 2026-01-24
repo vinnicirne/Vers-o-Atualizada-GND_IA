@@ -9,7 +9,13 @@ export type ServiceKey =
   | 'image_generation'
   | 'social_media_poster'
   | 'n8n_integration'
+<<<<<<< HEAD
   | 'curriculum_generator'; // NOVO: Gerador de Currículo
+=======
+  | 'curriculum_generator'
+  | 'curriculum_parse'
+  | 'crm_suite'; // NOVO: CRM & Leads Management
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
 export interface ServicePermission {
   key: ServiceKey; // Nome em português

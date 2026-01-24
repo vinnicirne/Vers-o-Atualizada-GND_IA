@@ -5,6 +5,30 @@ import { getLeads, updateLead, deleteLead, createLead } from '../../services/mar
 import { analyzeLeadQuality } from '../../services/geminiService';
 import { useUser } from '../../contexts/UserContext';
 import { Toast } from '../admin/Toast';
+<<<<<<< HEAD
+=======
+import {
+    Users,
+    Search,
+    Plus,
+    Columns,
+    List,
+    PieChart,
+    Bot,
+    MessageSquare,
+    PenTool,
+    Trash2,
+    X,
+    CheckCircle,
+    Inbox,
+    Loader2,
+    Phone,
+    Calendar,
+    Magnet,
+    FileText,
+    Ban
+} from 'lucide-react';
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 import { ResponsiveContainer, FunnelChart, Funnel, LabelList, Tooltip, Cell } from 'recharts';
 import { DndContext, DragOverlay, useDraggable, useDroppable, DragEndEvent, PointerSensor, useSensor, useSensors, closestCorners } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -14,12 +38,21 @@ interface CrmDashboardProps {
 }
 
 // Estágios do Funil (Mapeados para o fluxo sugerido)
+<<<<<<< HEAD
 const STAGES: { id: LeadStatus; label: string; color: string; bg: string; chartColor: string, borderColor: string, icon: string }[] = [
     { id: 'new', label: 'Novos (Atração)', color: 'text-blue-700', bg: 'bg-blue-50', chartColor: '#3b82f6', borderColor: 'border-blue-200', icon: 'fa-magnet' },
     { id: 'contacted', label: 'Em Conversa (WhatsApp)', color: 'text-yellow-700', bg: 'bg-yellow-50', chartColor: '#eab308', borderColor: 'border-yellow-200', icon: 'fa-comments' },
     { id: 'qualified', label: 'Proposta Enviada', color: 'text-purple-700', bg: 'bg-purple-50', chartColor: '#a855f7', borderColor: 'border-purple-200', icon: 'fa-file-invoice-dollar' },
     { id: 'customer', label: 'Fechado (Ganho)', color: 'text-green-700', bg: 'bg-green-50', chartColor: '#22c55e', borderColor: 'border-green-200', icon: 'fa-check-circle' },
     { id: 'lost', label: 'Perdidos', color: 'text-gray-600', bg: 'bg-gray-100', chartColor: '#9ca3af', borderColor: 'border-gray-200', icon: 'fa-ban' },
+=======
+const STAGES: { id: LeadStatus; label: string; color: string; bg: string; chartColor: string, borderColor: string, icon: any }[] = [
+    { id: 'new', label: 'Novos (Atração)', color: 'text-indigo-700', bg: 'bg-indigo-50', chartColor: '#4f46e5', borderColor: 'border-indigo-200', icon: Magnet },
+    { id: 'contacted', label: 'Em Conversa (WhatsApp)', color: 'text-amber-700', bg: 'bg-amber-50', chartColor: '#d97706', borderColor: 'border-amber-200', icon: MessageSquare },
+    { id: 'qualified', label: 'Proposta Enviada', color: 'text-purple-700', bg: 'bg-purple-50', chartColor: '#9333ea', borderColor: 'border-purple-200', icon: FileText },
+    { id: 'customer', label: 'Fechado (Ganho)', color: 'text-emerald-700', bg: 'bg-emerald-50', chartColor: '#059669', borderColor: 'border-emerald-200', icon: CheckCircle },
+    { id: 'lost', label: 'Perdidos', color: 'text-slate-600', bg: 'bg-slate-100', chartColor: '#475569', borderColor: 'border-slate-200', icon: Ban },
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 ];
 
 // Helper para Tags de Temperatura
@@ -54,7 +87,11 @@ const LeadCard = ({ lead, onClick, onAnalyze, isOverlay = false, isAnalyzing = f
     };
 
     return (
+<<<<<<< HEAD
         <div 
+=======
+        <div
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             onClick={onClick}
             className={`
                 bg-white p-4 rounded-xl border transition-all duration-200 cursor-grab active:cursor-grabbing group relative
@@ -69,14 +106,22 @@ const LeadCard = ({ lead, onClick, onAnalyze, isOverlay = false, isAnalyzing = f
                         {lead.company || 'Particular'}
                     </p>
                 </div>
+<<<<<<< HEAD
                 
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 {/* Tag de Temperatura */}
                 <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${tempTag.bg} ${tempTag.text}`}>
                     <span>{tempTag.icon}</span>
                     <span>{tempTag.label}</span>
                 </div>
             </div>
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             {/* Ações Rápidas (Footer) */}
             <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-50">
                 <div className="text-[10px] text-gray-400">
@@ -85,7 +130,11 @@ const LeadCard = ({ lead, onClick, onAnalyze, isOverlay = false, isAnalyzing = f
 
                 <div className="flex gap-2">
                     {/* Botão Análise IA */}
+<<<<<<< HEAD
                     <button 
+=======
+                    <button
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                         onClick={handleAnalyzeClick}
                         className={`w-7 h-7 rounded-full flex items-center justify-center transition-colors ${isAnalyzing ? 'bg-purple-100 text-purple-500 cursor-wait' : 'bg-purple-50 text-purple-600 hover:bg-purple-600 hover:text-white'}`}
                         title="Classificar com IA"
@@ -95,7 +144,11 @@ const LeadCard = ({ lead, onClick, onAnalyze, isOverlay = false, isAnalyzing = f
                     </button>
 
                     {lead.phone && (
+<<<<<<< HEAD
                         <button 
+=======
+                        <button
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                             onClick={handleWhatsAppClick}
                             className="w-7 h-7 rounded-full bg-green-50 text-green-600 flex items-center justify-center hover:bg-green-600 hover:text-white transition-colors"
                             title="Chamar no WhatsApp"
@@ -137,10 +190,17 @@ const DroppableColumn = ({ stage, leads, onEditLead, onAnalyzeLead, analyzingIds
         id: stage.id,
     });
 
+<<<<<<< HEAD
     const totalValue = leads.length; 
 
     return (
         <div 
+=======
+    const totalValue = leads.length;
+
+    return (
+        <div
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             ref={setNodeRef}
             className={`
                 min-w-[280px] w-full md:w-1/5 rounded-xl flex flex-col h-[calc(100vh-240px)] transition-all duration-200 border-t-4
@@ -159,6 +219,7 @@ const DroppableColumn = ({ stage, leads, onEditLead, onAnalyzeLead, analyzingIds
                     </span>
                 </div>
             </div>
+<<<<<<< HEAD
             
             {/* Column Body */}
             <div className="px-2 pb-2 flex-1 overflow-y-auto custom-scrollbar space-y-3">
@@ -167,6 +228,16 @@ const DroppableColumn = ({ stage, leads, onEditLead, onAnalyzeLead, analyzingIds
                         key={lead.id} 
                         lead={lead} 
                         onClick={() => onEditLead(lead)} 
+=======
+
+            {/* Column Body */}
+            <div className="px-2 pb-2 flex-1 overflow-y-auto custom-scrollbar space-y-3">
+                {leads.map(lead => (
+                    <DraggableLead
+                        key={lead.id}
+                        lead={lead}
+                        onClick={() => onEditLead(lead)}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                         onAnalyze={onAnalyzeLead}
                         isAnalyzing={analyzingIds.has(lead.id)}
                     />
@@ -187,12 +258,20 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     const { user } = useUser();
     const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
+<<<<<<< HEAD
     const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'analytics'>('kanban'); 
+=======
+    const [viewMode, setViewMode] = useState<'kanban' | 'table' | 'analytics'>('kanban');
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     const [filterStatus, setFilterStatus] = useState<LeadStatus | 'all'>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const [missingTables, setMissingTables] = useState(false);
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     // IA Analysis State
     const [analyzingIds, setAnalyzingIds] = useState<Set<string>>(new Set());
 
@@ -223,7 +302,11 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
         } catch (e: any) {
             console.error(e);
             if (e.message && (
+<<<<<<< HEAD
                 e.message.includes('relation "public.leads" does not exist') || 
+=======
+                e.message.includes('relation "public.leads" does not exist') ||
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 e.message.includes('404') ||
                 e.message.includes('does not exist')
             )) {
@@ -259,7 +342,11 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
         // If status changed
         if (currentLead && currentLead.status !== newStatus) {
             // 1. Optimistic Update
+<<<<<<< HEAD
             setLeads(prev => prev.map(l => 
+=======
+            setLeads(prev => prev.map(l =>
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 l.id === leadId ? { ...l, status: newStatus } : l
             ));
 
@@ -268,7 +355,11 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                 await updateLead(leadId, { status: newStatus });
             } catch (e) {
                 // Revert on error
+<<<<<<< HEAD
                 setLeads(prev => prev.map(l => 
+=======
+                setLeads(prev => prev.map(l =>
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                     l.id === leadId ? { ...l, status: currentLead.status } : l
                 ));
                 setToast({ message: "Erro ao mover lead.", type: 'error' });
@@ -278,17 +369,26 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
 
     const handleAnalyzeLead = async (lead: Lead) => {
         if (analyzingIds.has(lead.id)) return;
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         setAnalyzingIds(prev => new Set(prev).add(lead.id));
         setToast({ message: `Analisando ${lead.name}...`, type: 'info' });
 
         try {
             const analysis = await analyzeLeadQuality(lead);
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             // Adiciona a justificativa da IA às notas existentes
             const timestamp = new Date().toLocaleString('pt-BR');
             const newNote = `\n\n[🤖 Análise IA - ${timestamp}]\nScore: ${analysis.score}\nJustificativa: ${analysis.justification}`;
             const updatedNotes = (lead.notes || '') + newNote;
+<<<<<<< HEAD
             
             // Atualiza no banco
             await updateLead(lead.id, { 
@@ -301,6 +401,20 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                 l.id === lead.id ? { ...l, score: analysis.score, notes: updatedNotes } : l
             ));
             
+=======
+
+            // Atualiza no banco
+            await updateLead(lead.id, {
+                score: analysis.score,
+                notes: updatedNotes
+            });
+
+            // Atualiza estado local
+            setLeads(prev => prev.map(l =>
+                l.id === lead.id ? { ...l, score: analysis.score, notes: updatedNotes } : l
+            ));
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             setToast({ message: "Lead analisado com sucesso!", type: 'success' });
 
         } catch (e) {
@@ -357,10 +471,17 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     // Filter Logic
     const filteredLeads = leads.filter(lead => {
         const matchesStatus = (viewMode === 'kanban' || viewMode === 'analytics') ? true : (filterStatus === 'all' || lead.status === filterStatus);
+<<<<<<< HEAD
         const matchesSearch = !searchTerm || 
             (lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
              lead.email.toLowerCase().includes(searchTerm.toLowerCase()) || 
              lead.company?.toLowerCase().includes(searchTerm.toLowerCase()));
+=======
+        const matchesSearch = !searchTerm ||
+            (lead.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                lead.company?.toLowerCase().includes(searchTerm.toLowerCase()));
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         return matchesStatus && matchesSearch;
     });
 
@@ -370,13 +491,21 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
     }, {} as Record<string, number>);
 
     const funnelChartData = STAGES
+<<<<<<< HEAD
         .filter(s => s.id !== 'lost') 
+=======
+        .filter(s => s.id !== 'lost')
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         .map(stage => ({
             name: stage.label.split('(')[0].trim(), // Simplificar nome pro gráfico
             value: metrics[stage.id] || 0,
             fill: stage.chartColor
         }))
+<<<<<<< HEAD
         .filter(d => d.value > 0); 
+=======
+        .filter(d => d.value > 0);
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
     if (missingTables) {
         return <div className="p-8 text-center text-red-500">Erro: Tabelas de CRM não encontradas. Contate o suporte.</div>;
@@ -397,17 +526,28 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
 
                     <div className="relative flex-grow md:flex-grow-0">
                         <i className="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+<<<<<<< HEAD
                         <input 
                             type="text" 
                             placeholder="Buscar cliente..." 
+=======
+                        <input
+                            type="text"
+                            placeholder="Buscar cliente..."
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                             value={searchTerm}
                             onChange={e => setSearchTerm(e.target.value)}
                             className="pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none w-full md:w-64 transition-all"
                         />
                     </div>
                 </div>
+<<<<<<< HEAD
                 
                 <button 
+=======
+
+                <button
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                     onClick={openNewModal}
                     className="w-full md:w-auto px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition shadow-md shadow-green-200 flex items-center justify-center gap-2 text-sm font-bold"
                 >
@@ -456,9 +596,15 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                         <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                             <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar h-[calc(100vh-220px)] items-start">
                                 {STAGES.map(stage => (
+<<<<<<< HEAD
                                     <DroppableColumn 
                                         key={stage.id} 
                                         stage={stage} 
+=======
+                                    <DroppableColumn
+                                        key={stage.id}
+                                        stage={stage}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                                         leads={filteredLeads.filter(l => l.status === stage.id)}
                                         onEditLead={openEditModal}
                                         onAnalyzeLead={handleAnalyzeLead}
@@ -512,8 +658,13 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <div className="flex justify-end gap-2">
+<<<<<<< HEAD
                                                             <button 
                                                                 onClick={() => handleAnalyzeLead(lead)} 
+=======
+                                                            <button
+                                                                onClick={() => handleAnalyzeLead(lead)}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                                                                 className={`p-2 rounded text-xs transition-colors ${isAnalyzing ? 'bg-purple-100 text-purple-500' : 'text-purple-600 hover:bg-purple-50'}`}
                                                                 title="Analisar"
                                                                 disabled={isAnalyzing}
@@ -544,11 +695,16 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                             <h3 className="font-bold text-lg text-gray-800">{editingLead.id ? 'Editar Cliente' : 'Novo Cliente'}</h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-red-500 transition"><i className="fas fa-times"></i></button>
                         </div>
+<<<<<<< HEAD
                         
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                         <div className="p-6 space-y-4 overflow-y-auto">
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Nome Completo</label>
+<<<<<<< HEAD
                                     <input type="text" value={editingLead.name || ''} onChange={e => setEditingLead({...editingLead, name: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="Ex: João Silva" />
                                 </div>
                                 <div>
@@ -565,22 +721,52 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">WhatsApp / Telefone</label>
                                 <input type="tel" value={editingLead.phone || ''} onChange={e => setEditingLead({...editingLead, phone: e.target.value})} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="(11) 99999-9999" />
+=======
+                                    <input type="text" value={editingLead.name || ''} onChange={e => setEditingLead({ ...editingLead, name: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="Ex: João Silva" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Empresa</label>
+                                    <input type="text" value={editingLead.company || ''} onChange={e => setEditingLead({ ...editingLead, company: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="Ex: Acme Corp" />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email</label>
+                                <input type="email" value={editingLead.email || ''} onChange={e => setEditingLead({ ...editingLead, email: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="joao@email.com" />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase mb-1">WhatsApp / Telefone</label>
+                                <input type="tel" value={editingLead.phone || ''} onChange={e => setEditingLead({ ...editingLead, phone: e.target.value })} className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition" placeholder="(11) 99999-9999" />
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-100">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Etapa do Funil</label>
+<<<<<<< HEAD
                                     <select value={editingLead.status || 'new'} onChange={e => setEditingLead({...editingLead, status: e.target.value as any})} className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:outline-none">
+=======
+                                    <select value={editingLead.status || 'new'} onChange={e => setEditingLead({ ...editingLead, status: e.target.value as any })} className="w-full border border-gray-300 rounded-lg p-2 text-sm bg-white focus:outline-none">
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                                         {STAGES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
                                     </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Temperatura (Score)</label>
+<<<<<<< HEAD
                                     <input 
                                         type="range" 
                                         min="0" max="100" 
                                         value={editingLead.score || 0} 
                                         onChange={e => setEditingLead({...editingLead, score: parseInt(e.target.value)})} 
+=======
+                                    <input
+                                        type="range"
+                                        min="0" max="100"
+                                        value={editingLead.score || 0}
+                                        onChange={e => setEditingLead({ ...editingLead, score: parseInt(e.target.value) })}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600 mt-2"
                                     />
                                     <div className="text-center text-xs font-bold mt-1 text-blue-600">{editingLead.score || 0}%</div>
@@ -589,7 +775,11 @@ export function CrmDashboard({ isAdminView = false }: CrmDashboardProps) {
 
                             <div>
                                 <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Anotações</label>
+<<<<<<< HEAD
                                 <textarea value={editingLead.notes || ''} onChange={e => setEditingLead({...editingLead, notes: e.target.value})} className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition h-24 resize-none" placeholder="Detalhes importantes sobre a negociação..." />
+=======
+                                <textarea value={editingLead.notes || ''} onChange={e => setEditingLead({ ...editingLead, notes: e.target.value })} className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none transition h-24 resize-none" placeholder="Detalhes importantes sobre a negociação..." />
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                             </div>
                         </div>
 

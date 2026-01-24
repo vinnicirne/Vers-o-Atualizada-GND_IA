@@ -1,4 +1,5 @@
 
+<<<<<<< HEAD
 
 import React, { useState, useEffect } from 'react';
 import { CREATOR_SUITE_MODES } from '../constants';
@@ -6,11 +7,23 @@ import { ServiceKey } from '../types/plan.types';
 import { useUser } from '../contexts/UserContext';
 import { usePlan } from '../hooks/usePlan';
 import { CURRICULUM_TEMPLATES } from './resume/templates'; // Importar templates de currículo
+=======
+import React from 'react';
+import { CREATOR_SUITE_MODES } from '../constants';
+import { ServiceKey } from '../types/plan.types';
+import { usePlan } from '../hooks/usePlan';
+import { StandardForm } from './tools/StandardForm';
+import { VisualForm } from './tools/VisualForm';
+import { WebsiteForm } from './tools/WebsiteForm';
+import { AudioForm } from './tools/AudioForm';
+import { CurriculumForm } from './tools/CurriculumForm';
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
 interface ContentGeneratorProps {
   mode: ServiceKey;
   onModeChange: (mode: ServiceKey) => void;
   onGenerate: (
+<<<<<<< HEAD
     prompt: string, 
     mode: ServiceKey, 
     generateAudio: boolean,
@@ -32,11 +45,20 @@ interface ContentGeneratorProps {
       certifications?: string[];
     }
   ) => void;
+=======
+    prompt: string,
+    mode: ServiceKey,
+    generateAudio: boolean,
+    options?: any,
+    file?: { data: string, mimeType: string } | null
+  ) => Promise<any>;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
   isLoading: boolean;
   isGuest?: boolean;
   guestAllowedModes?: ServiceKey[];
 }
 
+<<<<<<< HEAD
 const THEMES = [
   { value: 'modern', label: 'Moderno & Clean' },
   { value: 'minimalist', label: 'Minimalista' },
@@ -155,10 +177,24 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
   // Updated Styles for Light Theme
   const selectClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
   const inputClasses = "w-full bg-[#F5F7FA] border border-gray-300 text-gray-700 p-3 text-sm rounded-md focus:border-[var(--brand-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] transition duration-300";
+=======
+export function ContentGenerator({ mode, onGenerate, isLoading, isGuest = false, guestAllowedModes = [] }: ContentGeneratorProps) {
+  const { hasAccessToService } = usePlan();
+
+  const isModeLocked = (modeValue: ServiceKey) => {
+    if (isGuest) {
+      return !guestAllowedModes.includes(modeValue);
+    }
+    return !hasAccessToService(modeValue);
+  };
+
+  const isLocked = isModeLocked(mode);
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-md border border-gray-200">
       <div className="mb-6 pb-4 border-b border-gray-100">
+<<<<<<< HEAD
           <h2 className="text-xl font-bold text-[var(--brand-secondary)]">
               {CREATOR_SUITE_MODES.find(m => m.value === mode)?.label}
           </h2>
@@ -514,6 +550,33 @@ export function ContentGenerator({ mode, onModeChange, onGenerate, isLoading, is
           )}
         </button>
       </form>
+=======
+        <h2 className="text-xl font-bold text-[var(--brand-secondary)]">
+          {CREATOR_SUITE_MODES.find(m => m.value === mode)?.label}
+        </h2>
+        <p className="text-sm text-gray-500">Preencha os detalhes abaixo para gerar seu conteúdo.</p>
+      </div>
+
+      {/* Roteador de Formulários */}
+      {mode === 'landingpage_generator' ? (
+        <WebsiteForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
+      ) : (mode === 'image_generation' || mode === 'social_media_poster') ? (
+        <VisualForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
+      ) : mode === 'text_to_speech' ? (
+        <AudioForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
+      ) : mode === 'curriculum_generator' ? (
+        <CurriculumForm mode={mode} onGenerate={onGenerate} isLoading={isLoading} isLocked={isLocked} />
+      ) : (
+        <StandardForm
+          mode={mode}
+          onGenerate={onGenerate}
+          isLoading={isLoading}
+          isLocked={isLocked}
+          isGuest={isGuest}
+          hasAccessToService={hasAccessToService}
+        />
+      )}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     </div>
   );
 }

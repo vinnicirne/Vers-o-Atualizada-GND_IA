@@ -14,6 +14,7 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
   let content = text;
 
   if (lines.length > 0) {
+<<<<<<< HEAD
       const firstLine = lines[0].trim();
       // Remove marcadores comuns de MD/Text gerados por IA
       const cleanLine = firstLine.replace(/^(\*\*|#|Título:|Subject:|Headline:)\s*/i, '').replace(/\*\*$/, '');
@@ -22,6 +23,26 @@ const extractTitleAndContent = (text: string): { title: string | null, content: 
           title = cleanLine;
           // Remove a primeira linha e quebras subsequentes
           content = lines.slice(1).join('\n').trim();
+=======
+      // Find first non-empty line
+      let titleLineIndex = 0;
+      while (titleLineIndex < lines.length && lines[titleLineIndex].trim() === '') {
+          titleLineIndex++;
+      }
+
+      if (titleLineIndex < lines.length) {
+          const firstLine = lines[titleLineIndex].trim();
+          // Remove marcadores comuns de MD/Text gerados por IA
+          const cleanLine = firstLine.replace(/^(\*\*|#|Título:|Subject:|Headline:)\s*/i, '').replace(/\*\*$/, '');
+          
+          if (cleanLine.length > 5 && cleanLine.length < 150 && !cleanLine.includes('<')) {
+              title = cleanLine;
+              // Content is everything AFTER this title line
+              const remainingLines = lines.slice(titleLineIndex + 1);
+              // Remove empty lines at start of content
+              content = remainingLines.join('\n').trim();
+          }
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
       }
   }
 
@@ -34,7 +55,12 @@ export function useDashboard() {
 
     // UI Control
     const [sidebarOpen, setSidebarOpen] = useState(false);
+<<<<<<< HEAD
     const [currentMode, setCurrentMode] = useState<ServiceKey>('news_generator');
+=======
+    // Allow 'crm' as a valid mode for the dashboard state
+    const [currentMode, setCurrentMode] = useState<ServiceKey | 'crm' | 'home'>('home');
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
@@ -47,14 +73,26 @@ export function useDashboard() {
         imagePrompt: string | null;
         imageDimensions: { width: number; height: number };
         metadata: { plan: string; credits: string | number } | null;
+<<<<<<< HEAD
+=======
+        seoMetadata: any | null;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     }>({
         text: null,
         title: null,
         audioBase64: null,
         imagePrompt: null,
         imageDimensions: { width: 1024, height: 1024 },
+<<<<<<< HEAD
         metadata: null
     });
+=======
+        metadata: null,
+        seoMetadata: null
+    });
+
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     const [showFeedback, setShowFeedback] = useState(false);
 
     // Modals State
@@ -87,10 +125,22 @@ export function useDashboard() {
         setModals(prev => ({ ...prev, [modal]: value }));
     };
 
+<<<<<<< HEAD
     const handleModeChange = (mode: ServiceKey) => {
         // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
         // Se a ferramenta não estiver acessível (seja por plano ou por desativação global),
         // o modal de 'plans' (para logados) ou 'featureLock' (para guests) será acionado.
+=======
+    const handleModeChange = (mode: ServiceKey | 'crm' | 'home') => {
+        // Special handling for CRM or Home
+        if (mode === 'crm' || mode === 'home') {
+            setCurrentMode(mode);
+            setSidebarOpen(false);
+            return;
+        }
+
+        // hasAccessToService já encapsula a lógica de permissão do plano E a ativação global da ferramenta.
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         if (!hasAccessToService(mode)) {
             if (isGuest) {
                 toggleModal('featureLock', true);
@@ -122,7 +172,12 @@ export function useDashboard() {
         prompt: string, 
         mode: ServiceKey, 
         generateAudio: boolean, 
+<<<<<<< HEAD
         options?: any
+=======
+        options?: any,
+        file?: { data: string, mimeType: string } | null
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     ) => {
         setError(null);
         setResults(prev => ({ ...prev, text: null, title: null, audioBase64: null, imagePrompt: null }));
@@ -158,7 +213,11 @@ export function useDashboard() {
                 imgDims = { width: w, height: h };
             }
 
+<<<<<<< HEAD
             const apiResult = await generateCreativeContent(prompt, mode, user?.id, generateAudio, options);
+=======
+            const apiResult = await generateCreativeContent(prompt, mode, user?.id, generateAudio, options, file || undefined);
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             
             let newText = null;
             let newTitle = null;
@@ -167,12 +226,19 @@ export function useDashboard() {
             if (mode === 'image_generation' || mode === 'social_media_poster') {
                 newText = apiResult.text;
                 newImagePrompt = apiResult.text;
+<<<<<<< HEAD
+=======
+            } else if (mode === 'curriculum_parse') {
+                // For parsing, we keep the original text (which is JSON)
+                newText = apiResult.text;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             } else {
                 const extracted = extractTitleAndContent(apiResult.text);
                 newTitle = extracted.title;
                 newText = extracted.content;
             }
 
+<<<<<<< HEAD
             // Update State
             setResults({
                 text: newText,
@@ -188,17 +254,46 @@ export function useDashboard() {
             // Consume Credits
             if (isGuest) {
                 const newCredits = guestCredits - cost; // Deduz o custo total para guest
+=======
+            // Update State (Skip for internal parse mode)
+            if (mode !== 'curriculum_parse') {
+                setResults({
+                    text: newText,
+                    title: newTitle,
+                    audioBase64: apiResult.audioBase64 || null,
+                    imagePrompt: newImagePrompt,
+                    imageDimensions: imgDims,
+                    seoMetadata: apiResult.seoMetadata || null,
+                    metadata: isGuest 
+                        ? { plan: 'Visitante', credits: guestCredits - cost }
+                        : { plan: currentPlan.name, credits: user?.credits === -1 ? 'Ilimitado' : (user?.credits || 0) - cost }
+                });
+                setShowFeedback(true);
+            }
+
+            // Consume Credits
+            if (isGuest) {
+                const newCredits = guestCredits - cost;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 setGuestCredits(newCredits);
                 localStorage.setItem('gdn_guest_credits', newCredits.toString());
             } else {
                 await refresh();
             }
+<<<<<<< HEAD
 
             setShowFeedback(true);
+=======
+            return apiResult;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
         } catch (err: any) {
             console.error("Erro na geração:", err);
             setError(err.message || 'Erro ao gerar conteúdo.');
+<<<<<<< HEAD
+=======
+            throw err;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         } finally {
             setIsLoading(false);
         }

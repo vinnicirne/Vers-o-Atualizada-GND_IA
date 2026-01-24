@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 import React, { useState, useEffect } from 'react';
 import { ServiceKey } from '../../types/plan.types';
 import { CREATOR_SUITE_MODES } from '../../constants';
@@ -6,7 +9,11 @@ import { usePlan } from '../../hooks/usePlan';
 
 interface StandardFormProps {
     mode: ServiceKey;
+<<<<<<< HEAD
     onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any) => void;
+=======
+    onGenerate: (prompt: string, mode: ServiceKey, generateAudio: boolean, options?: any, file?: { data: string, mimeType: string } | null) => Promise<any>;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     isLoading: boolean;
     isLocked: boolean;
     isGuest: boolean;
@@ -68,7 +75,10 @@ export function StandardForm({ mode, onGenerate, isLoading, isLocked, isGuest, h
                     </div>
                 )
             )}
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             <button
                 type="submit"
                 className="w-full bg-[var(--brand-primary)] hover:bg-orange-500 text-white font-bold py-4 px-6 rounded-lg focus:outline-none focus:ring-4 focus:ring-orange-100 transition-all duration-300 disabled:opacity-50 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed flex items-center justify-center shadow-md transform hover:-translate-y-0.5"

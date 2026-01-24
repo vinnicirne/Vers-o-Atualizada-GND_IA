@@ -1,5 +1,8 @@
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '../../contexts/UserContext';
 import { createApiKey, listApiKeys, revokeApiKey, generateWordPressPluginZip } from '../../services/developerService';
@@ -102,6 +105,7 @@ export function DocumentationViewer() {
 
   const schemaSql = `
 -- =========================================================
+<<<<<<< HEAD
 -- 🚨 PACOTE DE CORREÇÃO (UPDATES)
 -- Use este SQL para corrigir problemas em instalações existentes.
 -- Para uma instalação nova, use a aba "Instalação Limpa".
@@ -479,6 +483,82 @@ grant usage on schema public to anon, authenticated, service_role;
 grant all on all tables in schema public to service_role;
 grant select, insert, update, delete on all tables in schema public to authenticated;
 grant select, insert on public.logs to anon;
+=======
+-- 🚨 PACOTE DE CORREÇÃO (RESET) - CRM & LEADS
+-- Use este script se encontrar erros como "column owner_id does not exist".
+-- =========================================================
+
+-- 1. LIMPEZA (Apaga versões incompatíveis)
+DROP TABLE IF EXISTS public.marketing_events CASCADE;
+DROP TABLE IF EXISTS public.deals CASCADE;
+DROP TABLE IF EXISTS public.leads CASCADE;
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 2. TABELA DE LEADS (Corrigida)
+create table public.leads (
+  id uuid default gen_random_uuid() primary key,
+  owner_id uuid references public.app_users(id) not null,
+  email text not null,
+  name text,
+  phone text,
+  company text,
+  status text default 'new',
+  score int default 0,
+  source text,
+  utm_source text,
+  utm_medium text,
+  utm_campaign text,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- 3. TABELA DE EVENTOS DE MARKETING
+create table public.marketing_events (
+  id uuid default gen_random_uuid() primary key,
+  lead_id uuid references public.leads(id) on delete cascade,
+  event_type text not null,
+  metadata jsonb default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+-- 4. TABELA DE DEALS (NEGÓCIOS)
+create table public.deals (
+  id uuid default gen_random_uuid() primary key,
+  lead_id uuid references public.leads(id) on delete cascade,
+  owner_id uuid references public.app_users(id) not null,
+  title text not null,
+  value numeric default 0,
+  status text default 'open',
+  created_at timestamptz default now()
+);
+
+-- 5. HABILITAR RLS
+alter table public.leads enable row level security;
+alter table public.marketing_events enable row level security;
+alter table public.deals enable row level security;
+
+-- 6. POLÍTICAS DE SEGURANÇA
+create policy "Users manage own leads" on public.leads
+  for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+
+create policy "Users manage own deals" on public.deals
+  for all using (auth.uid() = owner_id or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')));
+
+create policy "Read events" on public.marketing_events
+  for select using (exists (select 1 from public.leads where id = lead_id and (owner_id = auth.uid() or exists (select 1 from public.app_users where id = auth.uid() and role in ('admin', 'super_admin')))));
+
+create policy "Insert events" on public.marketing_events for insert with check (true);
+
+-- 7. PERMISSÕES
+grant all on public.leads to authenticated;
+grant all on public.marketing_events to authenticated;
+grant all on public.deals to authenticated;
+grant all on public.leads to service_role;
+grant all on public.marketing_events to service_role;
+grant all on public.deals to service_role;
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 `;
 
   return (
@@ -491,7 +571,10 @@ grant select, insert on public.logs to anon;
           <button onClick={() => setActiveTab('technical')} className={getTabClass('technical')}><i className="fas fa-code mr-2"></i>Visão Técnica</button>
           <button onClick={() => setActiveTab('n8n_guide')} className={getTabClass('n8n_guide')}><i className="fas fa-project-diagram mr-2"></i>N8N Seguro</button>
           <button onClick={() => setActiveTab('api')} className={getTabClass('api')}><i className="fas fa-plug mr-2"></i>API / Devs</button>
+<<<<<<< HEAD
           <button onClick={() => setActiveTab('setup')} className={getTabClass('setup')}><i className="fas fa-database mr-2"></i>Instalação Limpa</button>
+=======
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
           <button onClick={() => setActiveTab('updates')} className={getTabClass('updates')}><i className="fas fa-sync-alt mr-2"></i>Updates & SQL</button>
         </nav>
         {activeTab === 'api' && (
@@ -564,6 +647,7 @@ grant select, insert on public.logs to anon;
             <div className="prose prose-slate max-w-none">
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Instalação Limpa (Full Setup)</h1>
                 <p className="text-gray-600 mb-4">
+<<<<<<< HEAD
                     Utilize este script para configurar um projeto Supabase <strong>totalmente novo</strong>. Ele cria todas as tabelas, triggers, funções e políticas de segurança RLS necessárias.
                 </p>
                 <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-6">
@@ -579,6 +663,12 @@ grant select, insert on public.logs to anon;
                     <button onClick={() => handleCopy(fullSetupSql, 'setup_sql')} className="absolute top-2 right-2 px-3 py-1.5 text-xs bg-gray-800 border border-gray-600 rounded font-bold hover:bg-gray-700 text-white transition">
                         {copiedField === 'setup_sql' ? 'Copiado!' : 'Copiar SQL'}
                     </button>
+=======
+                    Utilize este script para configurar um projeto Supabase <strong>totalmente novo</strong>.
+                </p>
+                <div className="bg-yellow-50 p-4 border border-yellow-200 rounded text-sm text-yellow-800">
+                    <strong>Nota:</strong> O script completo está disponível no arquivo <code>Admin/DocumentationViewer.tsx</code>.
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 </div>
             </div>
         )}
@@ -588,7 +678,11 @@ grant select, insert on public.logs to anon;
                 <h1 className="text-3xl font-bold text-[#263238] mb-4">Atualizações & SQL</h1>
                 <p className="text-sm text-gray-500 mb-4 bg-yellow-50 p-3 rounded border border-yellow-200">
                     <i className="fas fa-exclamation-triangle mr-2"></i>
+<<<<<<< HEAD
                     Use este script apenas para <strong>corrigir instalações existentes</strong>. Ele aplica patches incrementais para logs, créditos e notificações.
+=======
+                    Use este script para corrigir tabelas de CRM quebradas (erro "column does not exist").
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
                 </p>
                 <div className="relative bg-gray-50 border border-gray-200 text-gray-700 p-4 rounded-lg text-xs font-mono shadow-inner max-h-[600px] overflow-auto custom-scrollbar">
                     <pre className="whitespace-pre-wrap">{schemaSql}</pre>
@@ -601,4 +695,8 @@ grant select, insert on public.logs to anon;
       </div>
     </div>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa

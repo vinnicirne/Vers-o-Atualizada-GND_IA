@@ -1,4 +1,8 @@
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 export const CURRICULUM_TEMPLATES = {
     minimalist: `
     <div class="bg-white p-8 max-w-3xl mx-auto font-sans text-gray-800 shadow-lg rounded-lg my-8">
