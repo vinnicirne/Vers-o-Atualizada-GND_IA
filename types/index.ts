@@ -22,13 +22,8 @@ export interface NewsArticle {
   conteudo: string;
   sources?: Source[];
   status?: NewsStatus;
-<<<<<<< HEAD
   tipo?: string; // This type allows for flexibility, will be 'landingpage_generator' for all sites
   author_id?: string;
-=======
-  tipo?: string; // Tipo do conteúdo (news, image, landing_page, etc)
-  author_id?: string; // ID do autor
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
   criado_em?: string;
   author?: {
     email: string;
@@ -48,23 +43,12 @@ export interface User {
   plan: UserPlan; 
   created_at?: string;
   last_login?: string;
-<<<<<<< HEAD
   affiliate_code?: string;
   referred_by?: string;
   affiliate_balance?: number;
   asaas_customer_id?: string;
   subscription_id?: string;
   subscription_status?: string;
-=======
-  // Affiliate System
-  affiliate_code?: string;
-  referred_by?: string;
-  affiliate_balance?: number;
-  asaas_customer_id?: string; // Novo campo para Asaas Customer ID
-  // Subscription System
-  subscription_id?: string; // ID da assinatura recorrente (Asaas)
-  subscription_status?: string; // ACTIVE, EXPIRED, etc.
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
   mercadopago_customer_id?: string;
 }
 
@@ -75,11 +59,7 @@ export interface AffiliateLog {
   amount: number;
   description: string;
   created_at: string;
-<<<<<<< HEAD
   source_email?: string;
-=======
-  source_email?: string; // Enriched field
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 }
 
 export interface Log {
@@ -87,21 +67,13 @@ export interface Log {
   usuario_id: string;
   acao: string;
   modulo: string;
-<<<<<<< HEAD
-=======
-  // FIX: Replaced 'jsonb' with 'any' as 'jsonb' is a PostgreSQL type, not a TypeScript type.
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
   detalhes?: any;
   data: string;
   user_email?: string;
 }
 
-<<<<<<< HEAD
 // FIX: Added 'tool_settings' and 'white_label_settings' to AdminView
 export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings';
-=======
-export type AdminView = 'dashboard' | 'users' | 'news' | 'payments' | 'multi_ia_system' | 'logs' | 'plans' | 'docs' | 'security' | 'popups' | 'feedbacks' | 'notifications_push' | 'tool_settings' | 'white_label_settings' | 'crm';
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
 export interface AllowedDomain {
   id: string;
@@ -123,7 +95,6 @@ export interface Transaction {
   metodo: PaymentMethod;
   status: TransactionStatus;
   data: string;
-<<<<<<< HEAD
   external_id?: string;
   metadata?: {
     item_type?: 'plan' | 'credits';
@@ -137,24 +108,6 @@ export interface Transaction {
     installments?: number;
     card_token_id?: string;
     customer_id?: string;
-=======
-  external_id?: string; // Mercado Pago ID, Asaas ID
-  metadata?: { // Dados extras
-    item_type?: 'plan' | 'credits';
-    item_id?: string; // ID do plano ou pacote de créditos
-    provider?: string; // Ex: 'mercado_pago', 'asaas'
-    description?: string; // Descrição do item comprado
-    plan_id?: string; // ID do plano, se for compra de plano
-    credits_amount?: number; // Quantidade de créditos, se for compra de créditos
-    // Mercado Pago specific
-    payment_method_id?: string; // e.g., 'visa'
-    issuer_id?: string; // e.g., '24' for Visa
-    installments?: number;
-    // Asaas specific
-    card_token_id?: string;
-    customer_id?: string; // Asaas customer ID
-    // Any other relevant data
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     [key: string]: any;
   };
   user?: {
@@ -165,10 +118,7 @@ export interface Transaction {
 export interface GatewayConfig {
   enabled: boolean;
   publicKey: string; 
-<<<<<<< HEAD
   // secretKey removed for security
-=======
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 }
 
 export interface CreditPackage {
@@ -361,45 +311,3 @@ export interface WhiteLabelSettings {
   guestMarketingFooterCtaText: string;
   guestMarketingFooterCtaLink: string;
 }
-<<<<<<< HEAD
-=======
-
-// --- CRM & MARKETING TYPES ---
-export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'customer' | 'lost';
-
-export interface Lead {
-  id: string;
-  owner_id: string; // User ID who owns this lead
-  email: string;
-  name?: string;
-  phone?: string;
-  company?: string;
-  status: LeadStatus;
-  score: number;
-  source?: string; // 'landing_page', 'manual', 'import'
-  utm_source?: string;
-  utm_medium?: string;
-  utm_campaign?: string;
-  notes?: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MarketingEvent {
-  id: string;
-  lead_id: string;
-  event_type: 'page_view' | 'form_submit' | 'email_open' | 'click' | 'purchase';
-  metadata?: any;
-  created_at: string;
-}
-
-export interface Deal {
-  id: string;
-  lead_id: string;
-  owner_id: string;
-  title: string;
-  value: number;
-  status: 'open' | 'won' | 'lost';
-  created_at: string;
-}
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa

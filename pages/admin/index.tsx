@@ -18,7 +18,6 @@ import { PopupManager } from '../../components/admin/PopupManager';
 import { FeedbackManager } from '../../components/admin/FeedbackManager'; 
 import { NotificationManager } from '../../components/admin/NotificationManager'; 
 import { ToolManager } from '../../components/admin/ToolManager'; 
-<<<<<<< HEAD
 import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager'; // NOVO
 import { Toast } from '../../components/admin/Toast';
 // FIX: Imported CreateUserPayload from adminService
@@ -26,15 +25,6 @@ import { NewsArticle, AdminView } from '../../types';
 import { CreateUserPayload, updateNewsArticle, createUser } from '../../services/adminService';
 import { useUser } from '../../contexts/UserContext';
 import { useWhiteLabel } from '../../contexts/WhiteLabelContext'; // NOVO
-=======
-import { WhiteLabelManager } from '../../components/admin/WhiteLabelManager';
-import { CrmDashboard } from '../../components/crm/CrmDashboard'; // NOVO IMPORT
-import { Toast } from '../../components/admin/Toast';
-import { NewsArticle, AdminView } from '../../types';
-import { CreateUserPayload, updateNewsArticle, createUser } from '../../services/adminService';
-import { useUser } from '../../contexts/UserContext';
-import { useWhiteLabel } from '../../contexts/WhiteLabelContext';
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 import { downloadSitemap } from '../../services/sitemapService'; 
 import { supabase } from '../../services/supabaseClient';
 
@@ -95,10 +85,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
     setEditingNews(null);
   };
 
-<<<<<<< HEAD
   // FIX: Removed adminId from parameters, it will be captured from the closure
-=======
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
   const handleSaveNews = async (id: number, titulo: string, conteudo: string) => {
     if (!user) {
         setToast({ message: "Sessão de administrador inválida.", type: 'error' });
@@ -120,10 +107,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
       return;
     }
     try {
-<<<<<<< HEAD
       // FIX: Call createUser
-=======
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
       await createUser(payload, user.id);
       setToast({ message: `Usuário ${payload.email} criado com sucesso!`, type: 'success' });
       setCreateUserModalOpen(false);
@@ -163,15 +147,10 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <PaymentsManager dataVersion={dataVersion} />;
       case 'plans': 
         return <PlansManager />;
-<<<<<<< HEAD
       // FIX: Add 'tool_settings' to AdminView
       case 'tool_settings': 
         return <ToolManager />;
       // FIX: Add 'white_label_settings' to AdminView
-=======
-      case 'tool_settings': 
-        return <ToolManager />;
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
       case 'white_label_settings': 
         return <WhiteLabelManager />;
       case 'popups': 
@@ -188,11 +167,6 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         return <LogsViewer dataVersion={dataVersion} />;
       case 'docs': 
         return <DocumentationViewer />;
-<<<<<<< HEAD
-=======
-      case 'crm': // NOVO CASE
-        return <CrmDashboard isAdminView={true} />;
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
       default:
         return (
           <>
@@ -214,11 +188,7 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
         onLogout={handleLogout}
         onNavigateToDashboard={onNavigateToDashboard}
         onNewUserClick={() => setCreateUserModalOpen(true)}
-<<<<<<< HEAD
         pageTitle={whiteLabelSettings.appName + " Admin"} // Dynamic page title
-=======
-        pageTitle={whiteLabelSettings.appName + " Admin"} 
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         userCredits={user.credits}
         userRole={user.role}
         realtimeStatus={realtimeStatus} 
@@ -252,8 +222,4 @@ function AdminPage({ onNavigateToDashboard }: AdminPageProps) {
   );
 };
 
-<<<<<<< HEAD
 export default AdminPage;
-=======
-export default AdminPage;
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa

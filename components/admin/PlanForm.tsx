@@ -1,8 +1,5 @@
 
-<<<<<<< HEAD
 
-=======
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plan, ServiceKey, ServicePermission } from '../../types/plan.types';
 import { CREATOR_SUITE_MODES, TASK_COSTS } from '../../constants'; // Importe CREATOR_SUITE_MODES para obter labels de serviço
@@ -25,10 +22,6 @@ const ALL_SERVICE_KEYS: ServiceKey[] = [
   'social_media_poster', 
   'curriculum_generator', // NOVO
   'n8n_integration',
-<<<<<<< HEAD
-=======
-  'crm_suite', // NOVO: CRM
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 ];
 
 // Mapeamento para obter nomes de serviço (labels) de forma mais fácil
@@ -37,10 +30,6 @@ const serviceKeyToNameMap = new Map(
 );
 // Adiciona manualmente serviços que não são modos de criação (não estão na sidebar)
 serviceKeyToNameMap.set('n8n_integration', 'Integração N8N / Webhooks');
-<<<<<<< HEAD
-=======
-serviceKeyToNameMap.set('crm_suite', 'CRM & Leads');
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
 // Cores padrão para os planos (pode ser expandido)
 const PLAN_COLORS = [
@@ -321,8 +310,4 @@ export function PlanForm({ initialData, onSave, isSaving = false }: PlanFormProp
       </form>
     </div>
   );
-<<<<<<< HEAD
 }
-=======
-}
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa

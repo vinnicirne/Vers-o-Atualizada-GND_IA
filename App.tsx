@@ -54,29 +54,13 @@ function AppContent() {
 
     const params = new URLSearchParams(window.location.search);
     const pageParam = params.get('page');
-<<<<<<< HEAD
     const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback', 'landing', 'dashboard'];
 
     // 1. Prioritize explicit page parameter if valid
-=======
-    
-    // 1. REGRA ESTRITA DA LANDING PAGE
-    // A Landing Page SÓ deve aparecer se ?page=landing estiver na URL.
-    if (pageParam === 'landing') {
-        if (!whiteLabelSettings.landingPageEnabled) return 'dashboard';
-        // Se usuário já estiver logado, não mostra landing, vai para dashboard
-        if (user) return 'dashboard';
-        return 'landing';
-    }
-
-    // 2. Outras páginas permitidas via URL
-    const validPages: PageRoute[] = ['admin', 'login', 'privacy', 'terms', 'cookies', 'about', 'feedback'];
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
     if (pageParam && validPages.includes(pageParam as PageRoute)) {
         return pageParam as PageRoute;
     }
 
-<<<<<<< HEAD
     // 2. Determine default route based on authentication and white label settings for the root '/' path
     if (userLoading || whiteLabelLoading) {
         // If still loading, return a neutral default. Actual redirect happens in useEffect.
@@ -92,17 +76,6 @@ function AppContent() {
   }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]); // Dependencies for memoization
 
   const [currentPage, setCurrentPage] = useState<PageRoute>('dashboard'); // Initial state set to a temporary default
-=======
-    // 3. COMPORTAMENTO PADRÃO (ROOT URL "/")
-    // Se não houver ?page=landing, SEMPRE vai para o Dashboard.
-    // Se não estiver logado -> Dashboard Modo Visitante (Guest).
-    // Se estiver logado -> Dashboard do Usuário.
-    return 'dashboard';
-
-  }, [user, userLoading, whiteLabelSettings, whiteLabelLoading]); 
-
-  const [currentPage, setCurrentPage] = useState<PageRoute>('dashboard');
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
   // Update currentPage once initial data is loaded
   useEffect(() => {
@@ -120,7 +93,6 @@ function AppContent() {
   // Refined useEffect for enforcing navigation logic
   useEffect(() => {
     if (userLoading || whiteLabelLoading || !currentPage) {
-<<<<<<< HEAD
         return; // Wait for data to load and currentPage to be set
     }
 
@@ -128,21 +100,10 @@ function AppContent() {
 
     if (user) {
         // Logged-in users should always be on dashboard (unless explicitly on admin/legal pages)
-=======
-        return; 
-    }
-
-    let targetPage: PageRoute = currentPage;
-
-    if (user) {
-        // Logged-in users should always be on dashboard (unless explicitly on admin/legal pages)
-        // Redirect away from Landing or Login if logged in
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         if (targetPage === 'landing' || targetPage === 'login') {
             targetPage = 'dashboard';
         }
     } else {
-<<<<<<< HEAD
         // Not logged-in users should be on landing or login page
         // For unauthenticated users, the default root path is 'dashboard' (guest mode).
         // If they explicitly navigate to 'admin' (which they shouldn't be able to do anyway),
@@ -154,15 +115,6 @@ function AppContent() {
         } else if (targetPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
             // If the LandingPage is explicitly disabled in WhiteLabel settings,
             // then even if a user tries to navigate to it, redirect them to the guest dashboard.
-=======
-        // Not logged-in users logic
-        // If they try to access admin, kick to dashboard (guest)
-        if (targetPage === 'admin') {
-            targetPage = 'dashboard'; 
-        } 
-        // If they are on landing but it's disabled, kick to dashboard
-        else if (targetPage === 'landing' && !whiteLabelSettings.landingPageEnabled) {
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
             targetPage = 'dashboard';
         }
     }
@@ -192,11 +144,6 @@ function AppContent() {
         if (typeof window === 'undefined' || !window.location || !currentPage) return;
 
         const params = new URLSearchParams(window.location.search);
-<<<<<<< HEAD
-=======
-        
-        // Se for dashboard, limpamos a query string para a URL ficar limpa na raiz
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         if (currentPage === 'dashboard') {
           params.delete('page'); 
         } else {
@@ -204,12 +151,7 @@ function AppContent() {
         }
         
         const queryString = params.toString() ? '?' + params.toString() : '';
-<<<<<<< HEAD
         const newUrl = `${window.location.pathname}${queryString}`;
-=======
-        // Se a query string estiver vazia, removemos o ? também
-        const newUrl = queryString ? `${window.location.pathname}${queryString}` : window.location.pathname;
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
         
         if (window.location.search !== queryString) {
             try {
@@ -282,22 +224,12 @@ function AppContent() {
     );
   }
 
-<<<<<<< HEAD
   if (userLoading || whiteLabelLoading || !currentPage) { // Added !currentPage here
     return <SimpleLoader />;
   }
   
   // Conditionally render LandingPage to adhere to "sumir se desativada"
   const shouldRenderLandingPage = currentPage === 'landing' && !user;
-=======
-  if (userLoading || whiteLabelLoading || !currentPage) { 
-    return <SimpleLoader />;
-  }
-  
-  // Conditionally render LandingPage. 
-  // It only renders if currentPage is strictly 'landing' (which implies !user via getInitialPage logic)
-  const shouldRenderLandingPage = currentPage === 'landing';
->>>>>>> 6251f72d8007bb5129c739db5bb3def872df23aa
 
   return (
     <Suspense fallback={<SimpleLoader />}>
